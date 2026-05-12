@@ -20,6 +20,15 @@ export type Pfc = {
   items: Array<{ name: string; P: number; F: number; C: number }>;
 };
 
+// メモに「Xg/X杯/X個/X枚/X本/X切/X皿/Xml/Xcc/大さじX/小さじX」のような
+// 量を明示する表現が含まれているか判定
+function hasExplicitQuantity(text: string | null): boolean {
+  if (!text) return false;
+  return /\d+(?:\.\d+)?\s*(?:g|kg|ml|cc|個|杯|本|枚|切|皿|匹|尾|玉|束|片|缶|袋|箱|串)|大さじ\s*\d|小さじ\s*\d/i.test(
+    text
+  );
+}
+
 export async function analyzeImagesPfc(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null
@@ -28,8 +37,15 @@ export async function analyzeImagesPfc(
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
   if (images.length === 0) throw new Error('画像が指定されていません');
 
+  const explicit = hasExplicitQuantity(supplementText);
+
   const supplementLine = supplementText
-    ? `\n\n補足情報（顧客メモ）：${supplementText}\nこの補足情報も考慮してPFCを推定してください。`
+    ? explicit
+      ? `\n\n【重要・優先】顧客メモに食材の量が明示されています：
+${supplementText}
+このメモに記載された食材は、明記された量で日本食品標準成分表の正確な値で計算してください（写真の見た目より顧客メモを優先）。
+メモに記載されていない食材（写真にのみ写っているもの）は通常通り写真から推定してください。`
+      : `\n\n補足情報（顧客メモ）：${supplementText}\nこの補足情報も考慮してPFCを推定してください。`
     : '';
 
   const multiNotice =
@@ -37,11 +53,15 @@ export async function analyzeImagesPfc(
       ? '\n複数枚の写真は1食を構成する別々の皿/料理です（コース料理など）。各写真の内容をそれぞれ推定し、合算して1食分のPFCを算出してください。'
       : '';
 
+  const accuracyRule = explicit
+    ? '- メモに量が明示されている食材は標準成分表の正確な値で計算する（控えめにしない）'
+    : '- 過大評価を避け、控えめ（少なめ）を基準とする';
+
   const prompt = `この食事のPFC（タンパク質・脂質・炭水化物）を推定してください。${multiNotice}
 
 【最重要ルール】
 - 写真に見えるものだけを素直に推定する。見えない油・調味料・隠れ食材は加算しない
-- 過大評価を避け、控えめ（少なめ）を基準とする
+${accuracyRule}
 - 外食チェーン店（松屋・吉野家・マクドナルド・サイゼリヤ・すき家・CoCo壱等）が明確に写っている場合のみ公式栄養成分値を使用する
 ${supplementLine}
 
@@ -58,7 +78,8 @@ ${supplementLine}
   parts.push({ text: prompt });
 
   const text = await callGemini(parts, apiKey);
-  return parsePfcJson(text, PFC_CALIBRATION_IMAGE);
+  // 明示量がある場合は補正なし（テキスト準拠）、なければ画像補正適用
+  return parsePfcJson(text, explicit ? PFC_CALIBRATION_TEXT : PFC_CALIBRATION_IMAGE);
 }
 
 export async function analyzeTextPfc(textDesc: string): Promise<Pfc> {
