@@ -115,17 +115,33 @@ export default function RecordPage() {
         }),
       });
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const detail =
-          res.status === 413
-            ? '画像サイズが大きすぎます。枚数を減らすかメモのみで試してください。'
-            : errJson.error || `記録に失敗しました（${res.status}）`;
+        let detail: string;
+        if (res.status === 413) {
+          detail = '画像サイズが大きすぎます。枚数を減らすかメモのみで試してください。';
+        } else if (res.status === 504 || res.status === 502) {
+          detail = `処理がタイムアウトしました（${res.status}）。枚数を減らすかもう一度お試しください。`;
+        } else {
+          const errJson = await res.json().catch(() => null);
+          detail = errJson?.error || `記録に失敗しました（${res.status}）`;
+        }
         throw new Error(detail);
       }
       const json = await res.json();
       setResult(json.pfc);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '送信エラー（ネットワーク接続を確認してください）');
+      // eslint-disable-next-line no-console
+      console.error('handleSubmit error:', e);
+      let msg = '送信エラー';
+      if (e instanceof Error) {
+        msg = e.message || '送信エラー（詳細不明）';
+      } else if (typeof e === 'string') {
+        msg = e;
+      } else if (e && typeof e === 'object' && 'message' in e) {
+        msg = String((e as { message: unknown }).message);
+      } else {
+        msg = `送信エラー: ${String(e).slice(0, 200)}`;
+      }
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -322,12 +338,16 @@ function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const result = reader.result as string;
-      // remove "data:image/jpeg;base64," prefix
-      const base64 = result.split(',')[1] || result;
-      resolve(base64);
+      try {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1] || result;
+        resolve(base64);
+      } catch (err) {
+        reject(new Error(`画像の変換に失敗（${file.name}）: ${err instanceof Error ? err.message : String(err)}`));
+      }
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error(`画像の読み込みに失敗（${file.name}）`));
+    reader.onabort = () => reject(new Error(`画像の読み込みが中断されました（${file.name}）`));
     reader.readAsDataURL(file);
   });
 }
