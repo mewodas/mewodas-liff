@@ -7,10 +7,11 @@ const NUTRITION_SYSTEM =
   '回答はJSON形式のみで返してください。説明・挨拶は不要です。';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-1.5-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1000;
+const RETRY_DELAY_MS = 1500;
+const PARALLEL_BATCH_SIZE = 2; // 同時並列数（レート制限回避）
 
 export type Pfc = {
   kcal: number;
@@ -52,10 +53,15 @@ async function analyzeImagesParallel(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null
 ): Promise<Pfc> {
-  // 各画像を個別に並列解析（コース料理など別々の皿想定）
-  const results = await Promise.all(
-    images.map((img) => analyzeImagesSingleCall([img], supplementText, false))
-  );
+  // バッチ単位で並列解析（同時実行数を制限してレート制限を回避）
+  const results: Pfc[] = [];
+  for (let i = 0; i < images.length; i += PARALLEL_BATCH_SIZE) {
+    const batch = images.slice(i, i + PARALLEL_BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map((img) => analyzeImagesSingleCall([img], supplementText, false))
+    );
+    results.push(...batchResults);
+  }
 
   const total = results.reduce(
     (acc, r) => ({
