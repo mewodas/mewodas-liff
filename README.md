@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# メヲダス 食事管理 LIFF
 
-## Getting Started
+LINE Front-end Framework (LIFF) を使った食事記録アプリ。リッチメニューから起動して、写真+食事区分+メモを1画面で記録できる。
 
-First, run the development server:
+## 構成
+
+- **Next.js 16** (App Router)
+- **Tailwind CSS v4**
+- **@line/liff** SDK
+- バックエンド：既存のGAS（食事管理システム）にPOST
+- ホスティング：Vercel
+
+## ローカル開発
 
 ```bash
+cp .env.example .env.local
+# .env.local を編集して LIFF ID と GAS_RECORD_ENDPOINT を設定
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 環境変数
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| 名前 | 用途 |
+|---|---|
+| `NEXT_PUBLIC_LIFF_ID` | LIFFアプリのID（LINE Developer Consoleで取得） |
+| `GAS_RECORD_ENDPOINT` | GAS Web AppのURL |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## デプロイ
 
-## Learn More
+GitHubにpush後、Vercelで自動デプロイ。
 
-To learn more about Next.js, take a look at the following resources:
+1. Vercelダッシュボードでこのリポジトリをimport
+2. 環境変数を設定
+3. 自動でビルド・デプロイされる
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## LIFF設定
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+LINE Developer Console の「LIFF」タブで：
 
-## Deploy on Vercel
+- エンドポイントURL：Vercelの本番URL（例：`https://meodas-liff.vercel.app/record`）
+- サイズ：Full
+- Scope：`profile`（必須）、`openid`（推奨）
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## ファイル構成
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+  page.tsx          # / → /record にリダイレクト
+  layout.tsx        # ルートレイアウト
+  record/page.tsx   # 食事記録フォーム（メイン画面）
+  api/record/route.ts # POSTを受けてGASに転送するAPI
+lib/
+  liff.ts           # LIFF SDK初期化ヘルパー
+```
