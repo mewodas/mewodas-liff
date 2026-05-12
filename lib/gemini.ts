@@ -7,7 +7,7 @@ const NUTRITION_SYSTEM =
   '回答はJSON形式のみで返してください。説明・挨拶は不要です。';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash-lite';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
