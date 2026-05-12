@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { initLiff, getLineProfile, closeLiff } from '@/lib/liff';
+import { compressImage } from '@/lib/imageCompress';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
@@ -45,17 +46,31 @@ export default function RecordPage() {
     })();
   }, []);
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    setPhotos((prev) => [...prev, ...files].slice(0, 4));
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => setPreviews((prev) => [...prev, reader.result as string].slice(0, 4));
-      reader.readAsDataURL(file);
-    });
     // 同じファイルを再選択できるよう input をリセット
     if (fileInputRef.current) fileInputRef.current.value = '';
+
+    setError(null);
+    try {
+      const compressed = await Promise.all(files.map((f) => compressImage(f)));
+      setPhotos((prev) => [...prev, ...compressed].slice(0, 4));
+      const newPreviews = await Promise.all(
+        compressed.map(
+          (file) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = () => reject(new Error('プレビュー作成失敗'));
+              reader.readAsDataURL(file);
+            })
+        )
+      );
+      setPreviews((prev) => [...prev, ...newPreviews].slice(0, 4));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '写真の処理でエラー');
+    }
   }
 
   function removePhoto(index: number) {
@@ -101,12 +116,16 @@ export default function RecordPage() {
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `記録に失敗しました（${res.status}）`);
+        const detail =
+          res.status === 413
+            ? '画像サイズが大きすぎます。枚数を減らすかメモのみで試してください。'
+            : errJson.error || `記録に失敗しました（${res.status}）`;
+        throw new Error(detail);
       }
       const json = await res.json();
       setResult(json.pfc);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '送信エラー');
+      setError(e instanceof Error ? e.message : '送信エラー（ネットワーク接続を確認してください）');
     } finally {
       setSubmitting(false);
     }
