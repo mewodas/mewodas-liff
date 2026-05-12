@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
+import { saveImagesToDriveAsync } from '@/lib/drive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 顧客情報取得とPFC解析を並列実行
+    // 顧客情報取得とPFC解析を並列実行（Drive保存はレスポンス後に非同期化）
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
       images.length > 0
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     const targetDate = getTargetDate(day);
-    await saveFoodRecord({
+    const notionRes = await saveFoodRecord({
       customerName: customer.name,
       lineUserId,
       pfc,
@@ -66,6 +68,18 @@ export async function POST(req: NextRequest) {
       targetDate,
       supplementText: supplementText || null,
     });
+
+    // Drive保存はレスポンス後に非同期実行（ユーザーの待ち時間に含めない）
+    if (images.length > 0 && notionRes && notionRes.id) {
+      waitUntil(
+        saveImagesToDriveAsync({
+          notionPageId: notionRes.id,
+          customerName: customer.name,
+          lineUserId,
+          photos: images,
+        })
+      );
+    }
 
     return NextResponse.json({ ok: true, pfc });
   } catch (e) {

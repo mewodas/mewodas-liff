@@ -181,14 +181,17 @@ export default function RecordPage() {
         )}
 
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <div className="flex justify-between items-center mb-3">
-            <div className="text-base font-bold text-stone-900">① 写真（任意・最大4枚）</div>
+          <div className="flex justify-between items-center mb-1">
+            <div className="text-base font-bold text-stone-900">① 写真（任意）</div>
             {previews.length > 0 && (
               <button onClick={clearAllPhotos} className="text-xs text-stone-700 underline">
                 全削除
               </button>
             )}
           </div>
+          <p className="text-xs text-stone-600 mb-3">
+            最大4枚まで。コース料理など複数皿は別々に撮影してアップしてください。
+          </p>
           {previews.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mb-3">
               {previews.map((src, i) => (

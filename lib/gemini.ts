@@ -1,5 +1,7 @@
-// PFC補正係数（GAS側と同じ）：API版Geminiの過大評価をWeb版相当に補正
-const PFC_CALIBRATION = { P: 0.55, F: 0.55, C: 0.75 };
+// PFC補正係数：API版Geminiの画像推定は過大評価するため画像入力時のみ適用
+// テキスト入力時は量が明示されておりAIの計算が正確なので補正なし（1.0）
+const PFC_CALIBRATION_IMAGE = { P: 0.55, F: 0.55, C: 0.75 };
+const PFC_CALIBRATION_TEXT  = { P: 1.0,  F: 1.0,  C: 1.0  };
 
 const NUTRITION_SYSTEM =
   '回答はJSON形式のみで返してください。説明・挨拶は不要です。';
@@ -29,7 +31,7 @@ export async function analyzeImagesPfc(
 
   const multiNotice =
     images.length > 1
-      ? '\n複数枚は同じ食事を別角度から撮影したものです。重複なく1つの食事として推定してください。'
+      ? '\n複数枚の写真は1食を構成する別々の皿/料理です（コース料理など）。各写真の内容をそれぞれ推定し、合算して1食分のPFCを算出してください。'
       : '';
 
   const prompt = `この食事のPFC（タンパク質・脂質・炭水化物）を推定してください。${multiNotice}
@@ -38,7 +40,6 @@ export async function analyzeImagesPfc(
 - 写真に見えるものだけを素直に推定する。見えない油・調味料・隠れ食材は加算しない
 - 過大評価を避け、控えめ（少なめ）を基準とする
 - 外食チェーン店（松屋・吉野家・マクドナルド・サイゼリヤ・すき家・CoCo壱等）が明確に写っている場合のみ公式栄養成分値を使用する
-- 複数枚に同じ食材が写っている場合は1回だけカウントする
 ${supplementLine}
 
 {
@@ -54,19 +55,21 @@ ${supplementLine}
   parts.push({ text: prompt });
 
   const text = await callGemini(parts, apiKey);
-  return parsePfcJson(text);
+  return parsePfcJson(text, PFC_CALIBRATION_IMAGE);
 }
 
 export async function analyzeTextPfc(textDesc: string): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
 
-  const prompt = `以下の食事内容のPFC（タンパク質・脂質・炭水化物）を推定してください。
+  const prompt = `以下の食事内容のPFC（タンパク質・脂質・炭水化物）を栄養学の標準値で正確に計算してください。
 
-【最重要ルール】
-- 記述された食材・量から素直に推定する。見えない油・調味料・隠れ食材は加算しない
-- 過大評価を避け、控えめ（少なめ）を基準とする
-- 外食チェーン店のメニューが含まれる場合のみ公式栄養成分値を使用する
+【計算ルール】
+- 量が明示されている食材（例：鶏むね肉100g）は、日本食品標準成分表の標準値で正確に算出する
+  例：鶏むね肉(皮なし)100g = P23g/F1.5g/C0g、白米(ご飯)150g = P3.8g/F0.5g/C55g
+- 量が明示されていない食材は、一般的な一人前の量で算出する
+- 控えめに見積もる必要はない。標準値で正確に計算すること
+- 外食チェーン店のメニューが含まれる場合は公式栄養成分値を使用する
 
 食事内容：
 ${textDesc}
@@ -79,7 +82,7 @@ ${textDesc}
 }`;
 
   const text = await callGemini([{ text: prompt }], apiKey);
-  return parsePfcJson(text);
+  return parsePfcJson(text, PFC_CALIBRATION_TEXT);
 }
 
 async function callGemini(
@@ -107,14 +110,17 @@ async function callGemini(
   return text;
 }
 
-function parsePfcJson(text: string): Pfc {
+function parsePfcJson(
+  text: string,
+  calibration: { P: number; F: number; C: number }
+): Pfc {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('JSON解析失敗: ' + text.slice(0, 100));
   const parsed = JSON.parse(match[0]);
   const f1 = (x: number) => Math.round((x || 0) * 10) / 10;
-  const P = f1((parsed.P || 0) * PFC_CALIBRATION.P);
-  const F = f1((parsed.F || 0) * PFC_CALIBRATION.F);
-  const C = f1((parsed.C || 0) * PFC_CALIBRATION.C);
+  const P = f1((parsed.P || 0) * calibration.P);
+  const F = f1((parsed.F || 0) * calibration.F);
+  const C = f1((parsed.C || 0) * calibration.C);
   return {
     kcal: Math.round(P * 4 + F * 9 + C * 4),
     P,
