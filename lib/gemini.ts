@@ -7,7 +7,10 @@ const NUTRITION_SYSTEM =
   '回答はJSON形式のみで返してください。説明・挨拶は不要です。';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-1.5-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
 
 export type Pfc = {
   kcal: number;
@@ -89,14 +92,45 @@ async function callGemini(
   parts: Array<Record<string, unknown>>,
   apiKey: string
 ): Promise<string> {
-  const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  // 主モデル + フォールバックモデル、それぞれリトライ付き
+  const models = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  let lastError = '';
+  for (const model of models) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await callGeminiOnce(model, parts, apiKey);
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+        // 503/429/500系はリトライまたはフォールバック対象
+        const retriable = /\b(503|429|500|502|504)\b|overloaded|UNAVAILABLE|high demand/i.test(lastError);
+        if (!retriable) throw e;
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS * (attempt + 1));
+        }
+      }
+    }
+    // このモデルで全リトライ失敗 → 次モデル（フォールバック）へ
+  }
+  throw new Error(`Gemini APIに接続できません: ${lastError}`);
+}
+
+async function callGeminiOnce(
+  model: string,
+  parts: Array<Record<string, unknown>>,
+  apiKey: string
+): Promise<string> {
+  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: NUTRITION_SYSTEM }] },
       contents: [{ parts }],
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.4 },
+      generationConfig: {
+        maxOutputTokens: 4096,
+        temperature: 0.4,
+        responseMimeType: 'application/json',
+      },
     }),
   });
   if (!res.ok) {
@@ -104,28 +138,77 @@ async function callGemini(
     throw new Error(`Gemini API失敗 ${res.status}: ${errText.slice(0, 300)}`);
   }
   const data = await res.json();
-  const text =
-    data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   if (!text) throw new Error('Gemini応答が空です');
   return text;
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
 }
 
 function parsePfcJson(
   text: string,
   calibration: { P: number; F: number; C: number }
 ): Pfc {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('JSON解析失敗: ' + text.slice(0, 100));
-  const parsed = JSON.parse(match[0]);
+  const cleaned = stripMarkdown(text);
+  const parsed = parseJsonLenient(cleaned);
   const f1 = (x: number) => Math.round((x || 0) * 10) / 10;
   const P = f1((parsed.P || 0) * calibration.P);
   const F = f1((parsed.F || 0) * calibration.F);
   const C = f1((parsed.C || 0) * calibration.C);
+  const items = Array.isArray(parsed.items)
+    ? (parsed.items as Array<Record<string, unknown>>).map((it) => ({
+        name: String(it.name ?? ''),
+        P: Number(it.P ?? 0),
+        F: Number(it.F ?? 0),
+        C: Number(it.C ?? 0),
+      }))
+    : [];
   return {
     kcal: Math.round(P * 4 + F * 9 + C * 4),
     P,
     F,
     C,
-    items: parsed.items || [],
+    items,
   };
+}
+
+// マークダウンの ```json / ``` 囲みを除去
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^[\s\S]*?```(?:json)?\s*/i, '')
+    .replace(/```[\s\S]*$/i, '')
+    .trim();
+}
+
+// JSON.parse + 途中切れ対応：閉じ括弧を補完しつつパースを試みる
+function parseJsonLenient(text: string): { P?: number; F?: number; C?: number; items?: unknown[] } {
+  // まずは素直にパース
+  try {
+    return JSON.parse(text);
+  } catch { /* fallthrough */ }
+
+  // {...} 部分だけを抽出
+  const start = text.indexOf('{');
+  if (start === -1) {
+    throw new Error('JSON解析失敗（開始 { なし）: ' + text.slice(0, 200));
+  }
+  const body = text.slice(start);
+
+  // 途中切れの可能性：最後の完全な数値プロパティで切り詰めて、必要分だけ閉じる
+  // 戦略：items配列がある場合は items を完全に削除して P/F/C のみを抽出
+  const pMatch = body.match(/"P"\s*:\s*([\d.]+)/);
+  const fMatch = body.match(/"F"\s*:\s*([\d.]+)/);
+  const cMatch = body.match(/"C"\s*:\s*([\d.]+)/);
+  if (pMatch || fMatch || cMatch) {
+    return {
+      P: pMatch ? parseFloat(pMatch[1]) : 0,
+      F: fMatch ? parseFloat(fMatch[1]) : 0,
+      C: cMatch ? parseFloat(cMatch[1]) : 0,
+      items: [],
+    };
+  }
+
+  throw new Error('JSON解析失敗: ' + body.slice(0, 200));
 }
