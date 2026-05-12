@@ -11,7 +11,7 @@ const GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
-const PARALLEL_BATCH_SIZE = 2; // 同時並列数（レート制限回避）
+const PARALLEL_BATCH_SIZE = 4; // 全並列で最速処理。レート制限はフォールバックモデルで対応
 
 export type Pfc = {
   kcal: number;
