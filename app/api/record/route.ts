@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await gasRes.json();
+    if (data && data.ok === false) {
+      return NextResponse.json({ error: data.error || 'GAS処理失敗' }, { status: 400 });
+    }
     return NextResponse.json(data);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
