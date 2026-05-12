@@ -159,7 +159,10 @@ export default function RecordPage() {
             <button onClick={reset} className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-sm active:bg-emerald-700">
               もう一回記録する
             </button>
-            <button onClick={closeLiff} className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400">
+            <button
+              onClick={() => { void closeLiff(); }}
+              className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400"
+            >
               閉じる
             </button>
           </div>

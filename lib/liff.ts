@@ -31,8 +31,40 @@ export async function getLineProfile() {
   return liff.getProfile();
 }
 
-export function closeLiff() {
-  if (liff.isInClient()) {
-    liff.closeWindow();
+export async function closeLiff(): Promise<void> {
+  // 初期化前に呼ばれる可能性に備えてinitLiffを保証
+  try {
+    await initLiff();
+  } catch (e) {
+    console.error('LIFF init失敗（closeLiff時）:', e);
+  }
+
+  // LIFFブラウザ（LINE内）の場合
+  try {
+    if (typeof liff.isInClient === 'function' && liff.isInClient()) {
+      liff.closeWindow();
+      return;
+    }
+  } catch (e) {
+    console.error('liff.closeWindow失敗:', e);
+  }
+
+  // 外部ブラウザ用フォールバック
+  if (typeof window !== 'undefined') {
+    try {
+      window.close();
+    } catch {
+      /* ignore */
+    }
+    // window.closeが効かない場合は履歴を戻す
+    setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined' && !window.closed) {
+          window.history.back();
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 200);
   }
 }
