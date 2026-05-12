@@ -18,8 +18,8 @@ export default function RecordPage() {
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>('');
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [day, setDay] = useState<DayLabel>('今日');
   const [mealType, setMealType] = useState<MealType | null>(null);
   const [comment, setComment] = useState('');
@@ -46,17 +46,26 @@ export default function RecordPage() {
   }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhoto(file);
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setPhotos((prev) => [...prev, ...files].slice(0, 4));
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => setPreviews((prev) => [...prev, reader.result as string].slice(0, 4));
+      reader.readAsDataURL(file);
+    });
+    // 同じファイルを再選択できるよう input をリセット
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  function removePhoto() {
-    setPhoto(null);
-    setPreview(null);
+  function removePhoto(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function clearAllPhotos() {
+    setPhotos([]);
+    setPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -65,19 +74,19 @@ export default function RecordPage() {
       setError('食事区分を選んでください');
       return;
     }
-    if (!photo && !comment.trim()) {
+    if (photos.length === 0 && !comment.trim()) {
       setError('写真かメモのどちらかは入力してください');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      let photoBase64: string | null = null;
-      let mimeType: string | null = null;
-      if (photo) {
-        photoBase64 = await fileToBase64(photo);
-        mimeType = photo.type;
-      }
+      const photosPayload = await Promise.all(
+        photos.map(async (file) => ({
+          base64: await fileToBase64(file),
+          mimeType: file.type,
+        }))
+      );
       const res = await fetch('/api/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,8 +96,7 @@ export default function RecordPage() {
           day,
           mealType,
           comment,
-          photoBase64,
-          mimeType,
+          photos: photosPayload,
         }),
       });
       if (!res.ok) {
@@ -105,8 +113,8 @@ export default function RecordPage() {
   }
 
   function reset() {
-    setPhoto(null);
-    setPreview(null);
+    setPhotos([]);
+    setPreviews([]);
     setMealType(null);
     setComment('');
     setResult(null);
@@ -173,31 +181,36 @@ export default function RecordPage() {
         )}
 
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <div className="text-base font-bold text-stone-900 mb-3">① 写真（任意）</div>
-          {preview ? (
-            <div>
-              <img src={preview} alt="preview" className="w-full rounded-xl mb-3 border border-stone-200" />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 bg-stone-200 text-stone-900 font-semibold py-2 rounded-xl text-sm active:bg-stone-300"
-                >
-                  写真を変更
-                </button>
-                <button
-                  onClick={removePhoto}
-                  className="px-4 bg-red-100 text-red-800 font-semibold py-2 rounded-xl text-sm active:bg-red-200"
-                >
-                  削除
-                </button>
-              </div>
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-base font-bold text-stone-900">① 写真（任意・最大4枚）</div>
+            {previews.length > 0 && (
+              <button onClick={clearAllPhotos} className="text-xs text-stone-700 underline">
+                全削除
+              </button>
+            )}
+          </div>
+          {previews.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {previews.map((src, i) => (
+                <div key={i} className="relative">
+                  <img src={src} alt={`preview-${i}`} className="w-full aspect-square object-cover rounded-xl border border-stone-200" />
+                  <button
+                    onClick={() => removePhoto(i)}
+                    className="absolute top-1 right-1 bg-red-600 text-white text-xs w-6 h-6 rounded-full font-bold shadow"
+                    aria-label={`写真${i + 1}を削除`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
-          ) : (
+          )}
+          {previews.length < 4 && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-stone-400 rounded-xl py-8 text-stone-800 font-semibold active:bg-stone-50"
+              className="w-full border-2 border-dashed border-stone-400 rounded-xl py-6 text-stone-800 font-semibold active:bg-stone-50"
             >
-              📷 写真を選ぶ
+              📷 {previews.length > 0 ? '写真を追加' : '写真を選ぶ'}
               <div className="text-xs font-normal text-stone-600 mt-1">カメラ・ライブラリどちらからもOK</div>
             </button>
           )}
@@ -205,6 +218,7 @@ export default function RecordPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handlePhotoChange}
             className="hidden"
           />
@@ -242,7 +256,7 @@ export default function RecordPage() {
 
         <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
           <div className="text-base font-bold text-stone-900 mb-3">
-            ③ メモ {photo ? '（任意）' : '（写真なしの場合は必須）'}
+            ③ メモ {photos.length > 0 ? '（任意）' : '（写真なしの場合は必須）'}
           </div>
           <textarea
             value={comment}
@@ -255,14 +269,14 @@ export default function RecordPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={!mealType || (!photo && !comment.trim()) || submitting}
+          disabled={!mealType || (photos.length === 0 && !comment.trim()) || submitting}
           className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
-          {submitting ? '記録中…（最大1分）' : '記録する'}
+          {submitting ? '記録中…' : '記録する'}
         </button>
         {submitting && (
           <p className="text-xs text-stone-700 text-center mt-3">
-            AI解析中です。画面を閉じないでお待ちください。
+            AI解析中です（5〜10秒）。画面を閉じないでお待ちください。
           </p>
         )}
       </div>

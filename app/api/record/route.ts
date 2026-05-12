@@ -1,49 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
+import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+type Body = {
+  lineUserId?: string;
+  day?: string;
+  mealType?: string;
+  comment?: string;
+  // 互換性のため：単一画像 or 配列
+  photoBase64?: string;
+  mimeType?: string;
+  photos?: Array<{ base64: string; mimeType: string }>;
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { lineUserId, day, mealType, comment, photoBase64, mimeType } = body;
+    const body: Body = await req.json();
+    const { lineUserId, day, mealType, comment, photoBase64, mimeType, photos } = body;
 
     if (!lineUserId || !mealType) {
       return NextResponse.json({ error: 'lineUserId と mealType は必須です' }, { status: 400 });
     }
-    if (!photoBase64 && !(comment && comment.trim())) {
-      return NextResponse.json({ error: '写真かメモのどちらかは入力してください' }, { status: 400 });
+    const supplementText = (comment || '').trim();
+
+    // 画像の正規化（photos配列 OR 単一photoBase64）
+    const images: Array<{ base64: string; mimeType: string }> = [];
+    if (Array.isArray(photos) && photos.length > 0) {
+      images.push(...photos);
+    } else if (photoBase64) {
+      images.push({ base64: photoBase64, mimeType: mimeType || 'image/jpeg' });
     }
 
-    const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
-    if (!gasEndpoint) {
-      return NextResponse.json({ error: 'GAS_RECORD_ENDPOINT 未設定' }, { status: 500 });
+    if (images.length === 0 && !supplementText) {
+      return NextResponse.json(
+        { error: '写真かメモのどちらかは入力してください' },
+        { status: 400 }
+      );
     }
 
-    const gasRes = await fetch(gasEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        type: 'liff_record',
-        lineUserId,
-        day,
-        mealType,
-        comment: comment || '',
-        photoBase64,
-        mimeType: mimeType || 'image/jpeg',
-      }),
+    // 顧客情報取得とPFC解析を並列実行
+    const [customer, pfc] = await Promise.all([
+      getCustomerByLineId(lineUserId),
+      images.length > 0
+        ? analyzeImagesPfc(images, supplementText || null)
+        : analyzeTextPfc(supplementText),
+    ]);
+
+    if (!customer || customer.foodStatus !== '進行中') {
+      return NextResponse.json(
+        { error: '食事管理サービス対象外、またはステータスが進行中ではありません' },
+        { status: 400 }
+      );
+    }
+
+    const targetDate = getTargetDate(day);
+    await saveFoodRecord({
+      customerName: customer.name,
+      lineUserId,
+      pfc,
+      mealType,
+      goals: customer.goals,
+      targetDate,
+      supplementText: supplementText || null,
     });
 
-    if (!gasRes.ok) {
-      const text = await gasRes.text();
-      return NextResponse.json({ error: 'GAS呼び出し失敗', detail: text.slice(0, 300) }, { status: 502 });
-    }
-
-    const data = await gasRes.json();
-    if (data && data.ok === false) {
-      return NextResponse.json({ error: data.error || 'GAS処理失敗' }, { status: 400 });
-    }
-    return NextResponse.json(data);
+    return NextResponse.json({ ok: true, pfc });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
