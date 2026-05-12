@@ -7,35 +7,53 @@ import { saveImagesToDriveAsync } from '@/lib/drive';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type Body = {
-  lineUserId?: string;
-  day?: string;
-  mealType?: string;
-  comment?: string;
-  // 互換性のため：単一画像 or 配列
-  photoBase64?: string;
-  mimeType?: string;
-  photos?: Array<{ base64: string; mimeType: string }>;
-};
-
 export async function POST(req: NextRequest) {
   try {
-    const body: Body = await req.json();
-    const { lineUserId, day, mealType, comment, photoBase64, mimeType, photos } = body;
+    const contentType = req.headers.get('content-type') || '';
+
+    let lineUserId = '';
+    let day = '';
+    let mealType = '';
+    let comment = '';
+    const images: Array<{ base64: string; mimeType: string }> = [];
+
+    if (contentType.includes('multipart/form-data')) {
+      // FormData形式（新クライアント）
+      const formData = await req.formData();
+      lineUserId = String(formData.get('lineUserId') || '');
+      day = String(formData.get('day') || '');
+      mealType = String(formData.get('mealType') || '');
+      comment = String(formData.get('comment') || '');
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('photo_') && value instanceof File) {
+          const buf = Buffer.from(await value.arrayBuffer());
+          images.push({
+            base64: buf.toString('base64'),
+            mimeType: value.type || 'image/jpeg',
+          });
+        }
+      }
+    } else {
+      // 旧JSON形式との互換性
+      const body = await req.json();
+      lineUserId = body.lineUserId || '';
+      day = body.day || '';
+      mealType = body.mealType || '';
+      comment = body.comment || '';
+      if (Array.isArray(body.photos)) {
+        images.push(...body.photos);
+      } else if (body.photoBase64) {
+        images.push({
+          base64: body.photoBase64,
+          mimeType: body.mimeType || 'image/jpeg',
+        });
+      }
+    }
 
     if (!lineUserId || !mealType) {
       return NextResponse.json({ error: 'lineUserId と mealType は必須です' }, { status: 400 });
     }
-    const supplementText = (comment || '').trim();
-
-    // 画像の正規化（photos配列 OR 単一photoBase64）
-    const images: Array<{ base64: string; mimeType: string }> = [];
-    if (Array.isArray(photos) && photos.length > 0) {
-      images.push(...photos);
-    } else if (photoBase64) {
-      images.push({ base64: photoBase64, mimeType: mimeType || 'image/jpeg' });
-    }
-
+    const supplementText = comment.trim();
     if (images.length === 0 && !supplementText) {
       return NextResponse.json(
         { error: '写真かメモのどちらかは入力してください' },
@@ -43,7 +61,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 顧客情報取得とPFC解析を並列実行（Drive保存はレスポンス後に非同期化）
+    // 顧客情報取得とPFC解析を並列実行
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
       images.length > 0
@@ -69,7 +87,7 @@ export async function POST(req: NextRequest) {
       supplementText: supplementText || null,
     });
 
-    // Drive保存はレスポンス後に非同期実行（ユーザーの待ち時間に含めない）
+    // Drive保存はレスポンス後に非同期実行
     if (images.length > 0 && notionRes && notionRes.id) {
       waitUntil(
         saveImagesToDriveAsync({

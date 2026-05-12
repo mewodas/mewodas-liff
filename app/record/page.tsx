@@ -96,23 +96,20 @@ export default function RecordPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const photosPayload = await Promise.all(
-        photos.map(async (file) => ({
-          base64: await fileToBase64(file),
-          mimeType: file.type,
-        }))
-      );
+      // FormDataで写真+メタ情報を送信（FileReader経由しないため安定）
+      const formData = new FormData();
+      formData.append('lineUserId', userId);
+      formData.append('displayName', displayName);
+      formData.append('day', day);
+      formData.append('mealType', mealType);
+      formData.append('comment', comment);
+      photos.forEach((file, i) => {
+        formData.append(`photo_${i}`, file, file.name);
+      });
+
       const res = await fetch('/api/record', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineUserId: userId,
-          displayName,
-          day,
-          mealType,
-          comment,
-          photos: photosPayload,
-        }),
+        body: formData,
       });
       if (!res.ok) {
         let detail: string;
