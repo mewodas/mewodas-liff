@@ -214,28 +214,6 @@ async function callGeminiOnce(
         maxOutputTokens: 4096,
         temperature: 0.4,
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            P: { type: 'NUMBER' },
-            F: { type: 'NUMBER' },
-            C: { type: 'NUMBER' },
-            items: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  name: { type: 'STRING' },
-                  P: { type: 'NUMBER' },
-                  F: { type: 'NUMBER' },
-                  C: { type: 'NUMBER' },
-                },
-                required: ['name', 'P', 'F', 'C'],
-              },
-            },
-          },
-          required: ['P', 'F', 'C', 'items'],
-        },
       },
     }),
   });

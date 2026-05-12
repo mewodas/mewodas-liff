@@ -68,6 +68,13 @@ export async function POST(req: NextRequest) {
         ? analyzeImagesPfc(images, supplementText || null)
         : analyzeTextPfc(supplementText),
     ]);
+    // eslint-disable-next-line no-console
+    console.log('PFC解析結果:', {
+      kcal: pfc.kcal,
+      P: pfc.P, F: pfc.F, C: pfc.C,
+      itemsCount: pfc.items?.length || 0,
+      items: pfc.items,
+    });
 
     if (!customer || customer.foodStatus !== '進行中') {
       return NextResponse.json(

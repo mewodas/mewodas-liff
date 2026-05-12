@@ -86,15 +86,21 @@ export async function saveFoodRecord(params: {
     supplementText,
   } = params;
   const timeStr = nowJstHHmm();
-  const itemsList = (pfc.items || [])
+  const aiItems = (pfc.items || [])
     .map((i) => (i.name || '').trim())
-    .filter(Boolean)
-    .join('、');
+    .filter(Boolean);
   const supplement = (supplementText || '').trim();
-  // supplement と itemsList の両方をメモに含める
-  const memo = supplement && itemsList
-    ? `${supplement} / ${itemsList}`
-    : (itemsList || supplement || '');
+  // AI識別の食材と顧客メモを重複排除して併記
+  const supplementAsList = supplement
+    ? supplement.split(/[、,]/).map((s) => s.trim()).filter(Boolean)
+    : [];
+  const combinedSet = new Set<string>([...supplementAsList, ...aiItems]);
+  const itemsList = aiItems.join('、');
+  const combinedList = Array.from(combinedSet).join('、');
+  const memo =
+    supplement && itemsList
+      ? `${supplement} / AI識別: ${itemsList}`
+      : combinedList || supplement || '';
 
   const properties: Record<string, unknown> = {
     食事メモ: { title: [{ text: { content: `${mealType} ${timeStr}` } }] },
