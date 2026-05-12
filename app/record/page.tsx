@@ -54,15 +54,30 @@ export default function RecordPage() {
     reader.readAsDataURL(file);
   }
 
+  function removePhoto() {
+    setPhoto(null);
+    setPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   async function handleSubmit() {
-    if (!photo || !mealType || !userId) {
-      setError('写真と食事区分を選んでください');
+    if (!mealType || !userId) {
+      setError('食事区分を選んでください');
+      return;
+    }
+    if (!photo && !comment.trim()) {
+      setError('写真かメモのどちらかは入力してください');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      const photoBase64 = await fileToBase64(photo);
+      let photoBase64: string | null = null;
+      let mimeType: string | null = null;
+      if (photo) {
+        photoBase64 = await fileToBase64(photo);
+        mimeType = photo.type;
+      }
       const res = await fetch('/api/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,10 +88,13 @@ export default function RecordPage() {
           mealType,
           comment,
           photoBase64,
-          mimeType: photo.type,
+          mimeType,
         }),
       });
-      if (!res.ok) throw new Error('記録に失敗しました（' + res.status + '）');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `記録に失敗しました（${res.status}）`);
+      }
       const json = await res.json();
       setResult(json.pfc);
     } catch (e) {
@@ -98,22 +116,22 @@ export default function RecordPage() {
 
   if (!ready) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-stone-50">
-        <div className="text-stone-600">読み込み中...</div>
+      <main className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-stone-800">読み込み中...</div>
       </main>
     );
   }
 
   if (result) {
     return (
-      <main className="min-h-screen bg-stone-50 px-4 py-6">
+      <main className="min-h-screen bg-stone-100 px-4 py-6">
         <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow p-6 mb-4">
-            <div className="text-sm text-stone-500 mb-1">{day} の {mealType}</div>
-            <div className="text-2xl font-bold mb-4">✅ 記録しました</div>
+          <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200">
+            <div className="text-sm font-semibold text-stone-700 mb-1">{day} の {mealType}</div>
+            <div className="text-2xl font-bold mb-4 text-stone-900">✅ 記録しました</div>
             <div className="flex items-baseline gap-2 mb-4">
-              <div className="text-4xl font-bold">{result.kcal}</div>
-              <div className="text-sm text-stone-500">kcal</div>
+              <div className="text-4xl font-bold text-stone-900">{result.kcal}</div>
+              <div className="text-sm font-medium text-stone-700">kcal</div>
             </div>
             <div className="space-y-2 text-sm">
               <Row label="タンパク質" value={`${result.P} g`} />
@@ -121,19 +139,19 @@ export default function RecordPage() {
               <Row label="炭水化物" value={`${result.C} g`} />
             </div>
             {result.items && result.items.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-stone-100">
-                <div className="text-xs text-stone-500 mb-2">食材内訳</div>
-                <div className="text-sm text-stone-700">
+              <div className="mt-4 pt-4 border-t border-stone-200">
+                <div className="text-xs font-semibold text-stone-700 mb-2">食材内訳</div>
+                <div className="text-sm text-stone-800">
                   {result.items.map((i) => i.name).join('、')}
                 </div>
               </div>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={reset} className="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-xl">
+            <button onClick={reset} className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-sm active:bg-emerald-700">
               もう一回記録する
             </button>
-            <button onClick={closeLiff} className="flex-1 bg-stone-200 text-stone-700 font-semibold py-3 rounded-xl">
+            <button onClick={closeLiff} className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400">
               閉じる
             </button>
           </div>
@@ -143,53 +161,64 @@ export default function RecordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-6">
+    <main className="min-h-screen bg-stone-100 px-4 py-6">
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-1">📷 食事記録</h1>
-        <p className="text-sm text-stone-500 mb-6">{displayName ? `${displayName} さん` : ''}</p>
+        <h1 className="text-3xl font-bold mb-1 text-stone-900">📷 食事記録</h1>
+        <p className="text-sm font-medium text-stone-700 mb-6">{displayName ? `${displayName} さん` : ''}</p>
 
         {error && (
-          <div className="bg-red-50 text-red-700 text-sm p-3 rounded-xl mb-4">
+          <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow p-5 mb-4">
-          <div className="text-sm font-semibold mb-2">① 写真</div>
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+          <div className="text-base font-bold text-stone-900 mb-3">① 写真（任意）</div>
           {preview ? (
-            <div className="relative">
-              <img src={preview} alt="preview" className="w-full rounded-xl mb-2" />
-              <button onClick={() => fileInputRef.current?.click()} className="text-sm text-emerald-600">
-                写真を変更
-              </button>
+            <div>
+              <img src={preview} alt="preview" className="w-full rounded-xl mb-3 border border-stone-200" />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 bg-stone-200 text-stone-900 font-semibold py-2 rounded-xl text-sm active:bg-stone-300"
+                >
+                  写真を変更
+                </button>
+                <button
+                  onClick={removePhoto}
+                  className="px-4 bg-red-100 text-red-800 font-semibold py-2 rounded-xl text-sm active:bg-red-200"
+                >
+                  削除
+                </button>
+              </div>
             </div>
           ) : (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-stone-300 rounded-xl py-8 text-stone-500"
+              className="w-full border-2 border-dashed border-stone-400 rounded-xl py-8 text-stone-800 font-semibold active:bg-stone-50"
             >
               📷 写真を選ぶ
+              <div className="text-xs font-normal text-stone-600 mt-1">カメラ・ライブラリどちらからもOK</div>
             </button>
           )}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handlePhotoChange}
             className="hidden"
           />
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-5 mb-4">
-          <div className="text-sm font-semibold mb-2">② いつの食事？</div>
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+          <div className="text-base font-bold text-stone-900 mb-3">② いつの食事？</div>
           <div className="flex gap-2 mb-3">
             {(['今日', '昨日'] as DayLabel[]).map((d) => (
               <button
                 key={d}
                 onClick={() => setDay(d)}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium ${
-                  day === d ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-600'
+                className={`flex-1 py-2 rounded-xl text-sm font-bold ${
+                  day === d ? 'bg-emerald-600 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
                 {d}
@@ -201,8 +230,8 @@ export default function RecordPage() {
               <button
                 key={m}
                 onClick={() => setMealType(m)}
-                className={`py-2 rounded-xl text-sm font-medium ${
-                  mealType === m ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-600'
+                className={`py-2 rounded-xl text-sm font-bold ${
+                  mealType === m ? 'bg-emerald-600 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
                 {m}
@@ -211,24 +240,31 @@ export default function RecordPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-5 mb-6">
-          <div className="text-sm font-semibold mb-2">③ メモ（任意）</div>
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
+          <div className="text-base font-bold text-stone-900 mb-3">
+            ③ メモ {photo ? '（任意）' : '（写真なしの場合は必須）'}
+          </div>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="例：ご飯茶碗1杯、鶏むね肉150g"
+            placeholder="例：ご飯茶碗1杯、鶏むね肉150g、味噌汁、サラダ"
             rows={3}
-            className="w-full bg-stone-50 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         <button
           onClick={handleSubmit}
-          disabled={!photo || !mealType || submitting}
-          className="w-full bg-emerald-600 text-white font-semibold py-4 rounded-xl shadow disabled:bg-stone-300"
+          disabled={!mealType || (!photo && !comment.trim()) || submitting}
+          className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
-          {submitting ? '記録中...' : '記録する'}
+          {submitting ? '記録中…（最大1分）' : '記録する'}
         </button>
+        {submitting && (
+          <p className="text-xs text-stone-700 text-center mt-3">
+            AI解析中です。画面を閉じないでお待ちください。
+          </p>
+        )}
       </div>
     </main>
   );
@@ -237,8 +273,8 @@ export default function RecordPage() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-stone-500">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className="text-stone-700 font-medium">{label}</span>
+      <span className="font-bold text-stone-900">{value}</span>
     </div>
   );
 }

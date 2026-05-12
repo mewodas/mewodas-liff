@@ -8,8 +8,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { lineUserId, day, mealType, comment, photoBase64, mimeType } = body;
 
-    if (!lineUserId || !mealType || !photoBase64) {
-      return NextResponse.json({ error: '必須項目が不足' }, { status: 400 });
+    if (!lineUserId || !mealType) {
+      return NextResponse.json({ error: 'lineUserId と mealType は必須です' }, { status: 400 });
+    }
+    if (!photoBase64 && !(comment && comment.trim())) {
+      return NextResponse.json({ error: '写真かメモのどちらかは入力してください' }, { status: 400 });
     }
 
     const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
