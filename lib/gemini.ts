@@ -39,6 +39,52 @@ export async function analyzeImagesPfc(
 
   const explicit = hasExplicitQuantity(supplementText);
 
+  // 複数枚 かつ メモに明示量なし → 並列解析で高速化
+  // 1枚 or 明示量あり → 1コールで処理（メモと画像の整合性を担保）
+  if (images.length > 1 && !explicit) {
+    return analyzeImagesParallel(images, supplementText);
+  }
+
+  return analyzeImagesSingleCall(images, supplementText, explicit);
+}
+
+async function analyzeImagesParallel(
+  images: Array<{ base64: string; mimeType: string }>,
+  supplementText: string | null
+): Promise<Pfc> {
+  // 各画像を個別に並列解析（コース料理など別々の皿想定）
+  const results = await Promise.all(
+    images.map((img) => analyzeImagesSingleCall([img], supplementText, false))
+  );
+
+  const total = results.reduce(
+    (acc, r) => ({
+      P: acc.P + r.P,
+      F: acc.F + r.F,
+      C: acc.C + r.C,
+      items: [...acc.items, ...r.items],
+    }),
+    { P: 0, F: 0, C: 0, items: [] as Pfc['items'] }
+  );
+
+  const f1 = (x: number) => Math.round(x * 10) / 10;
+  return {
+    P: f1(total.P),
+    F: f1(total.F),
+    C: f1(total.C),
+    kcal: Math.round(total.P * 4 + total.F * 9 + total.C * 4),
+    items: total.items,
+  };
+}
+
+async function analyzeImagesSingleCall(
+  images: Array<{ base64: string; mimeType: string }>,
+  supplementText: string | null,
+  explicit: boolean
+): Promise<Pfc> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
   const supplementLine = supplementText
     ? explicit
       ? `\n\n【重要・優先】顧客メモに食材の量が明示されています：
@@ -63,6 +109,7 @@ ${supplementText}
 - 写真に見えるものだけを素直に推定する。見えない油・調味料・隠れ食材は加算しない
 ${accuracyRule}
 - 外食チェーン店（松屋・吉野家・マクドナルド・サイゼリヤ・すき家・CoCo壱等）が明確に写っている場合のみ公式栄養成分値を使用する
+- 必ず "items" 配列に写真から識別できた食材を1つ以上含めてください（簡潔な食材名と推定量）
 ${supplementLine}
 
 {

@@ -86,9 +86,15 @@ export async function saveFoodRecord(params: {
     supplementText,
   } = params;
   const timeStr = nowJstHHmm();
-  const memo =
-    (supplementText && supplementText.trim()) ||
-    (pfc.items || []).map((i) => i.name).join('、');
+  const itemsList = (pfc.items || [])
+    .map((i) => (i.name || '').trim())
+    .filter(Boolean)
+    .join('、');
+  const supplement = (supplementText || '').trim();
+  // supplement と itemsList の両方をメモに含める
+  const memo = supplement && itemsList
+    ? `${supplement} / ${itemsList}`
+    : (itemsList || supplement || '');
 
   const properties: Record<string, unknown> = {
     食事メモ: { title: [{ text: { content: `${mealType} ${timeStr}` } }] },
