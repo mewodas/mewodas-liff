@@ -2,8 +2,8 @@
 // 長辺1280px / JPEG品質0.85 が目安：スマホ写真の3〜5MBを200〜500KB程度に圧縮できる
 export async function compressImage(
   file: File,
-  maxDimension = 1024,
-  quality = 0.8
+  maxDimension = 1280,
+  quality = 0.85
 ): Promise<File> {
   // 画像以外はそのまま返す
   if (!file.type.startsWith('image/')) return file;
