@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FooterNav from '@/components/FooterNav';
+import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 
@@ -185,14 +186,13 @@ export default function FoodSearchPage() {
 
   return (
     <div className="min-h-screen bg-stone-50 pb-40">
-      <header className="bg-emerald-600 text-white px-4 pt-6 pb-4 shadow sticky top-0 z-30">
-        <h1 className="text-lg font-bold mb-2">🔍 食品DB</h1>
+      <PageHeader title="🔍 食品DB" back>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="例：鶏むね、おにぎり、味噌汁"
-          className="w-full bg-white text-stone-900 placeholder:text-stone-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+          className="w-full mt-3 bg-stone-50 text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <div className="flex gap-2 mt-2 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map((c) => (
@@ -200,16 +200,18 @@ export default function FoodSearchPage() {
               key={c}
               onClick={() => setCategory(c)}
               className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${
-                category === c ? 'bg-white text-emerald-700' : 'bg-emerald-700/60 text-white'
+                category === c
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-stone-100 text-stone-700 border border-stone-300'
               }`}
             >
               {c}
             </button>
           ))}
         </div>
-      </header>
+      </PageHeader>
 
-      <div className="bg-white border-b border-stone-200 px-4 py-3 sticky top-[140px] z-20">
+      <div className="bg-white border-b border-stone-200 px-4 py-3 sticky top-[200px] z-20">
         <div className="flex gap-2 mb-2">
           {(['今日', '昨日'] as DayLabel[]).map((d) => (
             <button

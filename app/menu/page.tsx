@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import FooterNav from '@/components/FooterNav';
+import PageHeader from '@/components/PageHeader';
 
 type MenuItem = {
   href: string;
@@ -51,10 +52,7 @@ const sections: Section[] = [
 export default function MenuPage() {
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
-      <header className="bg-emerald-600 text-white px-4 pt-6 pb-5 shadow">
-        <h1 className="text-xl font-bold">メニュー</h1>
-        <p className="text-xs text-emerald-50 mt-1">すべての機能・設定にアクセス</p>
-      </header>
+      <PageHeader title="📂 メニュー" subtitle="すべての機能・設定にアクセス" />
 
       <main className="px-4 py-5 space-y-6">
         {sections.map((section) => (

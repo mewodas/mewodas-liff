@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
@@ -34,7 +34,6 @@ type Customer = {
 };
 
 export default function PredictionPage() {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PredictionData | null>(null);
@@ -106,20 +105,11 @@ export default function PredictionPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-24">
-      <header className="bg-white border-b border-stone-200 px-4 pt-5 pb-4 sticky top-0 z-30">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="text-stone-700 text-sm font-medium"
-            type="button"
-          >
-            ← 戻る
-          </button>
-          <h1 className="text-base font-bold text-stone-900">📉 体重推移・AI予測</h1>
-          <div className="w-10" />
-        </div>
-        <p className="text-[11px] text-stone-500 mt-1 text-center">直近30日の体重推移とAI予測</p>
-      </header>
+      <PageHeader
+        title="📉 体重推移・AI予測"
+        subtitle="直近30日の体重推移とAI予測"
+        back
+      />
 
       <div className="px-4 py-5 space-y-4">
         {error && (

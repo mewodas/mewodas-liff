@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
+import PageHeader from '@/components/PageHeader';
 
 type DailyAgg = {
   day: number;
@@ -176,12 +177,9 @@ export default function HistoryPage() {
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
-      <div className="max-w-md mx-auto">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-stone-900">📖 履歴</h1>
-        </div>
-
+    <main className="min-h-screen bg-stone-100 pb-28">
+      <PageHeader title="📖 履歴" back />
+      <div className="max-w-md mx-auto px-4 py-6">
         {/* 月ナビ（過去のみ） */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
           <div className="flex items-center justify-between">

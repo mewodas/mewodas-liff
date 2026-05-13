@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
+import PageHeader from '@/components/PageHeader';
 
 type Stats = {
   streakDays: number;
@@ -18,7 +18,6 @@ type TodayData = {
 };
 
 export default function BadgesPage() {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,19 +67,7 @@ export default function BadgesPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-24">
-      <header className="bg-white border-b border-stone-200 px-4 pt-5 pb-4 sticky top-0 z-30">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="text-stone-700 text-sm font-medium"
-            type="button"
-          >
-            ← 戻る
-          </button>
-          <h1 className="text-base font-bold text-stone-900">🏆 バッジ獲得</h1>
-          <div className="w-10" />
-        </div>
-      </header>
+      <PageHeader title="🏆 バッジ獲得" back />
 
       <div className="px-4 py-5">
         {error && (

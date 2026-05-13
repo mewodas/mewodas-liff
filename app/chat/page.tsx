@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type Message = {
@@ -19,7 +19,6 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function ChatPage() {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -107,20 +106,11 @@ export default function ChatPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 flex flex-col pb-28">
-      {/* ヘッダー */}
-      <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-3 z-10 flex items-center gap-2">
-        <button
-          onClick={() => router.back()}
-          className="text-stone-600 active:text-stone-900 px-2 -ml-2"
-          aria-label="戻る"
-        >
-          ←
-        </button>
-        <div>
-          <h1 className="text-base font-bold text-stone-900">💬 AIに相談</h1>
-          <p className="text-[10px] text-stone-500">あなた専属のAI管理栄養士</p>
-        </div>
-      </div>
+      <PageHeader
+        title="💬 AIに相談"
+        subtitle="あなた専属のAI管理栄養士"
+        back
+      />
 
       {/* メッセージ一覧 */}
       <div className="flex-1 px-4 py-4 space-y-3 overflow-y-auto">

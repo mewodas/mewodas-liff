@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import FooterNav from '@/components/FooterNav';
+import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
@@ -183,12 +184,11 @@ export default function MealPlanPage() {
 
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
-      <header className="bg-emerald-600 text-white px-4 pt-6 pb-5 shadow">
-        <h1 className="text-xl font-bold">🍱 AI献立作成</h1>
-        <p className="text-xs text-emerald-50 mt-1">
-          目標・体重・残りPFC・マイメニューを元にAIが献立を提案
-        </p>
-      </header>
+      <PageHeader
+        title="🍱 AI献立作成"
+        subtitle="目標・体重・残りPFCを元にAIが提案"
+        back
+      />
 
       <main className="px-4 py-5 space-y-4">
         {error && (

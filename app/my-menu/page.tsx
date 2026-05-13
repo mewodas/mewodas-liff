@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
+import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import {
@@ -146,20 +147,11 @@ function MyMenuInner() {
 
   return (
     <div className="min-h-screen bg-stone-50 pb-44">
-      <header className="bg-white border-b border-stone-200 px-4 pt-5 pb-4 sticky top-0 z-30">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="text-stone-700 text-sm font-medium"
-            type="button"
-          >
-            ← 戻る
-          </button>
-          <h1 className="text-base font-bold text-stone-900">⭐ マイメニュー</h1>
-          <div className="w-10" />
-        </div>
-        <p className="text-[11px] text-stone-500 mt-1 text-center">よく食べる料理を保存・呼び出し</p>
-      </header>
+      <PageHeader
+        title="⭐ マイメニュー"
+        subtitle="よく食べる料理を保存・呼び出し"
+        back
+      />
 
       <main className="px-4 py-4 space-y-3">
         {error && (

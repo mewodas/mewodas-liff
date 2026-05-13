@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
+import PageHeader from '@/components/PageHeader';
 
 type DailyAgg = {
   date: string;
@@ -123,14 +124,13 @@ export default function WeeklyPage() {
   const offsetLabel = offset === 0 ? '今週' : offset === -1 ? '先週' : offset > 0 ? `${offset}週後` : `${-offset}週前`;
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
-      <div className="max-w-md mx-auto">
-        {/* ヘッダー */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-stone-900">📈 週次レポート</h1>
-          <p className="text-sm font-medium text-stone-700 mt-1">{offsetLabel}：{weekLabel}</p>
-        </div>
-
+    <main className="min-h-screen bg-stone-100 pb-28">
+      <PageHeader
+        title="📈 週次レポート"
+        subtitle={`${offsetLabel}：${weekLabel}`}
+        back
+      />
+      <div className="max-w-md mx-auto px-4 py-6">
         {/* 週ナビゲーション（過去のみ） */}
         <div className="flex gap-2 mb-4">
           <button
