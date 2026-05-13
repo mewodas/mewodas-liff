@@ -5,7 +5,13 @@ import { usePathname } from 'next/navigation';
 
 const items: Array<{ href: string; label: string; icon: string; match: (path: string) => boolean }> = [
   { href: '/home', label: 'ホーム', icon: '🏠', match: (p) => p === '/' || p === '/home' || p.startsWith('/home') },
-  { href: '/record', label: '記録', icon: '📷', match: (p) => p.startsWith('/record') },
+  {
+    href: '/record-menu',
+    label: '記録',
+    icon: '📝',
+    match: (p) =>
+      p.startsWith('/record') || p.startsWith('/weight') || p.startsWith('/exercise'),
+  },
   { href: '/weekly', label: '週次', icon: '📈', match: (p) => p.startsWith('/weekly') },
   { href: '/history', label: '履歴', icon: '📅', match: (p) => p.startsWith('/history') },
 ];
