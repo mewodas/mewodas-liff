@@ -164,7 +164,7 @@ export default function RecordPage() {
 
   if (result) {
     return (
-      <main className="min-h-screen bg-stone-100 px-4 py-6">
+      <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200">
             <div className="text-sm font-semibold text-stone-700 mb-1">{day} の {mealType}</div>
@@ -210,7 +210,7 @@ export default function RecordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6">
+    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
         <h1 className="text-3xl font-bold mb-1 text-stone-900">📷 食事記録</h1>
         <p className="text-sm font-medium text-stone-700 mb-6">{displayName ? `${displayName} さん` : ''}</p>

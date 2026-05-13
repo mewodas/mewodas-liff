@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type MealRecord = {
@@ -40,22 +41,51 @@ const MEAL_EMOJI: Record<string, string> = {
   間食: '🍪',
 };
 
+function jstTodayString(): string {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(dateString: string, delta: number): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center bg-stone-100">
+          <div className="text-stone-800">読み込み中...</div>
+        </main>
+      }
+    >
+      <HomePageInner />
+    </Suspense>
+  );
+}
+
+function HomePageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const dateParam = searchParams.get('date');
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
-  async function fetchToday(uid: string) {
-    const res = await fetch(`/api/today?lineUserId=${encodeURIComponent(uid)}&t=${Date.now()}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
+  const todayStr = jstTodayString();
+  const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
+  const isToday = selectedDate === todayStr;
+
+  function navigateToDate(d: string) {
+    if (d === todayStr) {
+      router.push('/home');
+    } else {
+      router.push(`/home?date=${d}`);
     }
-    return res.json();
   }
 
   useEffect(() => {
@@ -69,7 +99,28 @@ export default function HomePage() {
           return;
         }
         setUserId(profile.userId);
-        const json = await fetchToday(profile.userId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'LIFF初期化エラー');
+        setReady(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    setReady(false);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
+        }
+        const json = await res.json();
         setData(json);
       } catch (e) {
         setError(e instanceof Error ? e.message : '読み込みエラー');
@@ -77,21 +128,7 @@ export default function HomePage() {
         setReady(true);
       }
     })();
-  }, []);
-
-  async function handleRefresh() {
-    if (!userId) return;
-    setRefreshing(true);
-    setError(null);
-    try {
-      const json = await fetchToday(userId);
-      setData(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '更新エラー');
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  }, [userId, selectedDate]);
 
   if (!ready) {
     return (
@@ -125,22 +162,39 @@ export default function HomePage() {
   const goalProgress = calcGoalProgress(customer);
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-24">
+    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
         {/* ヘッダー */}
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-stone-700">{dateLabel}</p>
-            <h1 className="text-2xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-stone-900 mb-2">こんにちは、{customer.name} さん</h1>
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex items-center justify-between px-2 py-2">
+            <button
+              onClick={() => navigateToDate(addDays(selectedDate, -1))}
+              className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg"
+              aria-label="前日"
+            >
+              ←
+            </button>
+            <div className="text-sm font-bold text-stone-900">
+              {dateLabel}
+              {!isToday && (
+                <button
+                  onClick={() => navigateToDate(todayStr)}
+                  className="ml-2 text-xs text-emerald-700 font-bold"
+                >
+                  今日へ
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => navigateToDate(addDays(selectedDate, 1))}
+              disabled={selectedDate >= todayStr}
+              className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg disabled:opacity-30"
+              aria-label="翌日"
+            >
+              →
+            </button>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="px-3 py-2 text-sm bg-white border border-stone-300 rounded-xl text-stone-900 font-bold active:bg-stone-50 disabled:opacity-50"
-            aria-label="更新"
-          >
-            {refreshing ? '更新中…' : '🔄 更新'}
-          </button>
         </div>
 
         {/* 今日の摂取 */}
@@ -206,24 +260,10 @@ export default function HomePage() {
 
         <Link
           href="/record"
-          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center mb-2"
+          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center"
         >
           📷 食事を記録する
         </Link>
-        <div className="flex gap-2">
-          <Link
-            href="/weekly"
-            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center text-sm active:bg-stone-50"
-          >
-            📈 週次レポート
-          </Link>
-          <Link
-            href="/history"
-            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center text-sm active:bg-stone-50"
-          >
-            📅 履歴を見る
-          </Link>
-        </div>
       </div>
     </main>
   );

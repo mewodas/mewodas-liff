@@ -119,14 +119,11 @@ export default function WeeklyPage() {
   const offsetLabel = offset === 0 ? '今週' : offset === -1 ? '先週' : offset > 0 ? `${offset}週後` : `${-offset}週前`;
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-24">
+    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
         {/* ヘッダー */}
         <div className="mb-4">
-          <Link href="/home" className="text-sm text-emerald-700 font-medium">
-            ← ホームへ
-          </Link>
-          <h1 className="text-2xl font-bold text-stone-900 mt-1">📈 週次レポート</h1>
+          <h1 className="text-2xl font-bold text-stone-900">📈 週次レポート</h1>
           <p className="text-sm font-medium text-stone-700 mt-1">{offsetLabel}：{weekLabel}</p>
         </div>
 

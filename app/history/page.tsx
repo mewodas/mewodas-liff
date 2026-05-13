@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type DailyAgg = {
@@ -51,6 +52,7 @@ function todayJst(): { year: number; month: number; day: number } {
 }
 
 export default function HistoryPage() {
+  const router = useRouter();
   const today = todayJst();
   const [year, setYear] = useState(today.year);
   const [month, setMonth] = useState(today.month);
@@ -155,13 +157,10 @@ export default function HistoryPage() {
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-24">
+    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
         <div className="mb-4">
-          <Link href="/home" className="text-sm text-emerald-700 font-medium">
-            ← ホームへ
-          </Link>
-          <h1 className="text-2xl font-bold text-stone-900 mt-1">📅 履歴</h1>
+          <h1 className="text-2xl font-bold text-stone-900">📅 履歴</h1>
         </div>
 
         {/* 月ナビ */}
@@ -216,7 +215,11 @@ export default function HistoryPage() {
                 }
                 isSelected={cell !== null && selectedDate === cell.date}
                 onClick={() => {
-                  if (cell) {
+                  if (!cell) return;
+                  // 記録ありの日はホーム画面に遷移して詳細表示、未記録の日はその場でハイライト
+                  if (cell.recorded) {
+                    router.push(`/home?date=${cell.date}`);
+                  } else {
                     setSelectedDate(selectedDate === cell.date ? null : cell.date);
                   }
                 }}

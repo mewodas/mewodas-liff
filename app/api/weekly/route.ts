@@ -63,16 +63,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(lineUserId);
-    if (!customer) {
-      return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
-    }
-
     const { start, end, dates } = getWeekRange(offset);
     const startStr = formatDate(start);
     const endStr = formatDate(end);
 
-    const records: FoodRecord[] = await getFoodRecordsByDateRange(lineUserId, startStr, endStr);
+    // 並列実行で高速化
+    const [customer, records] = await Promise.all([
+      getCustomerByLineId(lineUserId),
+      getFoodRecordsByDateRange(lineUserId, startStr, endStr),
+    ]);
+    if (!customer) {
+      return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
+    }
 
     // 日別集計
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];

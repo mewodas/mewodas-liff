@@ -38,17 +38,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'year と month（1-12）が必要です' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(lineUserId);
-    if (!customer) {
-      return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
-    }
-
     // 月の開始日と終了日
     const startStr = `${year}-${pad2(month)}-01`;
     const lastDayOfMonth = new Date(year, month, 0).getDate(); // 翌月0日 = 当月末
     const endStr = `${year}-${pad2(month)}-${pad2(lastDayOfMonth)}`;
 
-    const records = await getFoodRecordsByDateRange(lineUserId, startStr, endStr);
+    // 並列実行で高速化
+    const [customer, records] = await Promise.all([
+      getCustomerByLineId(lineUserId),
+      getFoodRecordsByDateRange(lineUserId, startStr, endStr),
+    ]);
+    if (!customer) {
+      return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
+    }
 
     // 日別集計
     const daysInMonth = lastDayOfMonth;

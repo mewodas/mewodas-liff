@@ -53,9 +53,18 @@ async function notionRequest(
   return res.json();
 }
 
+// 顧客情報のインメモリキャッシュ（同じVercel関数インスタンス内）
+// 連続して画面遷移する際の顧客取得を高速化
+const customerCache = new Map<string, { customer: Customer; expiry: number }>();
+const CUSTOMER_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+
 export async function getCustomerByLineId(
   lineUserId: string
 ): Promise<Customer | null> {
+  const cached = customerCache.get(lineUserId);
+  if (cached && Date.now() < cached.expiry) {
+    return cached.customer;
+  }
   const res = await notionRequest(
     'POST',
     `/databases/${NOTION_CUSTOMER_DB_ID}/query`,
@@ -69,7 +78,7 @@ export async function getCustomerByLineId(
   if (!res.results || res.results.length === 0) return null;
   const page = res.results[0];
   const p = page.properties;
-  return {
+  const customer: Customer = {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
     foodStatus: p['食事管理ステータス']?.select?.name || null,
@@ -83,6 +92,8 @@ export async function getCustomerByLineId(
     targetWeight: p['目標体重(kg)']?.number ?? null,
     targetDate: p['目標達成日']?.date?.start ?? null,
   };
+  customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
+  return customer;
 }
 
 // 指定期間の食事記録を取得（時刻順）

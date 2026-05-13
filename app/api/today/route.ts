@@ -14,11 +14,21 @@ export const revalidate = 0;
 export async function GET(req: NextRequest) {
   try {
     const lineUserId = req.nextUrl.searchParams.get('lineUserId');
+    const dateParam = req.nextUrl.searchParams.get('date'); // yyyy-MM-dd, 省略時は今日
     if (!lineUserId) {
       return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
     }
+    if (dateParam && !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
+    }
 
-    const customer = await getCustomerByLineId(lineUserId);
+    const today = dateParam || getTargetDate('今日');
+    // 並列実行で高速化
+    const [customer, records] = await Promise.all([
+      getCustomerByLineId(lineUserId),
+      getFoodRecordsByDate(lineUserId, today),
+    ]);
+
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
@@ -28,9 +38,6 @@ export async function GET(req: NextRequest) {
         { status: 403 }
       );
     }
-
-    const today = getTargetDate('今日');
-    const records = await getFoodRecordsByDate(lineUserId, today);
 
     // 食事区分ごとにグルーピング
     const mealTypes: Array<'朝食' | '昼食' | '夕食' | '間食'> = ['朝食', '昼食', '夕食', '間食'];
