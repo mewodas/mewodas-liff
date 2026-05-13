@@ -179,7 +179,7 @@ export default function HistoryPage() {
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-stone-900">📅 履歴</h1>
+          <h1 className="text-2xl font-bold text-stone-900">📖 履歴</h1>
         </div>
 
         {/* 月ナビ（過去のみ） */}
@@ -248,11 +248,11 @@ export default function HistoryPage() {
           </div>
 
           {/* 凡例 */}
-          <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-around text-xs text-stone-700">
-            <span>✨ ±5%</span>
-            <span>⭕ ±15%</span>
-            <span>🔺 ±25%</span>
-            <span>💦 それ以上</span>
+          <div className="mt-3 pt-3 border-t border-stone-100 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-stone-700">
+            <span><span className="text-base">✨</span> 完璧（±5%）</span>
+            <span><span className="text-base">⭕</span> 良好（±15%）</span>
+            <span><span className="text-base">🔺</span> もう少し（±25%）</span>
+            <span><span className="text-base">💦</span> 頑張りましょう</span>
           </div>
         </div>
 
@@ -326,7 +326,7 @@ function StatBox({ label, value, unit }: { label: string; value: string; unit: s
 }
 
 function statusEmoji(kcal: number, goal: number): string {
-  if (kcal === 0) return '';
+  if (kcal === 0 || goal === 0) return '';
   const pct = (kcal / goal) * 100;
   const diff = Math.abs(pct - 100);
   if (diff <= 5) return '✨';
@@ -435,53 +435,20 @@ function DayDetail({
             <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
           </div>
 
-          {/* 食事リスト */}
+          {/* 食事リスト（ホームと同じレイアウト） */}
           {mealsByType && Object.values(mealsByType).some((arr) => arr.length > 0) && (
-            <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
-              <h4 className="text-base font-bold text-stone-900 mb-3">🍽️ 食事</h4>
+            <div className="space-y-3">
               {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => {
                 const records = mealsByType[meal] || [];
-                if (records.length === 0) return null;
-                const mealTotal = records.reduce(
-                  (acc, r) => ({ kcal: acc.kcal + r.kcal, P: acc.P + r.P, F: acc.F + r.F, C: acc.C + r.C }),
-                  { kcal: 0, P: 0, F: 0, C: 0 }
-                );
+                const dayKcal = Object.values(mealsByType).flat().reduce((s, r) => s + r.kcal, 0);
                 return (
-                  <div key={meal} className="mb-3 last:mb-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-stone-900">
-                        {MEAL_EMOJI[meal]} {meal}
-                      </span>
-                      <span className="text-sm font-bold text-stone-900">{Math.round(mealTotal.kcal)} kcal</span>
-                    </div>
-                    <div className="text-xs font-medium text-stone-700 mb-2">
-                      P {r1(mealTotal.P)}g ・ F {r1(mealTotal.F)}g ・ C {r1(mealTotal.C)}g
-                    </div>
-                    <div className="space-y-2">
-                      {records.map((r) => (
-                        <div key={r.pageId} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-                          <div className="flex items-start gap-3">
-                            {r.imageUrl && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={toDriveThumbnailUrl(r.imageUrl)}
-                                alt={r.title}
-                                referrerPolicy="no-referrer"
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-stone-100"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-stone-700">
-                                {Math.round(r.kcal)} kcal · P{r1(r.P)} F{r1(r.F)} C{r1(r.C)}
-                              </div>
-                              {r.memo && <div className="text-xs text-stone-600 mt-1 line-clamp-2">{r.memo}</div>}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <HistoryMealSection
+                    key={meal}
+                    mealType={meal}
+                    records={records}
+                    dayTotalKcal={dayKcal}
+                    selectedDate={dateString}
+                  />
                 );
               })}
             </div>
@@ -497,6 +464,132 @@ function DayDetail({
   );
 }
 
+function HistoryMealSection({
+  mealType,
+  records,
+  dayTotalKcal,
+  selectedDate,
+}: {
+  mealType: string;
+  records: MealRecord[];
+  dayTotalKcal: number;
+  selectedDate: string;
+}) {
+  const emoji = MEAL_EMOJI[mealType] || '🍽️';
+  const totals = records.reduce(
+    (acc, r) => ({
+      kcal: acc.kcal + r.kcal,
+      P: acc.P + r.P,
+      F: acc.F + r.F,
+      C: acc.C + r.C,
+    }),
+    { kcal: 0, P: 0, F: 0, C: 0 }
+  );
+  const pctOfDay = dayTotalKcal > 0 ? Math.round((totals.kcal / dayTotalKcal) * 100) : 0;
+  const hasRecords = records.length > 0;
+  const detailHref = `/meal-detail?date=${selectedDate}&meal=${encodeURIComponent(mealType)}`;
+  const recordHref = `/record?meal=${encodeURIComponent(mealType)}`;
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+      <Link
+        href={hasRecords ? detailHref : recordHref}
+        className="block px-4 py-3 active:bg-stone-50"
+      >
+        <div className="flex justify-between items-center">
+          <span className="font-bold text-stone-900">
+            {emoji} {mealType}
+          </span>
+          <span className="text-sm font-bold text-stone-900">
+            {hasRecords ? (
+              <>
+                {Math.round(totals.kcal)} kcal
+                <span className="text-xs font-medium text-stone-500 ml-1">
+                  （{pctOfDay}%）
+                </span>
+              </>
+            ) : (
+              <span className="text-stone-500 font-medium text-xs">未記録</span>
+            )}
+          </span>
+        </div>
+        {hasRecords && (
+          <div className="mt-1 text-[11px] font-medium text-stone-700">
+            P {r1(totals.P)}g ・ F {r1(totals.F)}g ・ C {r1(totals.C)}g
+          </div>
+        )}
+      </Link>
+      {hasRecords && (
+        <>
+          <Link href={detailHref} className="block border-t border-stone-100 active:bg-stone-50">
+            <div className="divide-y divide-stone-100">
+              {records.map((r) => {
+                const isSkipped = r.memo === '食べなかった' || r.title === '食べなかった';
+                const name = histShortName(r);
+                const unit = histUnitFromName(name);
+                return (
+                  <div key={r.pageId} className="flex items-center px-4 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-stone-900 truncate">
+                        {isSkipped ? '🚫 食べなかった' : name}
+                      </div>
+                      <div className="text-[10px] text-stone-600 mt-0.5">
+                        {Math.round(r.kcal)} kcal
+                      </div>
+                    </div>
+                    <div className="ml-2 flex-shrink-0 text-[11px] font-medium text-stone-700 border border-stone-300 px-2 py-0.5 rounded-full">
+                      {unit}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Link>
+          {records.some((r) => r.imageUrl) && (
+            <Link
+              href={detailHref}
+              className="block border-t border-stone-100 px-4 py-3 active:bg-stone-50 overflow-x-auto scrollbar-hide"
+            >
+              <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+                {records
+                  .filter((r) => r.imageUrl)
+                  .map((r) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={r.pageId}
+                      src={toDriveThumbnailUrl(r.imageUrl!)}
+                      alt={r.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-20 h-20 object-cover rounded-xl bg-stone-100 flex-shrink-0"
+                    />
+                  ))}
+              </div>
+            </Link>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function histShortName(r: MealRecord): string {
+  const memo = (r.memo || '').trim();
+  if (!memo) return r.title || '食事';
+  const beforeAi = memo.split(/\s*\/\s*AI識別[:：]/)[0] || memo;
+  const firstItem = beforeAi.split(/[、,]/)[0]?.trim();
+  return firstItem || beforeAi.slice(0, 30);
+}
+
+function histUnitFromName(name: string): string {
+  const m = name.match(/\s+([0-9０-９.]+\s*(g|ml|個|本|杯|皿|枚|切れ|人前|匹|玉|串|缶|袋|箱|食|kg))$/);
+  if (m) return m[1].trim();
+  const m2 = name.match(/[（(]([^）)]+)[）)]\s*$/);
+  if (m2 && /[0-9０-９]/.test(m2[1])) return m2[1].trim();
+  return '1人前';
+}
+
 function ProgressRow({
   label,
   value,
@@ -510,8 +603,16 @@ function ProgressRow({
   unit: string;
   color: 'emerald' | 'rose' | 'amber' | 'sky';
 }) {
-  const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
-  const status = pct >= 95 && pct <= 105 ? '✨' : pct >= 80 && pct <= 120 ? '⭕' : pct >= 60 ? '🔺' : '💦';
+  const pctRaw = goal > 0 ? Math.round((value / goal) * 100) : 0;
+  const pct = Math.min(100, pctRaw);
+  // ホームと同じ「不足／良好／過剰」基準（70%未満で不足、130%超で過剰）
+  const labelStatus = pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
+  const statusInfo =
+    labelStatus === '不足'
+      ? { text: '💡 不足', cls: 'text-sky-700 bg-sky-100 border-sky-300' }
+      : labelStatus === '過剰'
+      ? { text: '⚠️ 過剰', cls: 'text-rose-700 bg-rose-100 border-rose-300' }
+      : { text: '✨ 良好', cls: 'text-emerald-700 bg-emerald-100 border-emerald-300' };
   const barColor: Record<string, string> = {
     emerald: 'bg-emerald-500',
     rose: 'bg-rose-500',
@@ -520,12 +621,16 @@ function ProgressRow({
   };
   return (
     <div className="mb-3 last:mb-0">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="font-medium text-stone-800">
-          {label} {status}
-        </span>
+      <div className="flex justify-between items-center text-sm mb-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-stone-800">{label}</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${statusInfo.cls}`}>
+            {statusInfo.text}
+          </span>
+        </div>
         <span className="font-bold text-stone-900">
           {value} / {goal} {unit}
+          <span className="text-xs font-medium text-stone-500 ml-1">（{pctRaw}%）</span>
         </span>
       </div>
       <div className="h-2 bg-stone-200 rounded-full overflow-hidden">

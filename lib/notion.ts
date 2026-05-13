@@ -126,6 +126,29 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
+// 食事記録のPFC・カロリー・メモを部分更新
+export async function updateFoodRecord(
+  pageId: string,
+  patch: {
+    kcal?: number;
+    P?: number;
+    F?: number;
+    C?: number;
+    memo?: string;
+  }
+): Promise<void> {
+  const properties: Record<string, unknown> = {};
+  if (typeof patch.kcal === 'number') properties['カロリー_kcal'] = { number: patch.kcal };
+  if (typeof patch.P === 'number') properties['タンパク質_g'] = { number: patch.P };
+  if (typeof patch.F === 'number') properties['脂質_g'] = { number: patch.F };
+  if (typeof patch.C === 'number') properties['炭水化物_g'] = { number: patch.C };
+  if (typeof patch.memo === 'string') {
+    properties['食材メモ'] = { rich_text: [{ text: { content: patch.memo } }] };
+  }
+  if (Object.keys(properties).length === 0) return;
+  await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+}
+
 // 個人シートの食事記録テーブルから複数日付の体重・運動データをまとめて取得
 export async function getRangeExtras(
   sheetPageId: string,

@@ -99,10 +99,16 @@ export async function GET(req: NextRequest) {
         prediction: null,
         reason: 'データ不足',
         message: `体重記録が${weightHistory.length}日分しかありません。7日以上の記録があると予測できます。`,
+        weightHistory,
         dataPoints: {
           recordedDays: recordCount,
           weightDays: weightHistory.length,
           exerciseDays,
+        },
+        customer: {
+          currentWeight: customer.currentWeight,
+          targetWeight: customer.targetWeight,
+          targetDate: customer.targetDate,
         },
       });
     }
@@ -122,6 +128,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       prediction,
+      weightHistory,
       dataPoints: {
         recordedDays: recordCount,
         weightDays: weightHistory.length,

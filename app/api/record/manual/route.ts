@@ -5,12 +5,12 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-// AI解析を経ずに、提案された料理のPFCをそのまま記録するエンドポイント
-// 「これ食べた」ワンタップ記録用
+// AI解析を経ずに、提示されたPFCをそのまま記録するエンドポイント
+// 「これ食べた」ワンタップ記録用（AI提案/食品DB/バーコード/よく食べる、共通）
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { lineUserId, mealType, title, kcal, P, F, C, day } = body;
+    const { lineUserId, mealType, title, kcal, P, F, C, day, source } = body;
 
     if (!lineUserId || !mealType || !title) {
       return NextResponse.json(
@@ -37,13 +37,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // sourceに応じて記録のラベルを切り替える（食事タイトルの末尾に付与）
+    const sourceLabel: Record<string, string> = {
+      ai_suggest: 'AI提案から登録',
+      food_db: '食品DBから登録',
+      barcode: 'バーコードから登録',
+      frequent: 'よく食べるから登録',
+      my_menu: 'マイメニューから登録',
+      meal_plan: 'AI献立から登録',
+      nutrition_label: '成分表から登録',
+    };
+    const label = sourceLabel[source] || '手動登録';
+
     const targetDate = getTargetDate(day || '今日');
+    // 表示用タイトル：食事名 ｜ 登録元
+    const displayTitle = `${title} ｜ ${label}`;
     const pfc = {
       kcal: Math.round(kcal),
       P: Math.round(P * 10) / 10,
       F: Math.round(F * 10) / 10,
       C: Math.round(C * 10) / 10,
-      items: [{ name: `${title}（AI提案・推定値）`, P, F, C }],
+      items: [{ name: title, P, F, C }],
     };
 
     await saveFoodRecord({
@@ -53,7 +67,7 @@ export async function POST(req: NextRequest) {
       mealType,
       goals: customer.goals,
       targetDate,
-      supplementText: `AI提案からワンタップ記録：${title}`,
+      supplementText: displayTitle,
     });
 
     return NextResponse.json({ ok: true, pfc });

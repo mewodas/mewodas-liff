@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "メヲダス 食事管理",
-  description: "メヲダス 食事記録LIFFアプリ",
+  title: "食事管理システム",
+  description: "FitMeal 食事記録LIFFアプリ",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "メヲダス",
+    title: "食事管理システム",
   },
   icons: {
     icon: "/icon.svg",

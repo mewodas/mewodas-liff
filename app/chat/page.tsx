@@ -110,7 +110,7 @@ export default function ChatPage() {
       {/* ヘッダー */}
       <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-3 z-10 flex items-center gap-2">
         <button
-          onClick={() => router.push('/home')}
+          onClick={() => router.back()}
           className="text-stone-600 active:text-stone-900 px-2 -ml-2"
           aria-label="戻る"
         >
@@ -181,7 +181,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="メッセージを入力..."
             rows={1}
-            className="flex-1 bg-stone-50 border border-stone-300 rounded-2xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 max-h-24"
+            className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-2xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 max-h-24"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !sending) {
                 e.preventDefault();

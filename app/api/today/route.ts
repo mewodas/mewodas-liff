@@ -76,10 +76,21 @@ export async function GET(req: NextRequest) {
     }
 
     const today = dateParam || getTargetDate('今日');
-    // 並列実行で高速化
-    const [customer, records] = await Promise.all([
+    const isToday = today === getTargetDate('今日');
+    const startStr = (() => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 29);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    // すべての主要Notion取得を最大限並列化
+    // customer.foodSheetPageIdが必要なgetDailyExtrasのみ後置
+    const [customer, records, last30Records] = await Promise.all([
       getCustomerByLineId(lineUserId),
       getFoodRecordsByDate(lineUserId, today),
+      isToday
+        ? getFoodRecordsByDateRange(lineUserId, startStr, today)
+        : Promise.resolve([] as FoodRecord[]),
     ]);
 
     if (!customer) {
@@ -110,28 +121,17 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // 個人シートから体重・運動データを取得 + 直近30日のストリーク計算を並列実行
-    const isToday = today === getTargetDate('今日');
-    const startStr = (() => {
-      const d = new Date(today);
-      d.setDate(d.getDate() - 29);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-    const [extras, last30Records] = await Promise.all([
-      customer.foodSheetPageId
-        ? getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
-        : Promise.resolve({ weight: '', exercised: '', exerciseContent: '' }),
-      isToday
-        ? getFoodRecordsByDateRange(lineUserId, startStr, today)
-        : Promise.resolve([] as FoodRecord[]),
-    ]);
+    // 個人シート（体重・運動）はcustomer取得後にしか走らせられない
+    const extras = customer.foodSheetPageId
+      ? await getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
+      : { weight: '', exercised: '', exerciseContent: '' };
 
     // ストリーク計算（当日表示時のみ）
     const stats = isToday
       ? computeStats(last30Records, today, customer.goals.kcal)
       : null;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       customer: {
         name: customer.name,
         goals: customer.goals,
@@ -150,6 +150,9 @@ export async function GET(req: NextRequest) {
       },
       stats,
     });
+    // ブラウザに10秒だけキャッシュ、その後30秒間は古い値を即返してバックグラウンド更新
+    response.headers.set('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

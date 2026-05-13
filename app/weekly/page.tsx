@@ -157,21 +157,12 @@ export default function WeeklyPage() {
           )}
         </div>
 
-        {/* 週間平均 */}
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">📊 週間平均（記録日のみ）</h2>
-          <p className="text-xs text-stone-600 mb-3">
-            記録日数 {week.recordedDays}/7日 ・ 🏃 運動 {week.exerciseDays}/7日
-          </p>
-          <AvgRow label="カロリー" value={week.avg.kcal} goal={goals.kcal} unit="kcal" />
-          <AvgRow label="タンパク質" value={week.avg.P} goal={goals.P} unit="g" />
-          <AvgRow label="脂質" value={week.avg.F} goal={goals.F} unit="g" />
-          <AvgRow label="炭水化物" value={week.avg.C} goal={goals.C} unit="g" />
-        </div>
+        {/* 週間サマリー（ホームと同じレポート形式） */}
+        <WeeklyNutritionSummary avg={week.avg} goals={goals} recordedDays={week.recordedDays} exerciseDays={week.exerciseDays} />
 
         {/* 日別カロリーグラフ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">📅 日別カロリー</h2>
+          <h2 className="text-base font-bold text-stone-900 mb-3">📊 日別カロリー</h2>
           <DailyKcalChart
             data={week.daily}
             goal={goals.kcal}
@@ -313,20 +304,117 @@ function DailyKcalChart({
   );
 }
 
-function AvgRow({ label, value, goal, unit }: { label: string; value: number; goal: number; unit: string }) {
-  const pct = goal > 0 ? Math.round((value / goal) * 100) : 0;
-  const status = Math.abs(pct - 100) <= 5 ? '✨' : Math.abs(pct - 100) <= 15 ? '⭕' : Math.abs(pct - 100) <= 25 ? '🔺' : '💦';
+// ホームの NutritionSummaryCard と同じレイアウト（週間平均バージョン）
+function WeeklyNutritionSummary({
+  avg,
+  goals,
+  recordedDays,
+  exerciseDays,
+}: {
+  avg: { kcal: number; P: number; F: number; C: number };
+  goals: { kcal: number; P: number; F: number; C: number };
+  recordedDays: number;
+  exerciseDays: number;
+}) {
+  const kcalPct = goals.kcal > 0 ? Math.round((avg.kcal / goals.kcal) * 100) : 0;
+
+  const pKcal = avg.P * 4;
+  const fKcal = avg.F * 9;
+  const cKcal = avg.C * 4;
+  const totalPfcKcal = pKcal + fKcal + cKcal;
+  const pPct = totalPfcKcal > 0 ? Math.round((pKcal / totalPfcKcal) * 100) : 0;
+  const fPct = totalPfcKcal > 0 ? Math.round((fKcal / totalPfcKcal) * 100) : 0;
+  const cPct = totalPfcKcal > 0 ? Math.max(0, 100 - pPct - fPct) : 0;
+
+  const nutrients = [
+    { label: 'たんぱく質', value: r1(avg.P), goal: goals.P, unit: 'g', color: 'bg-rose-500' },
+    { label: '脂質', value: r1(avg.F), goal: goals.F, unit: 'g', color: 'bg-amber-500' },
+    { label: '炭水化物', value: r1(avg.C), goal: goals.C, unit: 'g', color: 'bg-sky-500' },
+  ];
+
   return (
-    <div className="flex justify-between items-center py-1 text-sm">
-      <span className="font-medium text-stone-800">
-        {label} {status}
-      </span>
-      <span className="font-bold text-stone-900">
-        {value} / {goal} {unit}
-        <span className="text-xs font-medium text-stone-500 ml-1">（{pct}%）</span>
-      </span>
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-base font-bold text-stone-900">📊 週間平均</h2>
+        <span className="text-[11px] text-stone-500">{kcalPct}% 達成</span>
+      </div>
+      <div className="text-[11px] text-stone-600 mb-3">
+        📝 記録日数 {recordedDays}/7日 ・ 🏃 運動 {exerciseDays}/7日
+      </div>
+
+      <div className="mb-4">
+        <div className="text-xs text-stone-600 mb-1">平均カロリー（記録日のみ）</div>
+        <div className="flex items-baseline gap-2 mb-2">
+          <span className="text-3xl font-bold text-stone-900">{Math.round(avg.kcal)}</span>
+          <span className="text-sm font-medium text-stone-500">/ {goals.kcal} kcal</span>
+        </div>
+        <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, kcalPct) || 0}%` }} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-x-3 gap-y-3 mb-4">
+        {nutrients.map((n) => {
+          const pctRaw = n.goal > 0 ? Math.round((n.value / n.goal) * 100) : 0;
+          const pct = Math.min(100, pctRaw);
+          const labelStatus = pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
+          const labelCls =
+            labelStatus === '不足'
+              ? 'text-sky-700 bg-sky-100 border-sky-300'
+              : labelStatus === '過剰'
+              ? 'text-rose-700 bg-rose-100 border-rose-300'
+              : 'text-emerald-700 bg-emerald-100 border-emerald-300';
+          const labelIcon = labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
+          return (
+            <div key={n.label}>
+              <div className="flex items-baseline justify-between mb-1">
+                <span className="text-[10px] font-medium text-stone-700">{n.label}</span>
+                <span className={`text-[9px] font-bold px-1 rounded border ${labelCls}`}>
+                  {labelIcon} {labelStatus}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-sm font-bold text-stone-900">{n.value}</span>
+                <span className="text-[10px] text-stone-500">/ {n.goal}{n.unit}</span>
+              </div>
+              <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                <div className={`h-full transition-all ${n.color}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {totalPfcKcal > 0 && (
+        <div>
+          <div className="text-[11px] font-bold text-stone-700 mb-1.5">PFCバランス</div>
+          <div className="flex h-5 rounded-full overflow-hidden border border-stone-200">
+            <div className="bg-rose-400" style={{ width: `${pPct}%` }} />
+            <div className="bg-amber-400" style={{ width: `${fPct}%` }} />
+            <div className="bg-sky-400" style={{ width: `${cPct}%` }} />
+          </div>
+          <div className="flex justify-between mt-1 text-[10px] text-stone-600">
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-rose-400 rounded-sm mr-1" />
+              P {pPct}%
+            </span>
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-amber-400 rounded-sm mr-1" />
+              F {fPct}%
+            </span>
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-sky-400 rounded-sm mr-1" />
+              C {cPct}%
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function r1(x: number): number {
+  return Math.round(x * 10) / 10;
 }
 
 function fmtJp(dateString: string): string {

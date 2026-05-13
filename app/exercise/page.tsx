@@ -28,6 +28,8 @@ export default function ExercisePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingContent, setExistingContent] = useState<string>('');
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +45,28 @@ export default function ExercisePage() {
     })();
   }, []);
 
+  // 選択した日の既存運動記録を取得（追記方式のため）
+  useEffect(() => {
+    if (!userId || !date) return;
+    setLoadingExisting(true);
+    setExistingContent('');
+    setContent('');
+    fetch(`/api/today?lineUserId=${encodeURIComponent(userId)}&date=${date}&t=${Date.now()}`, {
+      cache: 'no-store',
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const ec = j?.today?.exerciseContent || '';
+        if (ec) {
+          setExistingContent(ec);
+          // 既存運動記録がある場合は自動で「した」を選択し、追記欄を即表示
+          setExercised(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingExisting(false));
+  }, [userId, date]);
+
   async function handleSubmit() {
     if (!userId) {
       setError('LINEプロフィール未取得');
@@ -54,6 +78,12 @@ export default function ExercisePage() {
     }
     setSubmitting(true);
     setError(null);
+    // 既存の運動記録に追記（上書きしない）
+    const mergedContent = exercised
+      ? existingContent && content
+        ? `${existingContent}\n${content}`
+        : existingContent || content
+      : '';
     try {
       const res = await fetch('/api/log/exercise', {
         method: 'POST',
@@ -62,7 +92,7 @@ export default function ExercisePage() {
           lineUserId: userId,
           date,
           exercised,
-          content: exercised ? content : '',
+          content: mergedContent,
         }),
       });
       if (!res.ok) {
@@ -73,6 +103,7 @@ export default function ExercisePage() {
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
+      // 消費カロリーの表示はしない（バックエンドではAI献立計算時に内部利用）
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信エラー');
     } finally {
@@ -103,6 +134,7 @@ export default function ExercisePage() {
               <div className="text-sm text-stone-700 mt-2 bg-stone-50 p-3 rounded-xl">{content}</div>
             )}
           </div>
+
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -148,6 +180,19 @@ export default function ExercisePage() {
           />
         </div>
 
+        {/* 既存運動記録（追記方式の案内） */}
+        {existingContent && !loadingExisting && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
+            <div className="text-xs font-bold text-emerald-800 mb-1">📒 {fmtJp(date)}の既存記録</div>
+            <div className="text-xs text-stone-800 bg-white rounded-lg p-2 whitespace-pre-wrap leading-relaxed">
+              {existingContent}
+            </div>
+            <p className="text-[10px] text-stone-600 mt-2">
+              ※ 新しい運動を追加すると <strong>上書きせず追記</strong> されます。
+            </p>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <div className="text-base font-bold text-stone-900 mb-3">② 運動した？</div>
           <div className="flex gap-2">
@@ -176,11 +221,22 @@ export default function ExercisePage() {
 
         {exercised === true && (
           <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
-            <div className="text-base font-bold text-stone-900 mb-3">③ 内容（任意）</div>
+            <div className="text-base font-bold text-stone-900 mb-2">
+              {existingContent ? '③ 追加で記録する運動' : '③ 内容（任意）'}
+            </div>
+            {existingContent && (
+              <div className="text-[11px] text-stone-600 mb-2 leading-relaxed">
+                ※ 既存の記録は残ります。下に入力した内容が追加されます。
+              </div>
+            )}
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="例：ジョギング30分、筋トレ40分、ストレッチ15分"
+              placeholder={
+                existingContent
+                  ? '追加で行った運動を入力（例：夕方ヨガ30分）'
+                  : '例：ジョギング30分、筋トレ40分、ストレッチ15分'
+              }
               rows={3}
               className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
@@ -189,10 +245,16 @@ export default function ExercisePage() {
 
         <button
           onClick={handleSubmit}
-          disabled={exercised === null || submitting}
+          disabled={exercised === null || submitting || (exercised === true && !!existingContent && !content.trim())}
           className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
-          {submitting ? '保存中…' : '記録する'}
+          {submitting
+            ? '保存中…'
+            : existingContent && exercised === true
+            ? content.trim()
+              ? '➕ 追加で記録する'
+              : '追加する運動を入力してください'
+            : '記録する'}
         </button>
       </div>
     </main>

@@ -39,6 +39,119 @@ function hasExplicitQuantity(text: string | null): boolean {
   );
 }
 
+// 栄養成分表ラベル（パッケージ裏の表）から数値を抽出
+export type NutritionLabelResult = {
+  name: string; // 商品名（不明なら「食品」）
+  servingLabel: string; // 1食あたり / 100gあたり / 1袋あたり 等
+  servings: number; // 内容量の何食分か（例: 1袋に3食分なら 3）。不明なら 1
+  perServing: { kcal: number; P: number; F: number; C: number };
+  perWhole?: { kcal: number; P: number; F: number; C: number };
+  note: string;
+};
+
+export async function analyzeNutritionLabel(
+  images: Array<{ base64: string; mimeType: string }>
+): Promise<NutritionLabelResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+  if (images.length === 0) throw new Error('画像が指定されていません');
+
+  const prompt = `あなたは栄養士です。写真に写っている「栄養成分表示」（パッケージ裏の表）から数値を正確に読み取ってJSONで返してください。
+
+【読み取り対象】
+- 商品名（パッケージから読み取れれば、なければ「食品」）
+- 1食/1袋/100g等の表記単位（servingLabel）
+- 1食あたりの エネルギー(kcal)・たんぱく質(P g)・脂質(F g)・炭水化物(C g)
+- 内容量が複数食分の場合は servings に整数（例：1袋3食分→3）、不明なら1
+
+【ルール】
+- 数値はそのまま読み取り、推測しない
+- 単位を間違えない（mg と g、kJ と kcal）
+- 1kcal = 4.184kJ なので kJ 表記しかない場合は変換
+- 読めない/写っていない値は 0 にする
+- noteには読み取り時の注意点や曖昧な点を30字程度で
+
+【出力JSON】
+{
+  "name": "商品名 or 食品",
+  "servingLabel": "1食あたり",
+  "servings": 1,
+  "perServing": { "kcal": 数値, "P": 数値, "F": 数値, "C": 数値 },
+  "perWhole": { "kcal": 数値, "P": 数値, "F": 数値, "C": 数値 },
+  "note": "..."
+}`;
+
+  const schema = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      servingLabel: { type: 'string' },
+      servings: { type: 'integer' },
+      perServing: {
+        type: 'object',
+        properties: {
+          kcal: { type: 'number' },
+          P: { type: 'number' },
+          F: { type: 'number' },
+          C: { type: 'number' },
+        },
+        required: ['kcal', 'P', 'F', 'C'],
+      },
+      perWhole: {
+        type: 'object',
+        properties: {
+          kcal: { type: 'number' },
+          P: { type: 'number' },
+          F: { type: 'number' },
+          C: { type: 'number' },
+        },
+      },
+      note: { type: 'string' },
+    },
+    required: ['name', 'servingLabel', 'servings', 'perServing', 'note'],
+  };
+
+  const parts: Array<Record<string, unknown>> = images.map((img) => ({
+    inline_data: { mime_type: img.mimeType, data: img.base64 },
+  }));
+  parts.push({ text: prompt });
+
+  const text = await callGeminiStructured(parts, apiKey, schema);
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    parsed = JSON.parse(repairLlmJson(cleaned));
+  }
+
+  const ps = (parsed.perServing as Record<string, unknown>) || {};
+  const pw = (parsed.perWhole as Record<string, unknown>) || {};
+  const r1 = (n: unknown) => Math.round((Number(n) || 0) * 10) / 10;
+
+  return {
+    name: String(parsed.name || '食品'),
+    servingLabel: String(parsed.servingLabel || '1食あたり'),
+    servings: Math.max(1, Math.round(Number(parsed.servings) || 1)),
+    perServing: {
+      kcal: Math.round(Number(ps.kcal) || 0),
+      P: r1(ps.P),
+      F: r1(ps.F),
+      C: r1(ps.C),
+    },
+    perWhole:
+      Object.keys(pw).length > 0
+        ? {
+            kcal: Math.round(Number(pw.kcal) || 0),
+            P: r1(pw.P),
+            F: r1(pw.F),
+            C: r1(pw.C),
+          }
+        : undefined,
+    note: String(parsed.note || ''),
+  };
+}
+
 export async function analyzeImagesPfc(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null
@@ -111,18 +224,14 @@ async function analyzeImagesSingleCall(
 顧客メモ：${supplementText}
 
 処理手順（厳守）：
-1. メモに記載された食材は、メモの量を正解として日本食品標準成分表の正確な値で計算し、items配列に含める
-2. メモに記載された食材が「写真にも写っている」場合は、メモの値だけを採用（写真側からは追加カウントしない、重複させない）
-3. 写真にのみ写っていて「メモに記載が無い食材」のみ、写真から推定してitemsに追加する
-4. items配列にはメモの食材 + 写真にのみある食材 を両方含める（ただし重複させない）
+1. メモに記載された料理は、メモの量を正解として日本食品標準成分表の正確な値で計算し、items配列に含める
+2. メモに記載された料理が「写真にも写っている」場合は、メモの値だけを採用（写真側からは追加カウントしない、重複させない）
+3. 写真にのみ写っていて「メモに記載が無い料理」のみ、写真から推定してitemsに追加する
+4. items配列にはメモの料理 + 写真にのみある料理 を両方含める（ただし重複させない）
 
-例1：メモ「ご飯150g、鶏むね100g」+ 写真に「ご飯・鶏肉・味噌汁・サラダ」
-→ ご飯と鶏むねはメモの値を採用、味噌汁とサラダは写真から追加
-→ items: [{ご飯150g}, {鶏むね100g}, {味噌汁}, {サラダ}]
-
-例2：メモ「ごぼう1kg」+ 写真に「ご飯・味噌汁・肉」（ごぼうは写真に無い）
-→ メモのごぼう + 写真の全食材を追加
-→ items: [{ごぼう1kg}, {ご飯}, {味噌汁}, {肉}]`
+例：メモ「白米150g」+ 写真に「白米・味噌汁・唐揚げ」
+→ 白米はメモの値を採用、味噌汁・唐揚げは写真から追加
+→ items: [{白米 150g}, {味噌汁 1杯}, {唐揚げ 3個}]`
       : `\n\n補足情報（顧客メモ）：${supplementText}\nこの補足情報も考慮してPFCを推定してください。`
     : '';
 
@@ -132,7 +241,7 @@ async function analyzeImagesSingleCall(
       : '';
 
   const accuracyRule = explicit
-    ? '- メモに量が明示されている食材は標準成分表の正確な値で計算する（控えめにしない）'
+    ? '- メモに量が明示されている料理は標準成分表の正確な値で計算する（控えめにしない）'
     : '- 過大評価を避け、控えめ（少なめ）を基準とする';
 
   const prompt = `この食事のPFC（タンパク質・脂質・炭水化物）を推定してください。${multiNotice}
@@ -142,11 +251,14 @@ async function analyzeImagesSingleCall(
 ${accuracyRule}
 - 外食チェーン店（松屋・吉野家・マクドナルド・サイゼリヤ・すき家・CoCo壱等）が明確に写っている場合のみ公式栄養成分値を使用する
 
-【items必須・厳守】
-- "items"配列には写真から識別できた食材を必ず1つ以上記載する（空配列は禁止）
-- 各食材は具体的な食材名にする（例：「ご飯」「鶏むね肉」「ブロッコリー」「サラダ」「味噌汁」など）
-- "name"は「食材名（推定Xg）」の形式（例：「ご飯（推定150g）」）
-- 識別が難しい場合でも「不明な料理」ではなく「ご飯と思われるもの」など推測可能な名前を入れる${supplementLine}
+【items必須・料理単位で列挙（最重要）】
+- "items"配列には「料理・商品単位」で1品ずつ記載する（最低1つ、空配列禁止）
+- ❌ NG例：イチゴタルト1個 → ["タルト生地", "カスタードクリーム", "イチゴ"]（材料分解は禁止）
+- ✅ OK例：イチゴタルト1個 → ["イチゴタルト 1個"]
+- ✅ OK例：定食 → ["白米 茶碗1杯", "唐揚げ 3個", "味噌汁 1杯", "サラダ 1皿"]
+- 一般的な料理名・商品名で記載（例：「ハンバーグ定食」「カルボナーラ」「ショートケーキ 1切れ」「コーヒー Lサイズ」など）
+- "name"は「料理名 分量」の形式（例：「イチゴタルト 1個」「ラーメン 1杯」「ご飯 150g」）
+- 識別が難しい場合でも「不明な料理」ではなく「洋菓子と思われるもの」など推測可能な名前を入れる${supplementLine}
 
 【詳細栄養素も推定】
 PFCに加えて、以下5つも栄養学の標準値で推定してください：
@@ -162,7 +274,7 @@ PFCに加えて、以下5つも栄養学の標準値で推定してください�
   "P": タンパク質(g)の数値,
   "F": 脂質(g)の数値,
   "C": 炭水化物(g)の数値,
-  "items": [{"name": "ご飯（推定150g）", "P": 3.8, "F": 0.5, "C": 55}],
+  "items": [{"name": "イチゴタルト 1個", "P": 4, "F": 18, "C": 40}],
   "details": {
     "fiber": 食物繊維(g),
     "salt": 食塩相当量(g),
@@ -195,9 +307,11 @@ export async function analyzeTextPfc(textDesc: string): Promise<Pfc> {
 - 控えめに見積もる必要はない。標準値で正確に計算すること
 - 外食チェーン店のメニューが含まれる場合は公式栄養成分値を使用する
 
-【items必須・厳守】
-- "items"配列には記載された食材を必ず1つ以上含める（空配列は禁止）
-- "name"は「食材名（推定Xg）」の形式
+【items必須・料理単位で列挙】
+- "items"配列には記載された「料理・商品単位」で1品ずつ記載する（最低1つ、空配列禁止）
+- ❌ NG：イチゴタルト → ["タルト生地", "カスタード", "イチゴ"]（材料に分解しない）
+- ✅ OK：イチゴタルト → ["イチゴタルト 1個"]
+- "name"は「料理名 分量」の形式（例：「ご飯 150g」「唐揚げ 3個」「ラーメン 1杯」）
 
 【詳細栄養素も推定】
 PFCに加えて、以下5つも栄養学の標準値で推定してください：
@@ -215,7 +329,7 @@ ${textDesc}
   "P": タンパク質(g)の数値,
   "F": 脂質(g)の数値,
   "C": 炭水化物(g)の数値,
-  "items": [{"name": "鶏むね肉100g", "P": 23, "F": 1.5, "C": 0}],
+  "items": [{"name": "鶏むね肉 100g", "P": 23, "F": 1.5, "C": 0}],
   "details": {
     "fiber": 食物繊維(g),
     "salt": 食塩相当量(g),
@@ -386,14 +500,16 @@ ${currentWeight ? `- 現在体重：${currentWeight}kg` : ''}
 ${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
 
 【回答ルール】
-- 200文字以内で簡潔に答える
+- 通常は300〜500文字を目安に分かりやすく答える（質問が深い場合は600文字まで可）
+- 必ず文章を最後まで完結させる。途中で切らない
 - 数値で答える時は具体的に（例：「鶏胸肉100gはP23g」）
 - 励まし・共感を入れる
 - 「ご飯食べていい？」のような相談には、残りPFCを元に判断
 - 「これ食べたい」相談には、量や代替案も提示
 - 食事以外の質問（運動・体重・睡眠）にも一般的な範囲で答えてOK
 - 医療的な診断は避ける（必要なら専門家相談を促す）
-- 絵文字は1〜2個まで控えめに`;
+- 絵文字は1〜2個まで控えめに
+- 箇条書きを使う場合は3項目程度に留める`;
 
   // Gemini APIの content 配列形式に変換
   const contents = [
@@ -412,10 +528,12 @@ ${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
       generationConfig: {
-        // 日本語は1文字あたり1.5〜2トークン消費。300文字想定でも余裕を持って2000に。
-        maxOutputTokens: 2000,
+        // 日本語は1文字あたり1.5〜2トークン消費。600文字でも応答に回せるよう3000に。
+        // thinkingBudget=0 で「考える」トークン消費を停止 → 応答に全トークンを回せる
+        maxOutputTokens: 3000,
         temperature: 0.7,
         topP: 0.9,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
@@ -540,6 +658,439 @@ function parseSuggestionsJson(text: string): MealSuggestion[] {
     .filter((s) => s.title);
 }
 
+export type DailyMealPlan = {
+  meals: Array<{
+    type: '朝食' | '昼食' | '夕食' | '間食';
+    title: string;
+    items: string[];
+    kcal: number;
+    P: number;
+    F: number;
+    C: number;
+    cookTime: string;
+    note: string;
+  }>;
+  totals: { kcal: number; P: number; F: number; C: number };
+  advice: string;
+};
+
+export type Recipe = {
+  servings: string;
+  time: string;
+  ingredients: Array<{ name: string; amount: string }>;
+  steps: string[];
+  tips: string;
+};
+
+// レシピ生成：献立の1食を選んだら作り方を生成
+export async function generateRecipe(params: {
+  title: string;
+  items: string[];
+  servings?: string;
+}): Promise<Recipe> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+  const { title, items, servings = '1人前' } = params;
+
+  const prompt = `あなたは料理研究家です。以下の料理の作り方を、家庭で作れる簡潔な手順で教えてください。
+
+料理名：${title}
+含まれる食材：${items.join('、')}
+分量：${servings}
+
+【条件】
+- 一般的な家庭の調理器具で作れる
+- 手順は6〜10ステップ程度、各ステップは1〜2文で簡潔に
+- 材料はグラム・大さじ・小さじ等の具体的な分量
+- tipsは美味しく作るコツや時短の工夫を50字程度
+
+【出力JSON形式（必ずこの形式）】
+{
+  "servings": "${servings}",
+  "time": "15分",
+  "ingredients": [
+    { "name": "鶏むね肉", "amount": "100g" },
+    { "name": "塩", "amount": "少々" }
+  ],
+  "steps": [
+    "鶏むね肉を一口大に切る",
+    "..."
+  ],
+  "tips": "..."
+}`;
+
+  const schema = {
+    type: 'object',
+    properties: {
+      servings: { type: 'string' },
+      time: { type: 'string' },
+      ingredients: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            amount: { type: 'string' },
+          },
+          required: ['name', 'amount'],
+        },
+      },
+      steps: { type: 'array', items: { type: 'string' } },
+      tips: { type: 'string' },
+    },
+    required: ['servings', 'time', 'ingredients', 'steps', 'tips'],
+  };
+
+  const text = await callGeminiStructured([{ text: prompt }], apiKey, schema);
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    parsed = JSON.parse(repairLlmJson(cleaned));
+  }
+  const rawIngredients = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
+  return {
+    servings: String(parsed.servings ?? servings),
+    time: String(parsed.time ?? '不明'),
+    ingredients: rawIngredients
+      .map((it: unknown) => {
+        const o = (it as Record<string, unknown>) || {};
+        return {
+          name: String(o.name ?? ''),
+          amount: String(o.amount ?? ''),
+        };
+      })
+      .filter((it: { name: string }) => it.name),
+    steps: Array.isArray(parsed.steps)
+      ? parsed.steps.map((s: unknown) => String(s)).filter(Boolean)
+      : [],
+    tips: String(parsed.tips ?? ''),
+  };
+}
+
+// 1日の献立をAIで作成（朝・昼・夕・間食、または残り分）
+export async function generateMealPlan(params: {
+  goals: { kcal: number; P: number; F: number; C: number };
+  remaining?: { kcal: number; P: number; F: number; C: number };
+  eaten?: { kcal: number; P: number; F: number; C: number };
+  eatenItems?: string[];
+  mode?: 'full' | 'remaining' | 'one_meal';
+  targetMealType?: '朝食' | '昼食' | '夕食' | '間食';
+  profile?: {
+    currentWeight?: number | null;
+    targetWeight?: number | null;
+    targetDate?: string | null;
+  };
+  referenceMenu?: Array<{
+    name: string;
+    unit?: string;
+    kcal?: number;
+    P?: number;
+    F?: number;
+    C?: number;
+    useCount?: number;
+  }>;
+  ingredients?: string[];
+  preferences: {
+    dietType: string;
+    avoidIngredients: string;
+    preferIngredients?: string;
+    budget: string;
+    cookTime: string;
+  };
+}): Promise<DailyMealPlan> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const { goals, preferences, remaining, eaten, eatenItems, mode = 'full', targetMealType, profile, referenceMenu, ingredients } = params;
+
+  // 体重・目標から減量/維持/増量を判定
+  let weightDirective = '';
+  if (profile?.currentWeight && profile.targetWeight) {
+    const diff = profile.currentWeight - profile.targetWeight;
+    if (diff > 1) weightDirective = `減量フェーズ（現在${profile.currentWeight}kg→目標${profile.targetWeight}kg）。${profile.targetDate ? `期限：${profile.targetDate}。` : ''}高タンパク・適度な糖質で満腹感を意識。`;
+    else if (diff < -1) weightDirective = `増量フェーズ（現在${profile.currentWeight}kg→目標${profile.targetWeight}kg）。タンパク質・炭水化物をしっかり。`;
+    else weightDirective = `体重維持フェーズ（現在${profile.currentWeight}kg、目標${profile.targetWeight}kg）。バランス重視。`;
+  }
+
+  const isRemaining = mode === 'remaining' && remaining;
+  const isOneMeal = mode === 'one_meal';
+  const oneMealPfcEstimate = isOneMeal && remaining
+    ? {
+        // 1食分の目安として、残りPFCを残りの食事数（最大1）で配分
+        kcal: Math.max(200, Math.round(remaining.kcal * 0.85)),
+        P: Math.max(10, Math.round(remaining.P * 0.85 * 10) / 10),
+        F: Math.max(5, Math.round(remaining.F * 0.85 * 10) / 10),
+        C: Math.max(20, Math.round(remaining.C * 0.85 * 10) / 10),
+      }
+    : null;
+
+  const remainingBlock = isOneMeal && oneMealPfcEstimate
+    ? `
+【1食分の目安（残りPFCに合わせる）】※${targetMealType || '指定食事'} 1食でこの範囲に収める
+- カロリー目安：${oneMealPfcEstimate.kcal} kcal以内
+- タンパク質目安：${oneMealPfcEstimate.P} g前後
+- 脂質目安：${oneMealPfcEstimate.F} g前後
+- 炭水化物目安：${oneMealPfcEstimate.C} g前後
+
+【今日の残り合計】${Math.round(remaining!.kcal)} kcal / P${Math.round(remaining!.P * 10) / 10}g / F${Math.round(remaining!.F * 10) / 10}g / C${Math.round(remaining!.C * 10) / 10}g
+【今日すでに食べたもの】${Math.round(eaten?.kcal || 0)} kcal
+${eatenItems && eatenItems.length > 0 ? `食べた料理：${eatenItems.slice(0, 6).join('、')}（同じ料理は避ける）` : ''}`
+    : isRemaining
+    ? `
+【残りPFC（本日まだ食べられる量）】※この量に収まる献立を作る
+- 残りカロリー：${Math.round(remaining!.kcal)} kcal
+- 残りタンパク質：${Math.round(remaining!.P * 10) / 10} g
+- 残り脂質：${Math.round(remaining!.F * 10) / 10} g
+- 残り炭水化物：${Math.round(remaining!.C * 10) / 10} g
+
+【今日すでに食べたもの】合計 ${Math.round(eaten?.kcal || 0)} kcal / P${Math.round((eaten?.P || 0) * 10) / 10}g / F${Math.round((eaten?.F || 0) * 10) / 10}g / C${Math.round((eaten?.C || 0) * 10) / 10}g
+${eatenItems && eatenItems.length > 0 ? `食べた料理：${eatenItems.slice(0, 8).join('、')}（同じ料理は避けて被らないように）` : ''}`
+    : `
+【目標】※1日分の献立を作る
+- カロリー：${goals.kcal} kcal
+- タンパク質：${goals.P} g
+- 脂質：${goals.F} g
+- 炭水化物：${goals.C} g`;
+
+  const referenceBlock = referenceMenu && referenceMenu.length > 0
+    ? `
+
+【顧客のマイメニュー】※可能なら以下から1〜2品を含める（顧客が常食している料理）
+${referenceMenu.slice(0, 8).map((it) => `- ${it.name}${it.unit ? `（${it.unit}）` : ''}${typeof it.kcal === 'number' ? ` ${it.kcal}kcal` : ''}`).join('\n')}`
+    : '';
+
+  const profileBlock = weightDirective ? `\n\n【顧客の体型】${weightDirective}` : '';
+
+  const ingredientsBlock = ingredients && ingredients.length > 0
+    ? `\n\n【使う材料（顧客が選択）】※これらの材料を必ず使った献立にする（他の食材で補完してOK）
+${ingredients.map((ing) => `- ${ing}`).join('\n')}`
+    : '';
+
+  const planScope = isOneMeal
+    ? `指定された「${targetMealType || '指定食事'}」の1食を、バリエーション違いで3案提案（同じ料理を繰り返さない、別ジャンルを意識）`
+    : isRemaining
+    ? '残りPFCに収まる範囲で、献立案を3つ提案（バリエーション豊かに別の選択肢を）'
+    : '朝食・昼食・夕食・間食の4食を提案';
+
+  const prompt = `あなたは管理栄養士です。以下の条件で献立を作成してください。
+${remainingBlock}${profileBlock}${referenceBlock}${ingredientsBlock}
+
+【顧客の希望】
+- 食事傾向：${preferences.dietType}
+- 含めたい食材・テイスト：${preferences.preferIngredients || 'なし'}（指定があれば必ずどれか1食以上に反映する）
+- 避けたい食材：${preferences.avoidIngredients || 'なし'}（指定があれば一切使用しない）
+- 予算感：${preferences.budget}
+- 調理時間：${preferences.cookTime}
+
+【条件】
+- ${planScope}
+- ${isOneMeal ? `各案の type は必ず「${targetMealType || '昼食'}」（同じ食事区分）。3案とも別ジャンルの料理を提案` : isRemaining ? '各献立はそれぞれ別の料理（同じ料理を繰り返さない）。typeは「提案1」「提案2」「提案3」または料理に合った食事区分（朝食/昼食/夕食/間食）' : '各食事は具体的な料理名と食材リスト・分量'}
+- 合計が${isOneMeal ? '各案ともに1食分の目安' : isRemaining ? '各案ともに残りPFC' : '目標'}カロリー±50kcal以内、PFC各±10g以内に収まるように
+- itemsには「鶏むね肉100g」「玄米120g」のように分量付きで列挙
+- adviceは100文字程度で「この献立のポイント」をまとめる（${isOneMeal ? '3つの選択肢の使い分けや栄養面の特徴' : isRemaining ? '3つの提案の使い分けや栄養バランス' : weightDirective ? '体重目標を踏まえる' : 'バランス重視'}）
+
+【JSON出力の絶対ルール】
+- 数値は単位なしの純粋な数値だけ書く（例: "kcal": 350 ※「350kcal」「350g」とは絶対書かない）
+- 各プロパティの値の直後にカンマを忘れない
+- 文字列はダブルクォートで囲む
+- コメント・補足文・マークダウン記号は一切書かない
+- JSON以外の文章は1文字も付けない
+
+【出力JSON形式（必ずこの形式）】
+{
+  "meals": [
+    { "type": "朝食", "title": "...", "items": ["...", "..."], "kcal": 数値, "P": 数値, "F": 数値, "C": 数値, "cookTime": "10分", "note": "..." },
+    { "type": "昼食", "title": "...", "items": [...], "kcal": ..., "P": ..., "F": ..., "C": ..., "cookTime": "...", "note": "..." },
+    { "type": "夕食", "title": "...", "items": [...], "kcal": ..., "P": ..., "F": ..., "C": ..., "cookTime": "...", "note": "..." },
+    { "type": "間食", "title": "...", "items": [...], "kcal": ..., "P": ..., "F": ..., "C": ..., "cookTime": "...", "note": "..." }
+  ],
+  "totals": { "kcal": ..., "P": ..., "F": ..., "C": ... },
+  "advice": "..."
+}`;
+
+  const mealSchema = {
+    type: 'object',
+    properties: {
+      meals: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            title: { type: 'string' },
+            items: { type: 'array', items: { type: 'string' } },
+            kcal: { type: 'integer' },
+            P: { type: 'number' },
+            F: { type: 'number' },
+            C: { type: 'number' },
+            cookTime: { type: 'string' },
+            note: { type: 'string' },
+          },
+          required: ['type', 'title', 'items', 'kcal', 'P', 'F', 'C', 'cookTime', 'note'],
+        },
+      },
+      totals: {
+        type: 'object',
+        properties: {
+          kcal: { type: 'integer' },
+          P: { type: 'number' },
+          F: { type: 'number' },
+          C: { type: 'number' },
+        },
+        required: ['kcal', 'P', 'F', 'C'],
+      },
+      advice: { type: 'string' },
+    },
+    required: ['meals', 'totals', 'advice'],
+  };
+
+  const text = await callGeminiStructured([{ text: prompt }], apiKey, mealSchema);
+  return parseMealPlanJson(text);
+}
+
+function repairLlmJson(raw: string): string {
+  let s = raw;
+  // {...} 部分だけ抽出
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    s = s.slice(start, end + 1);
+  }
+  // 値の後に単位がついた数値を除去：「350kcal」「12g」「23.5g」など → 350 / 12 / 23.5
+  s = s.replace(/:\s*(\d+(?:\.\d+)?)\s*(?:kcal|kj|g|ml|L|個|本|杯|分|時間|秒|円)\s*([,}\]])/gi, ': $1$2');
+  // 数値直後にコメント風の説明: 「150 (約)」 のような括弧を除去
+  s = s.replace(/:\s*(\d+(?:\.\d+)?)\s*\([^)]*\)\s*([,}\]])/g, ': $1$2');
+  // 末尾の余分なカンマ: ,} や ,] を修正
+  s = s.replace(/,(\s*[}\]])/g, '$1');
+  // 行コメント // ... を除去
+  s = s.replace(/\/\/[^\n]*/g, '');
+  // ブロックコメント /* ... */ を除去
+  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+  // 文字列内のシングルクォートをダブルクォートに（オブジェクトキー側のみ）
+  // ※値内のシングルクォートは触らない
+  s = s.replace(/(\{|,)\s*'([\w$]+)'\s*:/g, '$1"$2":');
+  return s.trim();
+}
+
+function parseMealPlanJson(text: string): DailyMealPlan {
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown> | null = null;
+  // 1. 素直にパース
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {}
+  // 2. 自前の修復ロジック
+  if (!parsed) {
+    try {
+      parsed = JSON.parse(repairLlmJson(cleaned));
+    } catch {}
+  }
+  // 3. {...} だけ抽出
+  if (!parsed) {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        parsed = JSON.parse(cleaned.slice(start, end + 1));
+      } catch {}
+    }
+  }
+  // 4. jsonrepair（強力な汎用リペア）
+  if (!parsed) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { jsonrepair } = require('jsonrepair');
+      parsed = JSON.parse(jsonrepair(cleaned));
+    } catch {}
+  }
+  if (!parsed) {
+    // デバッグのために生のレスポンスを含める（最初の300文字）
+    throw new Error(
+      `AIの返答からJSONを取り出せませんでした。\n生レスポンス: ${cleaned.slice(0, 300)}`
+    );
+  }
+  const mealsRaw = Array.isArray(parsed.meals) ? parsed.meals : [];
+  const meals = mealsRaw
+    .map((m) => {
+      const item = m as Record<string, unknown>;
+      const itemsArr = Array.isArray(item.items) ? item.items : [];
+      return {
+        type: String(item.type ?? '') as '朝食' | '昼食' | '夕食' | '間食',
+        title: String(item.title ?? ''),
+        items: itemsArr.map((i) => String(i)),
+        kcal: Math.round(Number(item.kcal ?? 0)),
+        P: Math.round(Number(item.P ?? 0) * 10) / 10,
+        F: Math.round(Number(item.F ?? 0) * 10) / 10,
+        C: Math.round(Number(item.C ?? 0) * 10) / 10,
+        cookTime: String(item.cookTime ?? ''),
+        note: String(item.note ?? ''),
+      };
+    })
+    .filter((m) => m.title && ['朝食', '昼食', '夕食', '間食'].includes(m.type));
+
+  const totalsRaw = (parsed.totals as Record<string, unknown>) || {};
+  const totals = {
+    kcal: Math.round(Number(totalsRaw.kcal ?? meals.reduce((s, m) => s + m.kcal, 0))),
+    P: Math.round(Number(totalsRaw.P ?? meals.reduce((s, m) => s + m.P, 0)) * 10) / 10,
+    F: Math.round(Number(totalsRaw.F ?? meals.reduce((s, m) => s + m.F, 0)) * 10) / 10,
+    C: Math.round(Number(totalsRaw.C ?? meals.reduce((s, m) => s + m.C, 0)) * 10) / 10,
+  };
+  return {
+    meals,
+    totals,
+    advice: String(parsed.advice ?? ''),
+  };
+}
+
+async function callGeminiStructured(
+  parts: Array<Record<string, unknown>>,
+  apiKey: string,
+  schema: Record<string, unknown>
+): Promise<string> {
+  const models = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  let lastError = '';
+  for (const model of models) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: NUTRITION_SYSTEM }] },
+            contents: [{ parts }],
+            generationConfig: {
+              maxOutputTokens: 4096,
+              temperature: 0.1,
+              topP: 0.8,
+              responseMimeType: 'application/json',
+              responseSchema: schema,
+              // 思考トークンを停止 → 応答速度2〜3倍、コスト削減
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Gemini API失敗 ${res.status}: ${errText.slice(0, 300)}`);
+        }
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+        if (!text) throw new Error('Gemini応答が空です');
+        return text;
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+        const retriable = /\b(503|429|500|502|504)\b|overloaded|UNAVAILABLE|high demand/i.test(lastError);
+        if (!retriable) throw e;
+        if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * (attempt + 1));
+      }
+    }
+  }
+  throw new Error(`Gemini APIに接続できません: ${lastError}`);
+}
+
 async function callGemini(
   parts: Array<Record<string, unknown>>,
   apiKey: string
@@ -583,6 +1134,8 @@ async function callGeminiOnce(
         temperature: 0.1, // 同じ入力で結果が大きく変わらないよう低めに設定
         topP: 0.8,
         responseMimeType: 'application/json',
+        // 思考トークンを停止 → 応答速度2〜3倍、コスト削減
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });

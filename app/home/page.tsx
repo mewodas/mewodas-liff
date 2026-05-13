@@ -69,26 +69,20 @@ type PredictionData = {
   };
 };
 
-type SuggestData = {
-  remaining: { kcal: number; P: number; F: number; C: number };
-  suggestions: Array<{
-    title: string;
-    tag: string;
-    kcal: number;
-    P: number;
-    F: number;
-    C: number;
-    reason: string;
-  }>;
-  message: string | null;
-};
-
 const MEAL_EMOJI: Record<string, string> = {
   朝食: '🌅',
   昼食: '☀️',
   夕食: '🌙',
   間食: '🍪',
 };
+
+function greetingByHour(): string {
+  const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })).getHours();
+  if (h < 5) return 'こんばんは';
+  if (h < 11) return 'おはようございます';
+  if (h < 17) return 'こんにちは';
+  return 'こんばんは';
+}
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -124,10 +118,9 @@ function HomePageInner() {
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [suggest, setSuggest] = useState<SuggestData | null>(null);
-  const [suggestLoading, setSuggestLoading] = useState(false);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -189,40 +182,6 @@ function HomePageInner() {
         // 予測失敗はサイレント
       } finally {
         setPredictionLoading(false);
-      }
-    })();
-  }, [userId, selectedDate, isToday, data]);
-
-  // 提案を取得（当日のみ、データ取得後）
-  useEffect(() => {
-    if (!userId || !data || !isToday) {
-      setSuggest(null);
-      return;
-    }
-    const cacheKey = `suggest_v1_${userId}_${selectedDate}_${Math.round(data.today.totals.kcal)}`;
-    const cached = getCached<SuggestData>(cacheKey);
-    if (cached) {
-      setSuggest(cached.data);
-      if (!cached.isStale) return;
-    }
-    setSuggestLoading(true);
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/suggest?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) {
-          setSuggest(null);
-          return;
-        }
-        const json: SuggestData = await res.json();
-        setSuggest(json);
-        setCached(cacheKey, json);
-      } catch {
-        // サジェスト失敗はサイレント（メイン機能ではない）
-      } finally {
-        setSuggestLoading(false);
       }
     })();
   }, [userId, selectedDate, isToday, data]);
@@ -298,10 +257,50 @@ function HomePageInner() {
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
-        {/* ヘッダー：挨拶 */}
-        <div className="mb-3">
-          <h1 className="text-xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
-          <p className="text-xs text-stone-600 mt-0.5">{dateLabel}</p>
+        {/* ヘッダー：挨拶＋バッジ＋カレンダー */}
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-sm font-bold text-stone-900 truncate">
+              {greetingByHour()}、{customer.name} さん
+            </h1>
+            <p className="text-[11px] text-stone-600 mt-0.5">{dateLabel}</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {data.stats && (
+              <button
+                type="button"
+                onClick={() => setBadgeOpen(true)}
+                className="flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full pl-2 pr-3 py-1.5 active:bg-amber-200"
+                aria-label="バッジ獲得・達成記録を開く"
+              >
+                <span className="text-lg leading-none">🏅</span>
+                <span className="text-xs font-bold text-amber-800">
+                  {data.stats.streakDays}日
+                </span>
+              </button>
+            )}
+            <Link
+              href="/history"
+              className="w-9 h-9 bg-white border border-stone-200 rounded-full flex items-center justify-center active:bg-stone-100 text-stone-700"
+              aria-label="履歴カレンダーを開く"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="w-5 h-5"
+              >
+                <rect x="3" y="4" width="18" height="17" rx="2" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </Link>
+          </div>
         </div>
 
         {/* 日付ストリップ（7日間横スクロール） */}
@@ -311,77 +310,15 @@ function HomePageInner() {
           onSelect={(d) => navigateToDate(d)}
         />
 
-        {/* 今日の摂取（カロリー大型表示） */}
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">📊 今日の摂取</h2>
+        {/* 栄養サマリー（カロミル風） */}
+        <NutritionSummaryCard totals={totals} goals={goals} />
 
-          {/* カロリー大型サマリ */}
-          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-4 mb-4 border border-emerald-100">
-            <div className="text-xs font-medium text-stone-600 mb-1">カロリー</div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-4xl font-bold text-emerald-700">
-                {Math.round(totals.kcal)}
-              </span>
-              <span className="text-sm font-medium text-stone-600">/ {goals.kcal} kcal</span>
-            </div>
-            <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all"
-                style={{
-                  width: `${Math.min(100, Math.round((totals.kcal / goals.kcal) * 100)) || 0}%`,
-                }}
-              />
-            </div>
-            <div className="flex justify-between mt-1.5 text-[10px] text-stone-600">
-              <span>
-                残り {Math.max(0, Math.round(goals.kcal - totals.kcal))} kcal
-              </span>
-              <span className="font-bold">
-                {goals.kcal > 0 ? Math.round((totals.kcal / goals.kcal) * 100) : 0}%
-              </span>
-            </div>
-          </div>
-
-          {/* PFCバー（3つ） */}
-          <ProgressRow label="タンパク質" value={r1(totals.P)} goal={goals.P} unit="g" color="rose" />
-          <ProgressRow label="脂質" value={r1(totals.F)} goal={goals.F} unit="g" color="amber" />
-          <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
+        {/* クイックアクション */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <QuickAction href="/record" icon="📝" label="記録する" />
+          <QuickAction href="/chat" icon="💬" label="AI食事相談" />
+          <QuickAction href="/meal-plan" icon="🍱" label="AI献立作成" />
         </div>
-
-        {/* 詳細栄養素（記録がある日のみ） */}
-        <NutritionDetailsCard mealsByType={mealsByType} />
-
-        {/* 継続バッジ（当日のみ） */}
-        {isToday && data.stats && (
-          <StreakCard stats={data.stats} />
-        )}
-
-        {/* 残りカロリー逆算サジェスト（当日のみ） */}
-        {isToday && (
-          <SuggestCard
-            data={suggest}
-            loading={suggestLoading}
-            lineUserId={userId}
-            onRecorded={() => {
-              invalidate('today_');
-              invalidate('weekly_');
-              invalidate('history_');
-              invalidate('suggest_');
-              if (userId) {
-                fetch(
-                  `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-                  { cache: 'no-store' }
-                )
-                  .then((r) => r.json())
-                  .then((json) => {
-                    setData(json);
-                    setCached(`today_v2_${userId}_${selectedDate}`, json);
-                  })
-                  .catch(() => {});
-              }
-            }}
-          />
-        )}
 
         {/* 体重目標 */}
         {goalProgress && (
@@ -455,21 +392,21 @@ function HomePageInner() {
           </div>
         )}
 
-        {/* 今日の食事 */}
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">🍽️ 今日の食事</h2>
+        {/* 今日の食事（各食事をカード化） */}
+        <h2 className="text-base font-bold text-stone-900 mb-2 px-1">🍽️ {isToday ? '今日' : 'この日'}の食事</h2>
+        <div className="space-y-3 mb-4">
           {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => (
             <MealSection
               key={meal}
               mealType={meal}
               records={mealsByType[meal] || []}
               dayTotalKcal={totals.kcal}
+              selectedDate={selectedDate}
               lineUserId={userId}
               onDeleted={() => {
                 invalidate('today_');
                 invalidate('weekly_');
                 invalidate('history_');
-                invalidate('suggest_');
                 router.refresh();
                 // 強制再取得：URLは同じだが直接フェッチ
                 if (userId) {
@@ -490,7 +427,49 @@ function HomePageInner() {
         </div>
 
       </div>
+
+      {/* バッジ詳細モーダル */}
+      {badgeOpen && data.stats && (
+        <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
+      )}
     </main>
+  );
+}
+
+function BadgeModal({
+  stats,
+  onClose,
+}: {
+  stats: NonNullable<TodayData['stats']>;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 z-[70] flex items-end"
+      onClick={onClose}
+    >
+      <div
+        className="bg-stone-100 rounded-t-2xl shadow-2xl w-full max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-stone-100 pt-3 pb-2 z-10 border-b border-stone-200">
+          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
+          <div className="flex justify-between items-center px-5">
+            <h2 className="text-base font-bold text-stone-900">🏆 バッジ獲得・達成記録</h2>
+            <button
+              onClick={onClose}
+              className="text-stone-500 text-2xl leading-none px-2 active:text-stone-700"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div className="px-4 pb-8 pt-4">
+          <StreakCard stats={stats} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -563,121 +542,128 @@ function DateStrip({
   );
 }
 
-function NutritionDetailsCard({
-  mealsByType,
+function QuickAction({ href, icon, label }: { href: string; icon: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center justify-center bg-white rounded-2xl py-3 px-1 border border-stone-200 shadow-sm active:bg-emerald-50"
+    >
+      <span className="text-xl">{icon}</span>
+      <span className="text-[11px] font-bold text-stone-900 mt-1 text-center leading-tight">
+        {label}
+      </span>
+    </Link>
+  );
+}
+
+function NutritionSummaryCard({
+  totals,
+  goals,
 }: {
-  mealsByType: Record<string, MealRecord[]>;
+  totals: { kcal: number; P: number; F: number; C: number };
+  goals: { kcal: number; P: number; F: number; C: number };
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const kcalPct = goals.kcal > 0 ? Math.round((totals.kcal / goals.kcal) * 100) : 0;
 
-  // 全食事レコードから詳細栄養素を合計
-  const totals = { fiber: 0, salt: 0, iron: 0, calcium: 0, vitaminC: 0 };
-  let hasAny = false;
-  for (const records of Object.values(mealsByType)) {
-    for (const r of records) {
-      if (r.details) {
-        totals.fiber += r.details.fiber || 0;
-        totals.salt += r.details.salt || 0;
-        totals.iron += r.details.iron || 0;
-        totals.calcium += r.details.calcium || 0;
-        totals.vitaminC += r.details.vitaminC || 0;
-        hasAny = true;
-      }
-    }
-  }
-  if (!hasAny) return null;
+  // PFC比率（摂取分のkcalベース）
+  const pKcal = totals.P * 4;
+  const fKcal = totals.F * 9;
+  const cKcal = totals.C * 4;
+  const totalPfcKcal = pKcal + fKcal + cKcal;
+  const pPct = totalPfcKcal > 0 ? Math.round((pKcal / totalPfcKcal) * 100) : 0;
+  const fPct = totalPfcKcal > 0 ? Math.round((fKcal / totalPfcKcal) * 100) : 0;
+  const cPct = totalPfcKcal > 0 ? Math.max(0, 100 - pPct - fPct) : 0;
 
-  const f1 = (x: number) => Math.round(x * 10) / 10;
-  // 日本人の食事摂取基準（成人男性、参考値）
-  const dailyReference = {
-    fiber: 21, // g
-    salt: 7.5, // g（上限値）
-    iron: 7.5, // mg
-    calcium: 800, // mg
-    vitaminC: 100, // mg
-  };
-
-  const items = [
-    { label: '🌾 食物繊維', value: f1(totals.fiber), unit: 'g', ref: dailyReference.fiber },
-    { label: '🧂 食塩', value: f1(totals.salt), unit: 'g', ref: dailyReference.salt, isLimit: true },
-    { label: '🩸 鉄', value: f1(totals.iron), unit: 'mg', ref: dailyReference.iron },
-    { label: '🦴 カルシウム', value: Math.round(totals.calcium), unit: 'mg', ref: dailyReference.calcium },
-    { label: '🍊 ビタミンC', value: Math.round(totals.vitaminC), unit: 'mg', ref: dailyReference.vitaminC },
+  const nutrients = [
+    { label: 'たんぱく質', value: r1(totals.P), goal: goals.P, unit: 'g', color: 'rose' as const },
+    { label: '脂質', value: r1(totals.F), goal: goals.F, unit: 'g', color: 'amber' as const },
+    { label: '炭水化物', value: r1(totals.C), goal: goals.C, unit: 'g', color: 'sky' as const },
   ];
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between"
-      >
-        <h2 className="text-base font-bold text-stone-900">🔬 詳細栄養素</h2>
-        <span className="text-stone-500 text-xs">
-          {expanded ? '閉じる ▲' : 'もっと詳しく ▼'}
-        </span>
-      </button>
-      {expanded && (
-        <>
-          <div className="mt-3 space-y-2">
-            {items.map((it) => {
-              const pctRaw = Math.round((it.value / it.ref) * 100);
-              const pct = Math.min(100, pctRaw);
-              // 状態判定（食塩は上限なので逆ロジック）
-              let labelStatus: '不足' | '良好' | '過剰';
-              if (it.isLimit) {
-                labelStatus = pctRaw > 100 ? '過剰' : pctRaw > 80 ? '良好' : '良好';
-              } else {
-                labelStatus = pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
-              }
-              const labelStyle =
-                labelStatus === '不足'
-                  ? 'text-sky-700 bg-sky-100 border-sky-300'
-                  : labelStatus === '過剰'
-                  ? 'text-rose-700 bg-rose-100 border-rose-300'
-                  : 'text-emerald-700 bg-emerald-100 border-emerald-300';
-              const labelIcon =
-                labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
-              return (
-                <div key={it.label}>
-                  <div className="flex justify-between items-center text-sm mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-stone-800">{it.label}</span>
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${labelStyle}`}
-                      >
-                        {labelIcon} {labelStatus}
-                      </span>
-                    </div>
-                    <span className="font-bold text-stone-900">
-                      {it.value} <span className="text-xs text-stone-500">{it.unit}</span>
-                      <span className="text-xs font-medium text-stone-500 ml-1">
-                        （{pctRaw}%）
-                      </span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${
-                        it.isLimit
-                          ? pct > 100
-                            ? 'bg-rose-500'
-                            : 'bg-amber-500'
-                          : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-base font-bold text-stone-900">栄養サマリー</h2>
+        <span className="text-[11px] text-stone-500">{kcalPct}% 達成</span>
+      </div>
+
+      {/* カロリー大型表示 */}
+      <div className="mb-4">
+        <div className="text-xs text-stone-600 mb-1">カロリー</div>
+        <div className="flex items-baseline gap-2 mb-2">
+          <span className="text-3xl font-bold text-stone-900">{Math.round(totals.kcal)}</span>
+          <span className="text-sm font-medium text-stone-500">/ {goals.kcal} kcal</span>
+        </div>
+        <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 transition-all"
+            style={{ width: `${Math.min(100, kcalPct) || 0}%` }}
+          />
+        </div>
+      </div>
+
+      {/* 3栄養素グリッド */}
+      <div className="grid grid-cols-3 gap-x-3 gap-y-3 mb-4">
+        {nutrients.map((n) => {
+          const pctRaw = n.goal > 0 ? Math.round((n.value / n.goal) * 100) : 0;
+          const pct = Math.min(100, pctRaw);
+          const barColor = barColorFor(n.color);
+          const isOver = pctRaw > 130;
+          const isUnder = pctRaw < 70;
+          return (
+            <div key={n.label}>
+              <div className="flex items-baseline justify-between mb-1">
+                <span className="text-[11px] font-medium text-stone-700">{n.label}</span>
+                {isOver && <span className="text-[9px] font-bold text-rose-600 bg-rose-100 px-1 rounded">過剰</span>}
+                {isUnder && <span className="text-[9px] font-bold text-sky-600 bg-sky-100 px-1 rounded">不足</span>}
+              </div>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-base font-bold text-stone-900">{n.value}</span>
+                <span className="text-[10px] text-stone-500">/ {n.goal}{n.unit}</span>
+              </div>
+              <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                <div className={`h-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* PFC比率 */}
+      {totalPfcKcal > 0 && (
+        <div>
+          <div className="text-[11px] font-bold text-stone-700 mb-1.5">PFCバランス</div>
+          <div className="flex h-5 rounded-full overflow-hidden border border-stone-200">
+            <div className="bg-rose-400" style={{ width: `${pPct}%` }} />
+            <div className="bg-amber-400" style={{ width: `${fPct}%` }} />
+            <div className="bg-sky-400" style={{ width: `${cPct}%` }} />
           </div>
-          <div className="text-[10px] text-stone-500 mt-3 leading-relaxed">
-            ※ AIによる推定値です。実際の値と異なる場合があります。日本人の食事摂取基準（成人）を参考目安として表示。
+          <div className="flex justify-between mt-1 text-[10px] text-stone-600">
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-rose-400 rounded-sm mr-1" />
+              P {pPct}%
+            </span>
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-amber-400 rounded-sm mr-1" />
+              F {fPct}%
+            </span>
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-sky-400 rounded-sm mr-1" />
+              C {cPct}%
+            </span>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
+}
+
+function barColorFor(c: 'rose' | 'amber' | 'sky'): string {
+  switch (c) {
+    case 'rose': return 'bg-rose-500';
+    case 'amber': return 'bg-amber-500';
+    case 'sky': return 'bg-sky-500';
+  }
 }
 
 function PredictionBlock({
@@ -792,7 +778,7 @@ function StreakCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">🏆 継続バッジ</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3">🏆 バッジ獲得・達成記録</h2>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
           <div className="text-xs font-bold text-stone-800">🔥 連続記録日数</div>
@@ -848,156 +834,6 @@ function StreakCard({
                 {b.icon} {b.label}
               </span>
             ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SuggestCard({
-  data,
-  loading,
-  lineUserId,
-  onRecorded,
-}: {
-  data: SuggestData | null;
-  loading: boolean;
-  lineUserId: string | null;
-  onRecorded: () => void;
-}) {
-  const [pickerFor, setPickerFor] = useState<number | null>(null);
-  const [recording, setRecording] = useState(false);
-
-  if (loading && !data) {
-    return (
-      <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-        <h2 className="text-base font-bold text-stone-900 mb-2">💡 残り目標の食事提案</h2>
-        <div className="text-sm text-stone-500 py-2">AIが提案を生成中…</div>
-      </div>
-    );
-  }
-  if (!data) return null;
-  const { remaining, suggestions, message } = data;
-
-  async function record(mealType: string) {
-    if (!lineUserId || pickerFor === null) return;
-    const s = suggestions[pickerFor];
-    if (!s) return;
-    setRecording(true);
-    try {
-      const res = await fetch('/api/record/manual', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineUserId,
-          mealType,
-          title: s.title,
-          kcal: s.kcal,
-          P: s.P,
-          F: s.F,
-          C: s.C,
-          day: '今日',
-        }),
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `記録失敗（${res.status}）`);
-      }
-      setPickerFor(null);
-      onRecorded();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '記録エラー');
-    } finally {
-      setRecording(false);
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">💡 残り目標の食事提案</h2>
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-3">
-        <div className="text-xs text-stone-700 mb-1">本日の残り</div>
-        <div className="text-sm font-bold text-stone-900">
-          {remaining.kcal} kcal
-          <span className="ml-2 text-xs font-medium text-stone-700">
-            P {remaining.P}g ・ F {remaining.F}g ・ C {remaining.C}g
-          </span>
-        </div>
-      </div>
-      {message && (
-        <div className="text-sm text-stone-700 bg-stone-50 rounded-xl p-3">{message}</div>
-      )}
-      {suggestions.length > 0 && (
-        <>
-          <div className="space-y-2">
-            {suggestions.map((s, i) => (
-              <div key={i} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-                <div className="flex items-start gap-2 mb-1">
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                    {s.tag}
-                  </span>
-                  <div className="font-bold text-sm text-stone-900 leading-tight">
-                    {s.title}
-                  </div>
-                </div>
-                <div className="text-xs font-medium text-stone-700 ml-1">
-                  約 {s.kcal} kcal ・ P 約{s.P}g ・ F 約{s.F}g ・ C 約{s.C}g
-                </div>
-                {s.reason && (
-                  <div className="text-[11px] text-stone-500 mt-0.5 ml-1 mb-2">💬 {s.reason}</div>
-                )}
-                <button
-                  onClick={() => setPickerFor(i)}
-                  className="mt-1 w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg active:bg-emerald-700"
-                >
-                  🍽️ これ食べた
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="text-[11px] text-stone-500 mt-3 leading-relaxed">
-            ※ 数値はAIによる推定値です。実際に食べた料理を写真で記録すると、その内容から計算された正確な数値が反映されます。
-          </div>
-        </>
-      )}
-
-      {/* 食事区分ピッカーモーダル */}
-      {pickerFor !== null && suggestions[pickerFor] && (
-        <div
-          className="fixed inset-0 bg-black/40 z-[70] flex items-end"
-          onClick={() => !recording && setPickerFor(null)}
-        >
-          <div
-            className="bg-white rounded-t-2xl shadow-2xl p-5 pb-8 w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-4" />
-            <h3 className="text-base font-bold text-stone-900 mb-2 text-center">
-              食事区分を選んでください
-            </h3>
-            <div className="text-xs text-stone-600 mb-4 text-center leading-tight">
-              {suggestions[pickerFor].title}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {(['朝食', '昼食', '夕食', '間食'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => record(m)}
-                  disabled={recording}
-                  className="bg-stone-100 text-stone-900 font-bold py-4 rounded-xl active:bg-stone-200 disabled:opacity-50"
-                >
-                  {m === '朝食' ? '🌅' : m === '昼食' ? '☀️' : m === '夕食' ? '🌙' : '🍪'} {m}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setPickerFor(null)}
-              disabled={recording}
-              className="w-full mt-4 py-3 bg-stone-100 text-stone-700 font-bold rounded-xl active:bg-stone-200 disabled:opacity-50"
-            >
-              {recording ? '記録中…' : 'キャンセル'}
-            </button>
           </div>
         </div>
       )}
@@ -1068,39 +904,16 @@ function MealSection({
   mealType,
   records,
   dayTotalKcal,
-  lineUserId,
-  onDeleted,
+  selectedDate,
 }: {
   mealType: string;
   records: MealRecord[];
   dayTotalKcal: number;
+  selectedDate: string;
   lineUserId: string | null;
   onDeleted: () => void;
 }) {
   const emoji = MEAL_EMOJI[mealType] || '🍽️';
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  async function handleDelete(pageId: string) {
-    if (!lineUserId) return;
-    if (!confirm('この記録を削除します。よろしいですか？')) return;
-    setDeletingId(pageId);
-    try {
-      const res = await fetch('/api/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId, lineUserId }),
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `削除失敗（${res.status}）`);
-      }
-      onDeleted();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '削除エラー');
-    } finally {
-      setDeletingId(null);
-    }
-  }
   const totals = records.reduce(
     (acc, r) => ({
       kcal: acc.kcal + r.kcal,
@@ -1112,73 +925,143 @@ function MealSection({
   );
   const pctOfDay =
     dayTotalKcal > 0 ? Math.round((totals.kcal / dayTotalKcal) * 100) : 0;
+  const hasRecords = records.length > 0;
+  const detailHref = `/meal-detail?date=${selectedDate}&meal=${encodeURIComponent(mealType)}`;
+  const recordHref = `/record?meal=${encodeURIComponent(mealType)}`;
+  const dbHref = `/food-search?meal=${encodeURIComponent(mealType)}`;
+  const memoHref = `/record?meal=${encodeURIComponent(mealType)}&memo=1`;
+  const myMenuHref = `/my-menu?meal=${encodeURIComponent(mealType)}`;
+
   return (
-    <div className="mb-4 last:mb-0">
-      <div className="flex justify-between items-center mb-1">
-        <span className="font-bold text-stone-900">
-          {emoji} {mealType}
-        </span>
-        <span className="text-sm font-bold text-stone-900">
-          {records.length === 0 ? (
-            <span className="text-stone-500 font-medium">未記録</span>
-          ) : (
-            <>
-              {Math.round(totals.kcal)} kcal
-              <span className="text-xs font-medium text-stone-500 ml-1">
-                （{pctOfDay}%）
-              </span>
-            </>
-          )}
-        </span>
-      </div>
-      {records.length > 0 && (
-        <div className="mb-2 text-xs font-medium text-stone-700">
-          P {r1(totals.P)}g ・ F {r1(totals.F)}g ・ C {r1(totals.C)}g
-          {records.length > 1 && (
-            <span className="text-stone-500 ml-2">（{records.length}回記録）</span>
-          )}
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+      <Link
+        href={hasRecords ? detailHref : recordHref}
+        className="block px-4 py-3 active:bg-stone-50"
+      >
+        <div className="flex justify-between items-center">
+          <span className="font-bold text-stone-900">
+            {emoji} {mealType}
+          </span>
+          <span className="text-sm font-bold text-stone-900">
+            {hasRecords ? (
+              <>
+                {Math.round(totals.kcal)} kcal
+                <span className="text-xs font-medium text-stone-500 ml-1">
+                  （{pctOfDay}%）
+                </span>
+              </>
+            ) : (
+              <span className="text-stone-500 font-medium text-xs">未記録</span>
+            )}
+          </span>
         </div>
-      )}
-      {records.length > 0 && (
-        <div className="space-y-2">
-          {records.map((r) => (
-            <div key={r.pageId} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-              <div className="flex items-start gap-3">
-                {r.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={toDriveThumbnailUrl(r.imageUrl)}
-                    alt={r.title}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-stone-100"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-stone-700">
-                    {Math.round(r.kcal)} kcal · P{r1(r.P)} F{r1(r.F)} C{r1(r.C)}
+        {hasRecords && (
+          <div className="mt-1 text-[11px] font-medium text-stone-700">
+            P {r1(totals.P)}g ・ F {r1(totals.F)}g ・ C {r1(totals.C)}g
+          </div>
+        )}
+      </Link>
+
+      {hasRecords ? (
+        <>
+          <Link
+            href={detailHref}
+            className="block border-t border-stone-100 active:bg-stone-50"
+          >
+            <div className="divide-y divide-stone-100">
+              {records.map((r) => {
+                const isSkipped = r.memo === '食べなかった' || r.title === '食べなかった';
+                const name = shortNameFromRecord(r);
+                const unit = unitFromName(name);
+                return (
+                  <div key={r.pageId} className="flex items-center px-4 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-stone-900 truncate">
+                        {isSkipped ? '🚫 食べなかった' : name}
+                      </div>
+                      <div className="text-[10px] text-stone-600 mt-0.5">
+                        {Math.round(r.kcal)} kcal
+                      </div>
+                    </div>
+                    <div className="ml-2 flex-shrink-0 text-[11px] font-medium text-stone-700 border border-stone-300 px-2 py-0.5 rounded-full">
+                      {unit}
+                    </div>
                   </div>
-                  {r.memo && (
-                    <div className="text-xs text-stone-600 mt-1 line-clamp-2">{r.memo}</div>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDelete(r.pageId)}
-                  disabled={deletingId === r.pageId}
-                  className="flex-shrink-0 text-xs text-red-700 font-bold px-2 py-1 rounded-lg active:bg-red-50 disabled:opacity-50"
-                  aria-label="記録を削除"
-                >
-                  {deletingId === r.pageId ? '削除中…' : '🗑️'}
-                </button>
-              </div>
+                );
+              })}
             </div>
-          ))}
+          </Link>
+          {records.some((r) => r.imageUrl) && (
+            <Link
+              href={detailHref}
+              className="block border-t border-stone-100 px-4 py-3 active:bg-stone-50 overflow-x-auto scrollbar-hide"
+            >
+              <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+                {records
+                  .filter((r) => r.imageUrl)
+                  .map((r) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={r.pageId}
+                      src={toDriveThumbnailUrl(r.imageUrl!)}
+                      alt={r.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-20 h-20 object-cover rounded-xl bg-stone-100 flex-shrink-0"
+                    />
+                  ))}
+              </div>
+            </Link>
+          )}
+        </>
+      ) : (
+        <div className="px-4 pb-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-stone-700">
+          <Link
+            href={recordHref}
+            className="flex items-center gap-1 font-medium active:text-emerald-700"
+          >
+            📷 写真
+          </Link>
+          <Link
+            href={memoHref}
+            className="flex items-center gap-1 font-medium active:text-emerald-700"
+          >
+            📝 テキストで記録
+          </Link>
+          <Link
+            href={dbHref}
+            className="flex items-center gap-1 font-medium active:text-emerald-700"
+          >
+            🔍 食品DB
+          </Link>
+          <Link
+            href={myMenuHref}
+            className="flex items-center gap-1 font-medium active:text-emerald-700"
+          >
+            ⭐ マイメニュー
+          </Link>
         </div>
       )}
-    </div>
+    </section>
   );
+}
+
+function shortNameFromRecord(r: MealRecord): string {
+  const memo = (r.memo || '').trim();
+  if (!memo) return r.title || '食事';
+  const beforeAi = memo.split(/\s*\/\s*AI識別[:：]/)[0] || memo;
+  const firstItem = beforeAi.split(/[、,]/)[0]?.trim();
+  return firstItem || beforeAi.slice(0, 30);
+}
+
+function unitFromName(name: string): string {
+  const m = name.match(/\s+([0-9０-９.]+\s*(g|ml|個|本|杯|皿|枚|切れ|人前|匹|玉|串|缶|袋|箱|食|kg))$/);
+  if (m) return m[1].trim();
+  const m2 = name.match(/[（(]([^）)]+)[）)]\s*$/);
+  if (m2 && /[0-9０-９]/.test(m2[1])) return m2[1].trim();
+  return '1人前';
 }
 
 function r1(x: number): number {

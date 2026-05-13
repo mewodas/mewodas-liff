@@ -2,13 +2,27 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 type NavItem = {
   label: string;
-  icon: string;
+  icon: ReactNode;
   match: (path: string) => boolean;
 } & ({ href: string } | { action: 'open-record-sheet' });
+
+const GridIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className="w-5 h-5"
+  >
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+  </svg>
+);
 
 const items: NavItem[] = [
   {
@@ -25,8 +39,15 @@ const items: NavItem[] = [
       p.startsWith('/record') || p.startsWith('/weight') || p.startsWith('/exercise'),
   },
   { href: '/chat', label: 'AI相談', icon: '💬', match: (p) => p.startsWith('/chat') },
-  { href: '/weekly', label: '週次', icon: '📈', match: (p) => p.startsWith('/weekly') },
-  { href: '/history', label: '履歴', icon: '📅', match: (p) => p.startsWith('/history') },
+  {
+    href: '/menu',
+    label: 'メニュー',
+    icon: GridIcon,
+    match: (p) =>
+      p.startsWith('/menu') ||
+      p.startsWith('/weekly') ||
+      p.startsWith('/history'),
+  },
 ];
 
 export default function FooterNav() {
@@ -47,7 +68,7 @@ export default function FooterNav() {
           onClick={() => setSheetOpen(false)}
         >
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-5 pb-24"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-4" />
@@ -88,7 +109,7 @@ export default function FooterNav() {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-50">
-        <div className="max-w-md mx-auto grid grid-cols-5">
+        <div className="max-w-md mx-auto grid grid-cols-4">
           {items.map((it) => {
             const active = it.match(pathname);
             const className = `flex flex-col items-center py-2 ${
@@ -96,9 +117,11 @@ export default function FooterNav() {
             } active:bg-stone-50`;
             const inner = (
               <>
-                <span className="text-xl leading-none">{it.icon}</span>
+                <span className="text-xl leading-none flex items-center justify-center h-6">
+                  {it.icon}
+                </span>
                 <span
-                  className={`text-[10px] mt-1 font-bold ${
+                  className={`mt-1 font-bold text-[10px] ${
                     active ? 'text-emerald-700' : 'text-stone-600'
                   }`}
                 >
