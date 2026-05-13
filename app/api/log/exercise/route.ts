@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { waitUntil } from '@vercel/functions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -10,29 +9,23 @@ async function callGasSaveExercise(payload: {
   date: string;
   exercised: boolean;
   content: string;
-}) {
+}): Promise<void> {
   const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
   if (!gasEndpoint) {
-    console.error('GAS_RECORD_ENDPOINT 未設定');
-    return;
+    throw new Error('GAS_RECORD_ENDPOINT 未設定');
   }
-  try {
-    const res = await fetch(gasEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: 'liff_save_exercise', ...payload }),
-    });
-    if (!res.ok) {
-      const detail = (await res.text()).slice(0, 300);
-      console.error('GAS save_exercise failed', res.status, detail);
-    } else {
-      const data = await res.json().catch(() => null);
-      if (data && data.ok === false) {
-        console.error('GAS save_exercise error', data.error);
-      }
-    }
-  } catch (e) {
-    console.error('GAS save_exercise exception', e);
+  const res = await fetch(gasEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ type: 'liff_save_exercise', ...payload }),
+  });
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    throw new Error(`GAS保存失敗（${res.status}）: ${detail}`);
+  }
+  const data = await res.json().catch(() => null);
+  if (data && data.ok === false) {
+    throw new Error(data.error || 'GAS保存エラー');
   }
 }
 
@@ -51,15 +44,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
 
-    // GASへの書き込みはレスポンス後に非同期実行
-    waitUntil(
-      callGasSaveExercise({
-        lineUserId,
-        date,
-        exercised,
-        content: content || '',
-      })
-    );
+    // GAS書き込み完了を待ってからレスポンス（上書き反映を確実にする）
+    await callGasSaveExercise({
+      lineUserId,
+      date,
+      exercised,
+      content: content || '',
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { waitUntil } from '@vercel/functions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -9,29 +8,23 @@ async function callGasSaveWeight(payload: {
   lineUserId: string;
   date: string;
   weight: number;
-}) {
+}): Promise<void> {
   const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
   if (!gasEndpoint) {
-    console.error('GAS_RECORD_ENDPOINT 未設定');
-    return;
+    throw new Error('GAS_RECORD_ENDPOINT 未設定');
   }
-  try {
-    const res = await fetch(gasEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: 'liff_save_weight', ...payload }),
-    });
-    if (!res.ok) {
-      const detail = (await res.text()).slice(0, 300);
-      console.error('GAS save_weight failed', res.status, detail);
-    } else {
-      const data = await res.json().catch(() => null);
-      if (data && data.ok === false) {
-        console.error('GAS save_weight error', data.error);
-      }
-    }
-  } catch (e) {
-    console.error('GAS save_weight exception', e);
+  const res = await fetch(gasEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ type: 'liff_save_weight', ...payload }),
+  });
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    throw new Error(`GAS保存失敗（${res.status}）: ${detail}`);
+  }
+  const data = await res.json().catch(() => null);
+  if (data && data.ok === false) {
+    throw new Error(data.error || 'GAS保存エラー');
   }
 }
 
@@ -53,8 +46,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'weight が不正です（0〜300kg）' }, { status: 400 });
     }
 
-    // GASへの書き込みはレスポンス後に非同期実行
-    waitUntil(callGasSaveWeight({ lineUserId, date, weight }));
+    // GAS書き込み完了を待ってからレスポンス（上書き反映を確実にする）
+    await callGasSaveWeight({ lineUserId, date, weight });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
