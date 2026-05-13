@@ -173,9 +173,15 @@ export default function HomePage() {
 
         <Link
           href="/record"
-          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center"
+          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center mb-2"
         >
           📷 食事を記録する
+        </Link>
+        <Link
+          href="/weekly"
+          className="block bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center active:bg-stone-50"
+        >
+          📈 週次レポートを見る
         </Link>
       </div>
     </main>

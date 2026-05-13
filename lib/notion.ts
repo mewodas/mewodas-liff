@@ -85,6 +85,46 @@ export async function getCustomerByLineId(
   };
 }
 
+// 指定期間の食事記録を取得（時刻順）
+export async function getFoodRecordsByDateRange(
+  lineUserId: string,
+  startDate: string,
+  endDate: string
+): Promise<FoodRecord[]> {
+  const res = await notionRequest('POST', `/databases/${NOTION_FOOD_DB_ID}/query`, {
+    filter: {
+      and: [
+        { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
+        { property: '日付', date: { on_or_after: startDate } },
+        { property: '日付', date: { on_or_before: endDate } },
+      ],
+    },
+    sorts: [
+      { property: '日付', direction: 'ascending' },
+      { timestamp: 'created_time', direction: 'ascending' },
+    ],
+    page_size: 100,
+  });
+  return (res.results || []).map(notionPageToFoodRecord);
+}
+
+function notionPageToFoodRecord(page: { id: string; properties: Record<string, unknown>; created_time: string }): FoodRecord {
+  const p = page.properties as Record<string, { number?: number; select?: { name: string }; rich_text?: Array<{ plain_text: string }>; url?: string; title?: Array<{ plain_text: string }>; date?: { start: string } }>;
+  return {
+    pageId: page.id,
+    mealType: p['食事区分']?.select?.name || '',
+    date: p['日付']?.date?.start || '',
+    recordedAt: page.created_time,
+    kcal: p['カロリー_kcal']?.number || 0,
+    P: p['タンパク質_g']?.number || 0,
+    F: p['脂質_g']?.number || 0,
+    C: p['炭水化物_g']?.number || 0,
+    memo: p['食材メモ']?.rich_text?.[0]?.plain_text || '',
+    imageUrl: p['画像URL']?.url || null,
+    title: p['食事メモ']?.title?.[0]?.plain_text || '',
+  };
+}
+
 // 指定日の食事記録を取得（時刻順）
 export async function getFoodRecordsByDate(
   lineUserId: string,
@@ -99,22 +139,7 @@ export async function getFoodRecordsByDate(
     },
     sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
   });
-  return (res.results || []).map((page: { id: string; properties: Record<string, unknown>; created_time: string }) => {
-    const p = page.properties as Record<string, { number?: number; select?: { name: string }; rich_text?: Array<{ plain_text: string }>; url?: string; title?: Array<{ plain_text: string }>; date?: { start: string } }>;
-    return {
-      pageId: page.id,
-      mealType: p['食事区分']?.select?.name || '',
-      date: p['日付']?.date?.start || dateString,
-      recordedAt: page.created_time,
-      kcal: p['カロリー_kcal']?.number || 0,
-      P: p['タンパク質_g']?.number || 0,
-      F: p['脂質_g']?.number || 0,
-      C: p['炭水化物_g']?.number || 0,
-      memo: p['食材メモ']?.rich_text?.[0]?.plain_text || '',
-      imageUrl: p['画像URL']?.url || null,
-      title: p['食事メモ']?.title?.[0]?.plain_text || '',
-    };
-  });
+  return (res.results || []).map(notionPageToFoodRecord);
 }
 
 export async function saveFoodRecord(params: {
