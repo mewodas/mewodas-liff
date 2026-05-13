@@ -89,23 +89,26 @@ function HomePageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dateParam = searchParams.get('date');
+  const lineUserIdOverride = searchParams.get('lineUserId');
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [callerUserId, setCallerUserId] = useState<string | null>(null);
   const [suggest, setSuggest] = useState<SuggestData | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
 
+  const isImpersonating = !!lineUserIdOverride && lineUserIdOverride !== callerUserId;
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
   const isToday = selectedDate === todayStr;
 
   function navigateToDate(d: string) {
-    if (d === todayStr) {
-      router.push('/home');
-    } else {
-      router.push(`/home?date=${d}`);
-    }
+    const params = new URLSearchParams();
+    if (d !== todayStr) params.set('date', d);
+    if (lineUserIdOverride) params.set('lineUserId', lineUserIdOverride);
+    const qs = params.toString();
+    router.push(qs ? `/home?${qs}` : '/home');
   }
 
   useEffect(() => {
@@ -118,13 +121,15 @@ function HomePageInner() {
           setReady(true);
           return;
         }
-        setUserId(profile.userId);
+        setCallerUserId(profile.userId);
+        // ?lineUserId= が指定されていればそれを優先（トレーナー閲覧用）
+        setUserId(lineUserIdOverride || profile.userId);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'LIFF初期化エラー');
         setReady(true);
       }
     })();
-  }, []);
+  }, [lineUserIdOverride]);
 
   // 提案を取得（当日のみ、データ取得後）
   useEffect(() => {
@@ -231,6 +236,21 @@ function HomePageInner() {
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
+        {/* トレーナー閲覧モードのバナー */}
+        {isImpersonating && (
+          <div className="mb-3 bg-amber-100 border border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-900">
+              👁️ トレーナー閲覧モード（{customer.name}さん）
+            </span>
+            <button
+              onClick={() => router.push('/trainer')}
+              className="text-xs font-bold text-amber-900 underline"
+            >
+              俯瞰へ戻る
+            </button>
+          </div>
+        )}
+
         {/* ヘッダー */}
         <div className="mb-4">
           <h1 className="text-xl font-bold text-stone-900 mb-2">こんにちは、{customer.name} さん</h1>
