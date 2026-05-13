@@ -451,31 +451,43 @@ function StreakCard({
       <h2 className="text-base font-bold text-stone-900 mb-3">🏆 継続バッジ</h2>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">🔥 連続記録</div>
+          <div className="text-xs font-bold text-stone-800">🔥 連続記録日数</div>
           <div className="text-2xl font-bold text-orange-700 mt-0.5">
             {streakDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
+          <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
+            今、何日連続で記録中か
+          </div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">🏆 ベスト連続</div>
+          <div className="text-xs font-bold text-stone-800">🏆 最長連続記録</div>
           <div className="text-2xl font-bold text-amber-700 mt-0.5">
             {bestStreakDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
+          <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
+            直近30日のベスト記録
+          </div>
         </div>
         <div className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">📝 今月の記録</div>
+          <div className="text-xs font-bold text-stone-800">📝 今月の記録日数</div>
           <div className="text-2xl font-bold text-sky-700 mt-0.5">
             {monthlyRecordedDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
+          <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
+            今月、食事を記録した日数
+          </div>
         </div>
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">📊 直近30日</div>
+          <div className="text-xs font-bold text-stone-800">📊 直近30日の記録</div>
           <div className="text-2xl font-bold text-emerald-700 mt-0.5">
             {last30RecordedDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
+          </div>
+          <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
+            過去30日で記録した日数
           </div>
         </div>
       </div>

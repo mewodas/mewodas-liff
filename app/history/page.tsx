@@ -288,10 +288,26 @@ function MonthlySummary({
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
       <h2 className="text-base font-bold text-stone-900 mb-3">📊 月次サマリ</h2>
       <div className="grid grid-cols-2 gap-3">
-        <StatBox label="📝 記録日" value={`${recorded.length}/${totalDaysToShow}`} unit="日" />
-        <StatBox label="🏃 運動日" value={`${exerciseDays}`} unit={`/${totalDaysToShow}日`} />
-        <StatBox label="📊 平均kcal" value={avgKcal > 0 ? `${avgKcal}` : '—'} unit={avgKcal > 0 ? 'kcal' : ''} />
-        <StatBox label="🔢 累計kcal" value={totalKcal > 0 ? `${Math.round(totalKcal)}` : '—'} unit={totalKcal > 0 ? 'kcal' : ''} />
+        <StatBox
+          label="📝 食事を記録した日数"
+          value={`${recorded.length}/${totalDaysToShow}`}
+          unit="日"
+        />
+        <StatBox
+          label="🏃 運動した日数"
+          value={`${exerciseDays}/${totalDaysToShow}`}
+          unit="日"
+        />
+        <StatBox
+          label="📊 1日あたり平均カロリー"
+          value={avgKcal > 0 ? `${avgKcal}` : '—'}
+          unit={avgKcal > 0 ? 'kcal' : ''}
+        />
+        <StatBox
+          label="🔢 今月の合計カロリー"
+          value={totalKcal > 0 ? `${Math.round(totalKcal)}` : '—'}
+          unit={totalKcal > 0 ? 'kcal' : ''}
+        />
       </div>
     </div>
   );
