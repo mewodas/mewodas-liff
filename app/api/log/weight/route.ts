@@ -1,8 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
+
+async function callGasSaveWeight(payload: {
+  lineUserId: string;
+  date: string;
+  weight: number;
+}) {
+  const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
+  if (!gasEndpoint) {
+    console.error('GAS_RECORD_ENDPOINT 未設定');
+    return;
+  }
+  try {
+    const res = await fetch(gasEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'liff_save_weight', ...payload }),
+    });
+    if (!res.ok) {
+      const detail = (await res.text()).slice(0, 300);
+      console.error('GAS save_weight failed', res.status, detail);
+    } else {
+      const data = await res.json().catch(() => null);
+      if (data && data.ok === false) {
+        console.error('GAS save_weight error', data.error);
+      }
+    }
+  } catch (e) {
+    console.error('GAS save_weight exception', e);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,33 +53,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'weight が不正です（0〜300kg）' }, { status: 400 });
     }
 
-    const gasEndpoint = process.env.GAS_RECORD_ENDPOINT;
-    if (!gasEndpoint) {
-      return NextResponse.json({ error: 'GAS_RECORD_ENDPOINT 未設定' }, { status: 500 });
-    }
+    // GASへの書き込みはレスポンス後に非同期実行
+    waitUntil(callGasSaveWeight({ lineUserId, date, weight }));
 
-    const gasRes = await fetch(gasEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        type: 'liff_save_weight',
-        lineUserId,
-        date,
-        weight,
-      }),
-    });
-
-    if (!gasRes.ok) {
-      return NextResponse.json(
-        { error: 'GAS呼び出し失敗', detail: (await gasRes.text()).slice(0, 300) },
-        { status: 502 }
-      );
-    }
-
-    const data = await gasRes.json();
-    if (data && data.ok === false) {
-      return NextResponse.json({ error: data.error || 'GAS処理失敗' }, { status: 400 });
-    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
