@@ -209,7 +209,7 @@ export default function FoodSearchPage() {
         </div>
       </PageHeader>
 
-      <div className="bg-white border-b border-stone-200 px-4 py-3 sticky top-[200px] z-20">
+      <div className="bg-white border-b border-stone-200 px-4 py-3">
         <div className="flex gap-2 mb-2">
           {(['今日', '昨日'] as DayLabel[]).map((d) => (
             <button
