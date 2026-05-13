@@ -264,13 +264,15 @@ export default function FoodSearchPage() {
                 const inCart = cart[item.id];
                 const qty = inCart?.qty || 0;
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => addToCart(item)}
-                    className={`w-full flex items-center justify-between border rounded-xl px-3 py-3 active:bg-emerald-50 ${
+                    onClick={() => {
+                      if (qty === 0) addToCart(item);
+                    }}
+                    className={`w-full flex items-center justify-between border rounded-xl px-3 py-3 ${
                       qty > 0
-                        ? 'bg-emerald-50 border-emerald-400'
-                        : 'bg-white border-stone-200'
+                        ? 'bg-emerald-50 border-emerald-400 cursor-default'
+                        : 'bg-white border-stone-200 active:bg-emerald-50 cursor-pointer'
                     }`}
                   >
                     <div className="flex-1 min-w-0 text-left">
@@ -284,20 +286,39 @@ export default function FoodSearchPage() {
                       <div className="text-[10px] text-stone-500">kcal</div>
                     </div>
                     {qty > 0 ? (
-                      <div className="ml-2 relative w-7 h-7">
-                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-base font-bold">
-                          ✓
-                        </div>
-                        <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow">
+                      <div className="ml-2 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromCart(item.id);
+                          }}
+                          className="w-7 h-7 rounded-full bg-white border border-stone-300 text-stone-700 font-bold text-base flex items-center justify-center active:bg-stone-100"
+                          aria-label="数を減らす"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[20px] text-center text-sm font-bold text-emerald-700">
                           {qty}
-                        </div>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(item);
+                          }}
+                          className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-base flex items-center justify-center active:bg-emerald-700"
+                          aria-label="数を増やす"
+                        >
+                          ＋
+                        </button>
                       </div>
                     ) : (
                       <div className="ml-2 w-7 h-7 rounded-full bg-stone-100 border border-stone-300 text-stone-600 flex items-center justify-center text-base font-bold">
-                        +
+                        ＋
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
