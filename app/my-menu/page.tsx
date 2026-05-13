@@ -11,6 +11,7 @@ import {
   addMyMenuItem,
   removeMyMenuItem,
   touchMyMenuItem,
+  updateMyMenuItem,
   type MyMenuItem,
 } from '@/lib/myMenu';
 
@@ -44,6 +45,7 @@ function MyMenuInner() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<MyMenuItem | null>(null);
   const [recordPicker, setRecordPicker] = useState<MyMenuItem | null>(null);
   // クエリパラメータからの初期値（/record からの遷移時のみ意味を持つ）
   const defaultDay: DayLabel = initialDay;
@@ -123,6 +125,17 @@ function MyMenuInner() {
     setShowAdd(false);
   }
 
+  function handleUpdate(
+    id: string,
+    form: { name: string; unit: string; kcal: number; P: number; F: number; C: number }
+  ) {
+    updateMyMenuItem(id, form);
+    setItems(loadMyMenu());
+    setEditing(null);
+    setSuccess('マイメニューを更新しました');
+    setTimeout(() => setSuccess(null), 2000);
+  }
+
   if (!ready) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-white">
@@ -199,6 +212,13 @@ function MyMenuInner() {
                     {isBusy ? '…' : '+'}
                   </button>
                   <button
+                    onClick={() => setEditing(item)}
+                    className="text-xs text-stone-500 px-1 active:text-emerald-700"
+                    aria-label="編集"
+                  >
+                    ✏️
+                  </button>
+                  <button
                     onClick={() => handleRemove(item.id)}
                     className="text-xs text-stone-400 px-1 active:text-red-600"
                     aria-label="削除"
@@ -233,6 +253,14 @@ function MyMenuInner() {
         <AddItemSheet
           onClose={() => setShowAdd(false)}
           onSubmit={handleAdd}
+        />
+      )}
+
+      {editing && (
+        <EditItemSheet
+          item={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(form) => handleUpdate(editing.id, form)}
         />
       )}
 
@@ -654,6 +682,173 @@ function AddItemSheet({
               </button>
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditItemSheet({
+  item,
+  onClose,
+  onSubmit,
+}: {
+  item: MyMenuItem;
+  onClose: () => void;
+  onSubmit: (form: {
+    name: string;
+    unit: string;
+    kcal: number;
+    P: number;
+    F: number;
+    C: number;
+  }) => void;
+}) {
+  const [name, setName] = useState(item.name);
+  const [unit, setUnit] = useState(item.unit);
+  const [kcal, setKcal] = useState(String(item.kcal));
+  const [P, setP] = useState(String(item.P));
+  const [F, setF] = useState(String(item.F));
+  const [C, setC] = useState(String(item.C));
+  const [autoCalc, setAutoCalc] = useState(false);
+
+  function num(v: string): number {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
+  const displayKcal = autoCalc ? calcKcal : num(kcal);
+  const valid = name.trim().length > 0 && (displayKcal > 0 || num(P) + num(F) + num(C) > 0);
+
+  function submit() {
+    if (!valid) return;
+    onSubmit({
+      name: name.trim(),
+      unit: unit.trim() || '1人前',
+      kcal: displayKcal,
+      P: num(P),
+      F: num(F),
+      C: num(C),
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={onClose}>
+      <div
+        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
+          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
+          <div className="flex justify-between items-center px-5">
+            <h2 className="text-base font-bold text-stone-900">✏️ マイメニューを編集</h2>
+            <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">
+              料理名 <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例：プロテイン、サラダチキン"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">分量・単位</label>
+            <input
+              type="text"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              placeholder="例：1人前、1杯、1個、100g"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+            <div className="text-xs font-bold text-stone-700 mb-2">栄養素 <span className="text-rose-600">*</span></div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-rose-600 mb-1 block">P タンパク質(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={P}
+                  onChange={(e) => setP(e.target.value)}
+                  placeholder="20"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-amber-600 mb-1 block">F 脂質(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={F}
+                  onChange={(e) => setF(e.target.value)}
+                  placeholder="10"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-sky-600 mb-1 block">C 炭水化物(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={C}
+                  onChange={(e) => setC(e.target.value)}
+                  placeholder="30"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-stone-700 block">kcal カロリー</label>
+              <button
+                type="button"
+                onClick={() => setAutoCalc((v) => !v)}
+                className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                  autoCalc
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
+              </button>
+            </div>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={autoCalc ? String(calcKcal) : kcal}
+              onChange={(e) => setKcal(e.target.value)}
+              disabled={autoCalc}
+              placeholder="例：280"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+            />
+            {autoCalc && (
+              <p className="text-[10px] text-emerald-700 mt-1">
+                P×4 + F×9 + C×4 = {calcKcal}kcal
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={!valid}
+            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
+          >
+            {valid ? '💾 変更を保存' : '料理名と栄養素を入力してください'}
+          </button>
         </div>
       </div>
     </div>

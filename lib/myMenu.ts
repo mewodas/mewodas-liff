@@ -57,6 +57,19 @@ export function removeMyMenuItem(id: string): void {
   saveMyMenu(items);
 }
 
+export function updateMyMenuItem(
+  id: string,
+  patch: Partial<Omit<MyMenuItem, 'id' | 'createdAt'>>
+): MyMenuItem | null {
+  const items = loadMyMenu();
+  const idx = items.findIndex((it) => it.id === id);
+  if (idx === -1) return null;
+  const updated: MyMenuItem = { ...items[idx], ...patch };
+  items[idx] = updated;
+  saveMyMenu(items);
+  return updated;
+}
+
 export function touchMyMenuItem(id: string): void {
   const items = loadMyMenu();
   const target = items.find((it) => it.id === id);
