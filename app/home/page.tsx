@@ -317,7 +317,11 @@ function HomePageInner() {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <QuickAction href="/record" icon="📝" label="記録する" />
           <QuickAction href="/chat" icon="💬" label="AI食事相談" />
-          <QuickAction href="/meal-plan" icon="🍱" label="AI献立作成" />
+          <QuickAction
+            href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
+            icon="🍱"
+            label="AI献立作成"
+          />
         </div>
 
         {/* 体重目標 */}

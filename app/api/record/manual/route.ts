@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { lineUserId, mealType, title, kcal, P, F, C, day, source } = body;
+    const { lineUserId, mealType, title, kcal, P, F, C, day, date, source } = body;
 
     if (!lineUserId || !mealType || !title) {
       return NextResponse.json(
@@ -49,7 +49,11 @@ export async function POST(req: NextRequest) {
     };
     const label = sourceLabel[source] || '手動登録';
 
-    const targetDate = getTargetDate(day || '今日');
+    // date が yyyy-MM-dd 形式で指定されていればそれを優先、なければ day（今日/昨日）から算出
+    const targetDate =
+      typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? date
+        : getTargetDate(day || '今日');
     // 表示用タイトル：食事名 ｜ 登録元
     const displayTitle = `${title} ｜ ${label}`;
     const pfc = {

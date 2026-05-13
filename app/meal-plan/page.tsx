@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
+
+function jstTodayString(): string {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function formatJpDateShort(dateString: string): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+  return `${m}/${d}(${wd})`;
+}
 
 type Recipe = {
   servings: string;
@@ -67,6 +80,26 @@ const QUICK_INGREDIENTS = [
 ];
 
 export default function MealPlanPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center bg-white">
+          <div className="text-stone-800">読み込み中...</div>
+        </main>
+      }
+    >
+      <MealPlanInner />
+    </Suspense>
+  );
+}
+
+function MealPlanInner() {
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const todayStr = jstTodayString();
+  const targetDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
+
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [dietType, setDietType] = useState('通常');
@@ -193,7 +226,11 @@ export default function MealPlanPage() {
     <div className="min-h-screen bg-stone-50 pb-24">
       <PageHeader
         title="🍱 AI献立作成"
-        subtitle="目標・体重・残りPFCを元にAIが提案"
+        subtitle={
+          targetDate === todayStr
+            ? '今日の献立を提案します'
+            : `${formatJpDateShort(targetDate)} の献立を提案します`
+        }
         back
       />
 
@@ -644,6 +681,7 @@ export default function MealPlanPage() {
         <RecipeSheet
           meal={recipeMeal}
           lineUserId={userId}
+          targetDate={targetDate}
           onClose={() => setRecipeMeal(null)}
           onRecorded={() => {
             invalidate('today_');
@@ -660,11 +698,13 @@ export default function MealPlanPage() {
 function RecipeSheet({
   meal,
   lineUserId,
+  targetDate,
   onClose,
   onRecorded,
 }: {
   meal: MealItem;
   lineUserId: string;
+  targetDate: string;
   onClose: () => void;
   onRecorded: () => void;
 }) {
@@ -672,7 +712,6 @@ function RecipeSheet({
   const [loading, setLoading] = useState(true);
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [day, setDay] = useState<'今日' | '昨日'>('今日');
 
   useEffect(() => {
     let cancelled = false;
@@ -710,7 +749,7 @@ function RecipeSheet({
         body: JSON.stringify({
           lineUserId,
           mealType: meal.type,
-          day,
+          date: targetDate,
           title: meal.title,
           kcal: meal.kcal,
           P: meal.P,
@@ -744,7 +783,7 @@ function RecipeSheet({
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2" disabled={recording}>×</button>
           </div>
           <div className="text-[11px] text-stone-600 px-5 mt-1">
-            {meal.type} ・ {meal.kcal} kcal ・ P{meal.P}/F{meal.F}/C{meal.C}g
+            {formatJpDateShort(targetDate)} の {meal.type} ・ {meal.kcal} kcal ・ P{meal.P}/F{meal.F}/C{meal.C}g
           </div>
         </div>
 
@@ -800,18 +839,8 @@ function RecipeSheet({
 
               <div className="bg-white rounded-2xl p-4 border border-stone-200">
                 <div className="text-xs font-bold text-stone-700 mb-2">📝 完了したら記録します</div>
-                <div className="flex gap-2">
-                  {(['今日', '昨日'] as const).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDay(d)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold ${
-                        day === d ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
-                      }`}
-                    >
-                      {d}の{meal.type}
-                    </button>
-                  ))}
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2 text-sm font-bold text-emerald-800 text-center">
+                  {formatJpDateShort(targetDate)} の {meal.type}
                 </div>
               </div>
             </>
@@ -825,7 +854,7 @@ function RecipeSheet({
               disabled={loading || recording}
               className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
             >
-              {recording ? '記録中…' : `✅ 作成完了して${day}の${meal.type}に記録`}
+              {recording ? '記録中…' : `✅ ${formatJpDateShort(targetDate)} の ${meal.type} に記録`}
             </button>
           </div>
         </div>
