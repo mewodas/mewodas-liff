@@ -210,12 +210,20 @@ export default function HomePage() {
         >
           📷 食事を記録する
         </Link>
-        <Link
-          href="/weekly"
-          className="block bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center active:bg-stone-50"
-        >
-          📈 週次レポートを見る
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/weekly"
+            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center text-sm active:bg-stone-50"
+          >
+            📈 週次レポート
+          </Link>
+          <Link
+            href="/history"
+            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center text-sm active:bg-stone-50"
+          >
+            📅 履歴を見る
+          </Link>
+        </div>
       </div>
     </main>
   );
