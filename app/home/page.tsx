@@ -438,13 +438,16 @@ function StreakCard({
     return null;
   }
   // バッジ獲得判定（連続記録ベースのみ）
-  const badges: Array<{ icon: string; label: string; achieved: boolean }> = [
-    { icon: '🥉', label: '3日連続記録', achieved: bestStreakDays >= 3 },
-    { icon: '🥈', label: '7日連続記録', achieved: bestStreakDays >= 7 },
-    { icon: '🥇', label: '14日連続記録', achieved: bestStreakDays >= 14 },
-    { icon: '👑', label: '30日連続記録', achieved: bestStreakDays >= 30 },
+  const badges: Array<{ icon: string; label: string; threshold: number }> = [
+    { icon: '🥉', label: '3日連続記録', threshold: 3 },
+    { icon: '🥈', label: '7日連続記録', threshold: 7 },
+    { icon: '🥇', label: '14日連続記録', threshold: 14 },
+    { icon: '👑', label: '30日連続記録', threshold: 30 },
   ];
-  const achievedBadges = badges.filter((b) => b.achieved);
+  const achievedBadges = badges.filter((b) => bestStreakDays >= b.threshold);
+  // 次のバッジ（未獲得のうち最小しきい値）
+  const nextBadge = badges.find((b) => bestStreakDays < b.threshold);
+  const daysToNext = nextBadge ? Math.max(1, nextBadge.threshold - streakDays) : 0;
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
@@ -491,6 +494,34 @@ function StreakCard({
           </div>
         </div>
       </div>
+
+      {/* 次のバッジまで */}
+      {nextBadge ? (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl px-4 py-3 mb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-stone-700">⭐ 次のバッジまで</div>
+              <div className="text-2xl font-bold text-purple-700 mt-0.5">
+                あと {daysToNext}
+                <span className="text-sm font-medium text-stone-700 ml-1">日</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-stone-600 font-medium">目標</div>
+              <div className="text-sm font-bold text-stone-900 mt-0.5">
+                {nextBadge.icon} {nextBadge.label}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 rounded-xl px-4 py-3 mb-3 text-center">
+          <div className="text-sm font-bold text-amber-900">
+            🎉 全バッジ獲得おめでとうございます！
+          </div>
+        </div>
+      )}
+
       {achievedBadges.length > 0 && (
         <div>
           <div className="text-xs font-bold text-stone-700 mb-1">獲得バッジ</div>
