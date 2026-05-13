@@ -97,9 +97,10 @@ function MealPlanInner() {
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');
   const todayStr = jstTodayString();
-  const targetDate =
+  const initialDate =
     dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
 
+  const [targetDate, setTargetDate] = useState(initialDate);
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [dietType, setDietType] = useState('通常');
@@ -243,6 +244,23 @@ function MealPlanInner() {
 
         {!result && (
           <>
+            <Section title="いつの食事を作る？">
+              <input
+                type="date"
+                value={targetDate}
+                max={todayStr}
+                onChange={(e) => {
+                  if (e.target.value) setTargetDate(e.target.value);
+                }}
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <p className="text-[11px] text-stone-500 mt-1">
+                {targetDate === todayStr
+                  ? '今日の献立として記録します'
+                  : `${formatJpDateShort(targetDate)} の食事として記録します`}
+              </p>
+            </Section>
+
             <Section title="どの食事を作る？">
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {(['朝食', '昼食', '夕食', '間食'] as const).map((m) => (
