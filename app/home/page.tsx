@@ -295,12 +295,29 @@ function HomePageInner() {
           ))}
         </div>
 
-        <Link
-          href="/record"
-          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center"
-        >
-          📷 食事を記録する
-        </Link>
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            href="/record"
+            className="bg-emerald-600 text-white text-sm font-bold py-3 rounded-xl shadow-md active:bg-emerald-700 text-center"
+          >
+            📷
+            <div className="text-xs mt-1">食事</div>
+          </Link>
+          <Link
+            href="/weight"
+            className="bg-emerald-600 text-white text-sm font-bold py-3 rounded-xl shadow-md active:bg-emerald-700 text-center"
+          >
+            ⚖️
+            <div className="text-xs mt-1">体重</div>
+          </Link>
+          <Link
+            href="/exercise"
+            className="bg-emerald-600 text-white text-sm font-bold py-3 rounded-xl shadow-md active:bg-emerald-700 text-center"
+          >
+            🏃
+            <div className="text-xs mt-1">運動</div>
+          </Link>
+        </div>
       </div>
     </main>
   );
