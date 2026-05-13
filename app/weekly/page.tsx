@@ -2,15 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  ReferenceLine,
-} from 'recharts';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 
@@ -201,44 +192,24 @@ export default function WeeklyPage() {
               </button>
             </div>
           )}
-          <div className="w-full h-56">
-            <ResponsiveContainer>
-              <BarChart data={week.daily} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis
-                  dataKey="weekday"
-                  tick={{ fill: '#44403c', fontSize: 12 }}
-                  axisLine={{ stroke: '#d6d3d1' }}
-                />
-                <YAxis tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} />
-                <ReferenceLine
-                  y={goals.kcal}
-                  stroke="#10b981"
-                  strokeDasharray="3 3"
-                  label={{ value: '目標', position: 'right', fill: '#10b981', fontSize: 11 }}
-                />
-                {week.avg.kcal > 0 && (
-                  <ReferenceLine
-                    y={week.avg.kcal}
-                    stroke="#a855f7"
-                    strokeDasharray="5 3"
-                    label={{ value: '平均', position: 'left', fill: '#a855f7', fontSize: 11 }}
-                  />
-                )}
-                <Bar
-                  dataKey="kcal"
-                  fill="#f97316"
-                  radius={[8, 8, 0, 0]}
-                  isAnimationActive={false}
-                  activeBar={false}
-                  onClick={(d) => {
-                    const day = d as unknown as DailyAgg;
-                    if (day && day.date) setSelectedDay(day);
-                  }}
-                  style={{ cursor: 'pointer' }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          <DailyKcalChart
+            data={week.daily}
+            goal={goals.kcal}
+            avg={week.avg.kcal}
+            selectedDate={selectedDay?.date || null}
+            onSelect={(d) => setSelectedDay(d)}
+          />
+          <div className="mt-3 flex items-center gap-3 text-[11px] flex-wrap">
+            <span className="inline-flex items-center gap-1 text-emerald-700">
+              <span className="inline-block w-3 border-t-2 border-dashed border-emerald-500" />
+              目標 {goals.kcal} kcal
+            </span>
+            {week.avg.kcal > 0 && (
+              <span className="inline-flex items-center gap-1 text-purple-700">
+                <span className="inline-block w-3 border-t-2 border-dashed border-purple-500" />
+                平均 {week.avg.kcal} kcal
+              </span>
+            )}
           </div>
         </div>
 
@@ -267,6 +238,118 @@ export default function WeeklyPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function DailyKcalChart({
+  data,
+  goal,
+  avg,
+  selectedDate,
+  onSelect,
+}: {
+  data: DailyAgg[];
+  goal: number;
+  avg: number;
+  selectedDate: string | null;
+  onSelect: (d: DailyAgg) => void;
+}) {
+  const maxKcal = Math.max(...data.map((d) => d.kcal), goal, avg, 100);
+  // 「キリのいい」最大値に丸める（1000単位、最低でも目標の1.2倍）
+  const scaleBase = Math.max(maxKcal * 1.05, goal * 1.2);
+  const maxScale = Math.ceil(scaleBase / 1000) * 1000;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => Math.round(maxScale * p));
+
+  return (
+    <div className="w-full h-56 relative select-none">
+      {/* Y軸目盛 */}
+      <div className="absolute left-0 top-0 bottom-7 w-12 flex flex-col-reverse justify-between text-[10px] text-stone-500 pr-1 text-right">
+        {ticks.map((t) => (
+          <span key={t} className="-translate-y-1.5">
+            {t}
+          </span>
+        ))}
+      </div>
+
+      {/* チャート本体 */}
+      <div className="absolute left-12 right-1 top-0 bottom-7 border-l border-b border-stone-300">
+        {/* Y軸グリッド */}
+        {[0.25, 0.5, 0.75, 1].map((p) => (
+          <div
+            key={p}
+            className="absolute left-0 right-0 border-t border-dashed border-stone-200"
+            style={{ bottom: `${p * 100}%` }}
+          />
+        ))}
+
+        {/* 目標ライン */}
+        {goal > 0 && goal <= maxScale && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-500 pointer-events-none"
+            style={{ bottom: `${(goal / maxScale) * 100}%` }}
+          />
+        )}
+
+        {/* 平均ライン */}
+        {avg > 0 && avg <= maxScale && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-dashed border-purple-500 pointer-events-none"
+            style={{ bottom: `${(avg / maxScale) * 100}%` }}
+          />
+        )}
+
+        {/* バー */}
+        <div className="absolute inset-0 flex items-end justify-around px-1">
+          {data.map((d) => {
+            const isSelected = selectedDate === d.date;
+            const heightPct = (d.kcal / maxScale) * 100;
+            return (
+              <button
+                key={d.date}
+                onClick={() => onSelect(d)}
+                className="relative flex items-end justify-center"
+                style={{
+                  width: `${100 / data.length - 2}%`,
+                  height: '100%',
+                  WebkitTapHighlightColor: 'transparent',
+                  outline: 'none',
+                }}
+                aria-label={`${d.weekday}: ${d.kcal}kcal`}
+              >
+                {d.kcal > 0 && (
+                  <div
+                    className={`w-full rounded-t-md transition-all ${
+                      isSelected
+                        ? 'bg-orange-500 ring-2 ring-emerald-500 ring-offset-1'
+                        : 'bg-orange-400'
+                    }`}
+                    style={{ height: `${heightPct}%`, minHeight: '2px' }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* X軸ラベル */}
+      <div className="absolute left-12 right-1 bottom-0 h-7 flex items-center justify-around px-1">
+        {data.map((d) => {
+          const isSelected = selectedDate === d.date;
+          return (
+            <div
+              key={d.date}
+              className={`text-xs text-center ${
+                isSelected ? 'font-bold text-emerald-700' : 'font-medium text-stone-700'
+              }`}
+              style={{ width: `${100 / data.length - 2}%` }}
+            >
+              {d.weekday}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
