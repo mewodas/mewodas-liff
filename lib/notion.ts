@@ -108,53 +108,6 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
-// 食事管理「進行中」の全顧客を取得
-export async function getAllActiveCustomers(): Promise<Array<Customer & { lineUserId: string }>> {
-  const res = await notionRequest('POST', `/databases/${NOTION_CUSTOMER_DB_ID}/query`, {
-    filter: {
-      property: '食事管理ステータス',
-      select: { equals: '進行中' },
-    },
-  });
-  const results = res.results || [];
-  return results
-    .map((page: { id: string; properties: Record<string, unknown> }) => {
-      const p = page.properties as Record<string, {
-        title?: Array<{ plain_text: string }>;
-        select?: { name: string };
-        number?: number;
-        date?: { start: string };
-        url?: string;
-        rich_text?: Array<{ plain_text: string }>;
-      }>;
-      const lineUserId = p['LINEユーザーID']?.rich_text?.[0]?.plain_text || '';
-      if (!lineUserId) return null;
-      const customer: Customer & { lineUserId: string } = {
-        pageId: page.id,
-        lineUserId,
-        name: p['氏名']?.title?.[0]?.plain_text || '不明',
-        foodStatus: p['食事管理ステータス']?.select?.name || null,
-        goals: {
-          kcal: p['目標カロリー(kcal)']?.number ?? DEFAULT_GOALS.kcal,
-          P: p['目標P(g)']?.number ?? DEFAULT_GOALS.P,
-          F: p['目標F(g)']?.number ?? DEFAULT_GOALS.F,
-          C: p['目標C(g)']?.number ?? DEFAULT_GOALS.C,
-        },
-        currentWeight: p['現在体重(kg)']?.number ?? null,
-        targetWeight: p['目標体重(kg)']?.number ?? null,
-        targetDate: p['目標達成日']?.date?.start ?? null,
-        foodSheetPageId: (() => {
-          const url = p['食事記録リンク']?.url;
-          if (!url) return null;
-          const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
-          return m ? m[1] : null;
-        })(),
-      };
-      return customer;
-    })
-    .filter((c: unknown): c is Customer & { lineUserId: string } => c !== null);
-}
-
 // 個人シートの食事記録テーブルから複数日付の体重・運動データをまとめて取得
 export async function getRangeExtras(
   sheetPageId: string,

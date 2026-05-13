@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerByLineId,
   getFoodRecordsByDate,
+  getFoodRecordsByDateRange,
   getTargetDate,
   getDailyExtras,
   isoToJpMd,
@@ -12,6 +13,58 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+function computeStats(records: FoodRecord[], todayStr: string, goalKcal: number) {
+  // 日別に集計
+  const byDate = new Map<string, { kcal: number; recorded: boolean }>();
+  for (const r of records) {
+    const cur = byDate.get(r.date) || { kcal: 0, recorded: false };
+    cur.kcal += r.kcal;
+    cur.recorded = true;
+    byDate.set(r.date, cur);
+  }
+
+  // 当日含む直近30日
+  const today = new Date(todayStr);
+  let streakDays = 0;
+  let goalHitStreakDays = 0;
+  let monthlyRecordedDays = 0;
+  let monthlyGoalHitDays = 0;
+  let stoppedStreak = false;
+  let stoppedGoalStreak = false;
+
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const day = byDate.get(ds);
+    const isCurrentMonth =
+      d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+    if (day?.recorded) {
+      if (!stoppedStreak) streakDays++;
+      if (isCurrentMonth) monthlyRecordedDays++;
+      const pct = (day.kcal / goalKcal) * 100;
+      const onTarget = Math.abs(pct - 100) <= 10;
+      if (onTarget) {
+        if (!stoppedGoalStreak) goalHitStreakDays++;
+        if (isCurrentMonth) monthlyGoalHitDays++;
+      } else {
+        stoppedGoalStreak = true;
+      }
+    } else {
+      // 当日は未記録でもストリーク継続条件にする（記録途中の可能性）
+      if (i !== 0) stoppedStreak = true;
+      if (i !== 0) stoppedGoalStreak = true;
+    }
+  }
+
+  return {
+    streakDays,
+    goalHitStreakDays,
+    monthlyRecordedDays,
+    monthlyGoalHitDays,
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -59,10 +112,26 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // 個人シートから体重・運動データを取得（並列ではなく軽量なのでこの段で）
-    const extras = customer.foodSheetPageId
-      ? await getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
-      : { weight: '', exercised: '', exerciseContent: '' };
+    // 個人シートから体重・運動データを取得 + 直近30日のストリーク計算を並列実行
+    const isToday = today === getTargetDate('今日');
+    const startStr = (() => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 29);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+    const [extras, last30Records] = await Promise.all([
+      customer.foodSheetPageId
+        ? getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
+        : Promise.resolve({ weight: '', exercised: '', exerciseContent: '' }),
+      isToday
+        ? getFoodRecordsByDateRange(lineUserId, startStr, today)
+        : Promise.resolve([] as FoodRecord[]),
+    ]);
+
+    // ストリーク計算（当日表示時のみ）
+    const stats = isToday
+      ? computeStats(last30Records, today, customer.goals.kcal)
+      : null;
 
     return NextResponse.json({
       customer: {
@@ -81,6 +150,7 @@ export async function GET(req: NextRequest) {
         exercised: extras.exercised,
         exerciseContent: extras.exerciseContent,
       },
+      stats,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';

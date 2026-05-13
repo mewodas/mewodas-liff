@@ -36,6 +36,12 @@ type TodayData = {
     exercised?: string;
     exerciseContent?: string;
   };
+  stats: {
+    streakDays: number;
+    goalHitStreakDays: number;
+    monthlyRecordedDays: number;
+    monthlyGoalHitDays: number;
+  } | null;
 };
 
 type SuggestData = {
@@ -89,26 +95,23 @@ function HomePageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dateParam = searchParams.get('date');
-  const lineUserIdOverride = searchParams.get('lineUserId');
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [callerUserId, setCallerUserId] = useState<string | null>(null);
   const [suggest, setSuggest] = useState<SuggestData | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
 
-  const isImpersonating = !!lineUserIdOverride && lineUserIdOverride !== callerUserId;
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
   const isToday = selectedDate === todayStr;
 
   function navigateToDate(d: string) {
-    const params = new URLSearchParams();
-    if (d !== todayStr) params.set('date', d);
-    if (lineUserIdOverride) params.set('lineUserId', lineUserIdOverride);
-    const qs = params.toString();
-    router.push(qs ? `/home?${qs}` : '/home');
+    if (d === todayStr) {
+      router.push('/home');
+    } else {
+      router.push(`/home?date=${d}`);
+    }
   }
 
   useEffect(() => {
@@ -121,15 +124,13 @@ function HomePageInner() {
           setReady(true);
           return;
         }
-        setCallerUserId(profile.userId);
-        // ?lineUserId= が指定されていればそれを優先（トレーナー閲覧用）
-        setUserId(lineUserIdOverride || profile.userId);
+        setUserId(profile.userId);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'LIFF初期化エラー');
         setReady(true);
       }
     })();
-  }, [lineUserIdOverride]);
+  }, []);
 
   // 提案を取得（当日のみ、データ取得後）
   useEffect(() => {
@@ -236,21 +237,6 @@ function HomePageInner() {
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
-        {/* トレーナー閲覧モードのバナー */}
-        {isImpersonating && (
-          <div className="mb-3 bg-amber-100 border border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900">
-              👁️ トレーナー閲覧モード（{customer.name}さん）
-            </span>
-            <button
-              onClick={() => router.push('/trainer')}
-              className="text-xs font-bold text-amber-900 underline"
-            >
-              俯瞰へ戻る
-            </button>
-          </div>
-        )}
-
         {/* ヘッダー */}
         <div className="mb-4">
           <h1 className="text-xl font-bold text-stone-900 mb-2">こんにちは、{customer.name} さん</h1>
@@ -302,9 +288,36 @@ function HomePageInner() {
           <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
         </div>
 
+        {/* 継続バッジ（当日のみ） */}
+        {isToday && data.stats && (
+          <StreakCard stats={data.stats} />
+        )}
+
         {/* 残りカロリー逆算サジェスト（当日のみ） */}
         {isToday && (
-          <SuggestCard data={suggest} loading={suggestLoading} />
+          <SuggestCard
+            data={suggest}
+            loading={suggestLoading}
+            lineUserId={userId}
+            onRecorded={() => {
+              invalidate('today_');
+              invalidate('weekly_');
+              invalidate('history_');
+              invalidate('suggest_');
+              if (userId) {
+                fetch(
+                  `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                  { cache: 'no-store' }
+                )
+                  .then((r) => r.json())
+                  .then((json) => {
+                    setData(json);
+                    setCached(`today_v2_${userId}_${selectedDate}`, json);
+                  })
+                  .catch(() => {});
+              }
+            }}
+          />
         )}
 
         {/* 体重目標 */}
@@ -409,7 +422,97 @@ function HomePageInner() {
   );
 }
 
-function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boolean }) {
+function StreakCard({
+  stats,
+}: {
+  stats: NonNullable<TodayData['stats']>;
+}) {
+  const { streakDays, goalHitStreakDays, monthlyRecordedDays, monthlyGoalHitDays } = stats;
+  // 何も表示するものがない場合は非表示
+  if (
+    streakDays === 0 &&
+    goalHitStreakDays === 0 &&
+    monthlyRecordedDays === 0 &&
+    monthlyGoalHitDays === 0
+  ) {
+    return null;
+  }
+  // バッジ獲得判定
+  const badges: Array<{ icon: string; label: string; achieved: boolean }> = [
+    { icon: '🥉', label: '3日連続記録', achieved: streakDays >= 3 },
+    { icon: '🥈', label: '7日連続記録', achieved: streakDays >= 7 },
+    { icon: '🥇', label: '30日連続記録', achieved: streakDays >= 30 },
+    { icon: '✨', label: '目標達成3日連続', achieved: goalHitStreakDays >= 3 },
+    { icon: '🌟', label: '目標達成7日連続', achieved: goalHitStreakDays >= 7 },
+  ];
+  const achievedBadges = badges.filter((b) => b.achieved);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+      <h2 className="text-base font-bold text-stone-900 mb-3">🏆 継続バッジ</h2>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">🔥 連続記録</div>
+          <div className="text-2xl font-bold text-orange-700 mt-0.5">
+            {streakDays}
+            <span className="text-xs font-medium text-stone-600 ml-1">日</span>
+          </div>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">✨ 連続目標達成</div>
+          <div className="text-2xl font-bold text-emerald-700 mt-0.5">
+            {goalHitStreakDays}
+            <span className="text-xs font-medium text-stone-600 ml-1">日</span>
+          </div>
+        </div>
+        <div className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">📝 今月の記録</div>
+          <div className="text-2xl font-bold text-sky-700 mt-0.5">
+            {monthlyRecordedDays}
+            <span className="text-xs font-medium text-stone-600 ml-1">日</span>
+          </div>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">🌟 今月の達成</div>
+          <div className="text-2xl font-bold text-purple-700 mt-0.5">
+            {monthlyGoalHitDays}
+            <span className="text-xs font-medium text-stone-600 ml-1">日</span>
+          </div>
+        </div>
+      </div>
+      {achievedBadges.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-stone-700 mb-1">獲得バッジ</div>
+          <div className="flex flex-wrap gap-1.5">
+            {achievedBadges.map((b) => (
+              <span
+                key={b.label}
+                className="text-xs font-bold text-stone-900 bg-amber-100 border border-amber-300 px-2 py-1 rounded-full"
+              >
+                {b.icon} {b.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SuggestCard({
+  data,
+  loading,
+  lineUserId,
+  onRecorded,
+}: {
+  data: SuggestData | null;
+  loading: boolean;
+  lineUserId: string | null;
+  onRecorded: () => void;
+}) {
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const [recording, setRecording] = useState(false);
+
   if (loading && !data) {
     return (
       <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
@@ -420,6 +523,40 @@ function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boo
   }
   if (!data) return null;
   const { remaining, suggestions, message } = data;
+
+  async function record(mealType: string) {
+    if (!lineUserId || pickerFor === null) return;
+    const s = suggestions[pickerFor];
+    if (!s) return;
+    setRecording(true);
+    try {
+      const res = await fetch('/api/record/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineUserId,
+          mealType,
+          title: s.title,
+          kcal: s.kcal,
+          P: s.P,
+          F: s.F,
+          C: s.C,
+          day: '今日',
+        }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `記録失敗（${res.status}）`);
+      }
+      setPickerFor(null);
+      onRecorded();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '記録エラー');
+    } finally {
+      setRecording(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
       <h2 className="text-base font-bold text-stone-900 mb-3">💡 残り目標の食事提案</h2>
@@ -452,8 +589,14 @@ function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boo
                   約 {s.kcal} kcal ・ P 約{s.P}g ・ F 約{s.F}g ・ C 約{s.C}g
                 </div>
                 {s.reason && (
-                  <div className="text-[11px] text-stone-500 mt-0.5 ml-1">💬 {s.reason}</div>
+                  <div className="text-[11px] text-stone-500 mt-0.5 ml-1 mb-2">💬 {s.reason}</div>
                 )}
+                <button
+                  onClick={() => setPickerFor(i)}
+                  className="mt-1 w-full bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg active:bg-emerald-700"
+                >
+                  🍽️ これ食べた
+                </button>
               </div>
             ))}
           </div>
@@ -461,6 +604,46 @@ function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boo
             ※ 数値はAIによる推定値です。実際に食べた料理を写真で記録すると、その内容から計算された正確な数値が反映されます。
           </div>
         </>
+      )}
+
+      {/* 食事区分ピッカーモーダル */}
+      {pickerFor !== null && suggestions[pickerFor] && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[70] flex items-end"
+          onClick={() => !recording && setPickerFor(null)}
+        >
+          <div
+            className="bg-white rounded-t-2xl shadow-2xl p-5 pb-8 w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-4" />
+            <h3 className="text-base font-bold text-stone-900 mb-2 text-center">
+              食事区分を選んでください
+            </h3>
+            <div className="text-xs text-stone-600 mb-4 text-center leading-tight">
+              {suggestions[pickerFor].title}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(['朝食', '昼食', '夕食', '間食'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => record(m)}
+                  disabled={recording}
+                  className="bg-stone-100 text-stone-900 font-bold py-4 rounded-xl active:bg-stone-200 disabled:opacity-50"
+                >
+                  {m === '朝食' ? '🌅' : m === '昼食' ? '☀️' : m === '夕食' ? '🌙' : '🍪'} {m}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setPickerFor(null)}
+              disabled={recording}
+              className="w-full mt-4 py-3 bg-stone-100 text-stone-700 font-bold rounded-xl active:bg-stone-200 disabled:opacity-50"
+            >
+              {recording ? '記録中…' : 'キャンセル'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
