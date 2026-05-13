@@ -298,52 +298,51 @@ function HomePageInner() {
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
       <div className="max-w-md mx-auto">
-        {/* ヘッダー */}
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-stone-900 mb-2">こんにちは、{customer.name} さん</h1>
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex items-center justify-between px-2 py-2">
-            <button
-              onClick={() => navigateToDate(addDays(selectedDate, -1))}
-              className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg"
-              aria-label="前日"
-            >
-              ←
-            </button>
-            <div className="text-sm font-bold text-stone-900">
-              {dateLabel}
-              {!isToday && (
-                <button
-                  onClick={() => navigateToDate(todayStr)}
-                  className="ml-2 text-xs text-emerald-700 font-bold"
-                >
-                  今日へ
-                </button>
-              )}
-            </div>
-            {!isToday ? (
-              <button
-                onClick={() => navigateToDate(addDays(selectedDate, 1))}
-                className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg"
-                aria-label="翌日"
-              >
-                →
-              </button>
-            ) : (
-              <span className="px-3 py-1 w-[2.5rem]" />
-            )}
-          </div>
+        {/* ヘッダー：挨拶 */}
+        <div className="mb-3">
+          <h1 className="text-xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
+          <p className="text-xs text-stone-600 mt-0.5">{dateLabel}</p>
         </div>
 
-        {/* 今日の摂取 */}
+        {/* 日付ストリップ（7日間横スクロール） */}
+        <DateStrip
+          selectedDate={selectedDate}
+          todayStr={todayStr}
+          onSelect={(d) => navigateToDate(d)}
+        />
+
+        {/* 今日の摂取（カロリー大型表示） */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3">📊 今日の摂取</h2>
-          <ProgressRow
-            label="カロリー"
-            value={Math.round(totals.kcal)}
-            goal={goals.kcal}
-            unit="kcal"
-            color="emerald"
-          />
+
+          {/* カロリー大型サマリ */}
+          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-4 mb-4 border border-emerald-100">
+            <div className="text-xs font-medium text-stone-600 mb-1">カロリー</div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-4xl font-bold text-emerald-700">
+                {Math.round(totals.kcal)}
+              </span>
+              <span className="text-sm font-medium text-stone-600">/ {goals.kcal} kcal</span>
+            </div>
+            <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round((totals.kcal / goals.kcal) * 100)) || 0}%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-1.5 text-[10px] text-stone-600">
+              <span>
+                残り {Math.max(0, Math.round(goals.kcal - totals.kcal))} kcal
+              </span>
+              <span className="font-bold">
+                {goals.kcal > 0 ? Math.round((totals.kcal / goals.kcal) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+
+          {/* PFCバー（3つ） */}
           <ProgressRow label="タンパク質" value={r1(totals.P)} goal={goals.P} unit="g" color="rose" />
           <ProgressRow label="脂質" value={r1(totals.F)} goal={goals.F} unit="g" color="amber" />
           <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
@@ -495,6 +494,75 @@ function HomePageInner() {
   );
 }
 
+function DateStrip({
+  selectedDate,
+  todayStr,
+  onSelect,
+}: {
+  selectedDate: string;
+  todayStr: string;
+  onSelect: (d: string) => void;
+}) {
+  // 過去6日 + 今日 の7日間を表示（先頭が古い、末尾が今日）
+  const dates: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    dates.push(addDays(todayStr, -i));
+  }
+
+  const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  return (
+    <div className="mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+        {dates.map((d) => {
+          const [y, m, day] = d.split('-').map(Number);
+          const date = new Date(y, m - 1, day);
+          const weekday = weekdayNames[date.getDay()];
+          const isSelected = d === selectedDate;
+          const isToday = d === todayStr;
+          const weekdayColor =
+            date.getDay() === 0
+              ? 'text-rose-600'
+              : date.getDay() === 6
+              ? 'text-sky-600'
+              : 'text-stone-600';
+          return (
+            <button
+              key={d}
+              onClick={() => onSelect(d)}
+              className={`flex flex-col items-center justify-center min-w-[48px] py-2 rounded-2xl transition-all ${
+                isSelected
+                  ? 'bg-emerald-500 shadow-md'
+                  : isToday
+                  ? 'bg-white border-2 border-emerald-300'
+                  : 'bg-white border border-stone-200'
+              }`}
+            >
+              <span
+                className={`text-[10px] font-bold ${
+                  isSelected ? 'text-white' : weekdayColor
+                }`}
+              >
+                {weekday}
+              </span>
+              <span
+                className={`text-lg font-bold leading-tight ${
+                  isSelected ? 'text-white' : 'text-stone-900'
+                }`}
+              >
+                {day}
+              </span>
+              {isToday && !isSelected && (
+                <span className="text-[8px] font-bold text-emerald-700 leading-none">今日</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function NutritionDetailsCard({
   mealsByType,
 }: {
@@ -552,15 +620,38 @@ function NutritionDetailsCard({
         <>
           <div className="mt-3 space-y-2">
             {items.map((it) => {
-              const pct = Math.min(100, Math.round((it.value / it.ref) * 100));
+              const pctRaw = Math.round((it.value / it.ref) * 100);
+              const pct = Math.min(100, pctRaw);
+              // 状態判定（食塩は上限なので逆ロジック）
+              let labelStatus: '不足' | '良好' | '過剰';
+              if (it.isLimit) {
+                labelStatus = pctRaw > 100 ? '過剰' : pctRaw > 80 ? '良好' : '良好';
+              } else {
+                labelStatus = pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
+              }
+              const labelStyle =
+                labelStatus === '不足'
+                  ? 'text-sky-700 bg-sky-100 border-sky-300'
+                  : labelStatus === '過剰'
+                  ? 'text-rose-700 bg-rose-100 border-rose-300'
+                  : 'text-emerald-700 bg-emerald-100 border-emerald-300';
+              const labelIcon =
+                labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
               return (
                 <div key={it.label}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-stone-800">{it.label}</span>
+                  <div className="flex justify-between items-center text-sm mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-stone-800">{it.label}</span>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${labelStyle}`}
+                      >
+                        {labelIcon} {labelStatus}
+                      </span>
+                    </div>
                     <span className="font-bold text-stone-900">
                       {it.value} <span className="text-xs text-stone-500">{it.unit}</span>
                       <span className="text-xs font-medium text-stone-500 ml-1">
-                        {it.isLimit ? `（上限${it.ref}${it.unit}の${pct}%）` : `（目安${it.ref}${it.unit}の${pct}%）`}
+                        （{pctRaw}%）
                       </span>
                     </span>
                   </div>
@@ -927,8 +1018,20 @@ function ProgressRow({
   unit: string;
   color: 'emerald' | 'rose' | 'amber' | 'sky';
 }) {
-  const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
-  const status = pct >= 95 && pct <= 105 ? '✨' : pct >= 80 && pct <= 120 ? '⭕' : pct >= 60 ? '🔺' : '💦';
+  const pctRaw = goal > 0 ? Math.round((value / goal) * 100) : 0;
+  const pctBar = Math.min(100, pctRaw);
+  // 過剰/良好/不足ラベル
+  const labelStatus =
+    pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
+  const labelStyle =
+    labelStatus === '不足'
+      ? 'text-sky-700 bg-sky-100 border-sky-300'
+      : labelStatus === '過剰'
+      ? 'text-rose-700 bg-rose-100 border-rose-300'
+      : 'text-emerald-700 bg-emerald-100 border-emerald-300';
+  const labelIcon =
+    labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
+
   const barColor: Record<string, string> = {
     emerald: 'bg-emerald-500',
     rose: 'bg-rose-500',
@@ -937,18 +1040,24 @@ function ProgressRow({
   };
   return (
     <div className="mb-3 last:mb-0">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="font-medium text-stone-800">
-          {label} {status}
-        </span>
+      <div className="flex justify-between items-center text-sm mb-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-stone-800">{label}</span>
+          <span
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${labelStyle}`}
+          >
+            {labelIcon} {labelStatus}
+          </span>
+        </div>
         <span className="font-bold text-stone-900">
           {value} / {goal} {unit}
+          <span className="text-xs font-medium text-stone-500 ml-1">（{pctRaw}%）</span>
         </span>
       </div>
       <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
         <div
           className={`h-full ${barColor[color]} transition-all`}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${pctBar}%` }}
         />
       </div>
     </div>
