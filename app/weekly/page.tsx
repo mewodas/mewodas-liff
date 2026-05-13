@@ -13,6 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { getCached, setCached } from '@/lib/clientCache';
 
 type DailyAgg = {
   date: string;
@@ -71,19 +72,31 @@ export default function WeeklyPage() {
 
   useEffect(() => {
     if (!userId) return;
-    setReady(false);
+    const cacheKey = `weekly_${userId}_${offset}`;
+    const cached = getCached<WeeklyData>(cacheKey);
+    if (cached) {
+      setData(cached.data);
+      setReady(true);
+      if (!cached.isStale) {
+        setError(null);
+        return;
+      }
+    } else {
+      setReady(false);
+    }
     (async () => {
       try {
-        const res = await fetch(`/api/weekly?lineUserId=${encodeURIComponent(userId)}&offset=${offset}`);
+        const res = await fetch(`/api/weekly?lineUserId=${encodeURIComponent(userId)}&offset=${offset}&t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) {
           const errJson = await res.json().catch(() => ({}));
           throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
         }
         const json = await res.json();
         setData(json);
+        setCached(cacheKey, json);
         setError(null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : '読み込みエラー');
+        if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
       }

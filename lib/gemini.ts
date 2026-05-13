@@ -1,7 +1,6 @@
-// PFC補正係数：API版Geminiの画像推定は若干過大評価傾向のため軽めに補正
-// プロンプト改善で過大評価が抑えられたため、以前より緩めの補正に調整（旧 P:0.55 F:0.55 → P:0.8 F:0.8）
-// テキスト入力時は量が明示されておりAIの計算が正確なので補正なし（1.0）
-const PFC_CALIBRATION_IMAGE = { P: 0.8, F: 0.8, C: 0.8 };
+// PFC補正係数：AIの推定精度向上により補正なし運用に変更（全て1.0）
+// 必要に応じて将来再調整可能
+const PFC_CALIBRATION_IMAGE = { P: 1.0, F: 1.0, C: 1.0 };
 const PFC_CALIBRATION_TEXT  = { P: 1.0, F: 1.0, C: 1.0 };
 
 const NUTRITION_SYSTEM =

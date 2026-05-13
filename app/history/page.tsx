@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { getCached, setCached } from '@/lib/clientCache';
 
 type DailyAgg = {
   day: number;
@@ -82,7 +83,18 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (!userId) return;
-    setReady(false);
+    const cacheKey = `history_${userId}_${year}_${month}`;
+    const cached = getCached<HistoryData>(cacheKey);
+    if (cached) {
+      setData(cached.data);
+      setReady(true);
+      if (!cached.isStale) {
+        setError(null);
+        return;
+      }
+    } else {
+      setReady(false);
+    }
     (async () => {
       try {
         const res = await fetch(
@@ -95,9 +107,10 @@ export default function HistoryPage() {
         }
         const json = await res.json();
         setData(json);
+        setCached(cacheKey, json);
         setError(null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : '読み込みエラー');
+        if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
       }

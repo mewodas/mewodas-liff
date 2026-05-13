@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { getCached, setCached } from '@/lib/clientCache';
 
 type MealRecord = {
   pageId: string;
@@ -108,7 +109,19 @@ function HomePageInner() {
 
   useEffect(() => {
     if (!userId) return;
-    setReady(false);
+    const cacheKey = `today_${userId}_${selectedDate}`;
+    // キャッシュがあれば即表示（fresh/stale問わず）
+    const cached = getCached<TodayData>(cacheKey);
+    if (cached) {
+      setData(cached.data);
+      setReady(true);
+      if (!cached.isStale) {
+        setError(null);
+        return; // freshなら再取得しない
+      }
+    } else {
+      setReady(false);
+    }
     setError(null);
     (async () => {
       try {
@@ -122,8 +135,9 @@ function HomePageInner() {
         }
         const json = await res.json();
         setData(json);
+        setCached(cacheKey, json);
       } catch (e) {
-        setError(e instanceof Error ? e.message : '読み込みエラー');
+        if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
       }

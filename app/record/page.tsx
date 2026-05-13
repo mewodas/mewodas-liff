@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { initLiff, getLineProfile, closeLiff } from '@/lib/liff';
 import { compressImage } from '@/lib/imageCompress';
+import { invalidate } from '@/lib/clientCache';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
@@ -125,6 +126,10 @@ export default function RecordPage() {
       }
       const json = await res.json();
       setResult(json.pfc);
+      // 記録後はホーム/週次/履歴のキャッシュを無効化
+      invalidate('today_');
+      invalidate('weekly_');
+      invalidate('history_');
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('handleSubmit error:', e);
