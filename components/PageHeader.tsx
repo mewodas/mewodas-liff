@@ -32,12 +32,12 @@ export default function PageHeader({
   }
 
   return (
-    <header className="bg-white border-b border-stone-200 px-4 pt-5 pb-4 sticky top-0 z-30">
+    <header className="bg-emerald-600 text-white px-4 pt-5 pb-4 sticky top-0 z-30 shadow">
       <div className="flex items-center justify-between gap-2">
         {back ? (
           <button
             onClick={handleBack}
-            className="text-stone-700 text-sm font-medium w-12 text-left active:text-emerald-700"
+            className="text-white text-sm font-medium w-12 text-left active:opacity-70"
             type="button"
           >
             ← 戻る
@@ -45,13 +45,13 @@ export default function PageHeader({
         ) : (
           <div className="w-12" />
         )}
-        <h1 className="text-base font-bold text-stone-900 truncate flex-1 text-center">
+        <h1 className="text-base font-bold text-white truncate flex-1 text-center">
           {title}
         </h1>
         <div className="w-12 flex justify-end">{rightSlot}</div>
       </div>
       {subtitle && (
-        <p className="text-[11px] text-stone-500 mt-1 text-center">{subtitle}</p>
+        <p className="text-[11px] text-emerald-50 mt-1 text-center">{subtitle}</p>
       )}
       {children}
     </header>

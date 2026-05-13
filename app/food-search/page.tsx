@@ -192,7 +192,7 @@ export default function FoodSearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="例：鶏むね、おにぎり、味噌汁"
-          className="w-full mt-3 bg-stone-50 text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full mt-3 bg-white text-stone-900 placeholder:text-stone-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
         />
         <div className="flex gap-2 mt-2 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map((c) => (
@@ -200,9 +200,7 @@ export default function FoodSearchPage() {
               key={c}
               onClick={() => setCategory(c)}
               className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${
-                category === c
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-stone-100 text-stone-700 border border-stone-300'
+                category === c ? 'bg-white text-emerald-700' : 'bg-emerald-700/60 text-white'
               }`}
             >
               {c}
