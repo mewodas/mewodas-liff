@@ -40,13 +40,44 @@ export async function analyzeImagesPfc(
 
   const explicit = hasExplicitQuantity(supplementText);
 
-  // 複数枚 かつ メモに明示量なし → 並列解析で高速化
-  // 1枚 or 明示量あり → 1コールで処理（メモと画像の整合性を担保）
+  // 明示量メモあり：写真解析（メモ無視）+ メモのテキスト解析 を完全分離して並列実行→合算
+  // これによりAIが「メモ優先で写真を無視する」現象を防ぐ
+  if (explicit && supplementText) {
+    return analyzePhotosPlusMemo(images, supplementText);
+  }
+
+  // 複数枚（明示量メモなし） → 並列解析で高速化
   if (images.length > 1 && !explicit) {
     return analyzeImagesParallel(images, supplementText);
   }
 
   return analyzeImagesSingleCall(images, supplementText, explicit);
+}
+
+// 写真とメモを完全に分離して並列解析→合算
+async function analyzePhotosPlusMemo(
+  images: Array<{ base64: string; mimeType: string }>,
+  supplementText: string
+): Promise<Pfc> {
+  // 写真は「メモ無し」として並列解析、メモは単独でテキスト解析
+  const [photoResult, memoResult] = await Promise.all([
+    images.length > 1
+      ? analyzeImagesParallel(images, null)
+      : analyzeImagesSingleCall(images, null, false),
+    analyzeTextPfc(supplementText),
+  ]);
+
+  const f1 = (x: number) => Math.round(x * 10) / 10;
+  const P = f1(photoResult.P + memoResult.P);
+  const F = f1(photoResult.F + memoResult.F);
+  const C = f1(photoResult.C + memoResult.C);
+  return {
+    P,
+    F,
+    C,
+    kcal: Math.round(P * 4 + F * 9 + C * 4),
+    items: [...photoResult.items, ...memoResult.items],
+  };
 }
 
 async function analyzeImagesParallel(
