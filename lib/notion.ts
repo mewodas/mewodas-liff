@@ -25,6 +25,14 @@ export type Customer = {
   foodSheetPageId: string | null;
 };
 
+export type NutritionDetailsRecord = {
+  fiber: number;
+  salt: number;
+  iron: number;
+  calcium: number;
+  vitaminC: number;
+};
+
 export type FoodRecord = {
   pageId: string;
   mealType: string;
@@ -37,6 +45,7 @@ export type FoodRecord = {
   memo: string;
   imageUrl: string | null;
   title: string;
+  details: NutritionDetailsRecord | null;
 };
 
 async function notionRequest(
@@ -267,6 +276,23 @@ export async function getFoodRecordsByDateRange(
 
 function notionPageToFoodRecord(page: { id: string; properties: Record<string, unknown>; created_time: string }): FoodRecord {
   const p = page.properties as Record<string, { number?: number; select?: { name: string }; rich_text?: Array<{ plain_text: string }>; url?: string; title?: Array<{ plain_text: string }>; date?: { start: string } }>;
+  // 詳細栄養素は JSON 文字列として保存されているので parse
+  let details: NutritionDetailsRecord | null = null;
+  const detailsText = p['詳細栄養素']?.rich_text?.[0]?.plain_text;
+  if (detailsText) {
+    try {
+      const parsed = JSON.parse(detailsText);
+      details = {
+        fiber: Number(parsed.fiber ?? 0),
+        salt: Number(parsed.salt ?? 0),
+        iron: Number(parsed.iron ?? 0),
+        calcium: Number(parsed.calcium ?? 0),
+        vitaminC: Number(parsed.vitaminC ?? 0),
+      };
+    } catch {
+      details = null;
+    }
+  }
   return {
     pageId: page.id,
     mealType: p['食事区分']?.select?.name || '',
@@ -279,6 +305,7 @@ function notionPageToFoodRecord(page: { id: string; properties: Record<string, u
     memo: p['食材メモ']?.rich_text?.[0]?.plain_text || '',
     imageUrl: p['画像URL']?.url || null,
     title: p['食事メモ']?.title?.[0]?.plain_text || '',
+    details,
   };
 }
 
@@ -388,7 +415,20 @@ export async function getFoodRecordsByDate(
 export async function saveFoodRecord(params: {
   customerName: string;
   lineUserId: string;
-  pfc: { kcal: number; P: number; F: number; C: number; items?: Array<{ name: string }> };
+  pfc: {
+    kcal: number;
+    P: number;
+    F: number;
+    C: number;
+    items?: Array<{ name: string }>;
+    details?: {
+      fiber: number;
+      salt: number;
+      iron: number;
+      calcium: number;
+      vitaminC: number;
+    };
+  };
   mealType: string;
   imageUrl?: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -446,6 +486,12 @@ export async function saveFoodRecord(params: {
     AI推定_C: { number: pfc.C },
   };
   if (imageUrl) properties['画像URL'] = { url: imageUrl };
+  // 詳細栄養素（あれば JSON 文字列で保存）
+  if (pfc.details) {
+    properties['詳細栄養素'] = {
+      rich_text: [{ text: { content: JSON.stringify(pfc.details) } }],
+    };
+  }
 
   // 最初は AI推定_* プロパティを含めて保存を試みる
   // 該当プロパティが Notion DB にない場合は除外して再試行（後方互換）
@@ -457,9 +503,10 @@ export async function saveFoodRecord(params: {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // AI推定_* がDBに存在しない場合のエラーをキャッチ
-    if (msg.includes('AI推定_') || msg.includes('not exist')) {
+    if (msg.includes('AI推定_') || msg.includes('詳細栄養素') || msg.includes('not exist')) {
       const fallbackProps = { ...properties };
       delete fallbackProps['AI推定_kcal'];
+      delete fallbackProps['詳細栄養素'];
       delete fallbackProps['AI推定_P'];
       delete fallbackProps['AI推定_F'];
       delete fallbackProps['AI推定_C'];

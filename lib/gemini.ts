@@ -13,12 +13,21 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
 const PARALLEL_BATCH_SIZE = 4; // 全並列で最速処理。レート制限はフォールバックモデルで対応
 
+export type NutritionDetails = {
+  fiber: number; // 食物繊維(g)
+  salt: number; // 食塩相当量(g)
+  iron: number; // 鉄(mg)
+  calcium: number; // カルシウム(mg)
+  vitaminC: number; // ビタミンC(mg)
+};
+
 export type Pfc = {
   kcal: number;
   P: number;
   F: number;
   C: number;
   items: Array<{ name: string; P: number; F: number; C: number }>;
+  details?: NutritionDetails; // 詳細栄養素（オプショナル）
 };
 
 // メモに「Xg/X杯/X個/X枚/X本/X切/X皿/Xml/Xcc/大さじX/小さじX」のような
@@ -139,12 +148,28 @@ ${accuracyRule}
 - "name"は「食材名（推定Xg）」の形式（例：「ご飯（推定150g）」）
 - 識別が難しい場合でも「不明な料理」ではなく「ご飯と思われるもの」など推測可能な名前を入れる${supplementLine}
 
+【詳細栄養素も推定】
+PFCに加えて、以下5つも栄養学の標準値で推定してください：
+- fiber: 食物繊維(g)
+- salt: 食塩相当量(g)
+- iron: 鉄(mg)
+- calcium: カルシウム(mg)
+- vitaminC: ビタミンC(mg)
+推定が困難な場合は0を入れてOK。
+
 出力JSON形式（必ずitemsを含めること）：
 {
   "P": タンパク質(g)の数値,
   "F": 脂質(g)の数値,
   "C": 炭水化物(g)の数値,
-  "items": [{"name": "ご飯（推定150g）", "P": 3.8, "F": 0.5, "C": 55}]
+  "items": [{"name": "ご飯（推定150g）", "P": 3.8, "F": 0.5, "C": 55}],
+  "details": {
+    "fiber": 食物繊維(g),
+    "salt": 食塩相当量(g),
+    "iron": 鉄(mg),
+    "calcium": カルシウム(mg),
+    "vitaminC": ビタミンC(mg)
+  }
 }`;
 
   const parts: Array<Record<string, unknown>> = images.map((img) => ({
@@ -174,6 +199,14 @@ export async function analyzeTextPfc(textDesc: string): Promise<Pfc> {
 - "items"配列には記載された食材を必ず1つ以上含める（空配列は禁止）
 - "name"は「食材名（推定Xg）」の形式
 
+【詳細栄養素も推定】
+PFCに加えて、以下5つも栄養学の標準値で推定してください：
+- fiber: 食物繊維(g)
+- salt: 食塩相当量(g)
+- iron: 鉄(mg)
+- calcium: カルシウム(mg)
+- vitaminC: ビタミンC(mg)
+
 食事内容：
 ${textDesc}
 
@@ -182,7 +215,14 @@ ${textDesc}
   "P": タンパク質(g)の数値,
   "F": 脂質(g)の数値,
   "C": 炭水化物(g)の数値,
-  "items": [{"name": "鶏むね肉100g", "P": 23, "F": 1.5, "C": 0}]
+  "items": [{"name": "鶏むね肉100g", "P": 23, "F": 1.5, "C": 0}],
+  "details": {
+    "fiber": 食物繊維(g),
+    "salt": 食塩相当量(g),
+    "iron": 鉄(mg),
+    "calcium": カルシウム(mg),
+    "vitaminC": ビタミンC(mg)
+  }
 }`;
 
   const text = await callGemini([{ text: prompt }], apiKey);
@@ -298,6 +338,93 @@ function parseWeightPredictionJson(text: string): WeightPrediction {
       ? (parsed.recommendations as unknown[]).map((r) => String(r)).slice(0, 3)
       : [],
   };
+}
+
+// AI食事相談チャット
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export async function chatWithAi(params: {
+  message: string;
+  history: ChatMessage[];
+  customerContext: {
+    name: string;
+    goals: { kcal: number; P: number; F: number; C: number };
+    todayTotals: { kcal: number; P: number; F: number; C: number };
+    todayMealTypes: string[]; // ['朝食', '昼食']
+    currentHour: number;
+    currentWeight?: number | null;
+    targetWeight?: number | null;
+  };
+}): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const { message, history, customerContext } = params;
+  const { name, goals, todayTotals, todayMealTypes, currentHour, currentWeight, targetWeight } =
+    customerContext;
+
+  const remaining = {
+    kcal: Math.round(goals.kcal - todayTotals.kcal),
+    P: Math.round((goals.P - todayTotals.P) * 10) / 10,
+    F: Math.round((goals.F - todayTotals.F) * 10) / 10,
+    C: Math.round((goals.C - todayTotals.C) * 10) / 10,
+  };
+
+  const systemPrompt = `あなたは${name}さん専属のパーソナル管理栄養士です。
+ジムの会員の食事相談に、明るく親身に答えてください。
+
+【${name}さんの今日の状況】
+- 現在時刻：${currentHour}時頃
+- 目標：${goals.kcal}kcal / P${goals.P}g / F${goals.F}g / C${goals.C}g
+- 今日の摂取：${todayTotals.kcal}kcal / P${todayTotals.P}g / F${todayTotals.F}g / C${todayTotals.C}g
+- 残り目標：${remaining.kcal}kcal / P${remaining.P}g / F${remaining.F}g / C${remaining.C}g
+- 既に記録済み：${todayMealTypes.length > 0 ? todayMealTypes.join('、') : 'まだ記録なし'}
+${currentWeight ? `- 現在体重：${currentWeight}kg` : ''}
+${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
+
+【回答ルール】
+- 200文字以内で簡潔に答える
+- 数値で答える時は具体的に（例：「鶏胸肉100gはP23g」）
+- 励まし・共感を入れる
+- 「ご飯食べていい？」のような相談には、残りPFCを元に判断
+- 「これ食べたい」相談には、量や代替案も提示
+- 食事以外の質問（運動・体重・睡眠）にも一般的な範囲で答えてOK
+- 医療的な診断は避ける（必要なら専門家相談を促す）
+- 絵文字は1〜2個まで控えめに`;
+
+  // Gemini APIの content 配列形式に変換
+  const contents = [
+    ...history.slice(-10).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    { role: 'user', parts: [{ text: message }] },
+  ];
+
+  const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: 600,
+        temperature: 0.7,
+        topP: 0.9,
+      },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini Chat失敗 ${res.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return text.trim();
 }
 
 export type MealSuggestion = {
@@ -477,12 +604,26 @@ function parsePfcJson(
         C: Number(it.C ?? 0),
       }))
     : [];
+  // 詳細栄養素のパース（オプショナル）
+  const detailsRaw = (parsed as Record<string, unknown>).details as
+    | Record<string, unknown>
+    | undefined;
+  const details = detailsRaw
+    ? {
+        fiber: f1(Number(detailsRaw.fiber ?? 0)),
+        salt: f1(Number(detailsRaw.salt ?? 0)),
+        iron: f1(Number(detailsRaw.iron ?? 0)),
+        calcium: Math.round(Number(detailsRaw.calcium ?? 0)),
+        vitaminC: Math.round(Number(detailsRaw.vitaminC ?? 0)),
+      }
+    : undefined;
   return {
     kcal: Math.round(P * 4 + F * 9 + C * 4),
     P,
     F,
     C,
     items,
+    details,
   };
 }
 
@@ -495,7 +636,13 @@ function stripMarkdown(text: string): string {
 }
 
 // JSON.parse + 途中切れ対応：閉じ括弧を補完しつつパースを試みる
-function parseJsonLenient(text: string): { P?: number; F?: number; C?: number; items?: unknown[] } {
+function parseJsonLenient(text: string): {
+  P?: number;
+  F?: number;
+  C?: number;
+  items?: unknown[];
+  details?: unknown;
+} {
   // まずは素直にパース
   try {
     return JSON.parse(text);

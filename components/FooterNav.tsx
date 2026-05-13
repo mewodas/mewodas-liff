@@ -24,6 +24,7 @@ const items: NavItem[] = [
     match: (p) =>
       p.startsWith('/record') || p.startsWith('/weight') || p.startsWith('/exercise'),
   },
+  { href: '/chat', label: 'AI相談', icon: '💬', match: (p) => p.startsWith('/chat') },
   { href: '/weekly', label: '週次', icon: '📈', match: (p) => p.startsWith('/weekly') },
   { href: '/history', label: '履歴', icon: '📅', match: (p) => p.startsWith('/history') },
 ];
@@ -87,7 +88,7 @@ export default function FooterNav() {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-50">
-        <div className="max-w-md mx-auto grid grid-cols-4">
+        <div className="max-w-md mx-auto grid grid-cols-5">
           {items.map((it) => {
             const active = it.match(pathname);
             const className = `flex flex-col items-center py-2 ${

@@ -17,6 +17,13 @@ type MealRecord = {
   imageUrl: string | null;
   title: string;
   recordedAt: string;
+  details?: {
+    fiber: number;
+    salt: number;
+    iron: number;
+    calcium: number;
+    vitaminC: number;
+  } | null;
 };
 
 type TodayData = {
@@ -342,6 +349,9 @@ function HomePageInner() {
           <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
         </div>
 
+        {/* 詳細栄養素（記録がある日のみ） */}
+        <NutritionDetailsCard mealsByType={mealsByType} />
+
         {/* 継続バッジ（当日のみ） */}
         {isToday && data.stats && (
           <StreakCard stats={data.stats} />
@@ -482,6 +492,100 @@ function HomePageInner() {
 
       </div>
     </main>
+  );
+}
+
+function NutritionDetailsCard({
+  mealsByType,
+}: {
+  mealsByType: Record<string, MealRecord[]>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // 全食事レコードから詳細栄養素を合計
+  const totals = { fiber: 0, salt: 0, iron: 0, calcium: 0, vitaminC: 0 };
+  let hasAny = false;
+  for (const records of Object.values(mealsByType)) {
+    for (const r of records) {
+      if (r.details) {
+        totals.fiber += r.details.fiber || 0;
+        totals.salt += r.details.salt || 0;
+        totals.iron += r.details.iron || 0;
+        totals.calcium += r.details.calcium || 0;
+        totals.vitaminC += r.details.vitaminC || 0;
+        hasAny = true;
+      }
+    }
+  }
+  if (!hasAny) return null;
+
+  const f1 = (x: number) => Math.round(x * 10) / 10;
+  // 日本人の食事摂取基準（成人男性、参考値）
+  const dailyReference = {
+    fiber: 21, // g
+    salt: 7.5, // g（上限値）
+    iron: 7.5, // mg
+    calcium: 800, // mg
+    vitaminC: 100, // mg
+  };
+
+  const items = [
+    { label: '🌾 食物繊維', value: f1(totals.fiber), unit: 'g', ref: dailyReference.fiber },
+    { label: '🧂 食塩', value: f1(totals.salt), unit: 'g', ref: dailyReference.salt, isLimit: true },
+    { label: '🩸 鉄', value: f1(totals.iron), unit: 'mg', ref: dailyReference.iron },
+    { label: '🦴 カルシウム', value: Math.round(totals.calcium), unit: 'mg', ref: dailyReference.calcium },
+    { label: '🍊 ビタミンC', value: Math.round(totals.vitaminC), unit: 'mg', ref: dailyReference.vitaminC },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between"
+      >
+        <h2 className="text-base font-bold text-stone-900">🔬 詳細栄養素</h2>
+        <span className="text-stone-500 text-xs">
+          {expanded ? '閉じる ▲' : 'もっと詳しく ▼'}
+        </span>
+      </button>
+      {expanded && (
+        <>
+          <div className="mt-3 space-y-2">
+            {items.map((it) => {
+              const pct = Math.min(100, Math.round((it.value / it.ref) * 100));
+              return (
+                <div key={it.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-stone-800">{it.label}</span>
+                    <span className="font-bold text-stone-900">
+                      {it.value} <span className="text-xs text-stone-500">{it.unit}</span>
+                      <span className="text-xs font-medium text-stone-500 ml-1">
+                        {it.isLimit ? `（上限${it.ref}${it.unit}の${pct}%）` : `（目安${it.ref}${it.unit}の${pct}%）`}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        it.isLimit
+                          ? pct > 100
+                            ? 'bg-rose-500'
+                            : 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-[10px] text-stone-500 mt-3 leading-relaxed">
+            ※ AIによる推定値です。実際の値と異なる場合があります。日本人の食事摂取基準（成人）を参考目安として表示。
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
