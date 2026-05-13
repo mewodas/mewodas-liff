@@ -41,7 +41,7 @@ export default function PageHeader({
   const showBack = !!onBack || !!back;
 
   return (
-    <header className="bg-emerald-600 text-white px-4 pt-5 pb-4 sticky top-0 z-30 shadow">
+    <header className="bg-emerald-500 text-white px-4 pt-5 pb-4 sticky top-0 z-30 shadow">
       <div className="flex items-center justify-between gap-2">
         {showBack ? (
           <button

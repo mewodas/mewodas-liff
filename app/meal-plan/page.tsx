@@ -236,7 +236,7 @@ export default function MealPlanPage() {
                         onClick={() => setOneMealType(m)}
                         className={`py-2 rounded-xl text-xs font-bold ${
                           oneMealType === m
-                            ? 'bg-emerald-600 text-white shadow-sm'
+                            ? 'bg-emerald-500 text-white shadow-sm'
                             : 'bg-stone-100 text-stone-700 border border-stone-300'
                         }`}
                       >
@@ -254,7 +254,7 @@ export default function MealPlanPage() {
                   type="checkbox"
                   checked={useMyMenu}
                   onChange={(e) => setUseMyMenu(e.target.checked)}
-                  className="w-5 h-5 accent-emerald-600"
+                  className="w-5 h-5 accent-emerald-500"
                 />
                 <span className="text-sm text-stone-800">
                   マイメニュー（{myMenu.length}件）から優先して提案する
@@ -312,7 +312,7 @@ export default function MealPlanPage() {
                                 cur.includes(m.id) ? cur.filter((x) => x !== m.id) : [...cur, m.id]
                               );
                             }}
-                            className="w-4 h-4 accent-emerald-600 flex-shrink-0"
+                            className="w-4 h-4 accent-emerald-500 flex-shrink-0"
                           />
                           <span className="flex-1 min-w-0 text-xs font-bold text-stone-900 truncate">
                             {m.name}
@@ -334,7 +334,7 @@ export default function MealPlanPage() {
             <Section title={`使う材料を選ぶ（任意・選択中 ${ingredients.length}個）`}>
               {/* 追加直後のトースト */}
               {justAdded && (
-                <div className="bg-emerald-600 text-white text-xs font-bold rounded-xl px-3 py-2 mb-2 text-center shadow-md animate-pulse">
+                <div className="bg-emerald-500 text-white text-xs font-bold rounded-xl px-3 py-2 mb-2 text-center shadow-md animate-pulse">
                   ✅ 「{justAdded}」を追加しました
                 </div>
               )}
@@ -356,11 +356,11 @@ export default function MealPlanPage() {
                           onClick={() => removeIngredient(ing)}
                           className={`text-[11px] font-bold rounded-full pl-2 pr-1.5 py-1 border transition-colors ${
                             flash
-                              ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-300'
+                              ? 'bg-emerald-500 text-white border-emerald-500 ring-2 ring-emerald-300'
                               : 'bg-white text-emerald-700 border-emerald-300 active:bg-emerald-100'
                           }`}
                         >
-                          {ing} <span className={flash ? 'text-white ml-0.5' : 'text-emerald-600 ml-0.5'}>×</span>
+                          {ing} <span className={flash ? 'text-white ml-0.5' : 'text-emerald-500 ml-0.5'}>×</span>
                         </button>
                       );
                     })}
@@ -388,7 +388,7 @@ export default function MealPlanPage() {
                     }
                   }}
                   placeholder="例：鶏むね、サーモン、おにぎり"
-                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <button
                   type="button"
@@ -399,7 +399,7 @@ export default function MealPlanPage() {
                     setIngredientResults([]);
                   }}
                   disabled={!ingredientSearch.trim()}
-                  className="bg-emerald-600 text-white text-xs font-bold px-3 rounded-lg active:bg-emerald-700 disabled:opacity-50"
+                  className="bg-emerald-500 text-white text-xs font-bold px-3 rounded-lg active:bg-emerald-700 disabled:opacity-50"
                 >
                   追加
                 </button>
@@ -450,7 +450,7 @@ export default function MealPlanPage() {
                       onClick={() => (selected ? removeIngredient(ing) : addIngredient(ing))}
                       className={`text-[11px] font-bold rounded-full px-2 py-1 border ${
                         selected
-                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          ? 'bg-emerald-500 text-white border-emerald-500'
                           : 'bg-white text-stone-700 border-stone-300 active:bg-stone-50'
                       }`}
                     >
@@ -479,7 +479,7 @@ export default function MealPlanPage() {
                 value={preferIngredients}
                 onChange={(e) => setPreferIngredients(e.target.value)}
                 placeholder="例：辛いもの、あっさり、がっつり、韓国料理、鶏肉"
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <p className="text-[11px] text-stone-500 mt-1">気分・テイスト・食材なんでもOK</p>
             </Section>
@@ -490,7 +490,7 @@ export default function MealPlanPage() {
                 value={avoidIngredients}
                 onChange={(e) => setAvoidIngredients(e.target.value)}
                 placeholder="例：魚介、ナッツ、乳製品"
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <p className="text-[11px] text-stone-500 mt-1">アレルギーや苦手なものを入力</p>
             </Section>
@@ -514,7 +514,7 @@ export default function MealPlanPage() {
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
+              className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
             >
               {loading ? '🤖 献立作成中…' : '✨ 献立を作る'}
             </button>
@@ -612,7 +612,7 @@ export default function MealPlanPage() {
                 )}
                 <button
                   onClick={() => setRecipeMeal(meal)}
-                  className="w-full bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-xl active:bg-emerald-700"
+                  className="w-full bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl active:bg-emerald-700"
                 >
                   🍳 この食事にする（作り方を見る）
                 </button>
@@ -786,7 +786,7 @@ function RecipeSheet({
                 <ol className="space-y-3">
                   {recipe.steps.map((step, i) => (
                     <li key={i} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full font-bold text-xs flex items-center justify-center">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full font-bold text-xs flex items-center justify-center">
                         {i + 1}
                       </span>
                       <span className="flex-1 text-sm text-stone-800 leading-relaxed">{step}</span>
@@ -810,7 +810,7 @@ function RecipeSheet({
                       key={d}
                       onClick={() => setDay(d)}
                       className={`flex-1 py-2 rounded-xl text-xs font-bold ${
-                        day === d ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                        day === d ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
                       }`}
                     >
                       {d}の{meal.type}
@@ -827,7 +827,7 @@ function RecipeSheet({
             <button
               onClick={handleComplete}
               disabled={loading || recording}
-              className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
+              className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
             >
               {recording ? '記録中…' : `✅ 作成完了して${day}の${meal.type}に記録`}
             </button>
@@ -852,7 +852,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
     <button
       onClick={onClick}
       className={`py-2 px-2 rounded-xl text-xs font-bold ${
-        active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
+        active ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
       }`}
     >
       {label}

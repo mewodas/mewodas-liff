@@ -110,7 +110,7 @@ export default function WeeklyPage() {
           <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-xl text-sm mb-4">
             {error || 'データなし'}
           </div>
-          <Link href="/home" className="block bg-emerald-600 text-white text-center font-bold py-3 rounded-xl">
+          <Link href="/home" className="block bg-emerald-500 text-white text-center font-bold py-3 rounded-xl">
             ホームへ
           </Link>
         </div>
@@ -143,7 +143,7 @@ export default function WeeklyPage() {
             <>
               <button
                 onClick={() => setOffset(0)}
-                className="px-4 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm"
+                className="px-4 bg-emerald-500 text-white font-bold py-2 rounded-xl text-sm"
               >
                 今週
               </button>
@@ -170,7 +170,7 @@ export default function WeeklyPage() {
           />
           <div className="mt-3 flex items-center gap-4 text-sm flex-wrap font-bold">
             <span className="inline-flex items-center gap-1.5 text-emerald-700">
-              <span className="inline-block w-4 border-t-2 border-dashed border-emerald-600" />
+              <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
               目標 {goals.kcal} kcal
             </span>
             {week.avg.kcal > 0 && (
@@ -250,7 +250,7 @@ function DailyKcalChart({
         {/* 目標ライン */}
         {goal > 0 && goal <= maxScale && (
           <div
-            className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-600 pointer-events-none"
+            className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-500 pointer-events-none"
             style={{ bottom: `${(goal / maxScale) * 100}%` }}
           />
         )}
@@ -349,7 +349,7 @@ function WeeklyNutritionSummary({
           <span className="text-sm font-medium text-stone-500">/ {goals.kcal} kcal</span>
         </div>
         <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
-          <div className="h-full bg-emerald-600 transition-all" style={{ width: `${Math.min(100, kcalPct) || 0}%` }} />
+          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, kcalPct) || 0}%` }} />
         </div>
       </div>
 

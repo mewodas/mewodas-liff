@@ -257,7 +257,7 @@ function MealDetailInner() {
                 </div>
                 <button
                   onClick={() => setEditing(r)}
-                  className="flex-shrink-0 text-[11px] font-bold text-emerald-700 border border-emerald-600 px-2.5 py-1 rounded-full active:bg-emerald-50 mr-2"
+                  className="flex-shrink-0 text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 mr-2"
                   type="button"
                 >
                   編集
@@ -296,7 +296,7 @@ function MealDetailInner() {
           </div>
           <button
             onClick={() => router.back()}
-            className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 flex items-center justify-center gap-2"
+            className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 flex items-center justify-center gap-2"
           >
             <span>完了</span>
             <span className="bg-white text-emerald-700 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
@@ -438,7 +438,7 @@ function PortionSheet({
                   onClick={() => setMultiplier(String(p))}
                   className={`py-2 rounded-xl text-sm font-bold ${
                     multiplier === String(p)
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-emerald-500 text-white shadow-sm'
                       : 'bg-stone-100 text-stone-700 border border-stone-300'
                   }`}
                 >
@@ -456,7 +456,7 @@ function PortionSheet({
                 value={multiplier}
                 onChange={(e) => setMultiplier(e.target.value)}
                 placeholder="例：0.7"
-                className="flex-1 bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="flex-1 bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <span className="text-sm font-bold text-stone-700">人前</span>
             </div>
@@ -480,7 +480,7 @@ function PortionSheet({
           <button
             onClick={apply}
             disabled={!valid || saving || m === 1}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
           >
             {saving ? '更新中…' : `✅ ${m === 1 ? '変更なし' : `${m}人前に変更`}`}
           </button>
@@ -615,7 +615,7 @@ function EditModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -627,7 +627,7 @@ function EditModal({
                 inputMode="decimal"
                 value={P}
                 onChange={(e) => setP(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div>
@@ -637,7 +637,7 @@ function EditModal({
                 inputMode="decimal"
                 value={F}
                 onChange={(e) => setF(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div>
@@ -647,7 +647,7 @@ function EditModal({
                 inputMode="decimal"
                 value={C}
                 onChange={(e) => setC(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -660,7 +660,7 @@ function EditModal({
                 onClick={() => setAutoCalc((v) => !v)}
                 className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
                   autoCalc
-                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    ? 'bg-emerald-500 text-white border-emerald-500'
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -673,14 +673,14 @@ function EditModal({
               value={autoCalc ? String(calcKcal) : kcal}
               onChange={(e) => setKcal(e.target.value)}
               disabled={autoCalc}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
             />
           </div>
 
           <button
             onClick={save}
             disabled={saving}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {saving ? '更新中…' : '✅ 更新する'}
           </button>

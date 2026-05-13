@@ -22,7 +22,7 @@ const items = [
     icon: '🏃',
     title: '運動を記録',
     desc: '運動有無＋内容を入力',
-    color: 'bg-emerald-600',
+    color: 'bg-emerald-500',
   },
 ];
 

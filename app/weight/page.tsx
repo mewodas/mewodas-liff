@@ -101,7 +101,7 @@ export default function WeightPage() {
                 setSuccess(false);
                 setWeight('');
               }}
-              className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
             >
               もう一回記録する
             </button>
@@ -134,7 +134,7 @@ export default function WeightPage() {
             value={date}
             max={todayStr}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -149,7 +149,7 @@ export default function WeightPage() {
             placeholder="例：62.5"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <p className="text-xs text-stone-600 mt-2">毎朝起床後・食事前の測定を推奨</p>
         </div>
@@ -157,7 +157,7 @@ export default function WeightPage() {
         <button
           onClick={handleSubmit}
           disabled={!weight || submitting}
-          className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
+          className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
           {submitting ? '保存中…' : '記録する'}
         </button>

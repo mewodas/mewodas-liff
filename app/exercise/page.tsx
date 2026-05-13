@@ -144,7 +144,7 @@ export default function ExercisePage() {
                 setExercised(null);
                 setContent('');
               }}
-              className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
             >
               もう一回記録する
             </button>
@@ -177,7 +177,7 @@ export default function ExercisePage() {
             value={date}
             max={todayStr}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function ExercisePage() {
               onClick={() => setExercised(true)}
               className={`flex-1 py-4 rounded-xl text-base font-bold ${
                 exercised === true
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-emerald-500 text-white shadow-md'
                   : 'bg-stone-100 text-stone-700 border border-stone-300'
               }`}
             >
@@ -239,7 +239,7 @@ export default function ExercisePage() {
                   : '例：ジョギング30分、筋トレ40分、ストレッチ15分'
               }
               rows={3}
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         )}
@@ -247,7 +247,7 @@ export default function ExercisePage() {
         <button
           onClick={handleSubmit}
           disabled={exercised === null || submitting || (exercised === true && !!existingContent && !content.trim())}
-          className="w-full bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
+          className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
           {submitting
             ? '保存中…'

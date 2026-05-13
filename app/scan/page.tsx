@@ -176,7 +176,7 @@ export default function ScanPage() {
 
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
-      <header className="bg-emerald-600 text-white px-4 pt-6 pb-5 shadow">
+      <header className="bg-emerald-500 text-white px-4 pt-6 pb-5 shadow">
         <h1 className="text-xl font-bold">📱 バーコードスキャン</h1>
         <p className="text-xs text-emerald-50 mt-1">市販品のJANコードから栄養素を自動取得</p>
         <p className="text-[10px] text-emerald-100 mt-1.5 leading-relaxed">
@@ -200,7 +200,7 @@ export default function ScanPage() {
           <>
             <button
               onClick={startScan}
-              className="w-full bg-emerald-600 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700"
+              className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700"
             >
               📷 カメラでスキャン開始
             </button>
@@ -217,12 +217,12 @@ export default function ScanPage() {
                   value={manualBarcode}
                   onChange={(e) => setManualBarcode(e.target.value.replace(/\D/g, ''))}
                   placeholder="例：4901005101586"
-                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <button
                   onClick={handleManualSearch}
                   disabled={!manualBarcode.trim() || looking}
-                  className="bg-emerald-600 text-white font-bold px-4 rounded-xl disabled:bg-stone-300"
+                  className="bg-emerald-500 text-white font-bold px-4 rounded-xl disabled:bg-stone-300"
                 >
                   検索
                 </button>
@@ -283,7 +283,7 @@ export default function ScanPage() {
                     key={d}
                     onClick={() => setDay(d)}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold ${
-                      day === d ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                      day === d ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
                     }`}
                   >
                     {d}
@@ -296,7 +296,7 @@ export default function ScanPage() {
                     key={m}
                     onClick={() => setMealType(m)}
                     className={`py-2 rounded-xl text-xs font-bold ${
-                      mealType === m ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                      mealType === m ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
                     }`}
                   >
                     {m}
@@ -308,7 +308,7 @@ export default function ScanPage() {
             <button
               onClick={handleRecord}
               disabled={submitting}
-              className="w-full bg-emerald-600 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
+              className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
             >
               {submitting ? '記録中…' : '✅ この内容で記録する'}
             </button>
@@ -336,7 +336,7 @@ export default function ScanPage() {
             </div>
             <Link
               href="/food-search"
-              className="block bg-emerald-600 text-white text-center font-bold py-3 rounded-xl"
+              className="block bg-emerald-500 text-white text-center font-bold py-3 rounded-xl"
             >
               🔍 食品DB から探す
             </Link>

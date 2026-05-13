@@ -351,9 +351,9 @@ export default function RecordPage() {
               : '料理を識別してカロリー・PFCを推定しています'}
           </p>
           <div className="flex justify-center">
-            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" />
-            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" />
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
           </div>
           <p className="text-[10px] text-stone-500 mt-6">
             {isSaving ? '数秒で完了します' : '約10〜15秒'}
@@ -418,7 +418,7 @@ export default function RecordPage() {
                   }`}
                 >
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold mr-3 ${
-                    isExcluded ? 'bg-stone-300' : 'bg-emerald-600'
+                    isExcluded ? 'bg-stone-300' : 'bg-emerald-500'
                   }`}>
                     {isExcluded ? '' : '✓'}
                   </div>
@@ -453,7 +453,7 @@ export default function RecordPage() {
             <button
               onClick={handleConfirm}
               disabled={analyzed.length === excluded.size}
-              className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300"
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300"
             >
               確定する（{selectedTotal.kcal} kcal）
             </button>
@@ -482,7 +482,7 @@ export default function RecordPage() {
             </div>
           </div>
           <div className="flex gap-2 mb-2">
-            <button onClick={reset} className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-700">
+            <button onClick={reset} className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700">
               もう一回記録する
             </button>
             <button
@@ -523,13 +523,13 @@ export default function RecordPage() {
               placeholder="例：ご飯茶碗1杯、鶏むね150g、味噌汁"
               rows={5}
               autoFocus
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <button
             onClick={() => runAnalyze([], comment)}
             disabled={!comment.trim()}
-            className="w-full bg-emerald-600 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
+            className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
           >
             ✨ 解析する
           </button>
@@ -569,7 +569,7 @@ export default function RecordPage() {
                 key={d}
                 onClick={() => setDay(d)}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
-                  day === d ? 'bg-emerald-600 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                  day === d ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
                 {d}
@@ -582,7 +582,7 @@ export default function RecordPage() {
                 key={m}
                 onClick={() => setMealType(m)}
                 className={`py-2.5 rounded-xl text-sm font-bold ${
-                  mealType === m ? 'bg-emerald-600 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                  mealType === m ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
                 {m}
@@ -679,7 +679,7 @@ export default function RecordPage() {
               onChange={(e) => setComment(e.target.value)}
               placeholder="例：味噌汁とサラダも食べた／ご飯は大盛り／ノンオイル"
               rows={3}
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
               撮り忘れた料理・量・調理法・調味料などを書くと、写真と合わせてAIが推定します
@@ -694,7 +694,7 @@ export default function RecordPage() {
           {previews.length > 0 ? (
             <button
               onClick={() => runAnalyze(photos, comment)}
-              className="w-full bg-emerald-600 text-white text-base font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700"
+              className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700"
             >
               ✨ 解析する（{previews.length}枚）
             </button>
@@ -793,7 +793,7 @@ function LabelResultSheet({
                   onClick={() => setQuantity(v)}
                   className={`py-2 rounded-xl text-sm font-bold ${
                     quantity === v
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-emerald-500 text-white shadow-sm'
                       : 'bg-stone-100 text-stone-700 border border-stone-300'
                   }`}
                 >
@@ -808,7 +808,7 @@ function LabelResultSheet({
               min="0.1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -828,7 +828,7 @@ function LabelResultSheet({
           <button
             onClick={() => onSave(q)}
             disabled={busy}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {busy ? '記録中…' : `✅ ${q}× を ${mealType}に記録`}
           </button>

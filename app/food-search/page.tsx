@@ -302,7 +302,7 @@ export default function FoodSearchPage() {
                             e.stopPropagation();
                             addToCart(item);
                           }}
-                          className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-base flex items-center justify-center active:bg-emerald-700"
+                          className="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold text-base flex items-center justify-center active:bg-emerald-700"
                           aria-label="数を増やす"
                         >
                           ＋
@@ -327,7 +327,7 @@ export default function FoodSearchPage() {
 
       {/* 下部固定カートバー */}
       {cartCount > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 bg-white border-t-2 border-emerald-600 px-4 py-3 z-40 shadow-2xl">
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t-2 border-emerald-500 px-4 py-3 z-40 shadow-2xl">
           <div className="max-w-md mx-auto flex items-center gap-3">
             <button
               type="button"
@@ -351,7 +351,7 @@ export default function FoodSearchPage() {
             <button
               onClick={handleCommit}
               disabled={saving}
-              className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
             >
               {saving ? '記録中…' : `✅ ${day}の${mealType}に追加`}
             </button>
@@ -447,7 +447,7 @@ function CartSheet({
                   <button
                     type="button"
                     onClick={() => onAdd(item.id)}
-                    className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center active:bg-emerald-700"
+                    className="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center active:bg-emerald-700"
                     aria-label="数を増やす"
                   >
                     ＋
@@ -484,7 +484,7 @@ function CartSheet({
             <button
               onClick={onCommit}
               disabled={saving}
-              className="w-full bg-emerald-600 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
             >
               {saving ? '記録中…' : `✅ ${count}点を${day}の${mealType}に追加`}
             </button>

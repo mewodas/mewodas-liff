@@ -198,7 +198,7 @@ function MyMenuInner() {
                   <button
                     onClick={() => setRecordPicker(item)}
                     disabled={isBusy || !!busy}
-                    className="w-9 h-9 rounded-full bg-emerald-600 text-white text-lg font-bold flex items-center justify-center disabled:opacity-50 active:bg-emerald-700 mr-1"
+                    className="w-9 h-9 rounded-full bg-emerald-500 text-white text-lg font-bold flex items-center justify-center disabled:opacity-50 active:bg-emerald-700 mr-1"
                     aria-label="記録する"
                   >
                     {isBusy ? '…' : '+'}
@@ -233,7 +233,7 @@ function MyMenuInner() {
         <div className="max-w-md mx-auto">
           <button
             onClick={() => setShowAdd(true)}
-            className="w-full bg-emerald-600 text-white font-bold py-3 rounded-2xl shadow-md active:bg-emerald-700"
+            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-2xl shadow-md active:bg-emerald-700"
             type="button"
           >
             ＋ 新しいメニューを追加
@@ -315,7 +315,7 @@ function RecordPickerSheet({
                   key={d}
                   onClick={() => setDay(d)}
                   className={`flex-1 py-2 rounded-xl text-sm font-bold ${
-                    day === d ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                    day === d ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
                   }`}
                 >
                   {d}
@@ -331,7 +331,7 @@ function RecordPickerSheet({
                   key={m}
                   onClick={() => setMealType(m)}
                   className={`py-2 rounded-xl text-sm font-bold ${
-                    mealType === m ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                    mealType === m ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
                   }`}
                 >
                   {m}
@@ -342,7 +342,7 @@ function RecordPickerSheet({
           <button
             onClick={() => onConfirm(day, mealType)}
             disabled={loading}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {loading ? '記録中…' : `✅ ${day}の${mealType}に記録`}
           </button>
@@ -457,7 +457,7 @@ function AddItemSheet({
               onClick={() => setTab('db')}
               className={`pb-2 text-sm font-bold border-b-2 ${
                 tab === 'db'
-                  ? 'border-emerald-600 text-emerald-700'
+                  ? 'border-emerald-500 text-emerald-700'
                   : 'border-transparent text-stone-500 active:text-stone-700'
               }`}
             >
@@ -468,7 +468,7 @@ function AddItemSheet({
               onClick={() => setTab('manual')}
               className={`pb-2 text-sm font-bold border-b-2 ${
                 tab === 'manual'
-                  ? 'border-emerald-600 text-emerald-700'
+                  ? 'border-emerald-500 text-emerald-700'
                   : 'border-transparent text-stone-500 active:text-stone-700'
               }`}
             >
@@ -489,7 +489,7 @@ function AddItemSheet({
                 onChange={(e) => setDbQuery(e.target.value)}
                 placeholder="🔍 例：おにぎり、ラーメン、プロテイン"
                 autoFocus
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border-2 border-emerald-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border-2 border-emerald-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               {dbSearching && <div className="text-xs text-stone-500">検索中…</div>}
               {dbResults.length > 0 && (
@@ -511,7 +511,7 @@ function AddItemSheet({
                         <div className="text-sm font-bold text-stone-900">{item.kcal}</div>
                         <div className="text-[9px] text-stone-500">kcal</div>
                       </div>
-                      <div className="ml-2 w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                      <div className="ml-2 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                         ＋
                       </div>
                     </button>
@@ -545,7 +545,7 @@ function AddItemSheet({
                   <button
                     onClick={submit}
                     disabled={!valid}
-                    className="w-full mt-3 bg-emerald-600 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
+                    className="w-full mt-3 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
                   >
                     ⭐ マイメニューに保存
                   </button>
@@ -580,7 +580,7 @@ function AddItemSheet({
                     setFilled(false);
                   }}
                   placeholder="例：プロテイン、サラダチキン"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -591,7 +591,7 @@ function AddItemSheet({
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                   placeholder="例：1人前、1杯、1個、100g"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -606,7 +606,7 @@ function AddItemSheet({
                       value={P}
                       onChange={(e) => setP(e.target.value)}
                       placeholder="20"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                   <div>
@@ -617,7 +617,7 @@ function AddItemSheet({
                       value={F}
                       onChange={(e) => setF(e.target.value)}
                       placeholder="10"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                   <div>
@@ -628,7 +628,7 @@ function AddItemSheet({
                       value={C}
                       onChange={(e) => setC(e.target.value)}
                       placeholder="30"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -642,7 +642,7 @@ function AddItemSheet({
                     onClick={() => setAutoCalc((v) => !v)}
                     className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
                       autoCalc
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-emerald-500 text-white border-emerald-500'
                         : 'bg-white text-stone-700 border-stone-300'
                     }`}
                   >
@@ -656,7 +656,7 @@ function AddItemSheet({
                   onChange={(e) => setKcal(e.target.value)}
                   disabled={autoCalc}
                   placeholder="例：280"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
                 />
                 {autoCalc && (
                   <p className="text-[10px] text-emerald-700 mt-1">
@@ -668,7 +668,7 @@ function AddItemSheet({
               <button
                 onClick={submit}
                 disabled={!valid}
-                className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
+                className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
               >
                 {valid ? '⭐ マイメニューに保存' : '料理名と栄養素を入力してください'}
               </button>
@@ -749,7 +749,7 @@ function EditItemSheet({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：プロテイン、サラダチキン"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -760,7 +760,7 @@ function EditItemSheet({
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               placeholder="例：1人前、1杯、1個、100g"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -775,7 +775,7 @@ function EditItemSheet({
                   value={P}
                   onChange={(e) => setP(e.target.value)}
                   placeholder="20"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -786,7 +786,7 @@ function EditItemSheet({
                   value={F}
                   onChange={(e) => setF(e.target.value)}
                   placeholder="10"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -797,7 +797,7 @@ function EditItemSheet({
                   value={C}
                   onChange={(e) => setC(e.target.value)}
                   placeholder="30"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -811,7 +811,7 @@ function EditItemSheet({
                 onClick={() => setAutoCalc((v) => !v)}
                 className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
                   autoCalc
-                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    ? 'bg-emerald-500 text-white border-emerald-500'
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -825,7 +825,7 @@ function EditItemSheet({
               onChange={(e) => setKcal(e.target.value)}
               disabled={autoCalc}
               placeholder="例：280"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
             />
             {autoCalc && (
               <p className="text-[10px] text-emerald-700 mt-1">
@@ -837,7 +837,7 @@ function EditItemSheet({
           <button
             onClick={submit}
             disabled={!valid}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
           >
             {valid ? '💾 変更を保存' : '料理名と栄養素を入力してください'}
           </button>

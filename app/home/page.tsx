@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
@@ -238,7 +238,7 @@ function HomePageInner() {
           <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-xl text-sm">
             {error}
           </div>
-          <Link href="/record" className="block mt-4 bg-emerald-600 text-white text-center font-bold py-3 rounded-xl">
+          <Link href="/record" className="block mt-4 bg-emerald-500 text-white text-center font-bold py-3 rounded-xl">
             食事記録へ
           </Link>
         </div>
@@ -534,6 +534,57 @@ function WeightExerciseCard({
   );
 }
 
+function useDraggableSheet(onClose: () => void) {
+  const [expanded, setExpanded] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const startY = useRef<number | null>(null);
+
+  function onPointerDown(e: React.PointerEvent) {
+    startY.current = e.clientY;
+    try {
+      (e.target as Element).setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (startY.current === null) return;
+    const dy = e.clientY - startY.current;
+    // 通常時は下方向のみ追従、expanded時は両方向追従
+    if (!expanded && dy < 0) {
+      setDragOffset(0);
+    } else {
+      setDragOffset(dy);
+    }
+  }
+  function onPointerUp() {
+    if (startY.current === null) return;
+    const dy = dragOffset;
+    if (dy > 80) {
+      onClose();
+    } else if (dy < -50 && !expanded) {
+      setExpanded(true);
+    } else if (dy > 40 && expanded) {
+      setExpanded(false);
+    }
+    setDragOffset(0);
+    startY.current = null;
+  }
+
+  const handleProps = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel: onPointerUp,
+  };
+  const sheetStyle =
+    dragOffset !== 0
+      ? { transform: `translateY(${dragOffset}px)`, transition: 'none' as const }
+      : { transform: 'translateY(0)', transition: 'transform 0.2s ease-out' };
+
+  return { expanded, handleProps, sheetStyle };
+}
+
 function WeightSheet({
   selectedDate,
   lineUserId,
@@ -550,6 +601,7 @@ function WeightSheet({
   const [weight, setWeight] = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   async function save() {
     const w = parseFloat(weight);
@@ -579,15 +631,24 @@ function WeightSheet({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={saving ? undefined : onClose}>
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-3 pb-2 border-b border-stone-200">
-          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
+      <div
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="pt-3 pb-2 border-b border-stone-200 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">⚖️ 体重を記録</h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
-        <div className="p-5 space-y-3">
+        <div className="p-5 space-y-3 overflow-y-auto flex-1">
           {error && (
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
           )}
@@ -603,14 +664,14 @@ function WeightSheet({
               placeholder="例：62.5"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-stone-500 mt-1">毎朝起床後・食事前の測定を推奨</p>
           </div>
           <button
             onClick={save}
             disabled={saving || !weight}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {saving ? '保存中…' : initialValue ? '✏️ 上書き保存' : '✅ 保存'}
           </button>
@@ -641,6 +702,7 @@ function ExerciseSheet({
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   async function save() {
     setSaving(true);
@@ -670,15 +732,24 @@ function ExerciseSheet({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={saving ? undefined : onClose}>
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-3 pb-2 border-b border-stone-200">
-          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
+      <div
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="pt-3 pb-2 border-b border-stone-200 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">🏃 運動を記録</h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
-        <div className="p-5 space-y-3">
+        <div className="p-5 space-y-3 overflow-y-auto flex-1">
           {error && (
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
           )}
@@ -690,7 +761,7 @@ function ExerciseSheet({
                 onClick={() => setExercised(true)}
                 className={`py-3 rounded-xl text-sm font-bold ${
                   exercised
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-emerald-500 text-white'
                     : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
@@ -717,14 +788,14 @@ function ExerciseSheet({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="例：ランニング30分、ジム筋トレ"
                 rows={3}
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           )}
           <button
             onClick={save}
             disabled={saving}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {saving ? '保存中…' : hasInitial ? '✏️ 上書き保存' : '✅ 保存'}
           </button>
@@ -809,7 +880,7 @@ function DateStrip({
               onClick={() => onSelect(d)}
               className={`flex flex-col items-center justify-center min-w-[48px] py-2 rounded-2xl transition-all ${
                 isSelected
-                  ? 'bg-emerald-600 shadow-md'
+                  ? 'bg-emerald-500 shadow-md'
                   : isToday
                   ? 'bg-white border-2 border-emerald-300'
                   : 'bg-white border border-stone-200'
@@ -894,7 +965,7 @@ function NutritionSummaryCard({
         </div>
         <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-emerald-600 transition-all"
+            className="h-full bg-emerald-500 transition-all"
             style={{ width: `${Math.min(100, kcalPct) || 0}%` }}
           />
         </div>
@@ -1167,7 +1238,7 @@ function ProgressRow({
     labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
 
   const barColor: Record<string, string> = {
-    emerald: 'bg-emerald-600',
+    emerald: 'bg-emerald-500',
     rose: 'bg-rose-500',
     amber: 'bg-amber-500',
     sky: 'bg-sky-500',
