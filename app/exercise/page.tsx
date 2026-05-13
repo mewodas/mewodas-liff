@@ -177,7 +177,7 @@ export default function ExercisePage() {
             value={date}
             max={todayStr}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
           />
         </div>
 
@@ -239,7 +239,7 @@ export default function ExercisePage() {
                   : '例：ジョギング30分、筋トレ40分、ストレッチ15分'
               }
               rows={3}
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
         )}

@@ -489,7 +489,7 @@ function AddItemSheet({
                 onChange={(e) => setDbQuery(e.target.value)}
                 placeholder="🔍 例：おにぎり、ラーメン、プロテイン"
                 autoFocus
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border-2 border-emerald-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border-2 border-emerald-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
               {dbSearching && <div className="text-xs text-stone-500">検索中…</div>}
               {dbResults.length > 0 && (
@@ -580,7 +580,7 @@ function AddItemSheet({
                     setFilled(false);
                   }}
                   placeholder="例：プロテイン、サラダチキン"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -591,7 +591,7 @@ function AddItemSheet({
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                   placeholder="例：1人前、1杯、1個、100g"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
 
@@ -606,7 +606,7 @@ function AddItemSheet({
                       value={P}
                       onChange={(e) => setP(e.target.value)}
                       placeholder="20"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                     />
                   </div>
                   <div>
@@ -617,7 +617,7 @@ function AddItemSheet({
                       value={F}
                       onChange={(e) => setF(e.target.value)}
                       placeholder="10"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                     />
                   </div>
                   <div>
@@ -628,7 +628,7 @@ function AddItemSheet({
                       value={C}
                       onChange={(e) => setC(e.target.value)}
                       placeholder="30"
-                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                     />
                   </div>
                 </div>
@@ -656,7 +656,7 @@ function AddItemSheet({
                   onChange={(e) => setKcal(e.target.value)}
                   disabled={autoCalc}
                   placeholder="例：280"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
                 />
                 {autoCalc && (
                   <p className="text-[10px] text-emerald-700 mt-1">
@@ -749,7 +749,7 @@ function EditItemSheet({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：プロテイン、サラダチキン"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
 
@@ -760,7 +760,7 @@ function EditItemSheet({
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               placeholder="例：1人前、1杯、1個、100g"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
 
@@ -775,7 +775,7 @@ function EditItemSheet({
                   value={P}
                   onChange={(e) => setP(e.target.value)}
                   placeholder="20"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
               <div>
@@ -786,7 +786,7 @@ function EditItemSheet({
                   value={F}
                   onChange={(e) => setF(e.target.value)}
                   placeholder="10"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
               <div>
@@ -797,7 +797,7 @@ function EditItemSheet({
                   value={C}
                   onChange={(e) => setC(e.target.value)}
                   placeholder="30"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
             </div>
@@ -825,7 +825,7 @@ function EditItemSheet({
               onChange={(e) => setKcal(e.target.value)}
               disabled={autoCalc}
               placeholder="例：280"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
             />
             {autoCalc && (
               <p className="text-[10px] text-emerald-700 mt-1">

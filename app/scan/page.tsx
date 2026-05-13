@@ -217,7 +217,7 @@ export default function ScanPage() {
                   value={manualBarcode}
                   onChange={(e) => setManualBarcode(e.target.value.replace(/\D/g, ''))}
                   placeholder="例：4901005101586"
-                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
                 <button
                   onClick={handleManualSearch}

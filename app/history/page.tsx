@@ -357,7 +357,7 @@ function CalendarCell({
       onClick={onClick}
       className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-colors relative ${
         isSelected
-          ? 'bg-emerald-100 border-2 border-emerald-500'
+          ? 'bg-emerald-100 border-2 border-emerald-600'
           : isToday
           ? 'bg-emerald-50 border border-emerald-300'
           : cell.exercised
@@ -612,7 +612,7 @@ function ProgressRow({
       ? { text: '⚠️ 過剰', cls: 'text-rose-700 bg-rose-100 border-rose-300' }
       : { text: '✨ 良好', cls: 'text-emerald-700 bg-emerald-100 border-emerald-300' };
   const barColor: Record<string, string> = {
-    emerald: 'bg-emerald-500',
+    emerald: 'bg-emerald-600',
     rose: 'bg-rose-500',
     amber: 'bg-amber-500',
     sky: 'bg-sky-500',

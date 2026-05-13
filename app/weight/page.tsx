@@ -134,7 +134,7 @@ export default function WeightPage() {
             value={date}
             max={todayStr}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
           />
         </div>
 
@@ -149,7 +149,7 @@ export default function WeightPage() {
             placeholder="例：62.5"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-600"
           />
           <p className="text-xs text-stone-600 mt-2">毎朝起床後・食事前の測定を推奨</p>
         </div>

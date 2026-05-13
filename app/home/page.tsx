@@ -260,10 +260,10 @@ function HomePageInner() {
         {/* ヘッダー：挨拶＋バッジ＋カレンダー */}
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-stone-900 truncate">
+            <h1 className="text-base font-bold text-stone-900 truncate">
               {greetingByHour()}、{customer.name} さん
             </h1>
-            <p className="text-xs text-stone-600 mt-0.5">{dateLabel}</p>
+            <p className="text-[11px] text-stone-600 mt-0.5">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {data.stats && (
@@ -603,7 +603,7 @@ function WeightSheet({
               placeholder="例：62.5"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-4 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
             <p className="text-[10px] text-stone-500 mt-1">毎朝起床後・食事前の測定を推奨</p>
           </div>
@@ -717,7 +717,7 @@ function ExerciseSheet({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="例：ランニング30分、ジム筋トレ"
                 rows={3}
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
             </div>
           )}
@@ -809,7 +809,7 @@ function DateStrip({
               onClick={() => onSelect(d)}
               className={`flex flex-col items-center justify-center min-w-[48px] py-2 rounded-2xl transition-all ${
                 isSelected
-                  ? 'bg-emerald-500 shadow-md'
+                  ? 'bg-emerald-600 shadow-md'
                   : isToday
                   ? 'bg-white border-2 border-emerald-300'
                   : 'bg-white border border-stone-200'
@@ -894,7 +894,7 @@ function NutritionSummaryCard({
         </div>
         <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-emerald-500 transition-all"
+            className="h-full bg-emerald-600 transition-all"
             style={{ width: `${Math.min(100, kcalPct) || 0}%` }}
           />
         </div>
@@ -1167,7 +1167,7 @@ function ProgressRow({
     labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
 
   const barColor: Record<string, string> = {
-    emerald: 'bg-emerald-500',
+    emerald: 'bg-emerald-600',
     rose: 'bg-rose-500',
     amber: 'bg-amber-500',
     sky: 'bg-sky-500',

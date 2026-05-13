@@ -456,7 +456,7 @@ function PortionSheet({
                 value={multiplier}
                 onChange={(e) => setMultiplier(e.target.value)}
                 placeholder="例：0.7"
-                className="flex-1 bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex-1 bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
               <span className="text-sm font-bold text-stone-700">人前</span>
             </div>
@@ -615,7 +615,7 @@ function EditModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
 
@@ -627,7 +627,7 @@ function EditModal({
                 inputMode="decimal"
                 value={P}
                 onChange={(e) => setP(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
             </div>
             <div>
@@ -637,7 +637,7 @@ function EditModal({
                 inputMode="decimal"
                 value={F}
                 onChange={(e) => setF(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
             </div>
             <div>
@@ -647,7 +647,7 @@ function EditModal({
                 inputMode="decimal"
                 value={C}
                 onChange={(e) => setC(e.target.value)}
-                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
             </div>
           </div>
@@ -673,7 +673,7 @@ function EditModal({
               value={autoCalc ? String(calcKcal) : kcal}
               onChange={(e) => setKcal(e.target.value)}
               disabled={autoCalc}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:bg-stone-100"
             />
           </div>
 

@@ -351,9 +351,9 @@ export default function RecordPage() {
               : '料理を識別してカロリー・PFCを推定しています'}
           </p>
           <div className="flex justify-center">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
+            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" />
+            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
           </div>
           <p className="text-[10px] text-stone-500 mt-6">
             {isSaving ? '数秒で完了します' : '約10〜15秒'}
@@ -523,7 +523,7 @@ export default function RecordPage() {
               placeholder="例：ご飯茶碗1杯、鶏むね150g、味噌汁"
               rows={5}
               autoFocus
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
           <button
@@ -679,7 +679,7 @@ export default function RecordPage() {
               onChange={(e) => setComment(e.target.value)}
               placeholder="例：味噌汁とサラダも食べた／ご飯は大盛り／ノンオイル"
               rows={3}
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
             <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
               撮り忘れた料理・量・調理法・調味料などを書くと、写真と合わせてAIが推定します
@@ -808,7 +808,7 @@ function LabelResultSheet({
               min="0.1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
 

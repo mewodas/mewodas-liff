@@ -327,7 +327,7 @@ export default function FoodSearchPage() {
 
       {/* 下部固定カートバー */}
       {cartCount > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 bg-white border-t-2 border-emerald-500 px-4 py-3 z-40 shadow-2xl">
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t-2 border-emerald-600 px-4 py-3 z-40 shadow-2xl">
           <div className="max-w-md mx-auto flex items-center gap-3">
             <button
               type="button"

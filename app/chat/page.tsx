@@ -119,7 +119,7 @@ export default function ChatPage() {
         ))}
         {sending && (
           <div className="flex gap-2 items-start">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm flex-shrink-0">
               💬
             </div>
             <div className="bg-white rounded-2xl px-4 py-3 max-w-[75%] border border-stone-200">
@@ -171,7 +171,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="メッセージを入力..."
             rows={1}
-            className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-2xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 max-h-24"
+            className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-2xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600 max-h-24"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !sending) {
                 e.preventDefault();
@@ -199,14 +199,14 @@ function MessageBubble({ message }: { message: Message }) {
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
-          isUser ? 'bg-stone-300 text-stone-700' : 'bg-emerald-500 text-white'
+          isUser ? 'bg-stone-300 text-stone-700' : 'bg-emerald-600 text-white'
         }`}
       >
         {isUser ? '👤' : '💬'}
       </div>
       <div
         className={`rounded-2xl px-4 py-2.5 max-w-[75%] text-sm whitespace-pre-wrap leading-relaxed ${
-          isUser ? 'bg-emerald-500 text-white' : 'bg-white text-stone-900 border border-stone-200'
+          isUser ? 'bg-emerald-600 text-white' : 'bg-white text-stone-900 border border-stone-200'
         }`}
       >
         {message.content}

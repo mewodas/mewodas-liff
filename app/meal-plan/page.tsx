@@ -388,7 +388,7 @@ export default function MealPlanPage() {
                     }
                   }}
                   placeholder="例：鶏むね、サーモン、おにぎり"
-                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
                 <button
                   type="button"
@@ -479,7 +479,7 @@ export default function MealPlanPage() {
                 value={preferIngredients}
                 onChange={(e) => setPreferIngredients(e.target.value)}
                 placeholder="例：辛いもの、あっさり、がっつり、韓国料理、鶏肉"
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
               <p className="text-[11px] text-stone-500 mt-1">気分・テイスト・食材なんでもOK</p>
             </Section>
@@ -490,7 +490,7 @@ export default function MealPlanPage() {
                 value={avoidIngredients}
                 onChange={(e) => setAvoidIngredients(e.target.value)}
                 placeholder="例：魚介、ナッツ、乳製品"
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
               <p className="text-[11px] text-stone-500 mt-1">アレルギーや苦手なものを入力</p>
             </Section>
