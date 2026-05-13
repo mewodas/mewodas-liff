@@ -42,7 +42,6 @@ export default function WeeklyPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<DailyAgg | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -173,40 +172,19 @@ export default function WeeklyPage() {
         {/* 日別カロリーグラフ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3">📅 日別カロリー</h2>
-          {selectedDay && (
-            <div className="mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center justify-between">
-              <div className="text-sm">
-                <span className="font-bold text-stone-900">
-                  {fmtMd(selectedDay.date)}（{selectedDay.weekday}）
-                </span>
-                <span className="ml-2 font-bold text-emerald-700">
-                  {selectedDay.recorded ? `${selectedDay.kcal} kcal` : '未記録'}
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="text-xs text-stone-500 active:text-stone-700"
-                aria-label="閉じる"
-              >
-                ✕
-              </button>
-            </div>
-          )}
           <DailyKcalChart
             data={week.daily}
             goal={goals.kcal}
             avg={week.avg.kcal}
-            selectedDate={selectedDay?.date || null}
-            onSelect={(d) => setSelectedDay(d)}
           />
-          <div className="mt-3 flex items-center gap-3 text-[11px] flex-wrap">
-            <span className="inline-flex items-center gap-1 text-emerald-700">
-              <span className="inline-block w-3 border-t-2 border-dashed border-emerald-500" />
+          <div className="mt-3 flex items-center gap-4 text-sm flex-wrap font-bold">
+            <span className="inline-flex items-center gap-1.5 text-emerald-700">
+              <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
               目標 {goals.kcal} kcal
             </span>
             {week.avg.kcal > 0 && (
-              <span className="inline-flex items-center gap-1 text-purple-700">
-                <span className="inline-block w-3 border-t-2 border-dashed border-purple-500" />
+              <span className="inline-flex items-center gap-1.5 text-purple-700">
+                <span className="inline-block w-4 border-t-2 border-dashed border-purple-500" />
                 平均 {week.avg.kcal} kcal
               </span>
             )}
@@ -245,14 +223,10 @@ function DailyKcalChart({
   data,
   goal,
   avg,
-  selectedDate,
-  onSelect,
 }: {
   data: DailyAgg[];
   goal: number;
   avg: number;
-  selectedDate: string | null;
-  onSelect: (d: DailyAgg) => void;
 }) {
   const maxKcal = Math.max(...data.map((d) => d.kcal), goal, avg, 100);
   // 「キリのいい」最大値に丸める（1000単位、最低でも目標の1.2倍）
@@ -301,32 +275,23 @@ function DailyKcalChart({
         {/* バー */}
         <div className="absolute inset-0 flex items-end justify-around px-1">
           {data.map((d) => {
-            const isSelected = selectedDate === d.date;
             const heightPct = (d.kcal / maxScale) * 100;
             return (
-              <button
+              <div
                 key={d.date}
-                onClick={() => onSelect(d)}
                 className="relative flex items-end justify-center"
                 style={{
                   width: `${100 / data.length - 2}%`,
                   height: '100%',
-                  WebkitTapHighlightColor: 'transparent',
-                  outline: 'none',
                 }}
-                aria-label={`${d.weekday}: ${d.kcal}kcal`}
               >
                 {d.kcal > 0 && (
                   <div
-                    className={`w-full rounded-t-md transition-all ${
-                      isSelected
-                        ? 'bg-orange-500 ring-2 ring-emerald-500 ring-offset-1'
-                        : 'bg-orange-400'
-                    }`}
+                    className="w-full rounded-t-md bg-orange-400"
                     style={{ height: `${heightPct}%`, minHeight: '2px' }}
                   />
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -334,20 +299,15 @@ function DailyKcalChart({
 
       {/* X軸ラベル */}
       <div className="absolute left-12 right-1 bottom-0 h-7 flex items-center justify-around px-1">
-        {data.map((d) => {
-          const isSelected = selectedDate === d.date;
-          return (
-            <div
-              key={d.date}
-              className={`text-xs text-center ${
-                isSelected ? 'font-bold text-emerald-700' : 'font-medium text-stone-700'
-              }`}
-              style={{ width: `${100 / data.length - 2}%` }}
-            >
-              {d.weekday}
-            </div>
-          );
-        })}
+        {data.map((d) => (
+          <div
+            key={d.date}
+            className="text-xs text-center font-medium text-stone-700"
+            style={{ width: `${100 / data.length - 2}%` }}
+          >
+            {d.weekday}
+          </div>
+        ))}
       </div>
     </div>
   );
