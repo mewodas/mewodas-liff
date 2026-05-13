@@ -208,7 +208,7 @@ export default function HistoryPage() {
         </div>
 
         {/* 月次サマリ */}
-        <MonthlySummary daily={m.daily} goalKcal={customer.goals.kcal} isCurrentMonth={isCurrentMonth} todayDay={today.day} />
+        <MonthlySummary daily={m.daily} isCurrentMonth={isCurrentMonth} todayDay={today.day} />
 
         {/* カレンダー */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
@@ -267,12 +267,10 @@ export default function HistoryPage() {
 
 function MonthlySummary({
   daily,
-  goalKcal,
   isCurrentMonth,
   todayDay,
 }: {
   daily: DailyAgg[];
-  goalKcal: number;
   isCurrentMonth: boolean;
   todayDay: number;
 }) {
@@ -280,29 +278,26 @@ function MonthlySummary({
   const effectiveDays = isCurrentMonth ? daily.filter((d) => d.day <= todayDay) : daily;
   const recorded = effectiveDays.filter((d) => d.recorded);
   const exerciseDays = effectiveDays.filter((d) => d.exercised).length;
-  const onTargetDays = recorded.filter((d) => {
-    const pct = (d.kcal / goalKcal) * 100;
-    return Math.abs(pct - 100) <= 10;
-  }).length;
   const avgKcal =
     recorded.length > 0
       ? Math.round(recorded.reduce((sum, d) => sum + d.kcal, 0) / recorded.length)
       : 0;
+  const totalKcal = recorded.reduce((sum, d) => sum + d.kcal, 0);
   const totalDaysToShow = effectiveDays.length;
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
       <h2 className="text-base font-bold text-stone-900 mb-3">📊 月次サマリ</h2>
       <div className="grid grid-cols-2 gap-3">
         <StatBox label="📝 記録日" value={`${recorded.length}/${totalDaysToShow}`} unit="日" />
-        <StatBox label="✨ 目標達成" value={`${onTargetDays}`} unit={`/${recorded.length}日`} sub="±10%以内" />
-        <StatBox label="📊 平均kcal" value={avgKcal > 0 ? `${avgKcal}` : '—'} unit={avgKcal > 0 ? 'kcal' : ''} />
         <StatBox label="🏃 運動日" value={`${exerciseDays}`} unit={`/${totalDaysToShow}日`} />
+        <StatBox label="📊 平均kcal" value={avgKcal > 0 ? `${avgKcal}` : '—'} unit={avgKcal > 0 ? 'kcal' : ''} />
+        <StatBox label="🔢 累計kcal" value={totalKcal > 0 ? `${Math.round(totalKcal)}` : '—'} unit={totalKcal > 0 ? 'kcal' : ''} />
       </div>
     </div>
   );
 }
 
-function StatBox({ label, value, unit, sub }: { label: string; value: string; unit: string; sub?: string }) {
+function StatBox({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
       <div className="text-xs font-medium text-stone-700">{label}</div>
@@ -310,7 +305,6 @@ function StatBox({ label, value, unit, sub }: { label: string; value: string; un
         {value}
         <span className="text-xs font-medium text-stone-600 ml-1">{unit}</span>
       </div>
-      {sub && <div className="text-[10px] text-stone-500 mt-0.5">{sub}</div>}
     </div>
   );
 }

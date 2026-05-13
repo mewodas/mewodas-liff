@@ -14,7 +14,8 @@ export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-function computeStats(records: FoodRecord[], todayStr: string, goalKcal: number) {
+function computeStats(records: FoodRecord[], todayStr: string, _goalKcal: number) {
+  void _goalKcal;
   // 日別に集計
   const byDate = new Map<string, { kcal: number; recorded: boolean }>();
   for (const r of records) {
@@ -27,11 +28,11 @@ function computeStats(records: FoodRecord[], todayStr: string, goalKcal: number)
   // 当日含む直近30日
   const today = new Date(todayStr);
   let streakDays = 0;
-  let goalHitStreakDays = 0;
+  let bestStreakDays = 0;
+  let currentStreakInWindow = 0;
+  let last30RecordedDays = 0;
   let monthlyRecordedDays = 0;
-  let monthlyGoalHitDays = 0;
-  let stoppedStreak = false;
-  let stoppedGoalStreak = false;
+  let stoppedCurrentStreak = false;
 
   for (let i = 0; i < 30; i++) {
     const d = new Date(today);
@@ -41,28 +42,25 @@ function computeStats(records: FoodRecord[], todayStr: string, goalKcal: number)
     const isCurrentMonth =
       d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
     if (day?.recorded) {
-      if (!stoppedStreak) streakDays++;
+      if (!stoppedCurrentStreak) streakDays++;
+      last30RecordedDays++;
       if (isCurrentMonth) monthlyRecordedDays++;
-      const pct = (day.kcal / goalKcal) * 100;
-      const onTarget = Math.abs(pct - 100) <= 10;
-      if (onTarget) {
-        if (!stoppedGoalStreak) goalHitStreakDays++;
-        if (isCurrentMonth) monthlyGoalHitDays++;
-      } else {
-        stoppedGoalStreak = true;
-      }
+      currentStreakInWindow++;
+      if (currentStreakInWindow > bestStreakDays) bestStreakDays = currentStreakInWindow;
     } else {
-      // 当日は未記録でもストリーク継続条件にする（記録途中の可能性）
-      if (i !== 0) stoppedStreak = true;
-      if (i !== 0) stoppedGoalStreak = true;
+      // 当日は未記録でもストリーク継続扱い（記録途中の可能性）
+      if (i !== 0) {
+        stoppedCurrentStreak = true;
+        currentStreakInWindow = 0;
+      }
     }
   }
 
   return {
     streakDays,
-    goalHitStreakDays,
+    bestStreakDays,
+    last30RecordedDays,
     monthlyRecordedDays,
-    monthlyGoalHitDays,
   };
 }
 

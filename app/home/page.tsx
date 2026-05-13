@@ -38,9 +38,9 @@ type TodayData = {
   };
   stats: {
     streakDays: number;
-    goalHitStreakDays: number;
+    bestStreakDays: number;
+    last30RecordedDays: number;
     monthlyRecordedDays: number;
-    monthlyGoalHitDays: number;
   } | null;
 };
 
@@ -427,23 +427,22 @@ function StreakCard({
 }: {
   stats: NonNullable<TodayData['stats']>;
 }) {
-  const { streakDays, goalHitStreakDays, monthlyRecordedDays, monthlyGoalHitDays } = stats;
-  // 何も表示するものがない場合は非表示
+  const { streakDays, bestStreakDays, last30RecordedDays, monthlyRecordedDays } = stats;
+  // 何も記録がない場合は非表示
   if (
     streakDays === 0 &&
-    goalHitStreakDays === 0 &&
-    monthlyRecordedDays === 0 &&
-    monthlyGoalHitDays === 0
+    bestStreakDays === 0 &&
+    last30RecordedDays === 0 &&
+    monthlyRecordedDays === 0
   ) {
     return null;
   }
-  // バッジ獲得判定
+  // バッジ獲得判定（連続記録ベースのみ）
   const badges: Array<{ icon: string; label: string; achieved: boolean }> = [
-    { icon: '🥉', label: '3日連続記録', achieved: streakDays >= 3 },
-    { icon: '🥈', label: '7日連続記録', achieved: streakDays >= 7 },
-    { icon: '🥇', label: '30日連続記録', achieved: streakDays >= 30 },
-    { icon: '✨', label: '目標達成3日連続', achieved: goalHitStreakDays >= 3 },
-    { icon: '🌟', label: '目標達成7日連続', achieved: goalHitStreakDays >= 7 },
+    { icon: '🥉', label: '3日連続記録', achieved: bestStreakDays >= 3 },
+    { icon: '🥈', label: '7日連続記録', achieved: bestStreakDays >= 7 },
+    { icon: '🥇', label: '14日連続記録', achieved: bestStreakDays >= 14 },
+    { icon: '👑', label: '30日連続記録', achieved: bestStreakDays >= 30 },
   ];
   const achievedBadges = badges.filter((b) => b.achieved);
 
@@ -458,10 +457,10 @@ function StreakCard({
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">✨ 連続目標達成</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-0.5">
-            {goalHitStreakDays}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">🏆 ベスト連続</div>
+          <div className="text-2xl font-bold text-amber-700 mt-0.5">
+            {bestStreakDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
         </div>
@@ -472,10 +471,10 @@ function StreakCard({
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
         </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-medium text-stone-700">🌟 今月の達成</div>
-          <div className="text-2xl font-bold text-purple-700 mt-0.5">
-            {monthlyGoalHitDays}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+          <div className="text-xs font-medium text-stone-700">📊 直近30日</div>
+          <div className="text-2xl font-bold text-emerald-700 mt-0.5">
+            {last30RecordedDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
           </div>
         </div>
