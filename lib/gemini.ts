@@ -250,7 +250,8 @@ async function callGeminiOnce(
       contents: [{ parts }],
       generationConfig: {
         maxOutputTokens: 4096,
-        temperature: 0.4,
+        temperature: 0.1, // 同じ入力で結果が大きく変わらないよう低めに設定
+        topP: 0.8,
         responseMimeType: 'application/json',
       },
     }),
