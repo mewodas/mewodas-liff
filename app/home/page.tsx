@@ -328,12 +328,6 @@ function HomePageInner() {
           ))}
         </div>
 
-        <Link
-          href="/record-menu"
-          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center"
-        >
-          📝 記録する
-        </Link>
       </div>
     </main>
   );

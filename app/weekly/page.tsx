@@ -51,6 +51,7 @@ export default function WeeklyPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DailyAgg | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -181,6 +182,25 @@ export default function WeeklyPage() {
         {/* 日別カロリーグラフ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3">📅 日別カロリー</h2>
+          {selectedDay && (
+            <div className="mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center justify-between">
+              <div className="text-sm">
+                <span className="font-bold text-stone-900">
+                  {fmtMd(selectedDay.date)}（{selectedDay.weekday}）
+                </span>
+                <span className="ml-2 font-bold text-emerald-700">
+                  {selectedDay.recorded ? `${selectedDay.kcal} kcal` : '未記録'}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="text-xs text-stone-500 active:text-stone-700"
+                aria-label="閉じる"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <div className="w-full h-56">
             <ResponsiveContainer>
               <BarChart data={week.daily} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
@@ -205,7 +225,18 @@ export default function WeeklyPage() {
                     label={{ value: '平均', position: 'left', fill: '#a855f7', fontSize: 11 }}
                   />
                 )}
-                <Bar dataKey="kcal" fill="#f97316" radius={[8, 8, 0, 0]} />
+                <Bar
+                  dataKey="kcal"
+                  fill="#f97316"
+                  radius={[8, 8, 0, 0]}
+                  isAnimationActive={false}
+                  activeBar={false}
+                  onClick={(d) => {
+                    const day = d as unknown as DailyAgg;
+                    if (day && day.date) setSelectedDay(day);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
