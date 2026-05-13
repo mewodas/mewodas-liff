@@ -112,7 +112,7 @@ function HomePageInner() {
 
   useEffect(() => {
     if (!userId) return;
-    const cacheKey = `today_${userId}_${selectedDate}`;
+    const cacheKey = `today_v2_${userId}_${selectedDate}`;
     // キャッシュがあれば即表示（fresh/stale問わず）
     const cached = getCached<TodayData>(cacheKey);
     if (cached) {
@@ -319,7 +319,7 @@ function HomePageInner() {
                     .then((r) => r.json())
                     .then((json) => {
                       setData(json);
-                      setCached(`today_${userId}_${selectedDate}`, json);
+                      setCached(`today_v2_${userId}_${selectedDate}`, json);
                     })
                     .catch(() => {});
                 }

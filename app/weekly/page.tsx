@@ -73,7 +73,7 @@ export default function WeeklyPage() {
 
   useEffect(() => {
     if (!userId) return;
-    const cacheKey = `weekly_${userId}_${offset}`;
+    const cacheKey = `weekly_v2_${userId}_${offset}`;
     const cached = getCached<WeeklyData>(cacheKey);
     if (cached) {
       setData(cached.data);

@@ -89,7 +89,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (!userId) return;
-    const cacheKey = `history_${userId}_${year}_${month}`;
+    const cacheKey = `history_v2_${userId}_${year}_${month}`;
     const cached = getCached<HistoryData>(cacheKey);
     if (cached) {
       setData(cached.data);
@@ -299,16 +299,18 @@ function CalendarCell({
           ? 'bg-emerald-100 border-2 border-emerald-500'
           : isToday
           ? 'bg-emerald-50 border border-emerald-300'
+          : cell.exercised
+          ? 'bg-amber-50 border border-amber-300 active:bg-amber-100'
           : cell.recorded
           ? 'bg-stone-50 active:bg-stone-100'
           : 'active:bg-stone-100'
       }`}
     >
       <span className={`font-bold ${weekdayColor}`}>{cell.day}</span>
-      <span className="text-base leading-none mt-0.5">{status || (cell.recorded ? '' : '·')}</span>
-      {cell.exercised && (
-        <span className="absolute top-0.5 right-0.5 text-[10px]" aria-label="運動日">🏃</span>
-      )}
+      <div className="flex items-center gap-0.5 mt-0.5">
+        <span className="text-base leading-none">{status || (cell.recorded ? '' : '·')}</span>
+        {cell.exercised && <span className="text-sm leading-none" aria-label="運動日">🏃</span>}
+      </div>
     </button>
   );
 }
