@@ -44,6 +44,24 @@ type TodayData = {
   } | null;
 };
 
+type PredictionData = {
+  prediction: {
+    predictedWeight: number;
+    monthlyChange: number;
+    confidenceLevel: 'high' | 'medium' | 'low';
+    willReachGoal: boolean | null;
+    comment: string;
+    recommendations: string[];
+  } | null;
+  reason?: string;
+  message?: string;
+  dataPoints: {
+    recordedDays: number;
+    weightDays: number;
+    exerciseDays: number;
+  };
+};
+
 type SuggestData = {
   remaining: { kcal: number; P: number; F: number; C: number };
   suggestions: Array<{
@@ -101,6 +119,8 @@ function HomePageInner() {
   const [userId, setUserId] = useState<string | null>(null);
   const [suggest, setSuggest] = useState<SuggestData | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -131,6 +151,40 @@ function HomePageInner() {
       }
     })();
   }, []);
+
+  // 体重予測を取得（当日のみ、データ取得後、長めのキャッシュ）
+  useEffect(() => {
+    if (!userId || !data || !isToday) {
+      setPrediction(null);
+      return;
+    }
+    const cacheKey = `predict_v1_${userId}_${selectedDate}`;
+    const cached = getCached<PredictionData>(cacheKey);
+    if (cached) {
+      setPrediction(cached.data);
+      if (!cached.isStale) return;
+    }
+    setPredictionLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/predict-weight?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) {
+          setPrediction(null);
+          return;
+        }
+        const json: PredictionData = await res.json();
+        setPrediction(json);
+        setCached(cacheKey, json);
+      } catch {
+        // 予測失敗はサイレント
+      } finally {
+        setPredictionLoading(false);
+      }
+    })();
+  }, [userId, selectedDate, isToday, data]);
 
   // 提案を取得（当日のみ、データ取得後）
   useEffect(() => {
@@ -350,6 +404,15 @@ function HomePageInner() {
                 </>
               )}
             </div>
+
+            {/* AI体重予測 */}
+            {isToday && (
+              <PredictionBlock
+                prediction={prediction}
+                loading={predictionLoading}
+                targetWeight={customer.targetWeight}
+              />
+            )}
           </div>
         )}
 
@@ -419,6 +482,92 @@ function HomePageInner() {
 
       </div>
     </main>
+  );
+}
+
+function PredictionBlock({
+  prediction,
+  loading,
+  targetWeight,
+}: {
+  prediction: PredictionData | null;
+  loading: boolean;
+  targetWeight: number | null;
+}) {
+  if (loading && !prediction) {
+    return (
+      <div className="mt-3 pt-3 border-t border-stone-100">
+        <div className="text-xs text-stone-500">🔮 AI予測を生成中…</div>
+      </div>
+    );
+  }
+  if (!prediction) return null;
+
+  // データ不足の場合
+  if (!prediction.prediction) {
+    return (
+      <div className="mt-3 pt-3 border-t border-stone-100">
+        <div className="text-xs font-bold text-stone-700 mb-1">🔮 3ヶ月後のAI予測</div>
+        <div className="text-xs text-stone-600 bg-stone-50 rounded-lg p-2">
+          {prediction.message || 'データ不足のため予測できません'}
+        </div>
+      </div>
+    );
+  }
+
+  const p = prediction.prediction;
+  const confidenceColor =
+    p.confidenceLevel === 'high'
+      ? 'text-emerald-700'
+      : p.confidenceLevel === 'low'
+      ? 'text-stone-500'
+      : 'text-amber-700';
+  const confidenceLabel =
+    p.confidenceLevel === 'high' ? '高' : p.confidenceLevel === 'low' ? '低' : '中';
+  const goalIcon =
+    p.willReachGoal === true ? '✅' : p.willReachGoal === false ? '⚠️' : '';
+  const changeIcon = p.monthlyChange < 0 ? '⬇️' : p.monthlyChange > 0 ? '⬆️' : '→';
+
+  return (
+    <div className="mt-3 pt-3 border-t border-stone-100">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="text-xs font-bold text-stone-700">🔮 3ヶ月後のAI予測</div>
+        <div className={`text-[10px] font-medium ${confidenceColor}`}>
+          信頼度：{confidenceLabel}
+        </div>
+      </div>
+      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-2">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="text-2xl font-bold text-purple-700">
+            {p.predictedWeight} kg
+          </span>
+          {targetWeight && (
+            <span className="text-xs text-stone-600">
+              （目標 {targetWeight} kg {goalIcon}）
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-stone-700">
+          {changeIcon} 月平均 {Math.abs(p.monthlyChange)} kg/月
+        </div>
+        {p.comment && (
+          <div className="text-xs font-medium text-stone-800 mt-2">💬 {p.comment}</div>
+        )}
+      </div>
+      {p.recommendations.length > 0 && (
+        <div className="space-y-1">
+          <div className="text-[10px] font-bold text-stone-700">アドバイス</div>
+          {p.recommendations.map((r, i) => (
+            <div key={i} className="text-[11px] text-stone-700 bg-stone-50 rounded-lg px-2 py-1">
+              ・{r}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="text-[10px] text-stone-500 mt-2">
+        ※ 直近30日の食事・運動・体重データから推定。実際の体重変化と異なる場合があります。
+      </div>
+    </div>
   );
 }
 

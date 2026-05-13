@@ -189,6 +189,117 @@ ${textDesc}
   return parsePfcJson(text, PFC_CALIBRATION_TEXT);
 }
 
+// 体重予測：過去データから3ヶ月後の体重を予測
+export type WeightPrediction = {
+  predictedWeight: number; // 3ヶ月後の予測体重(kg)
+  monthlyChange: number; // 月平均の体重変化(kg/月)
+  confidenceLevel: 'high' | 'medium' | 'low';
+  willReachGoal: boolean | null; // 目標体重を期限内に達成できるか（目標未設定ならnull）
+  comment: string; // 総評コメント（30文字以内）
+  recommendations: string[]; // アドバイス3つ以内
+};
+
+export async function predictWeight(params: {
+  weightHistory: Array<{ date: string; weight: number }>; // 直近30日
+  avgKcal: number; // 直近30日の平均カロリー
+  goalKcal: number;
+  avgP: number; // 平均PFC
+  avgF: number;
+  avgC: number;
+  exerciseDays: number; // 直近30日の運動日数
+  currentWeight: number | null;
+  targetWeight: number | null;
+  targetDate: string | null;
+}): Promise<WeightPrediction> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const {
+    weightHistory,
+    avgKcal,
+    goalKcal,
+    avgP,
+    avgF,
+    avgC,
+    exerciseDays,
+    currentWeight,
+    targetWeight,
+    targetDate,
+  } = params;
+
+  const weightTrendStr = weightHistory
+    .map((w) => `${w.date}: ${w.weight}kg`)
+    .join('\n  ');
+
+  const targetInfo =
+    targetWeight && targetDate
+      ? `\n【目標】\n- 目標体重: ${targetWeight}kg\n- 目標達成日: ${targetDate}`
+      : '\n【目標】未設定';
+
+  const prompt = `あなたは管理栄養士・パーソナルトレーナーです。
+顧客の直近データから3ヶ月後の体重を科学的に予測してください。
+
+【直近30日のデータ】
+- 平均カロリー摂取: ${avgKcal} kcal/日（目標: ${goalKcal} kcal）
+- 平均PFC: P${avgP}g / F${avgF}g / C${avgC}g
+- 運動日数: ${exerciseDays}日 / 30日
+- 体重推移（${weightHistory.length}日分）:
+  ${weightTrendStr || '（データなし）'}
+- 現在体重: ${currentWeight ?? '不明'} kg
+${targetInfo}
+
+【予測ロジック】
+- カロリー収支から月平均の体重変化を算出（1kg脂肪 ≒ 7,200kcal）
+- 運動による消費カロリーを加味
+- 体重推移の実測値を最重視
+- データが少ない場合は信頼度を下げる
+
+【出力JSON形式（必ずこの形式）】
+{
+  "predictedWeight": 3ヶ月後の予測体重(kg)数値,
+  "monthlyChange": 月平均の体重変化(kg/月)数値（減量はマイナス）,
+  "confidenceLevel": "high" | "medium" | "low",
+  "willReachGoal": 目標達成見込みtrue/false（目標未設定ならnull）,
+  "comment": "30文字以内の総評",
+  "recommendations": ["アドバイス1", "アドバイス2", "アドバイス3"]
+}`;
+
+  const text = await callGemini([{ text: prompt }], apiKey);
+  return parseWeightPredictionJson(text);
+}
+
+function parseWeightPredictionJson(text: string): WeightPrediction {
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    if (start === -1) throw new Error('予測JSON解析失敗');
+    parsed = JSON.parse(cleaned.slice(start));
+  }
+  return {
+    predictedWeight: Math.round(Number(parsed.predictedWeight ?? 0) * 10) / 10,
+    monthlyChange: Math.round(Number(parsed.monthlyChange ?? 0) * 10) / 10,
+    confidenceLevel:
+      parsed.confidenceLevel === 'high'
+        ? 'high'
+        : parsed.confidenceLevel === 'low'
+        ? 'low'
+        : 'medium',
+    willReachGoal:
+      parsed.willReachGoal === true
+        ? true
+        : parsed.willReachGoal === false
+        ? false
+        : null,
+    comment: String(parsed.comment ?? ''),
+    recommendations: Array.isArray(parsed.recommendations)
+      ? (parsed.recommendations as unknown[]).map((r) => String(r)).slice(0, 3)
+      : [],
+  };
+}
+
 export type MealSuggestion = {
   title: string;
   tag: string;
