@@ -44,6 +44,19 @@ export default function HomePage() {
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function fetchToday(uid: string) {
+    const res = await fetch(`/api/today?lineUserId=${encodeURIComponent(uid)}&t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
+    }
+    return res.json();
+  }
 
   useEffect(() => {
     (async () => {
@@ -55,12 +68,8 @@ export default function HomePage() {
           setReady(true);
           return;
         }
-        const res = await fetch(`/api/today?lineUserId=${encodeURIComponent(profile.userId)}`);
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
-        }
-        const json = await res.json();
+        setUserId(profile.userId);
+        const json = await fetchToday(profile.userId);
         setData(json);
       } catch (e) {
         setError(e instanceof Error ? e.message : '読み込みエラー');
@@ -69,6 +78,20 @@ export default function HomePage() {
       }
     })();
   }, []);
+
+  async function handleRefresh() {
+    if (!userId) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const json = await fetchToday(userId);
+      setData(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '更新エラー');
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   if (!ready) {
     return (
@@ -105,9 +128,19 @@ export default function HomePage() {
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-24">
       <div className="max-w-md mx-auto">
         {/* ヘッダー */}
-        <div className="mb-4">
-          <p className="text-sm font-medium text-stone-700">{dateLabel}</p>
-          <h1 className="text-2xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-stone-700">{dateLabel}</p>
+            <h1 className="text-2xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-3 py-2 text-sm bg-white border border-stone-300 rounded-xl text-stone-900 font-bold active:bg-stone-50 disabled:opacity-50"
+            aria-label="更新"
+          >
+            {refreshing ? '更新中…' : '🔄 更新'}
+          </button>
         </div>
 
         {/* 今日の摂取 */}
