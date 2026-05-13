@@ -416,26 +416,31 @@ function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boo
         <div className="text-sm text-stone-700 bg-stone-50 rounded-xl p-3">{message}</div>
       )}
       {suggestions.length > 0 && (
-        <div className="space-y-2">
-          {suggestions.map((s, i) => (
-            <div key={i} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-              <div className="flex items-start gap-2 mb-1">
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                  {s.tag}
-                </span>
-                <div className="font-bold text-sm text-stone-900 leading-tight">
-                  {s.title}
+        <>
+          <div className="space-y-2">
+            {suggestions.map((s, i) => (
+              <div key={i} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+                <div className="flex items-start gap-2 mb-1">
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                    {s.tag}
+                  </span>
+                  <div className="font-bold text-sm text-stone-900 leading-tight">
+                    {s.title}
+                  </div>
                 </div>
+                <div className="text-xs font-medium text-stone-700 ml-1">
+                  約 {s.kcal} kcal ・ P 約{s.P}g ・ F 約{s.F}g ・ C 約{s.C}g
+                </div>
+                {s.reason && (
+                  <div className="text-[11px] text-stone-500 mt-0.5 ml-1">💬 {s.reason}</div>
+                )}
               </div>
-              <div className="text-xs font-medium text-stone-700 ml-1">
-                {s.kcal} kcal ・ P {s.P}g ・ F {s.F}g ・ C {s.C}g
-              </div>
-              {s.reason && (
-                <div className="text-[11px] text-stone-500 mt-0.5 ml-1">💬 {s.reason}</div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          <div className="text-[11px] text-stone-500 mt-3 leading-relaxed">
+            ※ 数値はAIによる推定値です。実際に食べた料理を写真で記録すると、その内容から計算された正確な数値が反映されます。
+          </div>
+        </>
       )}
     </div>
   );
