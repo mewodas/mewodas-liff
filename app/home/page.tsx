@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { getCached, setCached } from '@/lib/clientCache';
+import { getCached, setCached, invalidate } from '@/lib/clientCache';
 
 type MealRecord = {
   pageId: string;
@@ -200,14 +200,17 @@ function HomePageInner() {
                 </button>
               )}
             </div>
-            <button
-              onClick={() => navigateToDate(addDays(selectedDate, 1))}
-              disabled={selectedDate >= todayStr}
-              className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg disabled:opacity-30"
-              aria-label="翌日"
-            >
-              →
-            </button>
+            {!isToday ? (
+              <button
+                onClick={() => navigateToDate(addDays(selectedDate, 1))}
+                className="px-3 py-1 text-stone-900 text-lg font-bold active:bg-stone-100 rounded-lg"
+                aria-label="翌日"
+              >
+                →
+              </button>
+            ) : (
+              <span className="px-3 py-1 w-[2.5rem]" />
+            )}
           </div>
         </div>
 
@@ -268,6 +271,26 @@ function HomePageInner() {
               mealType={meal}
               records={mealsByType[meal] || []}
               dayTotalKcal={totals.kcal}
+              lineUserId={userId}
+              onDeleted={() => {
+                invalidate('today_');
+                invalidate('weekly_');
+                invalidate('history_');
+                router.refresh();
+                // 強制再取得：URLは同じだが直接フェッチ
+                if (userId) {
+                  fetch(
+                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                    { cache: 'no-store' }
+                  )
+                    .then((r) => r.json())
+                    .then((json) => {
+                      setData(json);
+                      setCached(`today_${userId}_${selectedDate}`, json);
+                    })
+                    .catch(() => {});
+                }
+              }}
             />
           ))}
         </div>
@@ -328,12 +351,39 @@ function MealSection({
   mealType,
   records,
   dayTotalKcal,
+  lineUserId,
+  onDeleted,
 }: {
   mealType: string;
   records: MealRecord[];
   dayTotalKcal: number;
+  lineUserId: string | null;
+  onDeleted: () => void;
 }) {
   const emoji = MEAL_EMOJI[mealType] || '🍽️';
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(pageId: string) {
+    if (!lineUserId) return;
+    if (!confirm('この記録を削除します。よろしいですか？')) return;
+    setDeletingId(pageId);
+    try {
+      const res = await fetch('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, lineUserId }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `削除失敗（${res.status}）`);
+      }
+      onDeleted();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '削除エラー');
+    } finally {
+      setDeletingId(null);
+    }
+  }
   const totals = records.reduce(
     (acc, r) => ({
       kcal: acc.kcal + r.kcal,
@@ -397,6 +447,14 @@ function MealSection({
                     <div className="text-xs text-stone-600 mt-1 line-clamp-2">{r.memo}</div>
                   )}
                 </div>
+                <button
+                  onClick={() => handleDelete(r.pageId)}
+                  disabled={deletingId === r.pageId}
+                  className="flex-shrink-0 text-xs text-red-700 font-bold px-2 py-1 rounded-lg active:bg-red-50 disabled:opacity-50"
+                  aria-label="記録を削除"
+                >
+                  {deletingId === r.pageId ? '削除中…' : '🗑️'}
+                </button>
               </div>
             </div>
           ))}

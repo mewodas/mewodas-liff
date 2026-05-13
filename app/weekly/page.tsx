@@ -140,7 +140,7 @@ export default function WeeklyPage() {
           <p className="text-sm font-medium text-stone-700 mt-1">{offsetLabel}：{weekLabel}</p>
         </div>
 
-        {/* 週ナビゲーション */}
+        {/* 週ナビゲーション（過去のみ） */}
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setOffset(offset - 1)}
@@ -149,20 +149,21 @@ export default function WeeklyPage() {
             ← 前週
           </button>
           {offset !== 0 && (
-            <button
-              onClick={() => setOffset(0)}
-              className="px-4 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm"
-            >
-              今週
-            </button>
+            <>
+              <button
+                onClick={() => setOffset(0)}
+                className="px-4 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm"
+              >
+                今週
+              </button>
+              <button
+                onClick={() => setOffset(offset + 1)}
+                className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
+              >
+                翌週 →
+              </button>
+            </>
           )}
-          <button
-            onClick={() => setOffset(offset + 1)}
-            disabled={offset >= 0}
-            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50 disabled:bg-stone-200 disabled:text-stone-400"
-          >
-            翌週 →
-          </button>
         </div>
 
         {/* 週間平均 */}
@@ -189,6 +190,7 @@ export default function WeeklyPage() {
                 />
                 <YAxis tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} />
                 <Tooltip
+                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #d6d3d1', borderRadius: 8, fontSize: 12 }}
                   formatter={(v) => [`${v} kcal`, 'カロリー']}
                 />

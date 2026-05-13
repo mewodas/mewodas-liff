@@ -40,44 +40,18 @@ export async function analyzeImagesPfc(
 
   const explicit = hasExplicitQuantity(supplementText);
 
-  // 明示量メモあり：写真解析（メモ無視）+ メモのテキスト解析 を完全分離して並列実行→合算
-  // これによりAIが「メモ優先で写真を無視する」現象を防ぐ
-  if (explicit && supplementText) {
-    return analyzePhotosPlusMemo(images, supplementText);
+  // メモがある場合は常に単一AIコールで処理（写真+メモを一緒に解析）
+  // → ダブルカウント（メモが写真の食材を描写する場合の重複計算）を防止
+  if (supplementText) {
+    return analyzeImagesSingleCall(images, supplementText, explicit);
   }
 
-  // 複数枚（明示量メモなし） → 並列解析で高速化
-  if (images.length > 1 && !explicit) {
-    return analyzeImagesParallel(images, supplementText);
+  // 複数枚（メモなし）→ 並列解析で高速化（各皿は別物として合算）
+  if (images.length > 1) {
+    return analyzeImagesParallel(images, null);
   }
 
-  return analyzeImagesSingleCall(images, supplementText, explicit);
-}
-
-// 写真とメモを完全に分離して並列解析→合算
-async function analyzePhotosPlusMemo(
-  images: Array<{ base64: string; mimeType: string }>,
-  supplementText: string
-): Promise<Pfc> {
-  // 写真は「メモ無し」として並列解析、メモは単独でテキスト解析
-  const [photoResult, memoResult] = await Promise.all([
-    images.length > 1
-      ? analyzeImagesParallel(images, null)
-      : analyzeImagesSingleCall(images, null, false),
-    analyzeTextPfc(supplementText),
-  ]);
-
-  const f1 = (x: number) => Math.round(x * 10) / 10;
-  const P = f1(photoResult.P + memoResult.P);
-  const F = f1(photoResult.F + memoResult.F);
-  const C = f1(photoResult.C + memoResult.C);
-  return {
-    P,
-    F,
-    C,
-    kcal: Math.round(P * 4 + F * 9 + C * 4),
-    items: [...photoResult.items, ...memoResult.items],
-  };
+  return analyzeImagesSingleCall(images, null, false);
 }
 
 async function analyzeImagesParallel(
@@ -124,17 +98,22 @@ async function analyzeImagesSingleCall(
 
   const supplementLine = supplementText
     ? explicit
-      ? `\n\n【メモと写真の両方を必ず itemsに含めて合算する】
+      ? `\n\n【メモを最優先・重複カウント厳禁】
 顧客メモ：${supplementText}
 
 処理手順（厳守）：
-1. メモに記載された食材は、明記された量で日本食品標準成分表の正確な値で計算し、items配列に必ず含める
-2. 写真に写っている食材（メモに無いものも含む）も識別し、items配列に必ず含める
-3. メモの食材と写真の食材を「両方とも」items配列に入れる
-4. それらすべてを合算したものを P/F/C の合計値とする
+1. メモに記載された食材は、メモの量を正解として日本食品標準成分表の正確な値で計算し、items配列に含める
+2. メモに記載された食材が「写真にも写っている」場合は、メモの値だけを採用（写真側からは追加カウントしない、重複させない）
+3. 写真にのみ写っていて「メモに記載が無い食材」のみ、写真から推定してitemsに追加する
+4. items配列にはメモの食材 + 写真にのみある食材 を両方含める（ただし重複させない）
 
-例：メモ「ごぼう1kg」+ 写真に「ご飯・味噌汁・肉」
-→ items: [{ごぼう1kg}, {ご飯}, {味噌汁}, {肉}] のように両方含める`
+例1：メモ「ご飯150g、鶏むね100g」+ 写真に「ご飯・鶏肉・味噌汁・サラダ」
+→ ご飯と鶏むねはメモの値を採用、味噌汁とサラダは写真から追加
+→ items: [{ご飯150g}, {鶏むね100g}, {味噌汁}, {サラダ}]
+
+例2：メモ「ごぼう1kg」+ 写真に「ご飯・味噌汁・肉」（ごぼうは写真に無い）
+→ メモのごぼう + 写真の全食材を追加
+→ items: [{ごぼう1kg}, {ご飯}, {味噌汁}, {肉}]`
       : `\n\n補足情報（顧客メモ）：${supplementText}\nこの補足情報も考慮してPFCを推定してください。`
     : '';
 

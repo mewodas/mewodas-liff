@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 
@@ -176,7 +186,7 @@ export default function HistoryPage() {
           <h1 className="text-2xl font-bold text-stone-900">📅 履歴</h1>
         </div>
 
-        {/* 月ナビ */}
+        {/* 月ナビ（過去のみ） */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
           <div className="flex items-center justify-between">
             <button
@@ -188,13 +198,53 @@ export default function HistoryPage() {
             <div className="font-bold text-stone-900">
               {year}年 {month}月
             </div>
-            <button
-              onClick={gotoNext}
-              disabled={isCurrentMonth || year > today.year || (year === today.year && month >= today.month)}
-              className="px-3 py-2 text-sm bg-stone-100 rounded-xl text-stone-900 font-bold active:bg-stone-200 disabled:opacity-40"
-            >
-              翌月 →
-            </button>
+            {!isCurrentMonth ? (
+              <button
+                onClick={gotoNext}
+                className="px-3 py-2 text-sm bg-stone-100 rounded-xl text-stone-900 font-bold active:bg-stone-200"
+              >
+                翌月 →
+              </button>
+            ) : (
+              <span className="px-3 py-2 w-[5.5rem]" />
+            )}
+          </div>
+        </div>
+
+        {/* 月別カロリーグラフ */}
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
+          <h2 className="text-base font-bold text-stone-900 mb-2">📊 日別カロリー</h2>
+          <p className="text-xs text-stone-600 mb-2">バーをタップで該当日のホームへ</p>
+          <div className="w-full h-56">
+            <ResponsiveContainer>
+              <BarChart data={m.daily.map((d) => ({ ...d, label: String(d.day) }))} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                <XAxis dataKey="label" tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} interval={2} />
+                <YAxis tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #d6d3d1', borderRadius: 8, fontSize: 12 }}
+                  formatter={(v) => [`${v} kcal`, 'カロリー']}
+                  labelFormatter={(label) => `${m.year}/${m.month}/${label}`}
+                />
+                <ReferenceLine
+                  y={customer.goals.kcal}
+                  stroke="#10b981"
+                  strokeDasharray="3 3"
+                  label={{ value: '目標', position: 'right', fill: '#10b981', fontSize: 11 }}
+                />
+                <Bar
+                  dataKey="kcal"
+                  fill="#f97316"
+                  radius={[6, 6, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: unknown) => {
+                    const day = d as { recorded?: boolean; date?: string };
+                    if (day.recorded && day.date) router.push(`/home?date=${day.date}`);
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

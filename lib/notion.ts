@@ -96,6 +96,11 @@ export async function getCustomerByLineId(
   return customer;
 }
 
+// 食事記録を削除（Notionページをarchive扱いに）
+export async function deleteFoodRecord(pageId: string): Promise<void> {
+  await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
+}
+
 // 指定期間の食事記録を取得（時刻順）
 export async function getFoodRecordsByDateRange(
   lineUserId: string,
