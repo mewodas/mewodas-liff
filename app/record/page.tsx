@@ -314,7 +314,7 @@ export default function RecordPage() {
         </button>
         {submitting && (
           <p className="text-xs text-stone-700 text-center mt-3">
-            AI解析中です（5〜10秒）。画面を閉じないでお待ちください。
+            AI解析中です（10〜15秒）。画面を閉じないでお待ちください。
           </p>
         )}
       </div>
