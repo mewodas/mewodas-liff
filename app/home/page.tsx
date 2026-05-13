@@ -1,0 +1,293 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { initLiff, getLineProfile } from '@/lib/liff';
+
+type MealRecord = {
+  pageId: string;
+  mealType: string;
+  kcal: number;
+  P: number;
+  F: number;
+  C: number;
+  memo: string;
+  imageUrl: string | null;
+  title: string;
+  recordedAt: string;
+};
+
+type TodayData = {
+  customer: {
+    name: string;
+    goals: { kcal: number; P: number; F: number; C: number };
+    currentWeight: number | null;
+    targetWeight: number | null;
+    targetDate: string | null;
+  };
+  today: {
+    date: string;
+    totals: { kcal: number; P: number; F: number; C: number };
+    mealsByType: Record<string, MealRecord[]>;
+    recordCount: number;
+  };
+};
+
+const MEAL_EMOJI: Record<string, string> = {
+  朝食: '🌅',
+  昼食: '☀️',
+  夕食: '🌙',
+  間食: '🍪',
+};
+
+export default function HomePage() {
+  const [ready, setReady] = useState(false);
+  const [data, setData] = useState<TodayData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await initLiff();
+        const profile = await getLineProfile();
+        if (!profile) {
+          setError('LINEプロフィール取得失敗');
+          setReady(true);
+          return;
+        }
+        const res = await fetch(`/api/today?lineUserId=${encodeURIComponent(profile.userId)}`);
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
+        }
+        const json = await res.json();
+        setData(json);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '読み込みエラー');
+      } finally {
+        setReady(true);
+      }
+    })();
+  }, []);
+
+  if (!ready) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-stone-100">
+        <div className="text-stone-800">読み込み中...</div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-stone-100 px-4 py-6">
+        <div className="max-w-md mx-auto">
+          <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-xl text-sm">
+            {error}
+          </div>
+          <Link href="/record" className="block mt-4 bg-emerald-600 text-white text-center font-bold py-3 rounded-xl">
+            食事記録へ
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (!data) return null;
+
+  const { customer, today } = data;
+  const { totals, mealsByType } = today;
+  const { goals } = customer;
+  const dateLabel = formatJpDate(today.date);
+  const goalProgress = calcGoalProgress(customer);
+
+  return (
+    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-24">
+      <div className="max-w-md mx-auto">
+        {/* ヘッダー */}
+        <div className="mb-4">
+          <p className="text-sm font-medium text-stone-700">{dateLabel}</p>
+          <h1 className="text-2xl font-bold text-stone-900">こんにちは、{customer.name} さん</h1>
+        </div>
+
+        {/* 今日の摂取 */}
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+          <h2 className="text-base font-bold text-stone-900 mb-3">📊 今日の摂取</h2>
+          <ProgressRow
+            label="カロリー"
+            value={Math.round(totals.kcal)}
+            goal={goals.kcal}
+            unit="kcal"
+            color="emerald"
+          />
+          <ProgressRow label="タンパク質" value={r1(totals.P)} goal={goals.P} unit="g" color="rose" />
+          <ProgressRow label="脂質" value={r1(totals.F)} goal={goals.F} unit="g" color="amber" />
+          <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
+        </div>
+
+        {/* 体重目標 */}
+        {goalProgress && (
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+            <h2 className="text-base font-bold text-stone-900 mb-3">🎯 体重目標進捗</h2>
+            <div className="space-y-1 text-sm text-stone-800">
+              <div className="flex justify-between">
+                <span className="text-stone-600">現在</span>
+                <span className="font-bold">{goalProgress.currentW} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-600">目標</span>
+                <span className="font-bold">{goalProgress.targetW} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-600">残り</span>
+                <span className="font-bold text-emerald-700">{goalProgress.remainingKg} kg</span>
+              </div>
+              {goalProgress.remainingWeeks !== null && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-stone-600">期限</span>
+                    <span className="font-bold">あと {goalProgress.remainingWeeks} 週</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-stone-100">
+                    <span className="text-stone-600">必要ペース</span>
+                    <span className="font-bold text-emerald-700">{goalProgress.requiredPace} kg/週</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 今日の食事 */}
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+          <h2 className="text-base font-bold text-stone-900 mb-3">🍽️ 今日の食事</h2>
+          {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => (
+            <MealSection key={meal} mealType={meal} records={mealsByType[meal] || []} />
+          ))}
+        </div>
+
+        <Link
+          href="/record"
+          className="block bg-emerald-600 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 text-center"
+        >
+          📷 食事を記録する
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function ProgressRow({
+  label,
+  value,
+  goal,
+  unit,
+  color,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  unit: string;
+  color: 'emerald' | 'rose' | 'amber' | 'sky';
+}) {
+  const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
+  const status = pct >= 95 && pct <= 105 ? '✨' : pct >= 80 && pct <= 120 ? '⭕' : pct >= 60 ? '🔺' : '💦';
+  const barColor: Record<string, string> = {
+    emerald: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    amber: 'bg-amber-500',
+    sky: 'bg-sky-500',
+  };
+  return (
+    <div className="mb-3 last:mb-0">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="font-medium text-stone-800">
+          {label} {status}
+        </span>
+        <span className="font-bold text-stone-900">
+          {value} / {goal} {unit}
+        </span>
+      </div>
+      <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor[color]} transition-all`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MealSection({ mealType, records }: { mealType: string; records: MealRecord[] }) {
+  const emoji = MEAL_EMOJI[mealType] || '🍽️';
+  const totalKcal = records.reduce((acc, r) => acc + r.kcal, 0);
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-bold text-stone-900">
+          {emoji} {mealType}
+        </span>
+        <span className="text-sm text-stone-700">
+          {records.length === 0 ? '未記録' : `${Math.round(totalKcal)} kcal`}
+        </span>
+      </div>
+      {records.length > 0 && (
+        <div className="space-y-2">
+          {records.map((r) => (
+            <div key={r.pageId} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+              <div className="flex items-start gap-3">
+                {r.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.imageUrl}
+                    alt={r.title}
+                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-stone-700">
+                    {Math.round(r.kcal)} kcal · P{r1(r.P)} F{r1(r.F)} C{r1(r.C)}
+                  </div>
+                  {r.memo && (
+                    <div className="text-xs text-stone-600 mt-1 line-clamp-2">{r.memo}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function r1(x: number): number {
+  return Math.round(x * 10) / 10;
+}
+
+function formatJpDate(dateString: string): string {
+  // 'yyyy-MM-dd' → '2026/05/13（火）'
+  const [y, m, d] = dateString.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${y}/${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}（${dayNames[date.getDay()]}）`;
+}
+
+function calcGoalProgress(customer: TodayData['customer']) {
+  const currentW = customer.currentWeight;
+  const targetW = customer.targetWeight;
+  if (!currentW || !targetW) return null;
+  const remainingKg = Math.max(0, r1(currentW - targetW));
+  let remainingWeeks: number | null = null;
+  let requiredPace: number | null = null;
+  if (customer.targetDate) {
+    const today = new Date();
+    const td = new Date(customer.targetDate);
+    const daysLeft = Math.ceil((td.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysLeft > 0) {
+      remainingWeeks = Math.max(1, Math.ceil(daysLeft / 7));
+      requiredPace = r1(remainingKg / remainingWeeks);
+    }
+  }
+  return { currentW, targetW, remainingKg, remainingWeeks, requiredPace };
+}

@@ -11,6 +11,23 @@ export type Customer = {
   name: string;
   foodStatus: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
+  currentWeight: number | null;
+  targetWeight: number | null;
+  targetDate: string | null;
+};
+
+export type FoodRecord = {
+  pageId: string;
+  mealType: string;
+  date: string;
+  recordedAt: string;
+  kcal: number;
+  P: number;
+  F: number;
+  C: number;
+  memo: string;
+  imageUrl: string | null;
+  title: string;
 };
 
 async function notionRequest(
@@ -62,7 +79,42 @@ export async function getCustomerByLineId(
       F: p['目標F(g)']?.number ?? DEFAULT_GOALS.F,
       C: p['目標C(g)']?.number ?? DEFAULT_GOALS.C,
     },
+    currentWeight: p['現在体重(kg)']?.number ?? null,
+    targetWeight: p['目標体重(kg)']?.number ?? null,
+    targetDate: p['目標達成日']?.date?.start ?? null,
   };
+}
+
+// 指定日の食事記録を取得（時刻順）
+export async function getFoodRecordsByDate(
+  lineUserId: string,
+  dateString: string
+): Promise<FoodRecord[]> {
+  const res = await notionRequest('POST', `/databases/${NOTION_FOOD_DB_ID}/query`, {
+    filter: {
+      and: [
+        { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
+        { property: '日付', date: { equals: dateString } },
+      ],
+    },
+    sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
+  });
+  return (res.results || []).map((page: { id: string; properties: Record<string, unknown>; created_time: string }) => {
+    const p = page.properties as Record<string, { number?: number; select?: { name: string }; rich_text?: Array<{ plain_text: string }>; url?: string; title?: Array<{ plain_text: string }>; date?: { start: string } }>;
+    return {
+      pageId: page.id,
+      mealType: p['食事区分']?.select?.name || '',
+      date: p['日付']?.date?.start || dateString,
+      recordedAt: page.created_time,
+      kcal: p['カロリー_kcal']?.number || 0,
+      P: p['タンパク質_g']?.number || 0,
+      F: p['脂質_g']?.number || 0,
+      C: p['炭水化物_g']?.number || 0,
+      memo: p['食材メモ']?.rich_text?.[0]?.plain_text || '',
+      imageUrl: p['画像URL']?.url || null,
+      title: p['食事メモ']?.title?.[0]?.plain_text || '',
+    };
+  });
 }
 
 export async function saveFoodRecord(params: {

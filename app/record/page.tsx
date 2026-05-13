@@ -187,7 +187,7 @@ export default function RecordPage() {
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <button onClick={reset} className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-sm active:bg-emerald-700">
               もう一回記録する
             </button>
@@ -198,6 +198,12 @@ export default function RecordPage() {
               閉じる
             </button>
           </div>
+          <a
+            href="/home"
+            className="block bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center active:bg-stone-50"
+          >
+            🏠 マイページへ
+          </a>
         </div>
       </main>
     );
