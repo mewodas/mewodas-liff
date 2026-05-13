@@ -1,10 +1,18 @@
+import { getCurrentTenant } from './tenant';
+
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
 
-const NOTION_FOOD_DB_ID = '8719d5ab23074ea5bf6e77fde352db86';
-const NOTION_CUSTOMER_DB_ID = '7324e5a590ad46a595f0c6fc58c34816';
-
-const DEFAULT_GOALS = { kcal: 2000, P: 100, F: 56, C: 275 };
+// 現在のテナント設定から Notion DB ID を取得
+function getTenantNotion() {
+  const t = getCurrentTenant();
+  return {
+    foodDbId: t.notionFoodDbId,
+    customerDbId: t.notionCustomerDbId,
+    apiKey: t.notionApiKey,
+    defaultGoals: t.defaultGoals,
+  };
+}
 
 export type Customer = {
   pageId: string;
@@ -36,8 +44,8 @@ async function notionRequest(
   path: string,
   payload?: object
 ): Promise<any> {
-  const apiKey = process.env.NOTION_API_KEY;
-  if (!apiKey) throw new Error('NOTION_API_KEY 未設定');
+  const apiKey = getTenantNotion().apiKey;
+  if (!apiKey) throw new Error('NOTION_API_KEY（テナント設定）未設定');
   const res = await fetch(`${NOTION_BASE}${path}`, {
     method,
     headers: {
@@ -66,9 +74,10 @@ export async function getCustomerByLineId(
   if (cached && Date.now() < cached.expiry) {
     return cached.customer;
   }
+  const tenant = getTenantNotion();
   const res = await notionRequest(
     'POST',
-    `/databases/${NOTION_CUSTOMER_DB_ID}/query`,
+    `/databases/${tenant.customerDbId}/query`,
     {
       filter: {
         property: 'LINEユーザーID',
@@ -84,10 +93,10 @@ export async function getCustomerByLineId(
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
-      kcal: p['目標カロリー(kcal)']?.number ?? DEFAULT_GOALS.kcal,
-      P: p['目標P(g)']?.number ?? DEFAULT_GOALS.P,
-      F: p['目標F(g)']?.number ?? DEFAULT_GOALS.F,
-      C: p['目標C(g)']?.number ?? DEFAULT_GOALS.C,
+      kcal: p['目標カロリー(kcal)']?.number ?? tenant.defaultGoals.kcal,
+      P: p['目標P(g)']?.number ?? tenant.defaultGoals.P,
+      F: p['目標F(g)']?.number ?? tenant.defaultGoals.F,
+      C: p['目標C(g)']?.number ?? tenant.defaultGoals.C,
     },
     currentWeight: p['現在体重(kg)']?.number ?? null,
     targetWeight: p['目標体重(kg)']?.number ?? null,
@@ -239,7 +248,7 @@ export async function getFoodRecordsByDateRange(
   startDate: string,
   endDate: string
 ): Promise<FoodRecord[]> {
-  const res = await notionRequest('POST', `/databases/${NOTION_FOOD_DB_ID}/query`, {
+  const res = await notionRequest('POST', `/databases/${getTenantNotion().foodDbId}/query`, {
     filter: {
       and: [
         { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
@@ -273,12 +282,98 @@ function notionPageToFoodRecord(page: { id: string; properties: Record<string, u
   };
 }
 
+// AI補正データ分析用：日付範囲内の全顧客の食事記録から AI推定値 vs 現在値の差分を計算
+export type CorrectionRecord = {
+  pageId: string;
+  date: string;
+  mealType: string;
+  customer: string;
+  current: { kcal: number; P: number; F: number; C: number };
+  aiOriginal: { kcal: number; P: number; F: number; C: number };
+  diff: { kcal: number; P: number; F: number; C: number };
+  hasCorrection: boolean;
+};
+
+export async function getCorrectionRecords(
+  startDate: string,
+  endDate: string
+): Promise<CorrectionRecord[]> {
+  const records: CorrectionRecord[] = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = {
+      filter: {
+        and: [
+          { property: '日付', date: { on_or_after: startDate } },
+          { property: '日付', date: { on_or_before: endDate } },
+        ],
+      },
+      sorts: [{ property: '日付', direction: 'ascending' }],
+      page_size: 100,
+    };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionRequest(
+      'POST',
+      `/databases/${getTenantNotion().foodDbId}/query`,
+      body
+    );
+    for (const page of res.results || []) {
+      const p = page.properties as Record<string, {
+        number?: number;
+        select?: { name: string };
+        rich_text?: Array<{ plain_text: string }>;
+        date?: { start: string };
+      }>;
+      const current = {
+        kcal: p['カロリー_kcal']?.number || 0,
+        P: p['タンパク質_g']?.number || 0,
+        F: p['脂質_g']?.number || 0,
+        C: p['炭水化物_g']?.number || 0,
+      };
+      const aiOriginal = {
+        kcal: p['AI推定_kcal']?.number ?? null,
+        P: p['AI推定_P']?.number ?? null,
+        F: p['AI推定_F']?.number ?? null,
+        C: p['AI推定_C']?.number ?? null,
+      };
+      // AI推定値が存在しないレコードは除外（旧データ or プロパティ未追加）
+      if (aiOriginal.kcal === null) continue;
+      const ai = {
+        kcal: aiOriginal.kcal as number,
+        P: aiOriginal.P as number,
+        F: aiOriginal.F as number,
+        C: aiOriginal.C as number,
+      };
+      const diff = {
+        kcal: current.kcal - ai.kcal,
+        P: Math.round((current.P - ai.P) * 10) / 10,
+        F: Math.round((current.F - ai.F) * 10) / 10,
+        C: Math.round((current.C - ai.C) * 10) / 10,
+      };
+      const hasCorrection =
+        diff.kcal !== 0 || diff.P !== 0 || diff.F !== 0 || diff.C !== 0;
+      records.push({
+        pageId: page.id,
+        date: p['日付']?.date?.start || '',
+        mealType: p['食事区分']?.select?.name || '',
+        customer: p['顧客名']?.rich_text?.[0]?.plain_text || '',
+        current,
+        aiOriginal: ai,
+        diff,
+        hasCorrection,
+      });
+    }
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor);
+  return records;
+}
+
 // 指定日の食事記録を取得（時刻順）
 export async function getFoodRecordsByDate(
   lineUserId: string,
   dateString: string
 ): Promise<FoodRecord[]> {
-  const res = await notionRequest('POST', `/databases/${NOTION_FOOD_DB_ID}/query`, {
+  const res = await notionRequest('POST', `/databases/${getTenantNotion().foodDbId}/query`, {
     filter: {
       and: [
         { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
@@ -342,13 +437,41 @@ export async function saveFoodRecord(params: {
     目標P_g: { number: goals.P },
     目標F_g: { number: goals.F },
     目標C_g: { number: goals.C },
+    // AI推定値（補正前の元の値）を保存。
+    // トレーナーが後からカロリー_kcal等を補正してもこちらは残る。
+    // → AI精度向上のためのフィードバックデータとして活用。
+    AI推定_kcal: { number: pfc.kcal },
+    AI推定_P: { number: pfc.P },
+    AI推定_F: { number: pfc.F },
+    AI推定_C: { number: pfc.C },
   };
   if (imageUrl) properties['画像URL'] = { url: imageUrl };
 
-  return notionRequest('POST', '/pages', {
-    parent: { database_id: NOTION_FOOD_DB_ID },
-    properties,
-  });
+  // 最初は AI推定_* プロパティを含めて保存を試みる
+  // 該当プロパティが Notion DB にない場合は除外して再試行（後方互換）
+  try {
+    return await notionRequest('POST', '/pages', {
+      parent: { database_id: getTenantNotion().foodDbId },
+      properties,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // AI推定_* がDBに存在しない場合のエラーをキャッチ
+    if (msg.includes('AI推定_') || msg.includes('not exist')) {
+      const fallbackProps = { ...properties };
+      delete fallbackProps['AI推定_kcal'];
+      delete fallbackProps['AI推定_P'];
+      delete fallbackProps['AI推定_F'];
+      delete fallbackProps['AI推定_C'];
+      // eslint-disable-next-line no-console
+      console.warn('AI推定_* プロパティが Notion DB に未追加。フォールバック保存。');
+      return await notionRequest('POST', '/pages', {
+        parent: { database_id: getTenantNotion().foodDbId },
+        properties: fallbackProps,
+      });
+    }
+    throw e;
+  }
 }
 
 // JST の "yyyy-MM-dd"
