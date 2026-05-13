@@ -15,6 +15,7 @@ type DailyAgg = {
   C: number;
   mealCount: number;
   recorded: boolean;
+  exercised: boolean;
 };
 
 type HistoryData = {
@@ -293,7 +294,7 @@ function CalendarCell({
   return (
     <button
       onClick={onClick}
-      className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-colors ${
+      className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-colors relative ${
         isSelected
           ? 'bg-emerald-100 border-2 border-emerald-500'
           : isToday
@@ -305,6 +306,9 @@ function CalendarCell({
     >
       <span className={`font-bold ${weekdayColor}`}>{cell.day}</span>
       <span className="text-base leading-none mt-0.5">{status || (cell.recorded ? '' : '·')}</span>
+      {cell.exercised && (
+        <span className="absolute top-0.5 right-0.5 text-[10px]" aria-label="運動日">🏃</span>
+      )}
     </button>
   );
 }

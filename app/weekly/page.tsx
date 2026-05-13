@@ -42,6 +42,7 @@ type WeeklyData = {
     sum: { kcal: number; P: number; F: number; C: number };
     avg: { kcal: number; P: number; F: number; C: number };
     recordedDays: number;
+    exerciseDays: number;
   };
 };
 
@@ -169,7 +170,9 @@ export default function WeeklyPage() {
         {/* 週間平均 */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3">📊 週間平均（記録日のみ）</h2>
-          <p className="text-xs text-stone-600 mb-3">記録日数 {week.recordedDays}/7日</p>
+          <p className="text-xs text-stone-600 mb-3">
+            記録日数 {week.recordedDays}/7日 ・ 🏃 運動 {week.exerciseDays}/7日
+          </p>
           <AvgRow label="カロリー" value={week.avg.kcal} goal={goals.kcal} unit="kcal" />
           <AvgRow label="タンパク質" value={week.avg.P} goal={goals.P} unit="g" />
           <AvgRow label="脂質" value={week.avg.F} goal={goals.F} unit="g" />

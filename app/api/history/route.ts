@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerByLineId,
   getFoodRecordsByDateRange,
+  getRangeExtras,
 } from '@/lib/notion';
 
 export const runtime = 'nodejs';
@@ -19,6 +20,7 @@ type DailyAgg = {
   C: number;
   mealCount: number;
   recorded: boolean;
+  exercised: boolean;
 };
 
 function pad2(n: number): string {
@@ -52,11 +54,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
 
-    // 日別集計
+    // 個人シートから運動データを取得
     const daysInMonth = lastDayOfMonth;
+    const dateLabels: string[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      dateLabels.push(`${month}月${day}日`);
+    }
+    const extras = customer.foodSheetPageId
+      ? await getRangeExtras(customer.foodSheetPageId, dateLabels)
+      : {};
+
+    // 日別集計
     const daily: DailyAgg[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const ds = `${year}-${pad2(month)}-${pad2(day)}`;
+      const dateLabel = `${month}月${day}日`;
       const dayRecords = records.filter((r) => r.date === ds);
       const totals = dayRecords.reduce(
         (acc, r) => ({
@@ -67,6 +79,7 @@ export async function GET(req: NextRequest) {
         }),
         { kcal: 0, P: 0, F: 0, C: 0 }
       );
+      const ex = extras[dateLabel];
       daily.push({
         day,
         date: ds,
@@ -77,6 +90,7 @@ export async function GET(req: NextRequest) {
         C: Math.round(totals.C * 10) / 10,
         mealCount: dayRecords.length,
         recorded: dayRecords.length > 0,
+        exercised: ex?.exercised || false,
       });
     }
 

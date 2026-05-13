@@ -108,6 +108,60 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
+// 個人シートの食事記録テーブルから複数日付の体重・運動データをまとめて取得
+export async function getRangeExtras(
+  sheetPageId: string,
+  dateLabels: string[]
+): Promise<Record<string, { weight: string; exercised: boolean; exerciseContent: string }>> {
+  try {
+    const blocks = await fetchAllNotionBlocksRaw(sheetPageId);
+    let afterHeading = false;
+    let tableId: string | null = null;
+    for (const block of blocks) {
+      if (block.type === 'heading_2') {
+        const text = (block.heading_2?.rich_text || [])
+          .map((rt: { plain_text?: string }) => rt.plain_text || '')
+          .join('');
+        afterHeading =
+          text.includes('食事記録') || text === '📝 記録' || text === '📅 記録';
+      } else if (afterHeading && block.type === 'table') {
+        tableId = block.id;
+        break;
+      } else if (afterHeading && block.type === 'heading_2') {
+        afterHeading = false;
+      }
+    }
+    const result: Record<string, { weight: string; exercised: boolean; exerciseContent: string }> = {};
+    if (!tableId) return result;
+
+    const rows = await fetchAllNotionBlocksRaw(tableId);
+    const labelSet = new Set(dateLabels);
+    for (const row of rows) {
+      if (row.type !== 'table_row') continue;
+      const cells = row.table_row?.cells || [];
+      const dateCell = (cells[0] || [])
+        .map((rt: { plain_text?: string }) => rt.plain_text || '')
+        .join('')
+        .trim();
+      if (!labelSet.has(dateCell)) continue;
+      const get = (i: number) =>
+        ((cells[i] || []) as Array<{ plain_text?: string }>)
+          .map((rt) => rt.plain_text || '')
+          .join('')
+          .trim();
+      result[dateCell] = {
+        weight: get(1),
+        exercised: get(9) === '✅',
+        exerciseContent: get(10),
+      };
+    }
+    return result;
+  } catch (e) {
+    console.error('getRangeExtras failed:', e);
+    return {};
+  }
+}
+
 // 個人シートの食事記録テーブルから当日の体重・運動・運動内容を取得
 export async function getDailyExtras(
   sheetPageId: string,

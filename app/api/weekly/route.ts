@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerByLineId,
   getFoodRecordsByDateRange,
+  getRangeExtras,
   type FoodRecord,
 } from '@/lib/notion';
 
@@ -19,6 +20,9 @@ type DailyAgg = {
   C: number;
   mealCount: number;
   recorded: boolean;
+  weight: string;
+  exercised: boolean;
+  exerciseContent: string;
 };
 
 // JST基準の日付を返す
@@ -76,10 +80,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
 
+    // 個人シートから期間内の体重・運動データを取得
+    const dateLabels = dates.map((d) => `${d.getMonth() + 1}月${d.getDate()}日`);
+    const extras = customer.foodSheetPageId
+      ? await getRangeExtras(customer.foodSheetPageId, dateLabels)
+      : {};
+
     // 日別集計
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     const daily: DailyAgg[] = dates.map((d) => {
       const ds = formatDate(d);
+      const dateLabel = `${d.getMonth() + 1}月${d.getDate()}日`;
       const dayRecords = records.filter((r) => r.date === ds);
       const totals = dayRecords.reduce(
         (acc, r) => ({
@@ -90,6 +101,7 @@ export async function GET(req: NextRequest) {
         }),
         { kcal: 0, P: 0, F: 0, C: 0 }
       );
+      const ex = extras[dateLabel] || { weight: '', exercised: false, exerciseContent: '' };
       return {
         date: ds,
         weekday: dayNames[d.getDay()],
@@ -99,6 +111,9 @@ export async function GET(req: NextRequest) {
         C: Math.round(totals.C * 10) / 10,
         mealCount: dayRecords.length,
         recorded: dayRecords.length > 0,
+        weight: ex.weight,
+        exercised: ex.exercised,
+        exerciseContent: ex.exerciseContent,
       };
     });
 
@@ -123,6 +138,9 @@ export async function GET(req: NextRequest) {
         }
       : { kcal: 0, P: 0, F: 0, C: 0 };
 
+    // 運動日数集計
+    const exerciseDays = daily.filter((d) => d.exercised).length;
+
     return NextResponse.json({
       customer: {
         name: customer.name,
@@ -139,6 +157,7 @@ export async function GET(req: NextRequest) {
         sum,
         avg,
         recordedDays: recordCount,
+        exerciseDays,
       },
     });
   } catch (e) {
