@@ -207,36 +207,33 @@ export default function FoodSearchPage() {
             </button>
           ))}
         </div>
-      </PageHeader>
-
-      <div className="bg-white border-b border-stone-200 px-4 py-3">
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 mt-3">
           {(['今日', '昨日'] as DayLabel[]).map((d) => (
             <button
               key={d}
               onClick={() => setDay(d)}
               className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
-                day === d ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                day === d ? 'bg-white text-emerald-700' : 'bg-emerald-700/60 text-white'
               }`}
             >
               {d}
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-2 mt-2">
           {(['朝食', '昼食', '夕食', '間食'] as MealType[]).map((m) => (
             <button
               key={m}
               onClick={() => setMealType(m)}
               className={`py-1.5 rounded-lg text-xs font-bold ${
-                mealType === m ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
+                mealType === m ? 'bg-white text-emerald-700' : 'bg-emerald-700/60 text-white'
               }`}
             >
               {m}
             </button>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
       <main className="px-4 py-4 space-y-4">
         {error && (

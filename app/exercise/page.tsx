@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
+import PageHeader from '@/components/PageHeader';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -121,8 +122,9 @@ export default function ExercisePage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
-        <div className="max-w-md mx-auto">
+      <main className="min-h-screen bg-stone-100 pb-28">
+        <PageHeader title="🏃 運動記録" back />
+        <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
             <div className="text-5xl mb-2">🏃</div>
             <div className="text-2xl font-bold mb-2 text-stone-900">✅ 記録しました</div>
@@ -159,10 +161,9 @@ export default function ExercisePage() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-3xl font-bold mb-4 text-stone-900">🏃 運動記録</h1>
-
+    <main className="min-h-screen bg-stone-100 pb-28">
+      <PageHeader title="🏃 運動記録" back />
+      <div className="max-w-md mx-auto px-4 py-6">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">
             {error}

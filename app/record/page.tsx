@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile, closeLiff } from '@/lib/liff';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
+import PageHeader from '@/components/PageHeader';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
@@ -366,13 +367,7 @@ export default function RecordPage() {
   if (stage === 'review') {
     return (
       <main className="min-h-screen bg-stone-50 pb-44">
-        <header className="bg-emerald-600 text-white px-4 py-3 sticky top-0 z-30 shadow">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setStage('hub')} className="text-white text-sm">← 戻る</button>
-            <h1 className="text-base font-bold">📋 解析結果の確認</h1>
-            <div className="w-12" />
-          </div>
-        </header>
+        <PageHeader title="📋 解析結果の確認" onBack={() => setStage('hub')} />
 
         <div className="px-4 py-4">
           {error && (
@@ -512,13 +507,7 @@ export default function RecordPage() {
   if (stage === 'memo') {
     return (
       <main className="min-h-screen bg-stone-50 pb-28">
-        <header className="bg-white px-4 py-3 sticky top-0 z-30 shadow-sm border-b border-stone-200">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setStage('hub')} className="text-stone-700 text-sm">← 戻る</button>
-            <h1 className="text-base font-bold text-stone-900">📝 テキストで記録</h1>
-            <div className="w-10" />
-          </div>
-        </header>
+        <PageHeader title="📝 テキストで記録" onBack={() => setStage('hub')} />
 
         <div className="px-4 py-4 space-y-4">
           {error && (
@@ -552,13 +541,7 @@ export default function RecordPage() {
   // ===== ハブ画面（メイン） =====
   return (
     <main className="min-h-screen bg-stone-50 pb-32">
-      <header className="bg-white px-4 py-3 sticky top-0 z-30 shadow-sm border-b border-stone-200">
-        <div className="flex items-center justify-between">
-          <button onClick={() => router.push('/home')} className="text-stone-600 text-2xl w-8">×</button>
-          <h1 className="text-base font-bold text-stone-900">食事を記録</h1>
-          <div className="w-8" />
-        </div>
-      </header>
+      <PageHeader title="🍽️ 食事を記録" onBack={() => router.push('/home')} />
 
       <div className="px-4 py-5">
         {error && (
