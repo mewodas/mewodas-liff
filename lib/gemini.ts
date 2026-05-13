@@ -412,7 +412,8 @@ ${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
       generationConfig: {
-        maxOutputTokens: 600,
+        // 日本語は1文字あたり1.5〜2トークン消費。300文字想定でも余裕を持って2000に。
+        maxOutputTokens: 2000,
         temperature: 0.7,
         topP: 0.9,
       },
@@ -423,7 +424,20 @@ ${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
     throw new Error(`Gemini Chat失敗 ${res.status}: ${errText.slice(0, 200)}`);
   }
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const candidate = data.candidates?.[0];
+  const text: string = candidate?.content?.parts?.[0]?.text ?? '';
+  const finishReason: string = candidate?.finishReason ?? '';
+  // 途切れ検出：MAX_TOKENS で切れた場合は注記を付ける
+  if (finishReason === 'MAX_TOKENS' && text) {
+    return text.trim() + '\n\n（応答が長くなったので途中で区切りました。続きは「続けて」と聞いてください）';
+  }
+  if (!text) {
+    throw new Error(
+      finishReason === 'SAFETY'
+        ? 'AIが回答を控えました（安全フィルタ）。別の質問をお試しください。'
+        : 'AI応答が空でした。もう一度お試しください。'
+    );
+  }
   return text.trim();
 }
 
