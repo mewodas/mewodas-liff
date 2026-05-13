@@ -189,6 +189,105 @@ ${textDesc}
   return parsePfcJson(text, PFC_CALIBRATION_TEXT);
 }
 
+export type MealSuggestion = {
+  title: string;
+  tag: string;
+  kcal: number;
+  P: number;
+  F: number;
+  C: number;
+  reason: string;
+};
+
+// 残りPFCに合う料理提案を3つ生成
+export async function suggestMeals(params: {
+  remaining: { kcal: number; P: number; F: number; C: number };
+  hour: number; // 0-23 JST
+  recordedMealTypes: string[]; // ['朝食', '昼食'] 等
+}): Promise<MealSuggestion[]> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const { remaining, hour, recordedMealTypes } = params;
+
+  // 時間帯に応じた食事種別の優先度
+  let mealHint = '';
+  if (hour >= 5 && hour < 10) mealHint = '朝食';
+  else if (hour >= 10 && hour < 14) mealHint = '昼食';
+  else if (hour >= 17 && hour < 22) mealHint = '夕食';
+  else if (hour >= 14 && hour < 17) mealHint = '間食または早めの夕食';
+  else mealHint = '軽めの食事または夜食';
+
+  const recordedText =
+    recordedMealTypes.length > 0
+      ? `既に記録済み：${recordedMealTypes.join('、')}`
+      : '本日まだ記録なし';
+
+  const prompt = `あなたは管理栄養士です。顧客の本日の残り栄養素を3つの具体的な料理で埋める提案をしてください。
+
+【現状】
+- 現在時刻：${hour}時頃（時間帯ヒント：${mealHint}）
+- ${recordedText}
+
+【残り栄養素（これに近づける）】
+- カロリー：${remaining.kcal} kcal
+- タンパク質：${remaining.P} g
+- 脂質：${remaining.F} g
+- 炭水化物：${remaining.C} g
+
+【条件】
+- 3つの具体的な料理（品名・分量を明記）を提案
+- 多様性を持たせる（自炊・外食・コンビニのバリエーション）
+- 残り栄養素にできるだけ近く、超過しないように
+- titleは具体的な品名と分量（例：「鶏胸肉のソテー200g + 玄米150g + 茹でブロッコリー100g」）
+- tagは「自炊」「外食」「コンビニ」のいずれか
+- reasonは20文字以内で簡潔に
+
+【出力JSON形式（必ずこの形式）】
+{
+  "suggestions": [
+    { "title": "...", "tag": "自炊", "kcal": 数値, "P": 数値, "F": 数値, "C": 数値, "reason": "..." },
+    { "title": "...", "tag": "外食", "kcal": 数値, "P": 数値, "F": 数値, "C": 数値, "reason": "..." },
+    { "title": "...", "tag": "コンビニ", "kcal": 数値, "P": 数値, "F": 数値, "C": 数値, "reason": "..." }
+  ]
+}`;
+
+  const text = await callGemini([{ text: prompt }], apiKey);
+  return parseSuggestionsJson(text);
+}
+
+function parseSuggestionsJson(text: string): MealSuggestion[] {
+  const cleaned = stripMarkdown(text);
+  let parsed: { suggestions?: unknown[] };
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // 抽出を試みる
+    const start = cleaned.indexOf('{');
+    if (start === -1) return [];
+    try {
+      parsed = JSON.parse(cleaned.slice(start));
+    } catch {
+      return [];
+    }
+  }
+  const arr = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
+  return arr
+    .map((s) => {
+      const item = s as Record<string, unknown>;
+      return {
+        title: String(item.title ?? ''),
+        tag: String(item.tag ?? ''),
+        kcal: Math.round(Number(item.kcal ?? 0)),
+        P: Math.round(Number(item.P ?? 0) * 10) / 10,
+        F: Math.round(Number(item.F ?? 0) * 10) / 10,
+        C: Math.round(Number(item.C ?? 0) * 10) / 10,
+        reason: String(item.reason ?? ''),
+      };
+    })
+    .filter((s) => s.title);
+}
+
 async function callGemini(
   parts: Array<Record<string, unknown>>,
   apiKey: string

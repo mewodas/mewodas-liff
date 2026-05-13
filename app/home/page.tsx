@@ -38,6 +38,20 @@ type TodayData = {
   };
 };
 
+type SuggestData = {
+  remaining: { kcal: number; P: number; F: number; C: number };
+  suggestions: Array<{
+    title: string;
+    tag: string;
+    kcal: number;
+    P: number;
+    F: number;
+    C: number;
+    reason: string;
+  }>;
+  message: string | null;
+};
+
 const MEAL_EMOJI: Record<string, string> = {
   朝食: '🌅',
   昼食: '☀️',
@@ -79,6 +93,8 @@ function HomePageInner() {
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [suggest, setSuggest] = useState<SuggestData | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -109,6 +125,40 @@ function HomePageInner() {
       }
     })();
   }, []);
+
+  // 提案を取得（当日のみ、データ取得後）
+  useEffect(() => {
+    if (!userId || !data || !isToday) {
+      setSuggest(null);
+      return;
+    }
+    const cacheKey = `suggest_v1_${userId}_${selectedDate}_${Math.round(data.today.totals.kcal)}`;
+    const cached = getCached<SuggestData>(cacheKey);
+    if (cached) {
+      setSuggest(cached.data);
+      if (!cached.isStale) return;
+    }
+    setSuggestLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/suggest?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) {
+          setSuggest(null);
+          return;
+        }
+        const json: SuggestData = await res.json();
+        setSuggest(json);
+        setCached(cacheKey, json);
+      } catch {
+        // サジェスト失敗はサイレント（メイン機能ではない）
+      } finally {
+        setSuggestLoading(false);
+      }
+    })();
+  }, [userId, selectedDate, isToday, data]);
 
   useEffect(() => {
     if (!userId) return;
@@ -232,6 +282,11 @@ function HomePageInner() {
           <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
         </div>
 
+        {/* 残りカロリー逆算サジェスト（当日のみ） */}
+        {isToday && (
+          <SuggestCard data={suggest} loading={suggestLoading} />
+        )}
+
         {/* 体重目標 */}
         {goalProgress && (
           <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
@@ -309,6 +364,7 @@ function HomePageInner() {
                 invalidate('today_');
                 invalidate('weekly_');
                 invalidate('history_');
+                invalidate('suggest_');
                 router.refresh();
                 // 強制再取得：URLは同じだが直接フェッチ
                 if (userId) {
@@ -330,6 +386,58 @@ function HomePageInner() {
 
       </div>
     </main>
+  );
+}
+
+function SuggestCard({ data, loading }: { data: SuggestData | null; loading: boolean }) {
+  if (loading && !data) {
+    return (
+      <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+        <h2 className="text-base font-bold text-stone-900 mb-2">💡 残り目標の食事提案</h2>
+        <div className="text-sm text-stone-500 py-2">AIが提案を生成中…</div>
+      </div>
+    );
+  }
+  if (!data) return null;
+  const { remaining, suggestions, message } = data;
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+      <h2 className="text-base font-bold text-stone-900 mb-3">💡 残り目標の食事提案</h2>
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-3">
+        <div className="text-xs text-stone-700 mb-1">本日の残り</div>
+        <div className="text-sm font-bold text-stone-900">
+          {remaining.kcal} kcal
+          <span className="ml-2 text-xs font-medium text-stone-700">
+            P {remaining.P}g ・ F {remaining.F}g ・ C {remaining.C}g
+          </span>
+        </div>
+      </div>
+      {message && (
+        <div className="text-sm text-stone-700 bg-stone-50 rounded-xl p-3">{message}</div>
+      )}
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          {suggestions.map((s, i) => (
+            <div key={i} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+              <div className="flex items-start gap-2 mb-1">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                  {s.tag}
+                </span>
+                <div className="font-bold text-sm text-stone-900 leading-tight">
+                  {s.title}
+                </div>
+              </div>
+              <div className="text-xs font-medium text-stone-700 ml-1">
+                {s.kcal} kcal ・ P {s.P}g ・ F {s.F}g ・ C {s.C}g
+              </div>
+              {s.reason && (
+                <div className="text-[11px] text-stone-500 mt-0.5 ml-1">💬 {s.reason}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -130,6 +130,7 @@ export default function RecordPage() {
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
+      invalidate('suggest_');
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('handleSubmit error:', e);
