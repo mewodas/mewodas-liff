@@ -8,7 +8,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
@@ -192,11 +191,6 @@ export default function WeeklyPage() {
                   axisLine={{ stroke: '#d6d3d1' }}
                 />
                 <YAxis tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #d6d3d1', borderRadius: 8, fontSize: 12 }}
-                  formatter={(v) => [`${v} kcal`, 'カロリー']}
-                />
                 <ReferenceLine
                   y={goals.kcal}
                   stroke="#10b981"
