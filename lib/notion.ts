@@ -14,6 +14,7 @@ export type Customer = {
   currentWeight: number | null;
   targetWeight: number | null;
   targetDate: string | null;
+  foodSheetPageId: string | null;
 };
 
 export type FoodRecord = {
@@ -91,6 +92,12 @@ export async function getCustomerByLineId(
     currentWeight: p['現在体重(kg)']?.number ?? null,
     targetWeight: p['目標体重(kg)']?.number ?? null,
     targetDate: p['目標達成日']?.date?.start ?? null,
+    foodSheetPageId: (() => {
+      const url = p['食事記録リンク']?.url;
+      if (!url) return null;
+      const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
+      return m ? m[1] : null;
+    })(),
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -99,6 +106,77 @@ export async function getCustomerByLineId(
 // 食事記録を削除（Notionページをarchive扱いに）
 export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
+}
+
+// 個人シートの食事記録テーブルから当日の体重・運動・運動内容を取得
+export async function getDailyExtras(
+  sheetPageId: string,
+  dateLabel: string
+): Promise<{ weight: string; exercised: string; exerciseContent: string }> {
+  try {
+    const blocks = await fetchAllNotionBlocksRaw(sheetPageId);
+    let afterHeading = false;
+    let tableId: string | null = null;
+    for (const block of blocks) {
+      if (block.type === 'heading_2') {
+        const text = (block.heading_2?.rich_text || [])
+          .map((rt: { plain_text?: string }) => rt.plain_text || '')
+          .join('');
+        afterHeading =
+          text.includes('食事記録') || text === '📝 記録' || text === '📅 記録';
+      } else if (afterHeading && block.type === 'table') {
+        tableId = block.id;
+        break;
+      } else if (afterHeading && block.type === 'heading_2') {
+        afterHeading = false;
+      }
+    }
+    if (!tableId) return { weight: '', exercised: '', exerciseContent: '' };
+
+    const rows = await fetchAllNotionBlocksRaw(tableId);
+    for (const row of rows) {
+      if (row.type !== 'table_row') continue;
+      const cells = row.table_row?.cells || [];
+      const dateCell = (cells[0] || [])
+        .map((rt: { plain_text?: string }) => rt.plain_text || '')
+        .join('')
+        .trim();
+      if (dateCell === dateLabel) {
+        const get = (i: number) =>
+          ((cells[i] || []) as Array<{ plain_text?: string }>)
+            .map((rt) => rt.plain_text || '')
+            .join('')
+            .trim();
+        return {
+          weight: get(1),
+          exercised: get(9),
+          exerciseContent: get(10),
+        };
+      }
+    }
+    return { weight: '', exercised: '', exerciseContent: '' };
+  } catch (e) {
+    console.error('getDailyExtras failed:', e);
+    return { weight: '', exercised: '', exerciseContent: '' };
+  }
+}
+
+async function fetchAllNotionBlocksRaw(blockId: string): Promise<Array<Record<string, unknown> & { id: string; type: string; heading_2?: { rich_text?: Array<{ plain_text: string }> }; table_row?: { cells: Array<Array<{ plain_text: string }>> } }>> {
+  const results: Array<Record<string, unknown> & { id: string; type: string; heading_2?: { rich_text?: Array<{ plain_text: string }> }; table_row?: { cells: Array<Array<{ plain_text: string }>> } }> = [];
+  let cursor: string | null = null;
+  do {
+    const path = `/blocks/${blockId}/children${cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const res = await notionRequest('GET', path);
+    if (Array.isArray(res.results)) results.push(...(res.results as typeof results));
+    cursor = res.has_more ? res.next_cursor : null;
+  } while (cursor);
+  return results;
+}
+
+// 'yyyy-MM-dd' → 'M月d日'
+export function isoToJpMd(dateString: string): string {
+  const [, m, d] = dateString.split('-').map(Number);
+  return `${m}月${d}日`;
 }
 
 // 指定期間の食事記録を取得（時刻順）

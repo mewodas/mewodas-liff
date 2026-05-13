@@ -32,6 +32,9 @@ type TodayData = {
     totals: { kcal: number; P: number; F: number; C: number };
     mealsByType: Record<string, MealRecord[]>;
     recordCount: number;
+    weight?: string;
+    exercised?: string;
+    exerciseContent?: string;
   };
 };
 
@@ -257,6 +260,36 @@ function HomePageInner() {
                     <span className="font-bold text-emerald-700">{goalProgress.requiredPace} kg/週</span>
                   </div>
                 </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 今日の体重・運動 */}
+        {(today.weight || today.exercised) && (
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+            <h2 className="text-base font-bold text-stone-900 mb-3">📝 今日の記録</h2>
+            <div className="space-y-2 text-sm">
+              {today.weight && (
+                <div className="flex justify-between">
+                  <span className="text-stone-700">⚖️ 体重</span>
+                  <span className="font-bold text-stone-900">{today.weight} kg</span>
+                </div>
+              )}
+              {today.exercised && (
+                <div>
+                  <div className="flex justify-between">
+                    <span className="text-stone-700">🏃 運動</span>
+                    <span className="font-bold text-stone-900">
+                      {today.exercised === '✅' ? 'した' : 'なし'}
+                    </span>
+                  </div>
+                  {today.exerciseContent && (
+                    <div className="mt-1 text-xs text-stone-700 bg-stone-50 p-2 rounded-lg">
+                      {today.exerciseContent}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

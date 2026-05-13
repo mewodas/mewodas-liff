@@ -3,6 +3,8 @@ import {
   getCustomerByLineId,
   getFoodRecordsByDate,
   getTargetDate,
+  getDailyExtras,
+  isoToJpMd,
   type FoodRecord,
 } from '@/lib/notion';
 
@@ -57,6 +59,11 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
+    // 個人シートから体重・運動データを取得（並列ではなく軽量なのでこの段で）
+    const extras = customer.foodSheetPageId
+      ? await getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
+      : { weight: '', exercised: '', exerciseContent: '' };
+
     return NextResponse.json({
       customer: {
         name: customer.name,
@@ -70,6 +77,9 @@ export async function GET(req: NextRequest) {
         totals,
         mealsByType,
         recordCount: records.length,
+        weight: extras.weight,
+        exercised: extras.exercised,
+        exerciseContent: extras.exerciseContent,
       },
     });
   } catch (e) {
