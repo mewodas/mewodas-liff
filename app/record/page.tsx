@@ -694,12 +694,12 @@ export default function RecordPage() {
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="例：ご飯は大盛り、ドレッシングはノンオイル"
+              placeholder="例：味噌汁とサラダも食べた／ご飯は大盛り／ノンオイル"
               rows={3}
               className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
-              写真に映っていない情報（量・調理法・調味料など）を書くと精度が上がります
+              撮り忘れた料理・量・調理法・調味料などを書くと、写真と合わせてAIが推定します
             </p>
           </div>
         )}

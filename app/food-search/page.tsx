@@ -120,7 +120,7 @@ export default function FoodSearchPage() {
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
       <header className="bg-emerald-600 text-white px-4 pt-6 pb-4 shadow sticky top-0 z-30">
-        <h1 className="text-lg font-bold mb-2">🔍 食品検索</h1>
+        <h1 className="text-lg font-bold mb-2">🔍 食品DB</h1>
         <input
           type="text"
           value={query}
