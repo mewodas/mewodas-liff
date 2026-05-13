@@ -239,9 +239,13 @@ function MealSection({ mealType, records }: { mealType: string; records: MealRec
                 {r.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={r.imageUrl}
+                    src={toDriveThumbnailUrl(r.imageUrl)}
                     alt={r.title}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-stone-100"
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -263,6 +267,14 @@ function MealSection({ mealType, records }: { mealType: string; records: MealRec
 
 function r1(x: number): number {
   return Math.round(x * 10) / 10;
+}
+
+// Google Drive の "view" URL を画像直接表示可能なサムネイルURLに変換
+// 例：https://drive.google.com/file/d/ABC/view → https://drive.google.com/thumbnail?id=ABC&sz=w400
+function toDriveThumbnailUrl(url: string): string {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!m) return url;
+  return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
 }
 
 function formatJpDate(dateString: string): string {
