@@ -162,7 +162,12 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3">🍽️ 今日の食事</h2>
           {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => (
-            <MealSection key={meal} mealType={meal} records={mealsByType[meal] || []} />
+            <MealSection
+              key={meal}
+              mealType={meal}
+              records={mealsByType[meal] || []}
+              dayTotalKcal={totals.kcal}
+            />
           ))}
         </div>
 
@@ -218,19 +223,54 @@ function ProgressRow({
   );
 }
 
-function MealSection({ mealType, records }: { mealType: string; records: MealRecord[] }) {
+function MealSection({
+  mealType,
+  records,
+  dayTotalKcal,
+}: {
+  mealType: string;
+  records: MealRecord[];
+  dayTotalKcal: number;
+}) {
   const emoji = MEAL_EMOJI[mealType] || '🍽️';
-  const totalKcal = records.reduce((acc, r) => acc + r.kcal, 0);
+  const totals = records.reduce(
+    (acc, r) => ({
+      kcal: acc.kcal + r.kcal,
+      P: acc.P + r.P,
+      F: acc.F + r.F,
+      C: acc.C + r.C,
+    }),
+    { kcal: 0, P: 0, F: 0, C: 0 }
+  );
+  const pctOfDay =
+    dayTotalKcal > 0 ? Math.round((totals.kcal / dayTotalKcal) * 100) : 0;
   return (
     <div className="mb-4 last:mb-0">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-1">
         <span className="font-bold text-stone-900">
           {emoji} {mealType}
         </span>
-        <span className="text-sm text-stone-700">
-          {records.length === 0 ? '未記録' : `${Math.round(totalKcal)} kcal`}
+        <span className="text-sm font-bold text-stone-900">
+          {records.length === 0 ? (
+            <span className="text-stone-500 font-medium">未記録</span>
+          ) : (
+            <>
+              {Math.round(totals.kcal)} kcal
+              <span className="text-xs font-medium text-stone-500 ml-1">
+                （{pctOfDay}%）
+              </span>
+            </>
+          )}
         </span>
       </div>
+      {records.length > 0 && (
+        <div className="mb-2 text-xs font-medium text-stone-700">
+          P {r1(totals.P)}g ・ F {r1(totals.F)}g ・ C {r1(totals.C)}g
+          {records.length > 1 && (
+            <span className="text-stone-500 ml-2">（{records.length}回記録）</span>
+          )}
+        </div>
+      )}
       {records.length > 0 && (
         <div className="space-y-2">
           {records.map((r) => (
