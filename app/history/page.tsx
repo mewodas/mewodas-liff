@@ -2,17 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from 'recharts';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 
@@ -57,13 +46,19 @@ type MealRecord = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+const MEAL_EMOJI: Record<string, string> = {
+  朝食: '🌅',
+  昼食: '☀️',
+  夕食: '🌙',
+  間食: '🍪',
+};
+
 function todayJst(): { year: number; month: number; day: number } {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
 }
 
 export default function HistoryPage() {
-  const router = useRouter();
   const today = todayJst();
   const [year, setYear] = useState(today.year);
   const [month, setMonth] = useState(today.month);
@@ -211,43 +206,6 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* 月別カロリーグラフ */}
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-2">📊 日別カロリー</h2>
-          <p className="text-xs text-stone-600 mb-2">バーをタップで該当日のホームへ</p>
-          <div className="w-full h-56">
-            <ResponsiveContainer>
-              <BarChart data={m.daily.map((d) => ({ ...d, label: String(d.day) }))} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis dataKey="label" tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} interval={2} />
-                <YAxis tick={{ fill: '#44403c', fontSize: 11 }} axisLine={{ stroke: '#d6d3d1' }} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #d6d3d1', borderRadius: 8, fontSize: 12 }}
-                  formatter={(v) => [`${v} kcal`, 'カロリー']}
-                  labelFormatter={(label) => `${m.year}/${m.month}/${label}`}
-                />
-                <ReferenceLine
-                  y={customer.goals.kcal}
-                  stroke="#10b981"
-                  strokeDasharray="3 3"
-                  label={{ value: '目標', position: 'right', fill: '#10b981', fontSize: 11 }}
-                />
-                <Bar
-                  dataKey="kcal"
-                  fill="#f97316"
-                  radius={[6, 6, 0, 0]}
-                  cursor="pointer"
-                  onClick={(d: unknown) => {
-                    const day = d as { recorded?: boolean; date?: string };
-                    if (day.recorded && day.date) router.push(`/home?date=${day.date}`);
-                  }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
         {/* カレンダー */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
           {/* 曜日ヘッダー */}
@@ -279,12 +237,7 @@ export default function HistoryPage() {
                 isSelected={cell !== null && selectedDate === cell.date}
                 onClick={() => {
                   if (!cell) return;
-                  // 記録ありの日はホーム画面に遷移して詳細表示、未記録の日はその場でハイライト
-                  if (cell.recorded) {
-                    router.push(`/home?date=${cell.date}`);
-                  } else {
-                    setSelectedDate(selectedDate === cell.date ? null : cell.date);
-                  }
+                  setSelectedDate(selectedDate === cell.date ? null : cell.date);
                 }}
               />
             ))}
@@ -301,7 +254,7 @@ export default function HistoryPage() {
 
         {/* 選択日の詳細 */}
         {selectedDate && userId && (
-          <DayDetail dateString={selectedDate} lineUserId={userId} />
+          <DayDetail dateString={selectedDate} lineUserId={userId} goals={customer.goals} />
         )}
       </div>
     </main>
@@ -356,8 +309,16 @@ function CalendarCell({
   );
 }
 
-function DayDetail({ dateString, lineUserId }: { dateString: string; lineUserId: string }) {
-  const [records, setRecords] = useState<MealRecord[] | null>(null);
+function DayDetail({
+  dateString,
+  lineUserId,
+  goals,
+}: {
+  dateString: string;
+  lineUserId: string;
+  goals: { kcal: number; P: number; F: number; C: number };
+}) {
+  const [mealsByType, setMealsByType] = useState<Record<string, MealRecord[]> | null>(null);
   const [totals, setTotals] = useState<{ kcal: number; P: number; F: number; C: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -373,9 +334,7 @@ function DayDetail({ dateString, lineUserId }: { dateString: string; lineUserId:
         );
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const json = await res.json();
-        const arr: MealRecord[] = [];
-        Object.values(json.day.mealsByType as Record<string, MealRecord[]>).forEach((a) => arr.push(...a));
-        setRecords(arr);
+        setMealsByType(json.day.mealsByType);
         setTotals(json.day.totals);
       } catch (e) {
         setErr(e instanceof Error ? e.message : '読み込みエラー');
@@ -386,38 +345,132 @@ function DayDetail({ dateString, lineUserId }: { dateString: string; lineUserId:
   }, [dateString, lineUserId]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
-      <h3 className="font-bold text-stone-900 mb-2">{fmtDateJp(dateString)} の詳細</h3>
-      {loading && <p className="text-sm text-stone-700">読み込み中...</p>}
-      {err && <p className="text-sm text-red-700">{err}</p>}
+    <div className="space-y-4">
+      <h3 className="font-bold text-stone-900 text-lg">{fmtDateJp(dateString)}</h3>
+      {loading && (
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200 text-sm text-stone-700">
+          読み込み中...
+        </div>
+      )}
+      {err && (
+        <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-xl text-sm">{err}</div>
+      )}
       {!loading && !err && totals && (
-        <div className="text-sm font-medium text-stone-800 mb-3 pb-2 border-b border-stone-100">
-          合計 <span className="font-bold">{Math.round(totals.kcal)} kcal</span>
-          <span className="text-xs text-stone-600 ml-2">
-            P {r1(totals.P)}g · F {r1(totals.F)}g · C {r1(totals.C)}g
-          </span>
-        </div>
-      )}
-      {records && records.length === 0 && (
-        <p className="text-sm text-stone-700">この日の食事記録はありません</p>
-      )}
-      {records && records.length > 0 && (
-        <div className="space-y-2">
-          {records.map((r) => (
-            <div key={r.pageId} className="text-sm border-b border-stone-100 pb-2 last:border-b-0">
-              <div className="font-bold text-stone-900">
-                {r.mealType} ・ {Math.round(r.kcal)} kcal
-              </div>
-              <div className="text-xs text-stone-700">
-                P {r1(r.P)}g ・ F {r1(r.F)}g ・ C {r1(r.C)}g
-              </div>
-              {r.memo && <div className="text-xs text-stone-600 mt-1">{r.memo}</div>}
+        <>
+          {/* 摂取サマリ */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
+            <h4 className="text-base font-bold text-stone-900 mb-3">📊 摂取</h4>
+            <ProgressRow label="カロリー" value={Math.round(totals.kcal)} goal={goals.kcal} unit="kcal" color="emerald" />
+            <ProgressRow label="タンパク質" value={r1(totals.P)} goal={goals.P} unit="g" color="rose" />
+            <ProgressRow label="脂質" value={r1(totals.F)} goal={goals.F} unit="g" color="amber" />
+            <ProgressRow label="炭水化物" value={r1(totals.C)} goal={goals.C} unit="g" color="sky" />
+          </div>
+
+          {/* 食事リスト */}
+          {mealsByType && Object.values(mealsByType).some((arr) => arr.length > 0) && (
+            <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
+              <h4 className="text-base font-bold text-stone-900 mb-3">🍽️ 食事</h4>
+              {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => {
+                const records = mealsByType[meal] || [];
+                if (records.length === 0) return null;
+                const mealTotal = records.reduce(
+                  (acc, r) => ({ kcal: acc.kcal + r.kcal, P: acc.P + r.P, F: acc.F + r.F, C: acc.C + r.C }),
+                  { kcal: 0, P: 0, F: 0, C: 0 }
+                );
+                return (
+                  <div key={meal} className="mb-3 last:mb-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-stone-900">
+                        {MEAL_EMOJI[meal]} {meal}
+                      </span>
+                      <span className="text-sm font-bold text-stone-900">{Math.round(mealTotal.kcal)} kcal</span>
+                    </div>
+                    <div className="text-xs font-medium text-stone-700 mb-2">
+                      P {r1(mealTotal.P)}g ・ F {r1(mealTotal.F)}g ・ C {r1(mealTotal.C)}g
+                    </div>
+                    <div className="space-y-2">
+                      {records.map((r) => (
+                        <div key={r.pageId} className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+                          <div className="flex items-start gap-3">
+                            {r.imageUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={toDriveThumbnailUrl(r.imageUrl)}
+                                alt={r.title}
+                                referrerPolicy="no-referrer"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-stone-100"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-stone-700">
+                                {Math.round(r.kcal)} kcal · P{r1(r.P)} F{r1(r.F)} C{r1(r.C)}
+                              </div>
+                              {r.memo && <div className="text-xs text-stone-600 mt-1 line-clamp-2">{r.memo}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          )}
+          {mealsByType && Object.values(mealsByType).every((arr) => arr.length === 0) && (
+            <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200 text-sm text-stone-700">
+              この日の食事記録はありません
+            </div>
+          )}
+        </>
       )}
     </div>
   );
+}
+
+function ProgressRow({
+  label,
+  value,
+  goal,
+  unit,
+  color,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  unit: string;
+  color: 'emerald' | 'rose' | 'amber' | 'sky';
+}) {
+  const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
+  const status = pct >= 95 && pct <= 105 ? '✨' : pct >= 80 && pct <= 120 ? '⭕' : pct >= 60 ? '🔺' : '💦';
+  const barColor: Record<string, string> = {
+    emerald: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    amber: 'bg-amber-500',
+    sky: 'bg-sky-500',
+  };
+  return (
+    <div className="mb-3 last:mb-0">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="font-medium text-stone-800">
+          {label} {status}
+        </span>
+        <span className="font-bold text-stone-900">
+          {value} / {goal} {unit}
+        </span>
+      </div>
+      <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+        <div className={`h-full ${barColor[color]} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// Drive URLをサムネイル化
+function toDriveThumbnailUrl(url: string): string {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!m) return url;
+  return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
 }
 
 function r1(x: number): number {

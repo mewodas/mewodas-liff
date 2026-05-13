@@ -200,6 +200,14 @@ export default function WeeklyPage() {
                   strokeDasharray="3 3"
                   label={{ value: '目標', position: 'right', fill: '#10b981', fontSize: 11 }}
                 />
+                {week.avg.kcal > 0 && (
+                  <ReferenceLine
+                    y={week.avg.kcal}
+                    stroke="#a855f7"
+                    strokeDasharray="5 3"
+                    label={{ value: '平均', position: 'left', fill: '#a855f7', fontSize: 11 }}
+                  />
+                )}
                 <Bar dataKey="kcal" fill="#f97316" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
