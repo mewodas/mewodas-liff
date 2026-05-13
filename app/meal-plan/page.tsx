@@ -74,8 +74,15 @@ export default function MealPlanPage() {
   const [preferIngredients, setPreferIngredients] = useState('');
   const [budget, setBudget] = useState('通常');
   const [cookTime, setCookTime] = useState('通常');
-  const [mode, setMode] = useState<'remaining' | 'full' | 'one_meal'>('remaining');
-  const [oneMealType, setOneMealType] = useState<'朝食' | '昼食' | '夕食' | '間食'>('昼食');
+  const [mode, setMode] = useState<'remaining' | 'full' | 'one_meal'>('one_meal');
+  const [oneMealType, setOneMealType] = useState<'朝食' | '昼食' | '夕食' | '間食'>(() => {
+    // 現在時刻から食事区分の初期値を自動推定
+    const h = new Date().getHours();
+    if (h < 10) return '朝食';
+    if (h < 15) return '昼食';
+    if (h < 17) return '間食';
+    return '夕食';
+  });
   const [useMyMenu, setUseMyMenu] = useState(false);
   const [myMenu, setMyMenu] = useState<MyMenuItem[]>([]);
   const [ingredients, setIngredients] = useState<string[]>([]);
@@ -199,53 +206,42 @@ export default function MealPlanPage() {
 
         {!result && (
           <>
-            <Section title="献立モード">
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <Chip
-                  label="残りPFCで作る"
-                  active={mode === 'remaining'}
-                  onClick={() => setMode('remaining')}
-                />
-                <Chip
-                  label="1食だけ作る"
-                  active={mode === 'one_meal'}
-                  onClick={() => setMode('one_meal')}
-                />
-                <Chip
-                  label="1日分まるごと"
-                  active={mode === 'full'}
-                  onClick={() => setMode('full')}
-                />
+            <Section title="どの食事を作る？">
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {(['朝食', '昼食', '夕食', '間食'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setOneMealType(m);
+                      setMode('one_meal');
+                    }}
+                    className={`py-3 rounded-xl text-sm font-bold ${
+                      mode === 'one_meal' && oneMealType === m
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-stone-100 text-stone-700 border border-stone-300'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
-              <p className="text-[11px] text-stone-600 leading-relaxed">
-                {mode === 'remaining'
-                  ? '今日の残りカロリー・PFC・体重目標を踏まえて、これから食べるべき3案を提案します。'
-                  : mode === 'one_meal'
-                  ? '指定した食事区分（朝/昼/夕/間食）の1食を、残りPFCを考慮して3案提案します。'
+              <button
+                type="button"
+                onClick={() => setMode('full')}
+                className={`w-full py-2.5 rounded-xl text-xs font-bold ${
+                  mode === 'full'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'bg-stone-100 text-stone-700 border border-stone-300'
+                }`}
+              >
+                📅 1日分まるごと提案（朝・昼・夕・間食を一括）
+              </button>
+              <p className="text-[11px] text-stone-600 leading-relaxed mt-2">
+                {mode === 'one_meal'
+                  ? `「${oneMealType}」の献立を、今日の残りPFC・体重目標を考慮して3案提案します。`
                   : '今日の食事記録は考慮せず、1日分（朝・昼・夕・間食）の献立をまるごと提案します。'}
               </p>
-
-              {mode === 'one_meal' && (
-                <div className="mt-3">
-                  <div className="text-[11px] font-bold text-stone-700 mb-1">どの食事を作る？</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['朝食', '昼食', '夕食', '間食'] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setOneMealType(m)}
-                        className={`py-2 rounded-xl text-xs font-bold ${
-                          oneMealType === m
-                            ? 'bg-emerald-500 text-white shadow-sm'
-                            : 'bg-stone-100 text-stone-700 border border-stone-300'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </Section>
 
             <Section title="マイメニュー参照">
