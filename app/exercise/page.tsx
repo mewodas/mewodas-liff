@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
-import { Activity, CheckCircle2, ClipboardList, Plus, Square } from 'lucide-react';
+import { Dumbbell, CheckCircle2, ClipboardList, Plus, Square } from 'lucide-react';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -118,10 +118,10 @@ export default function ExercisePage() {
   if (success) {
     return (
       <main className="min-h-screen bg-stone-100 pb-28">
-        <PageHeader title="運動記録" Icon={Activity} back />
+        <PageHeader title="運動記録" Icon={Dumbbell} back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
-            <Activity className="w-12 h-12 text-amber-500 mx-auto mb-2" strokeWidth={2}/>
+            <Dumbbell className="w-12 h-12 text-amber-500 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-2xl font-bold mb-2 text-stone-900 flex items-center justify-center gap-2"><CheckCircle2 className="w-7 h-7 text-emerald-500" strokeWidth={2}/>記録しました</div>
             <div className="text-sm text-stone-700 mb-1">{fmtJp(date)}</div>
             {savedExercised && content ? (
@@ -160,7 +160,7 @@ export default function ExercisePage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
-      <PageHeader title="運動記録" Icon={Activity} back />
+      <PageHeader title="運動記録" Icon={Dumbbell} back />
       <div className="max-w-md mx-auto px-4 py-6">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">

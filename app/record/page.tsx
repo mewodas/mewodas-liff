@@ -791,7 +791,7 @@ export default function RecordPage() {
             onClick={() => libraryInputRef.current?.click()}
           />
           <HubButton
-            icon={<Star className="w-7 h-7 text-amber-500" strokeWidth={2} fill="currentColor" />}
+            icon={<Star className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="マイメニュー"
             onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
           />

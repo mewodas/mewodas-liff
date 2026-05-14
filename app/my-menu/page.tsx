@@ -196,7 +196,7 @@ function MyMenuInner() {
 
         {items.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <Star className="w-8 h-8 text-amber-500 mx-auto mb-2" strokeWidth={2} fill="currentColor"/>
+            <Star className="w-8 h-8 text-emerald-600 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-sm font-bold text-stone-800 mb-1">マイメニューは空です</div>
             <div className="text-xs text-stone-600 leading-relaxed">
               よく食べる料理を登録しておくと、食事記録時にすぐ呼び出せます。
@@ -511,7 +511,7 @@ function AddItemSheet({
         <div className="bg-white pt-3 pb-0 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5 mb-3">
-            <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>新しいメニューを追加</span></h2>
+            <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4" strokeWidth={2.2}/>新しいメニューを追加</span></h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
           {/* タブ：DB / 手入力 */}
@@ -611,7 +611,7 @@ function AddItemSheet({
                     disabled={!valid}
                     className="w-full mt-3 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
                   >
-                    <span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>マイメニューに保存</span>
+                    <span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4" strokeWidth={2.2}/>マイメニューに保存</span>
                   </button>
                   <button
                     type="button"
@@ -734,7 +734,14 @@ function AddItemSheet({
                 disabled={!valid}
                 className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
               >
-                {valid ? '<span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>マイメニューに保存</span>' : '料理名と栄養素を入力してください'}
+                {valid ? (
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <Star className="w-4 h-4" strokeWidth={2.2} />
+                    マイメニューに保存
+                  </span>
+                ) : (
+                  '料理名と栄養素を入力してください'
+                )}
               </button>
             </>
           )}
