@@ -1282,3 +1282,89 @@ function parseJsonLenient(text: string): {
 
   throw new Error('JSON解析失敗: ' + body.slice(0, 200));
 }
+
+// === 顧客分析（管理画面用） ============================================
+export type CoachingAnalysis = {
+  summary: string; // 全体総評（2-3文）
+  strengths: string[]; // 良い点 1-3個
+  concerns: string[]; // 懸念点 1-3個
+  patterns: string[]; // 食事パターン特徴 1-3個
+  recommendations: string[]; // 具体的な提案 2-4個
+  reportDraft: string; // 顧客に送るレポート文ドラフト（5-10行）
+};
+
+export async function generateCoachingAnalysis(input: {
+  customerName: string;
+  goals: { kcal: number; P: number; F: number; C: number };
+  currentWeight: number | null;
+  targetWeight: number | null;
+  targetDate: string | null;
+  recordsSummary: string; // 過去30日のサマリー（テキスト）
+  rangeLabel: string; // 例: "2026-04-15 〜 2026-05-14"
+}): Promise<CoachingAnalysis> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const goalWeightStr =
+    input.targetWeight !== null
+      ? `${input.targetWeight}kg（${input.targetDate || '期限未設定'}まで）`
+      : '未設定';
+  const currentWeightStr = input.currentWeight !== null ? `${input.currentWeight}kg` : '未測定';
+
+  const prompt = `あなたはプロのパーソナルトレーナー兼栄養士です。以下の顧客データを分析し、コーチング視点で評価とアドバイスを生成してください。
+
+【顧客プロフィール】
+- 氏名：${input.customerName}
+- 期間：${input.rangeLabel}
+- 1日目標：${input.goals.kcal}kcal / P${input.goals.P}g / F${input.goals.F}g / C${input.goals.C}g
+- 現在体重：${currentWeightStr}
+- 目標体重：${goalWeightStr}
+
+【期間中の記録サマリー】
+${input.recordsSummary}
+
+【分析観点】
+1. 目標達成度（カロリー摂取、PFCバランスが目標に対してどうか）
+2. 食事の傾向（時間帯、メニューの偏り、外食頻度、間食頻度など）
+3. 体重推移の評価（目標に対するペース）
+4. リスク要因（栄養不足、過剰、不規則）
+5. 強み（継続している良い習慣）
+
+【出力ルール】
+- 厳しく数字で評価する。「順調です」「頑張りましょう」のような曖昧な言葉だけで終わらない
+- 具体的な改善アクションを書く（例：「タンパク質が平均18g不足。朝食にギリシャヨーグルト150g追加で+15g」）
+- reportDraft は顧客に直接送る文体（〜です／〜ます調、敬体）。具体的な数字を含める
+
+JSON形式で返してください：
+{
+  "summary": "（2-3文の総評）",
+  "strengths": ["（強み1）", "（強み2）"],
+  "concerns": ["（懸念1）", "（懸念2）"],
+  "patterns": ["（パターン1）"],
+  "recommendations": ["（提案1）", "（提案2）"],
+  "reportDraft": "（顧客に直接送る本文。改行可。500文字程度）"
+}`;
+
+  const text = await callGemini([{ text: prompt }], apiKey);
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    try {
+      parsed = JSON.parse(repairLlmJson(cleaned));
+    } catch {
+      throw new Error('分析JSON解析失敗: ' + cleaned.slice(0, 200));
+    }
+  }
+  const toStringArr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.map((x) => String(x)) : [];
+  return {
+    summary: String(parsed.summary || ''),
+    strengths: toStringArr(parsed.strengths),
+    concerns: toStringArr(parsed.concerns),
+    patterns: toStringArr(parsed.patterns),
+    recommendations: toStringArr(parsed.recommendations),
+    reportDraft: String(parsed.reportDraft || ''),
+  };
+}

@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
 
@@ -75,6 +76,17 @@ function weekdayOf(s: string): number {
 
 function r1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+// memo は「食材1 100g / 食材2 1個 / AI識別:...」のような形式。
+// 先頭の「AI識別:」以前を取り出し、ユーザー識別しやすい表示にする。
+function extractFoodLine(m: { title: string; memo: string }): string {
+  const memo = (m.memo || '').trim();
+  if (memo) {
+    const beforeAi = memo.split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
+    if (beforeAi) return beforeAi;
+  }
+  return m.title || '食事';
 }
 
 export default function AdminMealsPage() {
@@ -264,8 +276,8 @@ export default function AdminMealsPage() {
                               <span className="text-[11px] text-stone-400 flex-shrink-0">・</span>
                               <span className="text-xs font-bold text-stone-900 truncate">{m.customerName}</span>
                             </div>
-                            <div className="text-sm font-bold text-stone-900 mt-0.5 truncate">
-                              {m.title || m.memo || '食事'}
+                            <div className="text-sm font-bold text-stone-900 mt-0.5 line-clamp-2 break-words leading-snug">
+                              {extractFoodLine(m)}
                             </div>
                             <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                               {Math.round(m.kcal)} kcal ・ P{r1(m.P)}・F{r1(m.F)}・C{r1(m.C)}
@@ -290,15 +302,15 @@ export default function AdminMealsPage() {
 function Thumb({ url }: { url: string | null }) {
   if (!url) {
     return (
-      <div className="w-12 h-12 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center flex-shrink-0">
+      <div className="w-14 h-14 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center flex-shrink-0">
         <ImageIcon className="w-5 h-5 text-stone-400" strokeWidth={2} />
       </div>
     );
   }
   return (
-    <div className="w-12 h-12 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
+    <div className="w-14 h-14 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+      <img src={toDriveThumbnailUrl(url, 200)} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
     </div>
   );
 }
@@ -325,9 +337,10 @@ function MealDetailModal({ meal, onClose }: { meal: Meal; onClose: () => void })
           {meal.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={meal.imageUrl}
+              src={toDriveThumbnailUrl(meal.imageUrl, 800)}
               alt=""
               className="w-full rounded-xl border border-stone-200 max-h-72 object-contain bg-stone-50"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="bg-stone-50 border border-stone-200 rounded-xl py-8 flex items-center justify-center text-stone-400 text-xs">

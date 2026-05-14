@@ -31,6 +31,7 @@ import {
   ArrowRight,
   TrendingUp,
   TrendingDown,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -178,6 +179,7 @@ function HomePageInner() {
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -242,6 +244,27 @@ function HomePageInner() {
       }
     })();
   }, [userId, selectedDate, isToday, data]);
+
+  // 未読通知数を取得（軽量・ホームでのみ）
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/notifications?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (!cancelled) setUnreadCount(j.unreadCount || 0);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -336,6 +359,18 @@ function HomePageInner() {
                 </span>
               </button>
             )}
+            <Link
+              href="/notifications"
+              className="relative w-9 h-9 bg-white border border-stone-200 rounded-full flex items-center justify-center active:bg-stone-100 text-stone-700"
+              aria-label={`お知らせを開く（未読${unreadCount}件）`}
+            >
+              <Bell className="w-5 h-5" strokeWidth={2.2} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
             <Link
               href="/history"
               className="w-9 h-9 bg-white border border-stone-200 rounded-full flex items-center justify-center active:bg-stone-100 text-stone-700"

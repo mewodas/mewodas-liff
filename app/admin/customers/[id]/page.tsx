@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Target, Scale, ClipboardList, Save, Calendar as CalendarIcon } from 'lucide-react';
+import { Target, Scale, ClipboardList, Save, Calendar as CalendarIcon, Send, Sparkles } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 type Customer = {
@@ -195,15 +195,35 @@ export default function CustomerDetailPage({
             </button>
           </section>
 
-          {/* 記録への遷移 */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+          {/* 各種遷移 */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             <Link
               href={`/admin/customers/${id}/records`}
-              className="flex items-center justify-between px-2 py-2 rounded-xl hover:bg-stone-50 active:bg-stone-100"
+              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
               <div className="flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
                 <span className="text-sm font-bold text-stone-900">食事記録を見る・編集する</span>
+              </div>
+              <span className="text-stone-400">›</span>
+            </Link>
+            <Link
+              href={`/admin/customers/${id}/notifications`}
+              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+            >
+              <div className="flex items-center gap-2">
+                <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                <span className="text-sm font-bold text-stone-900">レポート・お知らせを送る</span>
+              </div>
+              <span className="text-stone-400">›</span>
+            </Link>
+            <Link
+              href={`/admin/customers/${id}/analysis`}
+              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                <span className="text-sm font-bold text-stone-900">AI 分析・提案を見る</span>
               </div>
               <span className="text-stone-400">›</span>
             </Link>

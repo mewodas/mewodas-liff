@@ -4,7 +4,7 @@ const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
 
 // 現在のテナント設定から Notion DB ID を取得
-function getTenantNotion() {
+export function getTenantNotion() {
   const t = getCurrentTenant();
   return {
     foodDbId: t.notionFoodDbId,
