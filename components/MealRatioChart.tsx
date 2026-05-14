@@ -1,21 +1,23 @@
 'use client';
 
+import { Sunrise, Sun, Moon, Cookie, Salad, type LucideIcon } from 'lucide-react';
+
 const COLORS: Record<string, string> = {
   朝食: '#fb923c', // orange-400
   昼食: '#facc15', // yellow-400
   夕食: '#a78bfa', // violet-400
   間食: '#f472b6', // pink-400
 };
-const EMOJIS: Record<string, string> = {
-  朝食: '🌅',
-  昼食: '☀️',
-  夕食: '🌙',
-  間食: '🍪',
+const ICONS: Record<string, LucideIcon> = {
+  朝食: Sunrise,
+  昼食: Sun,
+  夕食: Moon,
+  間食: Cookie,
 };
 
 export default function MealRatioChart({
   mealRatio,
-  title = '🍳 食事ごとの割合',
+  title = '食事ごとの割合',
 }: {
   /** 朝食/昼食/夕食/間食 ごとの合計kcal */
   mealRatio: Record<string, number>;
@@ -64,7 +66,10 @@ export default function MealRatioChart({
   return (
     <div className="bg-white rounded-2xl shadow-md p-4 mb-3 border border-stone-200">
       <div className="flex items-baseline justify-between mb-3">
-        <div className="text-xs font-bold text-stone-700">{title}</div>
+        <div className="text-xs font-bold text-stone-700 flex items-center gap-1">
+          <Salad className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+          {title}
+        </div>
         <div className="text-right">
           <span className="text-[10px] text-stone-500">総カロリー </span>
           <span className="text-base font-bold text-stone-900">{Math.round(total)}</span>
@@ -104,8 +109,14 @@ export default function MealRatioChart({
                     className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                     style={{ backgroundColor: COLORS[m.type] }}
                   />
-                  <span className="text-stone-700 truncate">
-                    {EMOJIS[m.type]} {m.type}
+                  <span className="text-stone-700 truncate flex items-center gap-1">
+                    {(() => {
+                      const Icon = ICONS[m.type];
+                      return Icon ? (
+                        <Icon className="w-3 h-3" strokeWidth={2.2} style={{ color: COLORS[m.type] }} />
+                      ) : null;
+                    })()}
+                    {m.type}
                   </span>
                 </div>
                 <span className="text-stone-900 font-bold whitespace-nowrap ml-2">

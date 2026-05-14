@@ -15,6 +15,13 @@ import {
   FileText,
   UtensilsCrossed,
   ClipboardCheck,
+  Sparkles,
+  Ban,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  BarChart3,
+  Lightbulb,
+  Save,
 } from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
@@ -433,7 +440,13 @@ export default function RecordPage() {
     return (
       <main className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6">
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
-          <div className="text-3xl mb-4">{isSaving ? '💾' : '📷'}</div>
+          <div className="mb-4 flex items-center justify-center">
+            {isSaving ? (
+              <Save className="w-8 h-8 text-emerald-600" strokeWidth={2} />
+            ) : (
+              <Camera className="w-8 h-8 text-emerald-600" strokeWidth={2} />
+            )}
+          </div>
           <h2 className="text-base font-bold text-stone-900 mb-2">
             {isSaving ? '記録してます' : '解析中'}
           </h2>
@@ -496,7 +509,10 @@ export default function RecordPage() {
           </div>
 
           <h2 className="text-sm font-bold text-stone-800 mb-2 px-1">
-            🍽 識別された食材（左でON/OFF・右で編集）
+            <span className="inline-flex items-center gap-1">
+              <UtensilsCrossed className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2} />
+              識別された食材（左でON/OFF・右で編集）
+            </span>
           </h2>
           <div className="space-y-2">
             {analyzed.map((item) => {
@@ -608,7 +624,10 @@ export default function RecordPage() {
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200">
             <div className="text-sm font-semibold text-stone-700 mb-1">{dayLabel} の {mealType}</div>
-            <div className="text-2xl font-bold mb-4 text-stone-900">✅ 記録しました</div>
+            <div className="text-2xl font-bold mb-4 text-stone-900 flex items-center gap-2">
+              <CheckCircle2 className="w-7 h-7 text-emerald-600" strokeWidth={2} />
+              記録しました
+            </div>
             <div className="flex items-baseline gap-2 mb-4">
               <div className="text-4xl font-bold text-stone-900">{savedTotal.kcal}</div>
               <div className="text-sm font-medium text-stone-700">kcal</div>
@@ -661,9 +680,10 @@ export default function RecordPage() {
           <button
             onClick={() => runAnalyze([], comment)}
             disabled={!comment.trim()}
-            className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
+            className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 flex items-center justify-center gap-2"
           >
-            ✨ 解析する
+            <Sparkles className="w-5 h-5" strokeWidth={2} />
+            解析する
           </button>
         </div>
       </main>
@@ -709,7 +729,7 @@ export default function RecordPage() {
               aria-label="カレンダーから日付を選択"
             >
               <div className="text-xs text-stone-500 mb-1 flex items-center justify-center gap-1">
-                <span>📅</span>
+                <CalendarIcon className="w-4 h-4" strokeWidth={2.2} />
                 <span>記録対象</span>
               </div>
               <div className="text-2xl font-bold text-stone-900">{dayLabel}</div>
@@ -858,17 +878,25 @@ export default function RecordPage() {
           {previews.length > 0 ? (
             <button
               onClick={() => runAnalyze(photos, comment)}
-              className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700"
+              className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 flex items-center justify-center gap-2"
             >
-              ✨ 解析する（{previews.length}枚）
+              <Sparkles className="w-5 h-5" strokeWidth={2} />
+              解析する（{previews.length}枚）
             </button>
           ) : (
             <button
               onClick={handleSkip}
               disabled={skipping}
-              className="w-full bg-white border-2 border-stone-300 text-stone-700 font-bold py-3 rounded-2xl active:bg-stone-50 disabled:opacity-50"
+              className="w-full bg-white border-2 border-stone-300 text-stone-700 font-bold py-3 rounded-2xl active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {skipping ? '記録中…' : `🚫 ${mealType}は食べなかった`}
+              {skipping ? (
+                '記録中…'
+              ) : (
+                <>
+                  <Ban className="w-4 h-4 text-stone-500" strokeWidth={2.2} />
+                  {mealType}は食べなかった
+                </>
+              )}
             </button>
           )}
         </div>
@@ -963,7 +991,10 @@ function LabelResultSheet({
         <div className="sticky top-0 bg-white pt-3 pb-2 border-b border-stone-200 z-10">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">📋 成分表から登録</h2>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <Receipt className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              成分表から登録
+            </h2>
             <button onClick={onClose} disabled={busy} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
@@ -996,7 +1027,10 @@ function LabelResultSheet({
 
           {editing ? (
             <div className="bg-stone-50 border border-emerald-300 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-bold text-stone-700">📊 栄養素を補正（{result.servingLabel}）</div>
+              <div className="text-xs font-bold text-stone-700 flex items-center gap-1">
+                <BarChart3 className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                栄養素を補正（{result.servingLabel}）
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-rose-600 mb-1 block">P タンパク質(g)</label>
@@ -1080,7 +1114,10 @@ function LabelResultSheet({
             </div>
           ) : (
             <div className="bg-white border border-stone-200 rounded-xl p-3">
-              <div className="text-xs font-bold text-stone-700 mb-2">📊 読み取り結果（{result.servingLabel}）</div>
+              <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1">
+                <BarChart3 className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                読み取り結果（{result.servingLabel}）
+              </div>
               <div className="grid grid-cols-4 gap-2 text-center mb-2">
                 <Cell label="kcal" value={k.kcal} />
                 <Cell label="P (g)" value={k.P} />
@@ -1128,7 +1165,10 @@ function LabelResultSheet({
 
           {result.note && (
             <div className="text-[11px] text-stone-500 bg-stone-50 rounded-lg p-2 leading-relaxed">
-              💡 {result.note}
+              <span className="inline-flex items-start gap-1">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                {result.note}
+              </span>
             </div>
           )}
 
@@ -1137,7 +1177,14 @@ function LabelResultSheet({
             disabled={busy}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {busy ? '記録中…' : `✅ ${q}× を ${mealType}に記録`}
+            {busy ? (
+              '記録中…'
+            ) : (
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" strokeWidth={2.2} />
+                {q}× を {mealType}に記録
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1228,7 +1275,7 @@ function EditAnalyzedSheet({
         <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">✏️ 食材を修正</h2>
+            <h2 className="text-base font-bold text-stone-900">食材を修正</h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>

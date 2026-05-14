@@ -7,7 +7,26 @@ import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
-import { BookOpen } from 'lucide-react';
+import {
+  BookOpen,
+  Sunrise,
+  Sun,
+  Moon,
+  Cookie,
+  UtensilsCrossed,
+  BarChart3,
+  ClipboardList,
+  Activity,
+  Scale,
+  Sparkles,
+  Circle,
+  Triangle,
+  Droplets,
+  Ban,
+  Lightbulb,
+  AlertTriangle,
+  type LucideIcon,
+} from 'lucide-react';
 
 type DailyAgg = {
   day: number;
@@ -53,11 +72,17 @@ type MealRecord = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-const MEAL_EMOJI: Record<string, string> = {
-  朝食: '🌅',
-  昼食: '☀️',
-  夕食: '🌙',
-  間食: '🍪',
+const MEAL_ICON: Record<string, LucideIcon> = {
+  朝食: Sunrise,
+  昼食: Sun,
+  夕食: Moon,
+  間食: Cookie,
+};
+const MEAL_COLOR: Record<string, string> = {
+  朝食: 'text-orange-500',
+  昼食: 'text-amber-500',
+  夕食: 'text-indigo-500',
+  間食: 'text-pink-500',
 };
 
 function todayJst(): { year: number; month: number; day: number } {
@@ -237,7 +262,7 @@ export default function HistoryPage() {
 
         {/* 食事ごとの割合（円グラフ） */}
         {m.mealRatio && (
-          <MealRatioChart mealRatio={m.mealRatio} title="🍳 今月の食事割合" />
+          <MealRatioChart mealRatio={m.mealRatio} title="今月の食事割合" />
         )}
 
         {/* カレンダー */}
@@ -279,10 +304,22 @@ export default function HistoryPage() {
 
           {/* 凡例 */}
           <div className="mt-3 pt-3 border-t border-stone-100 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-stone-700">
-            <span><span className="text-base">✨</span> 完璧（±5%）</span>
-            <span><span className="text-base">⭕</span> 良好（±15%）</span>
-            <span><span className="text-base">🔺</span> もう少し（±25%）</span>
-            <span><span className="text-base">💦</span> 頑張りましょう</span>
+            <span className="inline-flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.2} />
+              完璧（±5%）
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Circle className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />
+              良好（±15%）
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Triangle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />
+              もう少し（±25%）
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Droplets className="w-3.5 h-3.5 text-rose-500" strokeWidth={2.2} />
+              頑張りましょう
+            </span>
           </div>
         </div>
 
@@ -333,42 +370,69 @@ function MonthlySummary({
   const totalDaysToShow = effectiveDays.length;
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">📊 月次サマリ</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+        <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2} />
+        月次サマリ
+      </h2>
       <div className="grid grid-cols-2 gap-3">
         <StatBox
-          label="📝 食事を記録した日数"
+          Icon={ClipboardList}
+          iconColor="text-sky-600"
+          label="食事を記録した日数"
           value={`${recorded.length}/${totalDaysToShow}`}
           unit="日"
         />
         <StatBox
-          label="🏃 運動した日数"
+          Icon={Activity}
+          iconColor="text-amber-600"
+          label="運動した日数"
           value={`${exerciseDays}/${totalDaysToShow}`}
           unit="日"
         />
         <StatBox
-          label="⚖️ 体重の増減"
+          Icon={Scale}
+          iconColor="text-sky-600"
+          label="体重の増減"
           value={weightDisplay}
           unit={weightDelta !== null ? 'kg' : ''}
         />
         <StatBox
-          label="📊 1日あたり平均"
+          Icon={BarChart3}
+          iconColor="text-emerald-600"
+          label="1日あたり平均"
           value={avgKcal > 0 ? `${avgKcal}` : '—'}
           unit={avgKcal > 0 ? 'kcal' : ''}
         />
       </div>
       {weightDelta !== null && weightDays.length >= 2 && (
-        <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
-          ⚖️ {firstWeight}kg（最初の記録）→ {lastWeight}kg（最新）／{weightDays.length}回測定
+        <p className="text-[10px] text-stone-500 mt-2 leading-relaxed flex items-center gap-1">
+          <Scale className="w-3 h-3" strokeWidth={2.2} />
+          {firstWeight}kg（最初の記録）→ {lastWeight}kg（最新）／{weightDays.length}回測定
         </p>
       )}
     </div>
   );
 }
 
-function StatBox({ label, value, unit }: { label: string; value: string; unit: string }) {
+function StatBox({
+  Icon,
+  iconColor,
+  label,
+  value,
+  unit,
+}: {
+  Icon?: LucideIcon;
+  iconColor?: string;
+  label: string;
+  value: string;
+  unit: string;
+}) {
   return (
     <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-      <div className="text-xs font-medium text-stone-700">{label}</div>
+      <div className="text-xs font-medium text-stone-700 flex items-center gap-1">
+        {Icon && <Icon className={`w-3.5 h-3.5 ${iconColor || 'text-stone-500'}`} strokeWidth={2.2} />}
+        {label}
+      </div>
       <div className="text-lg font-bold text-stone-900 mt-1">
         {value}
         <span className="text-xs font-medium text-stone-600 ml-1">{unit}</span>
@@ -377,14 +441,14 @@ function StatBox({ label, value, unit }: { label: string; value: string; unit: s
   );
 }
 
-function statusEmoji(kcal: number, goal: number): string {
-  if (kcal === 0 || goal === 0) return '';
+function statusInfo(kcal: number, goal: number): { Icon: LucideIcon; color: string } | null {
+  if (kcal === 0 || goal === 0) return null;
   const pct = (kcal / goal) * 100;
   const diff = Math.abs(pct - 100);
-  if (diff <= 5) return '✨';
-  if (diff <= 15) return '⭕';
-  if (diff <= 25) return '🔺';
-  return '💦';
+  if (diff <= 5) return { Icon: Sparkles, color: 'text-emerald-500' };
+  if (diff <= 15) return { Icon: Circle, color: 'text-sky-500' };
+  if (diff <= 25) return { Icon: Triangle, color: 'text-amber-500' };
+  return { Icon: Droplets, color: 'text-rose-500' };
 }
 
 function CalendarCell({
@@ -403,7 +467,7 @@ function CalendarCell({
   if (!cell) {
     return <div className="aspect-square" />;
   }
-  const status = cell.recorded ? statusEmoji(cell.kcal, goalKcal) : '';
+  const status = cell.recorded ? statusInfo(cell.kcal, goalKcal) : null;
   const weekdayColor =
     cell.weekday === 0 ? 'text-rose-700' : cell.weekday === 6 ? 'text-sky-700' : 'text-stone-900';
   return (
@@ -423,8 +487,14 @@ function CalendarCell({
     >
       <span className={`font-bold ${weekdayColor}`}>{cell.day}</span>
       <div className="flex items-center gap-0.5 mt-0.5">
-        <span className="text-base leading-none">{status || (cell.recorded ? '' : '·')}</span>
-        {cell.exercised && <span className="text-sm leading-none" aria-label="運動日">🏃</span>}
+        {status ? (
+          <status.Icon className={`w-3.5 h-3.5 ${status.color}`} strokeWidth={2.2} />
+        ) : (
+          <span className="text-stone-400">{cell.recorded ? '' : '·'}</span>
+        )}
+        {cell.exercised && (
+          <Activity className="w-3 h-3 text-amber-600" strokeWidth={2.2} aria-label="運動日" />
+        )}
       </div>
     </button>
   );
@@ -509,7 +579,10 @@ function DayDetail({
 
           {/* 摂取サマリ */}
           <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
-            <h4 className="text-base font-bold text-stone-900 mb-3">📊 摂取</h4>
+            <h4 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2} />
+              摂取
+            </h4>
             <ProgressRow label="カロリー" value={Math.round(totals.kcal)} goal={goals.kcal} unit="kcal" color="emerald" />
             <ProgressRow label="タンパク質" value={r1(totals.P)} goal={goals.P} unit="g" color="rose" />
             <ProgressRow label="脂質" value={r1(totals.F)} goal={goals.F} unit="g" color="amber" />
@@ -556,7 +629,8 @@ function HistoryMealSection({
   dayTotalKcal: number;
   selectedDate: string;
 }) {
-  const emoji = MEAL_EMOJI[mealType] || '🍽️';
+  const MealIcon = MEAL_ICON[mealType] || UtensilsCrossed;
+  const mealIconColor = MEAL_COLOR[mealType] || 'text-stone-600';
   const totals = records.reduce(
     (acc, r) => ({
       kcal: acc.kcal + r.kcal,
@@ -577,8 +651,9 @@ function HistoryMealSection({
         className="block px-4 py-3 active:bg-stone-50"
       >
         <div className="flex justify-between items-center">
-          <span className="font-bold text-stone-900">
-            {emoji} {mealType}
+          <span className="font-bold text-stone-900 flex items-center gap-1.5">
+            <MealIcon className={`w-4 h-4 ${mealIconColor}`} strokeWidth={2.2} />
+            {mealType}
           </span>
           <span className="text-sm font-bold text-stone-900">
             {hasRecords ? (
@@ -611,7 +686,14 @@ function HistoryMealSection({
                   <div key={r.pageId} className="flex items-center px-4 py-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-stone-900 truncate">
-                        {isSkipped ? '🚫 食べなかった' : name}
+                        {isSkipped ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Ban className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />
+                            食べなかった
+                          </span>
+                        ) : (
+                          name
+                        )}
                       </div>
                       <div className="text-[10px] text-stone-600 mt-0.5">
                         {Math.round(r.kcal)} kcal
@@ -688,12 +770,12 @@ function ProgressRow({
   const pct = Math.min(100, pctRaw);
   // ホームと同じ「不足／良好／過剰」基準（70%未満で不足、130%超で過剰）
   const labelStatus = pctRaw < 70 ? '不足' : pctRaw > 130 ? '過剰' : '良好';
-  const statusInfo =
+  const statusBadge =
     labelStatus === '不足'
-      ? { text: '💡 不足', cls: 'text-sky-700 bg-sky-100 border-sky-300' }
+      ? { Icon: Lightbulb, text: '不足', cls: 'text-sky-700 bg-sky-100 border-sky-300' }
       : labelStatus === '過剰'
-      ? { text: '⚠️ 過剰', cls: 'text-rose-700 bg-rose-100 border-rose-300' }
-      : { text: '✨ 良好', cls: 'text-emerald-700 bg-emerald-100 border-emerald-300' };
+      ? { Icon: AlertTriangle, text: '過剰', cls: 'text-rose-700 bg-rose-100 border-rose-300' }
+      : { Icon: Sparkles, text: '良好', cls: 'text-emerald-700 bg-emerald-100 border-emerald-300' };
   const barColor: Record<string, string> = {
     emerald: 'bg-emerald-500',
     rose: 'bg-rose-500',
@@ -705,8 +787,9 @@ function ProgressRow({
       <div className="flex justify-between items-center text-sm mb-1">
         <div className="flex items-center gap-2">
           <span className="font-medium text-stone-800">{label}</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${statusInfo.cls}`}>
-            {statusInfo.text}
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${statusBadge.cls}`}>
+            <statusBadge.Icon className="w-3 h-3" strokeWidth={2.2} />
+            {statusBadge.text}
           </span>
         </div>
         <span className="font-bold text-stone-900">
