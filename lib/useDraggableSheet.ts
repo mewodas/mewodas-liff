@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 
 export function useDraggableSheet(onClose: () => void) {
-  const [expanded, setExpanded] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const startY = useRef<number | null>(null);
 
@@ -18,21 +17,13 @@ export function useDraggableSheet(onClose: () => void) {
   function onPointerMove(e: React.PointerEvent) {
     if (startY.current === null) return;
     const dy = e.clientY - startY.current;
-    if (!expanded && dy < 0) {
-      setDragOffset(0);
-    } else {
-      setDragOffset(dy);
-    }
+    // 下方向（dy > 0）のみ追従、上方向は無視
+    setDragOffset(Math.max(0, dy));
   }
   function onPointerUp() {
     if (startY.current === null) return;
-    const dy = dragOffset;
-    if (dy > 80) {
+    if (dragOffset > 80) {
       onClose();
-    } else if (dy < -50 && !expanded) {
-      setExpanded(true);
-    } else if (dy > 40 && expanded) {
-      setExpanded(false);
     }
     setDragOffset(0);
     startY.current = null;
@@ -49,5 +40,6 @@ export function useDraggableSheet(onClose: () => void) {
       ? { transform: `translateY(${dragOffset}px)`, transition: 'none' as const }
       : { transform: 'translateY(0)', transition: 'transform 0.2s ease-out' };
 
-  return { expanded, handleProps, sheetStyle };
+  // 既存の呼び出し側との互換性のため expanded は常に false で返す
+  return { expanded: false as const, handleProps, sheetStyle };
 }
