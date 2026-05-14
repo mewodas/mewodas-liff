@@ -123,11 +123,14 @@ export default function ExercisePage() {
             <div className="text-5xl mb-2">🏃</div>
             <div className="text-2xl font-bold mb-2 text-stone-900">✅ 記録しました</div>
             <div className="text-sm text-stone-700 mb-1">{fmtJp(date)}</div>
-            <div className="text-xl font-bold text-stone-900">
-              {savedExercised ? '運動しました' : '運動なし'}
-            </div>
-            {savedExercised && content && (
-              <div className="text-sm text-stone-700 mt-2 bg-stone-50 p-3 rounded-xl">{content}</div>
+            {savedExercised && content ? (
+              <div className="text-sm text-stone-800 mt-2 bg-stone-50 p-3 rounded-xl whitespace-pre-wrap leading-relaxed text-left">
+                {content}
+              </div>
+            ) : (
+              <div className="text-base text-stone-600 mt-2">
+                {savedExercised ? '記録あり' : '内容なしで記録'}
+              </div>
             )}
           </div>
 

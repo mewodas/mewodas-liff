@@ -495,16 +495,13 @@ function WeightExerciseCard({
         >
           <div className="text-xs font-bold text-stone-700 mb-1">🏃 運動</div>
           {hasExercise ? (
-            <div>
-              <div className="text-base font-bold text-stone-900">
-                {exercised ? 'した' : 'なし'}
+            initialExerciseContent ? (
+              <div className="text-sm font-bold text-stone-900 line-clamp-2 max-w-[140px] leading-snug">
+                {initialExerciseContent}
               </div>
-              {exercised && initialExerciseContent && (
-                <div className="text-[10px] text-stone-600 mt-0.5 truncate max-w-[120px]">
-                  {initialExerciseContent}
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="text-xs text-stone-500">記録あり</div>
+            )
           ) : (
             <div className="text-xs text-stone-500">タップで入力</div>
           )}
