@@ -47,6 +47,9 @@ const items: NavItem[] = [
 export default function FooterNav() {
   const pathname = usePathname() || '/';
 
+  // 管理者画面ではフッターナビを非表示
+  if (pathname.startsWith('/admin')) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-50">
       <div className="max-w-md mx-auto grid grid-cols-4">

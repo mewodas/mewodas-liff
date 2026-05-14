@@ -23,7 +23,7 @@ export default function AdminCustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('すべて');
+  const [statusFilter, setStatusFilter] = useState<string>('進行中');
 
   useEffect(() => {
     (async () => {
@@ -31,7 +31,9 @@ export default function AdminCustomersPage() {
         const res = await fetch('/api/admin/customers', { cache: 'no-store' });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
-        setCustomers(j.customers || []);
+        // ステータス未設定は管理対象外として除外
+        const list: Customer[] = (j.customers || []).filter((c: Customer) => !!c.foodStatus);
+        setCustomers(list);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
