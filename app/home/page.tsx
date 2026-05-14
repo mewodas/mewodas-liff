@@ -8,6 +8,44 @@ import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
+import {
+  Medal,
+  Calendar as CalendarIcon,
+  ClipboardList,
+  MessageCircle,
+  ChefHat,
+  Target,
+  Trophy,
+  Flame,
+  BarChart3,
+  CheckCircle2,
+  AlertTriangle,
+  Lightbulb,
+  Sparkles,
+  Ban,
+  UtensilsCrossed,
+  Sunrise,
+  Sun,
+  Moon,
+  Cookie,
+  ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  type LucideIcon,
+} from 'lucide-react';
+
+const MEAL_ICON: Record<string, LucideIcon> = {
+  朝食: Sunrise,
+  昼食: Sun,
+  夕食: Moon,
+  間食: Cookie,
+};
+const MEAL_COLOR: Record<string, string> = {
+  朝食: 'text-orange-500',
+  昼食: 'text-amber-500',
+  夕食: 'text-indigo-500',
+  間食: 'text-pink-500',
+};
 
 // アクション型オンボーディング：
 // step1（初回起動）：食事を記録してみよう → 食事記録ボタンを指す
@@ -94,12 +132,6 @@ type PredictionData = {
   };
 };
 
-const MEAL_EMOJI: Record<string, string> = {
-  朝食: '🌅',
-  昼食: '☀️',
-  夕食: '🌙',
-  間食: '🍪',
-};
 
 function greetingByHour(): string {
   const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })).getHours();
@@ -298,7 +330,7 @@ function HomePageInner() {
                 className="flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full pl-2 pr-3 py-1.5 active:bg-amber-200"
                 aria-label="バッジ獲得・達成記録を開く"
               >
-                <span className="text-lg leading-none">🏅</span>
+                <Medal className="w-4 h-4 text-amber-700" strokeWidth={2.4} />
                 <span className="text-xs font-bold text-amber-800">
                   {data.stats.streakDays}日
                 </span>
@@ -346,13 +378,17 @@ function HomePageInner() {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <QuickAction
             href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
-            icon="📝"
+            icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
             label="食事記録"
           />
-          <QuickAction href="/chat" icon="💬" label="AI食事相談" />
+          <QuickAction
+            href="/chat"
+            icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+            label="AI食事相談"
+          />
           <QuickAction
             href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
-            icon="🍱"
+            icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
             label="AI献立作成"
           />
         </div>
@@ -360,7 +396,10 @@ function HomePageInner() {
         {/* 体重目標 */}
         {goalProgress && (
           <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-            <h2 className="text-base font-bold text-stone-900 mb-3">🎯 体重目標進捗</h2>
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+              <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              体重目標進捗
+            </h2>
             <div className="space-y-1 text-sm text-stone-800">
               <div className="flex justify-between">
                 <span className="text-stone-600">現在</span>
@@ -431,7 +470,10 @@ function HomePageInner() {
         )}
 
         {/* 今日の食事（各食事をカード化） */}
-        <h2 className="text-base font-bold text-stone-900 mb-2 px-1" data-tour="meal-section">🍽️ {isToday ? '今日' : 'この日'}の食事</h2>
+        <h2 className="text-base font-bold text-stone-900 mb-2 px-1 flex items-center gap-1.5" data-tour="meal-section">
+          <UtensilsCrossed className="w-4 h-4 text-stone-700" strokeWidth={2.2} />
+          {isToday ? '今日' : 'この日'}の食事
+        </h2>
         <MealRatioChart
           mealRatio={(['朝食', '昼食', '夕食', '間食'] as const).reduce(
             (acc, t) => ({
@@ -552,7 +594,10 @@ function BadgeModal({
         <div className="sticky top-0 bg-stone-100 pt-3 pb-2 z-10 border-b border-stone-200">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">🏆 バッジ獲得・達成記録</h2>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
+              バッジ獲得・達成記録
+            </h2>
             <button
               onClick={onClose}
               className="text-stone-500 text-2xl leading-none px-2 active:text-stone-700"
@@ -703,13 +748,13 @@ function DateStrip({
   );
 }
 
-function QuickAction({ href, icon, label }: { href: string; icon: string; label: string }) {
+function QuickAction({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <Link
       href={href}
       className="flex flex-col items-center justify-center bg-white rounded-2xl py-3 px-1 border border-stone-200 shadow-sm active:bg-emerald-50"
     >
-      <span className="text-xl">{icon}</span>
+      <span className="flex items-center justify-center">{icon}</span>
       <span className="text-[11px] font-bold text-stone-900 mt-1 text-center leading-tight">
         {label}
       </span>
@@ -939,10 +984,16 @@ function StreakCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">🏆 バッジ獲得・達成記録</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+        <Trophy className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
+        バッジ獲得・達成記録
+      </h2>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-bold text-stone-800">🔥 連続記録日数</div>
+          <div className="text-xs font-bold text-stone-800 flex items-center gap-1">
+            <Flame className="w-3.5 h-3.5 text-orange-600" strokeWidth={2.2} />
+            連続記録日数
+          </div>
           <div className="text-2xl font-bold text-orange-700 mt-0.5">
             {streakDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -952,7 +1003,10 @@ function StreakCard({
           </div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-bold text-stone-800">🏆 最長連続記録</div>
+          <div className="text-xs font-bold text-stone-800 flex items-center gap-1">
+            <Trophy className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.2} />
+            最長連続記録
+          </div>
           <div className="text-2xl font-bold text-amber-700 mt-0.5">
             {bestStreakDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -962,7 +1016,10 @@ function StreakCard({
           </div>
         </div>
         <div className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-bold text-stone-800">📝 今月の記録日数</div>
+          <div className="text-xs font-bold text-stone-800 flex items-center gap-1">
+            <ClipboardList className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
+            今月の記録日数
+          </div>
           <div className="text-2xl font-bold text-sky-700 mt-0.5">
             {monthlyRecordedDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -972,7 +1029,10 @@ function StreakCard({
           </div>
         </div>
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-          <div className="text-xs font-bold text-stone-800">📊 直近30日の記録</div>
+          <div className="text-xs font-bold text-stone-800 flex items-center gap-1">
+            <BarChart3 className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+            直近30日の記録
+          </div>
           <div className="text-2xl font-bold text-emerald-700 mt-0.5">
             {last30RecordedDays}
             <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -1074,7 +1134,8 @@ function MealSection({
   lineUserId: string | null;
   onDeleted: () => void;
 }) {
-  const emoji = MEAL_EMOJI[mealType] || '🍽️';
+  const Icon = MEAL_ICON[mealType] || UtensilsCrossed;
+  const iconColor = MEAL_COLOR[mealType] || 'text-stone-600';
   const totals = records.reduce(
     (acc, r) => ({
       kcal: acc.kcal + r.kcal,
@@ -1098,8 +1159,9 @@ function MealSection({
         className="block px-4 py-3 active:bg-stone-50"
       >
         <div className="flex justify-between items-center">
-          <span className="font-bold text-stone-900">
-            {emoji} {mealType}
+          <span className="font-bold text-stone-900 flex items-center gap-1.5">
+            <Icon className={`w-4 h-4 ${iconColor}`} strokeWidth={2.2} />
+            {mealType}
           </span>
           <span className="text-sm font-bold text-stone-900">
             {hasRecords ? (
@@ -1136,7 +1198,14 @@ function MealSection({
                   <div key={r.pageId} className="flex items-center px-4 py-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-stone-900 truncate">
-                        {isSkipped ? '🚫 食べなかった' : name}
+                        {isSkipped ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Ban className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />
+                            食べなかった
+                          </span>
+                        ) : (
+                          name
+                        )}
                       </div>
                       <div className="text-[10px] text-stone-600 mt-0.5">
                         {Math.round(r.kcal)} kcal
@@ -1180,8 +1249,10 @@ function MealSection({
           href={recordHref}
           className="block px-4 pb-3 active:bg-stone-50"
         >
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
-            📝 食事記録 →
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+            <UtensilsCrossed className="w-3.5 h-3.5" strokeWidth={2.2} />
+            食事を記録する
+            <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.2} />
           </span>
         </Link>
       )}
