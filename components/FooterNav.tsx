@@ -62,7 +62,12 @@ export default function FooterNav() {
             active ? 'text-emerald-700' : 'text-stone-600'
           } active:bg-stone-50`;
           return (
-            <Link key={it.href} href={it.href} className={className}>
+            <Link
+              key={it.href}
+              href={it.href}
+              className={className}
+              data-tour={it.href === '/record' ? 'footer-record' : undefined}
+            >
               <span className="text-xl leading-none flex items-center justify-center h-6">
                 {it.icon}
               </span>

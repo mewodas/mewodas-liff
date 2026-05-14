@@ -7,6 +7,39 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
+import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
+
+const HOME_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'date-strip',
+    title: '📅 日付を選ぶ',
+    description:
+      'この横スクロールバーで日付を切り替えます。今日が中央に来るので、過去・未来の食事もここから記録できます。',
+  },
+  {
+    target: 'nutrition-summary',
+    title: '📊 栄養サマリー',
+    description: '今日の摂取カロリー・PFCバランス・達成率がひと目で分かります。',
+  },
+  {
+    target: 'today-record-card',
+    title: '⚖️ 体重と運動を記録',
+    description:
+      'タップでその場で入力できます。書いた内容はそのまま保存され、再記録で上書きされます。',
+  },
+  {
+    target: 'meal-section',
+    title: '🍽 食事を記録',
+    description:
+      '各食事をタップして写真・テキスト・食品DB・マイメニューなどから記録します。AIが食材を識別します。',
+  },
+  {
+    target: 'footer-record',
+    title: '📝 下のメニューから',
+    description:
+      '画面下の「食事記録」からも記録画面を開けます。AI相談やメニュー画面もここから移動できます。',
+  },
+];
 
 type MealRecord = {
   pageId: string;
@@ -306,14 +339,18 @@ function HomePageInner() {
         </div>
 
         {/* 日付ストリップ（7日間横スクロール） */}
-        <DateStrip
-          selectedDate={selectedDate}
-          todayStr={todayStr}
-          onSelect={(d) => navigateToDate(d)}
-        />
+        <div data-tour="date-strip">
+          <DateStrip
+            selectedDate={selectedDate}
+            todayStr={todayStr}
+            onSelect={(d) => navigateToDate(d)}
+          />
+        </div>
 
         {/* 栄養サマリー（カロミル風） */}
-        <NutritionSummaryCard totals={totals} goals={goals} />
+        <div data-tour="nutrition-summary">
+          <NutritionSummaryCard totals={totals} goals={goals} />
+        </div>
 
         {/* クイックアクション */}
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -374,6 +411,7 @@ function HomePageInner() {
 
         {/* 体重・運動カード（未来日以外で表示。過去日もタップで入力/編集可能） */}
         {userId && selectedDate <= todayStr && (
+          <div data-tour="today-record-card">
           <WeightExerciseCard
             selectedDate={selectedDate}
             isToday={isToday}
@@ -399,10 +437,11 @@ function HomePageInner() {
               }
             }}
           />
+          </div>
         )}
 
         {/* 今日の食事（各食事をカード化） */}
-        <h2 className="text-base font-bold text-stone-900 mb-2 px-1">🍽️ {isToday ? '今日' : 'この日'}の食事</h2>
+        <h2 className="text-base font-bold text-stone-900 mb-2 px-1" data-tour="meal-section">🍽️ {isToday ? '今日' : 'この日'}の食事</h2>
         <MealRatioChart
           mealRatio={(['朝食', '昼食', '夕食', '間食'] as const).reduce(
             (acc, t) => ({
@@ -449,6 +488,11 @@ function HomePageInner() {
       {/* バッジ詳細モーダル */}
       {badgeOpen && data.stats && (
         <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
+      )}
+
+      {/* 初回オンボーディング（テックタッチ） */}
+      {ready && data && (
+        <OnboardingTour storageKey="mewodas_onboarding_v1" steps={HOME_TOUR_STEPS} />
       )}
     </main>
   );
