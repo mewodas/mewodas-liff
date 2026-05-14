@@ -24,10 +24,10 @@ export default function ExercisePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [date, setDate] = useState(todayStr);
-  const [exercised, setExercised] = useState<boolean | null>(null);
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [savedExercised, setSavedExercised] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingContent, setExistingContent] = useState<string>('');
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -58,11 +58,7 @@ export default function ExercisePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         const ec = j?.today?.exerciseContent || '';
-        if (ec) {
-          setExistingContent(ec);
-          // 既存運動記録がある場合は自動で「した」を選択し、追記欄を即表示
-          setExercised(true);
-        }
+        if (ec) setExistingContent(ec);
       })
       .catch(() => {})
       .finally(() => setLoadingExisting(false));
@@ -73,18 +69,16 @@ export default function ExercisePage() {
       setError('LINEプロフィール未取得');
       return;
     }
-    if (exercised === null) {
-      setError('運動したか選択してください');
-      return;
-    }
     setSubmitting(true);
     setError(null);
+    // テキストが入っていれば「した」、空なら「してない」
+    const trimmed = content.trim();
+    const exercised = trimmed.length > 0 || !!existingContent;
     // 既存の運動記録に追記（上書きしない）
-    const mergedContent = exercised
-      ? existingContent && content
-        ? `${existingContent}\n${content}`
-        : existingContent || content
-      : '';
+    const mergedContent =
+      existingContent && trimmed
+        ? `${existingContent}\n${trimmed}`
+        : existingContent || trimmed;
     try {
       const res = await fetch('/api/log/exercise', {
         method: 'POST',
@@ -100,11 +94,11 @@ export default function ExercisePage() {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || `保存失敗（${res.status}）`);
       }
+      setSavedExercised(exercised);
       setSuccess(true);
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
-      // 消費カロリーの表示はしない（バックエンドではAI献立計算時に内部利用）
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信エラー');
     } finally {
@@ -130,9 +124,9 @@ export default function ExercisePage() {
             <div className="text-2xl font-bold mb-2 text-stone-900">✅ 記録しました</div>
             <div className="text-sm text-stone-700 mb-1">{fmtJp(date)}</div>
             <div className="text-xl font-bold text-stone-900">
-              {exercised ? '運動しました' : '運動なし'}
+              {savedExercised ? '運動しました' : '運動なし'}
             </div>
-            {exercised && content && (
+            {savedExercised && content && (
               <div className="text-sm text-stone-700 mt-2 bg-stone-50 p-3 rounded-xl">{content}</div>
             )}
           </div>
@@ -141,7 +135,7 @@ export default function ExercisePage() {
             <button
               onClick={() => {
                 setSuccess(false);
-                setExercised(null);
+                setSavedExercised(false);
                 setContent('');
               }}
               className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
@@ -194,68 +188,46 @@ export default function ExercisePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <div className="text-base font-bold text-stone-900 mb-3">② 運動した？</div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setExercised(true)}
-              className={`flex-1 py-4 rounded-xl text-base font-bold ${
-                exercised === true
-                  ? 'bg-emerald-500 text-white shadow-md'
-                  : 'bg-stone-100 text-stone-700 border border-stone-300'
-              }`}
-            >
-              ✅ した
-            </button>
-            <button
-              onClick={() => setExercised(false)}
-              className={`flex-1 py-4 rounded-xl text-base font-bold ${
-                exercised === false
-                  ? 'bg-stone-700 text-white shadow-md'
-                  : 'bg-stone-100 text-stone-700 border border-stone-300'
-              }`}
-            >
-              ⬜ してない
-            </button>
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
+          <div className="text-base font-bold text-stone-900 mb-2">
+            ② {existingContent ? '追加で記録する運動' : '運動内容'}
           </div>
-        </div>
-
-        {exercised === true && (
-          <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
-            <div className="text-base font-bold text-stone-900 mb-2">
-              {existingContent ? '③ 追加で記録する運動' : '③ 内容（任意）'}
+          {existingContent ? (
+            <div className="text-[11px] text-stone-600 mb-2 leading-relaxed">
+              ※ 既存の記録は残ります。下に入力した内容が追記されます。
             </div>
-            {existingContent && (
-              <div className="text-[11px] text-stone-600 mb-2 leading-relaxed">
-                ※ 既存の記録は残ります。下に入力した内容が追加されます。
-              </div>
-            )}
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={
-                existingContent
-                  ? '追加で行った運動を入力（例：夕方ヨガ30分）'
-                  : '例：ジョギング30分、筋トレ40分、ストレッチ15分'
-              }
-              rows={3}
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        )}
+          ) : (
+            <div className="text-[11px] text-stone-600 mb-2 leading-relaxed">
+              書いたら「した」として記録。空のまま保存すると「してない」記録になります。
+            </div>
+          )}
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={
+              existingContent
+                ? '追加で行った運動を入力（例：夕方ヨガ30分）'
+                : '例：ジョギング30分、筋トレ40分、ストレッチ15分'
+            }
+            rows={4}
+            className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
 
         <button
           onClick={handleSubmit}
-          disabled={exercised === null || submitting || (exercised === true && !!existingContent && !content.trim())}
+          disabled={submitting || (!!existingContent && !content.trim())}
           className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
           {submitting
             ? '保存中…'
-            : existingContent && exercised === true
+            : existingContent
             ? content.trim()
               ? '➕ 追加で記録する'
               : '追加する運動を入力してください'
-            : '記録する'}
+            : content.trim()
+            ? '✅ 運動を記録する'
+            : '⬜ 運動なしで記録する'}
         </button>
       </div>
     </main>

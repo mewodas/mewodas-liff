@@ -688,7 +688,6 @@ function WeightSheet({
 function ExerciseSheet({
   selectedDate,
   lineUserId,
-  initialExercised,
   initialContent,
   hasInitial,
   onClose,
@@ -702,7 +701,6 @@ function ExerciseSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [exercised, setExercised] = useState(initialExercised);
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -712,6 +710,8 @@ function ExerciseSheet({
     setSaving(true);
     setError(null);
     try {
+      const trimmed = content.trim();
+      const exercised = trimmed.length > 0; // テキストあり=した、空=してない
       const res = await fetch('/api/log/exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -719,7 +719,7 @@ function ExerciseSheet({
           lineUserId,
           date: selectedDate,
           exercised,
-          content: exercised ? content : '',
+          content: trimmed,
         }),
       });
       if (!res.ok) {
@@ -758,44 +758,19 @@ function ExerciseSheet({
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
           )}
           <div>
-            <label className="text-xs font-bold text-stone-700 mb-2 block">運動した？</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setExercised(true)}
-                className={`py-3 rounded-xl text-sm font-bold ${
-                  exercised
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-stone-100 text-stone-700 border border-stone-300'
-                }`}
-              >
-                ✅ した
-              </button>
-              <button
-                type="button"
-                onClick={() => setExercised(false)}
-                className={`py-3 rounded-xl text-sm font-bold ${
-                  !exercised
-                    ? 'bg-stone-700 text-white'
-                    : 'bg-stone-100 text-stone-700 border border-stone-300'
-                }`}
-              >
-                ⬜ してない
-              </button>
-            </div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">運動内容</label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="例：ランニング30分、ジム筋トレ"
+              rows={4}
+              autoFocus
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
+              書いたら「した」として記録。空のまま保存すれば「してない」記録になります
+            </p>
           </div>
-          {exercised && (
-            <div>
-              <label className="text-xs font-bold text-stone-700 mb-1 block">内容（任意）</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="例：ランニング30分、ジム筋トレ"
-                rows={3}
-                className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          )}
           <button
             onClick={save}
             disabled={saving}
