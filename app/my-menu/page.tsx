@@ -434,11 +434,9 @@ function AddItemSheet({
   const [filled, setFilled] = useState(false); // DBから値が入った状態
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('1人前');
-  const [kcal, setKcal] = useState('');
   const [P, setP] = useState('');
   const [F, setF] = useState('');
   const [C, setC] = useState('');
-  const [autoCalc, setAutoCalc] = useState(true);
   const [dbQuery, setDbQuery] = useState('');
   const [dbResults, setDbResults] = useState<Array<{
     id: string;
@@ -471,11 +469,9 @@ function AddItemSheet({
   function pickFromDb(item: { name: string; unit: string; kcal: number; P: number; F: number; C: number }) {
     setName(item.name);
     setUnit(item.unit);
-    setKcal(String(item.kcal));
     setP(String(item.P));
     setF(String(item.F));
     setC(String(item.C));
-    setAutoCalc(false);
     setDbQuery('');
     setDbResults([]);
     setFilled(true);
@@ -487,15 +483,14 @@ function AddItemSheet({
   }
 
   const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
-  const displayKcal = autoCalc ? calcKcal : num(kcal);
-  const valid = name.trim().length > 0 && (displayKcal > 0 || num(P) + num(F) + num(C) > 0);
+  const valid = name.trim().length > 0 && (calcKcal > 0 || num(P) + num(F) + num(C) > 0);
 
   function submit() {
     if (!valid) return;
     onSubmit({
       name: name.trim(),
       unit: unit.trim() || '1人前',
-      kcal: displayKcal,
+      kcal: calcKcal,
       P: num(P),
       F: num(F),
       C: num(C),
@@ -607,7 +602,7 @@ function AddItemSheet({
                   <div className="text-xs font-bold text-emerald-800 mb-1"><span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>選択中のメニュー</span></div>
                   <div className="text-base font-bold text-stone-900">{name}</div>
                   <div className="text-xs text-stone-700 mt-1">
-                    {unit} ・ {kcal}kcal ・ P{P}・F{F}・C{C}g
+                    {unit} ・ {calcKcal}kcal ・ P{P}・F{F}・C{C}g
                   </div>
                   <button
                     onClick={submit}
@@ -632,7 +627,7 @@ function AddItemSheet({
           ) : (
             <>
               <p className="text-xs text-stone-600 leading-relaxed">
-                料理名と PFC を入力してください。kcal は <strong>自動計算ボタン</strong> で算出できます。
+                料理名と PFC を入力してください。kcal は <strong>自動で算出</strong>されます。
               </p>
 
               <div>
@@ -701,35 +696,12 @@ function AddItemSheet({
                 </div>
               </div>
 
-              <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-stone-700 block">kcal カロリー</label>
-                  <button
-                    type="button"
-                    onClick={() => setAutoCalc((v) => !v)}
-                    className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                      autoCalc
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-white text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
-                  </button>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <div className="text-[10px] font-bold text-emerald-700 mb-1">自動計算カロリー</div>
+                <div className="text-xl font-bold text-emerald-700">
+                  {calcKcal}<span className="text-sm font-medium ml-1">kcal</span>
                 </div>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={autoCalc ? String(calcKcal) : kcal}
-                  onChange={(e) => setKcal(e.target.value)}
-                  disabled={autoCalc}
-                  placeholder="例：280"
-                  className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
-                />
-                {autoCalc && (
-                  <p className="text-[10px] text-emerald-700 mt-1">
-                    P×4 + F×9 + C×4 = {calcKcal}kcal
-                  </p>
-                )}
+                <p className="text-[10px] text-stone-600 mt-1">P×4 + F×9 + C×4 で算出</p>
               </div>
 
               <button
@@ -772,11 +744,9 @@ function EditItemSheet({
 }) {
   const [name, setName] = useState(item.name);
   const [unit, setUnit] = useState(item.unit);
-  const [kcal, setKcal] = useState(String(item.kcal));
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
-  const [autoCalc, setAutoCalc] = useState(true);
 
   function num(v: string): number {
     const n = Number(v);
@@ -784,15 +754,14 @@ function EditItemSheet({
   }
 
   const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
-  const displayKcal = autoCalc ? calcKcal : num(kcal);
-  const valid = name.trim().length > 0 && (displayKcal > 0 || num(P) + num(F) + num(C) > 0);
+  const valid = name.trim().length > 0 && (calcKcal > 0 || num(P) + num(F) + num(C) > 0);
 
   function submit() {
     if (!valid) return;
     onSubmit({
       name: name.trim(),
       unit: unit.trim() || '1人前',
-      kcal: displayKcal,
+      kcal: calcKcal,
       P: num(P),
       F: num(F),
       C: num(C),
@@ -877,35 +846,12 @@ function EditItemSheet({
             </div>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-stone-700 block">kcal カロリー</label>
-              <button
-                type="button"
-                onClick={() => setAutoCalc((v) => !v)}
-                className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                  autoCalc
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-white text-stone-700 border-stone-300'
-                }`}
-              >
-                {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
-              </button>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+            <div className="text-[10px] font-bold text-emerald-700 mb-1">自動計算カロリー</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {calcKcal}<span className="text-sm font-medium ml-1">kcal</span>
             </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={autoCalc ? String(calcKcal) : kcal}
-              onChange={(e) => setKcal(e.target.value)}
-              disabled={autoCalc}
-              placeholder="例：280"
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
-            />
-            {autoCalc && (
-              <p className="text-[10px] text-emerald-700 mt-1">
-                P×4 + F×9 + C×4 = {calcKcal}kcal
-              </p>
-            )}
+            <p className="text-[10px] text-stone-600 mt-1">P×4 + F×9 + C×4 で算出</p>
           </div>
 
           <button

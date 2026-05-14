@@ -309,7 +309,7 @@ export default function HistoryPage() {
               完璧（±5%）
             </span>
             <span className="inline-flex items-center gap-1">
-              <Circle className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />
+              <Circle className="w-3.5 h-3.5 text-rose-500" strokeWidth={2.2} />
               良好（±15%）
             </span>
             <span className="inline-flex items-center gap-1">
@@ -317,7 +317,7 @@ export default function HistoryPage() {
               もう少し（±25%）
             </span>
             <span className="inline-flex items-center gap-1">
-              <Droplets className="w-3.5 h-3.5 text-rose-500" strokeWidth={2.2} />
+              <Droplets className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />
               頑張りましょう
             </span>
           </div>
@@ -446,9 +446,9 @@ function statusInfo(kcal: number, goal: number): { Icon: LucideIcon; color: stri
   const pct = (kcal / goal) * 100;
   const diff = Math.abs(pct - 100);
   if (diff <= 5) return { Icon: Sparkles, color: 'text-emerald-500' };
-  if (diff <= 15) return { Icon: Circle, color: 'text-sky-500' };
+  if (diff <= 15) return { Icon: Circle, color: 'text-rose-500' };
   if (diff <= 25) return { Icon: Triangle, color: 'text-amber-500' };
-  return { Icon: Droplets, color: 'text-rose-500' };
+  return { Icon: Droplets, color: 'text-sky-500' };
 }
 
 function CalendarCell({

@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   Star,
   Search,
-  Receipt,
+  ScanText,
   FileText,
   UtensilsCrossed,
   ClipboardCheck,
@@ -804,7 +804,7 @@ export default function RecordPage() {
             htmlFor="record-label-input"
             className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
           >
-            <Receipt className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
+            <ScanText className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
             <span className="text-sm font-bold text-stone-900 text-center leading-tight">成分表を撮る</span>
           </label>
           <HubButton
@@ -985,7 +985,7 @@ function LabelResultSheet({
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
-              <Receipt className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              <ScanText className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               成分表から登録
             </h2>
             <button onClick={onClose} disabled={busy} className="text-stone-500 text-2xl leading-none px-2">×</button>
@@ -1059,34 +1059,12 @@ function LabelResultSheet({
                   />
                 </div>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl p-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-stone-700">kcal カロリー</label>
-                  <button
-                    type="button"
-                    onClick={() => setAutoCalc((v) => !v)}
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      autoCalc
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-white text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
-                  </button>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2">
+                <div className="text-[10px] font-bold text-emerald-700 mb-1">自動計算カロリー</div>
+                <div className="text-lg font-bold text-emerald-700">
+                  {calcKcal}<span className="text-sm font-medium ml-1">kcal</span>
                 </div>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={autoCalc ? String(calcKcal) : eKcalInput}
-                  onChange={(e) => setEKcalInput(e.target.value)}
-                  disabled={autoCalc}
-                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
-                />
-                {autoCalc && (
-                  <p className="text-[10px] text-emerald-700 mt-1">
-                    P×4 + F×9 + C×4 = {calcKcal}kcal
-                  </p>
-                )}
+                <p className="text-[10px] text-stone-600 mt-1">P×4 + F×9 + C×4 で算出</p>
               </div>
               <button
                 type="button"
@@ -1237,22 +1215,18 @@ function EditAnalyzedSheet({
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
-  const [kcal, setKcal] = useState(String(item.kcal));
-  const [autoCalc, setAutoCalc] = useState(true);
-
   function num(v: string): number {
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  // 倍率が1以外なら、PFC/kcalに倍率を掛けた値を保存する
+  // PFC→kcal は常に自動計算
   const portionMul = Math.max(0.1, num(portion) || 1);
   const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
-  const displayKcal = autoCalc ? calcKcal : num(kcal);
   const finalP = Math.round(num(P) * portionMul * 10) / 10;
   const finalF = Math.round(num(F) * portionMul * 10) / 10;
   const finalC = Math.round(num(C) * portionMul * 10) / 10;
-  const finalKcal = Math.round(displayKcal * portionMul);
+  const finalKcal = Math.round(calcKcal * portionMul);
   const valid = name.trim().length > 0;
 
   function submit() {
@@ -1371,34 +1345,12 @@ function EditAnalyzedSheet({
             </div>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-stone-700">kcal カロリー</label>
-              <button
-                type="button"
-                onClick={() => setAutoCalc((v) => !v)}
-                className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                  autoCalc
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-white text-stone-700 border-stone-300'
-                }`}
-              >
-                {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
-              </button>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+            <div className="text-[10px] font-bold text-emerald-700 mb-1">自動計算カロリー</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {calcKcal}<span className="text-sm font-medium ml-1">kcal</span>
             </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={autoCalc ? String(calcKcal) : kcal}
-              onChange={(e) => setKcal(e.target.value)}
-              disabled={autoCalc}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
-            />
-            {autoCalc && (
-              <p className="text-[10px] text-emerald-700 mt-1">
-                P×4 + F×9 + C×4 = {calcKcal}kcal
-              </p>
-            )}
+            <p className="text-[10px] text-stone-600 mt-1">P×4 + F×9 + C×4 で算出</p>
           </div>
 
           {portionMul !== 1 && (

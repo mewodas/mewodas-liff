@@ -298,26 +298,6 @@ function MealDetailInner() {
         </button>
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
-        <div className="max-w-md mx-auto flex items-center gap-3">
-          <div className="flex-1">
-            <div className="text-[10px] text-stone-500 font-medium">{mealParam}合計</div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-stone-900">{Math.round(totals.kcal)}</span>
-              <span className="text-xs text-stone-500">kcal</span>
-            </div>
-          </div>
-          <button
-            onClick={() => router.back()}
-            className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 flex items-center justify-center gap-2"
-          >
-            <span>完了</span>
-            <span className="bg-white text-emerald-700 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-              {records.length}
-            </span>
-          </button>
-        </div>
-      </div>
 
       {editing && userId && (
         <EditModal
@@ -483,11 +463,11 @@ function PortionSheet({
             <div className="text-xs text-stone-700 mt-1">
               P {newP}g ・ F {newF}g ・ C {newC}g
             </div>
-            {valid && m !== 1 && (
-              <div className="text-[10px] text-stone-500 mt-1">
-                すべての値を {m}倍 します
-              </div>
-            )}
+            <div className="text-[10px] text-stone-500 mt-1 leading-[14px]">
+              <span style={{ visibility: valid && m !== 1 ? 'visible' : 'hidden' }}>
+                すべての値を {valid ? m : 1}倍 します
+              </span>
+            </div>
           </div>
 
           <button
@@ -563,11 +543,9 @@ function EditModal({
   onSaved: () => Promise<void> | void;
 }) {
   const [name, setName] = useState(shortName(record));
-  const [kcal, setKcal] = useState(String(Math.round(record.kcal)));
   const [P, setP] = useState(String(r1(record.P)));
   const [F, setF] = useState(String(r1(record.F)));
   const [C, setC] = useState(String(r1(record.C)));
-  const [autoCalc, setAutoCalc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -575,8 +553,9 @@ function EditModal({
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : 0;
   };
+  // PFC→kcal は常に自動計算
   const calcKcal = Math.round(numOr(P) * 4 + numOr(F) * 9 + numOr(C) * 4);
-  const displayKcal = autoCalc ? calcKcal : numOr(kcal);
+  const displayKcal = calcKcal;
 
   async function save() {
     setSaving(true);
@@ -667,29 +646,12 @@ function EditModal({
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-stone-700 block">kcal</label>
-              <button
-                type="button"
-                onClick={() => setAutoCalc((v) => !v)}
-                className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                  autoCalc
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-white text-stone-700 border-stone-300'
-                }`}
-              >
-                PFCから自動計算
-              </button>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+            <div className="text-[10px] font-bold text-emerald-700 mb-1">自動計算カロリー</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {calcKcal}<span className="text-sm font-medium ml-1">kcal</span>
             </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={autoCalc ? String(calcKcal) : kcal}
-              onChange={(e) => setKcal(e.target.value)}
-              disabled={autoCalc}
-              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
-            />
+            <p className="text-[10px] text-stone-600 mt-1">P×4 + F×9 + C×4 で算出</p>
           </div>
 
           <button

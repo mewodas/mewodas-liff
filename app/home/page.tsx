@@ -9,7 +9,6 @@ import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
 import {
-  Medal,
   Calendar as CalendarIcon,
   ClipboardList,
   MessageCircle,
@@ -330,7 +329,7 @@ function HomePageInner() {
                 className="flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full pl-2 pr-3 py-1.5 active:bg-amber-200"
                 aria-label="バッジ獲得・達成記録を開く"
               >
-                <Medal className="w-4 h-4 text-amber-700" strokeWidth={2.4} />
+                <span className="text-sm leading-none">🏅</span>
                 <span className="text-xs font-bold text-amber-800">
                   {data.stats.streakDays}日
                 </span>

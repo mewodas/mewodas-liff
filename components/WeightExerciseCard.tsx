@@ -124,7 +124,7 @@ export default function WeightExerciseCard({
           <div className="flex-1 flex items-center w-full min-w-0">
             {hasExercise ? (
               initialExerciseContent ? (
-                <span className="text-base font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words">
+                <span className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
                   {initialExerciseContent}
                 </span>
               ) : (
@@ -283,17 +283,36 @@ function ExerciseSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [content, setContent] = useState(initialContent);
+  const initialItems = initialContent
+    ? initialContent
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+    : [];
+  const [items, setItems] = useState<string[]>(initialItems);
+  const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
+
+  function addItem() {
+    const t = draft.trim();
+    if (!t) return;
+    setItems((prev) => [...prev, t]);
+    setDraft('');
+  }
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const trimmed = content.trim();
-      const exercised = trimmed.length > 0;
+      const pending = draft.trim();
+      const allItems = pending ? [...items, pending] : items;
+      const merged = allItems.join('\n');
+      const exercised = allItems.length > 0;
       const res = await fetch('/api/log/exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,7 +320,7 @@ function ExerciseSheet({
           lineUserId,
           date: selectedDate,
           exercised,
-          content: trimmed,
+          content: merged,
         }),
       });
       if (!res.ok) {
@@ -344,16 +363,55 @@ function ExerciseSheet({
           )}
           <div>
             <label className="text-xs font-bold text-stone-700 mb-1 block">運動内容</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="例：ランニング30分、ジム筋トレ"
-              rows={4}
-              autoFocus
-              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
-              書いたら「した」として記録。空のまま保存すれば「してない」記録になります
+            {items.length > 0 && (
+              <ul className="space-y-1.5 mb-2">
+                {items.map((it, idx) => (
+                  <li
+                    key={`${idx}-${it}`}
+                    className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"
+                  >
+                    <span className="text-[10px] font-bold text-amber-700 mt-0.5 shrink-0">{idx + 1}.</span>
+                    <span className="text-sm text-stone-900 flex-1 break-words whitespace-pre-wrap leading-snug">
+                      {it}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(idx)}
+                      className="text-stone-400 text-lg leading-none px-1 shrink-0"
+                      aria-label="削除"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    addItem();
+                  }
+                }}
+                placeholder={items.length === 0 ? '例：ランニング30分' : '例：筋トレ40分'}
+                rows={1}
+                autoFocus
+                className="flex-1 bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[44px]"
+              />
+              <button
+                type="button"
+                onClick={addItem}
+                disabled={!draft.trim()}
+                className="shrink-0 bg-amber-500 text-white text-xs font-bold px-3 rounded-xl active:bg-amber-700 disabled:bg-stone-300 min-h-[44px]"
+              >
+                追加
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-500 mt-1.5 leading-relaxed">
+              1項目ずつ入力して「追加」。空のまま保存すれば「してない」記録になります
             </p>
           </div>
           <button

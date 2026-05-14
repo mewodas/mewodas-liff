@@ -9,12 +9,15 @@ import MealRatioChart from '@/components/MealRatioChart';
 import {
   TrendingUp,
   BarChart3,
+  CalendarRange,
+  Flame,
   ClipboardList,
   Footprints,
   Scale,
   Lightbulb,
   AlertTriangle,
   Sparkles,
+  type LucideIcon,
 } from 'lucide-react';
 
 type DailyAgg = {
@@ -186,7 +189,7 @@ export default function WeeklyPage() {
         {/* 日別カロリーグラフ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
           <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
-            <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+            <CalendarRange className="w-4 h-4 text-emerald-600" strokeWidth={2.2}/>
             日別カロリー
           </h2>
           <DailyKcalChart
@@ -366,21 +369,29 @@ function WeeklySummary({
       </h2>
       <div className="grid grid-cols-2 gap-3">
         <SummaryBox
+          Icon={ClipboardList}
+          iconColor="text-sky-600"
           label="食事を記録した日数"
           value={`${recordedDays}/7`}
           unit="日"
         />
         <SummaryBox
+          Icon={Footprints}
+          iconColor="text-amber-600"
           label="運動した日数"
           value={`${exerciseDays}/7`}
           unit="日"
         />
         <SummaryBox
+          Icon={Scale}
+          iconColor="text-sky-600"
           label="体重の増減"
           value={weightDisplay}
           unit={weightDelta !== null ? 'kg' : ''}
         />
         <SummaryBox
+          Icon={Flame}
+          iconColor="text-emerald-600"
           label="1日あたり平均"
           value={avgKcal > 0 ? `${Math.round(avgKcal)}` : '—'}
           unit={avgKcal > 0 ? 'kcal' : ''}
@@ -395,10 +406,25 @@ function WeeklySummary({
   );
 }
 
-function SummaryBox({ label, value, unit }: { label: string; value: string; unit: string }) {
+function SummaryBox({
+  Icon,
+  iconColor,
+  label,
+  value,
+  unit,
+}: {
+  Icon?: LucideIcon;
+  iconColor?: string;
+  label: string;
+  value: string;
+  unit: string;
+}) {
   return (
     <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
-      <div className="text-xs font-medium text-stone-700">{label}</div>
+      <div className="text-xs font-medium text-stone-700 flex items-center gap-1">
+        {Icon && <Icon className={`w-3.5 h-3.5 ${iconColor || 'text-stone-500'}`} strokeWidth={2.2} />}
+        {label}
+      </div>
       <div className="text-lg font-bold text-stone-900 mt-1">
         {value}
         <span className="text-xs font-medium text-stone-600 ml-1">{unit}</span>
@@ -439,7 +465,7 @@ function WeeklyNutritionSummary({
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
-          <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+          <TrendingUp className="w-4 h-4 text-emerald-600" strokeWidth={2.2}/>
           週間平均
         </h2>
         <span className="text-[11px] text-stone-500">{kcalPct}% 達成</span>
