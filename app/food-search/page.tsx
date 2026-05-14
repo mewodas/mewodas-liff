@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
@@ -59,6 +59,7 @@ export default function FoodSearchPage() {
 }
 
 function FoodSearchInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');
   const todayStr = jstTodayString();
@@ -72,6 +73,7 @@ function FoodSearchInner() {
   const [results, setResults] = useState<FoodItem[]>([]);
   const [targetDate, setTargetDate] = useState<string>(initialDate);
   const [mealType, setMealType] = useState<MealType>('昼食');
+  const [completed, setCompleted] = useState<{ count: number; kcal: number } | null>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const dayLabel =
@@ -187,13 +189,14 @@ function FoodSearchInner() {
       invalidate('weekly_');
       invalidate('history_');
       if (failed === 0) {
-        setSuccess(`${okCount}件を ${dayLabel}の${mealType} に記録しました`);
+        const totalKcal = Math.round(cartTotals.kcal);
         clearCart();
         setCartOpen(false);
+        setCompleted({ count: okCount, kcal: totalKcal });
       } else {
         setError(`${failed}件の記録に失敗しました（${okCount}件は成功）`);
+        setTimeout(() => setSuccess(null), 3000);
       }
-      setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : '記録エラー');
     } finally {
@@ -222,6 +225,46 @@ function FoodSearchInner() {
     }
     return Array.from(m.entries());
   }, [results]);
+
+  // ===== 記録完了画面 =====
+  if (completed) {
+    return (
+      <main className="min-h-screen bg-stone-100 pb-28">
+        <PageHeader title="🔍 食品DB" back />
+        <div className="max-w-md mx-auto px-4 py-6">
+          <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
+            <div className="text-5xl mb-2">✅</div>
+            <div className="text-2xl font-bold mb-2 text-stone-900">記録しました</div>
+            <div className="text-sm text-stone-700 mb-3">
+              {dayLabel} の {mealType}
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div className="text-3xl font-bold text-emerald-700">
+                {completed.kcal}
+                <span className="text-sm font-medium text-stone-600 ml-1">kcal</span>
+              </div>
+              <div className="text-xs text-stone-600 mt-1">{completed.count}点を追加</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCompleted(null)}
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700"
+            >
+              続けて追加
+            </button>
+            <button
+              onClick={() => router.push('/home')}
+              className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400"
+            >
+              🏠 ホームへ
+            </button>
+          </div>
+        </div>
+        <FooterNav />
+      </main>
+    );
+  }
 
   if (!ready) {
     return (
@@ -409,7 +452,7 @@ function FoodSearchInner() {
               className="flex items-center gap-2 active:opacity-70"
             >
               <div className="relative">
-                <span className="text-2xl">🛒</span>
+                <span className="text-2xl">🍽️</span>
                 <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center shadow">
                   {cartCount}
                 </span>
@@ -491,14 +534,14 @@ function CartSheet({
         <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">🛒 カゴの中身（{count}点）</h2>
+            <h2 className="text-base font-bold text-stone-900">🍽️ 記録予定（{count}点）</h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {lines.length === 0 ? (
-            <p className="text-center text-sm text-stone-500 py-8">カゴは空です</p>
+            <p className="text-center text-sm text-stone-500 py-8">記録予定のアイテムはありません</p>
           ) : (
             lines.map(({ item, qty }) => (
               <div key={item.id} className="bg-white border border-stone-200 rounded-xl p-3 flex items-center gap-2">
@@ -568,7 +611,7 @@ function CartSheet({
               disabled={saving}
               className="w-full text-[11px] text-stone-500 underline active:text-red-600 disabled:opacity-50"
             >
-              カゴを空にする
+              すべてクリア
             </button>
           </div>
         )}
