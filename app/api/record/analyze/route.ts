@@ -20,12 +20,21 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     let lineUserId = '';
     let comment = '';
+    let previousItems: Array<{ name: string; P: number; F: number; C: number }> | null = null;
     const images: Array<{ base64: string; mimeType: string }> = [];
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       lineUserId = String(formData.get('lineUserId') || '');
       comment = String(formData.get('comment') || '');
+      const prev = formData.get('previousItems');
+      if (typeof prev === 'string' && prev.trim()) {
+        try {
+          previousItems = JSON.parse(prev);
+        } catch {
+          previousItems = null;
+        }
+      }
       for (const [key, value] of formData.entries()) {
         if (key.startsWith('photo_') && value instanceof File) {
           const buf = Buffer.from(await value.arrayBuffer());
@@ -39,6 +48,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       lineUserId = body.lineUserId || '';
       comment = body.comment || '';
+      previousItems = body.previousItems || null;
     }
 
     if (!lineUserId) {
@@ -55,7 +65,7 @@ export async function POST(req: NextRequest) {
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
       images.length > 0
-        ? analyzeImagesPfc(images, supplementText || null)
+        ? analyzeImagesPfc(images, supplementText || null, previousItems)
         : analyzeTextPfc(supplementText),
     ]);
 

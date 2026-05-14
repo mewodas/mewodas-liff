@@ -154,7 +154,8 @@ export async function analyzeNutritionLabel(
 
 export async function analyzeImagesPfc(
   images: Array<{ base64: string; mimeType: string }>,
-  supplementText: string | null
+  supplementText: string | null,
+  previousItems?: Array<{ name: string; P: number; F: number; C: number }> | null
 ): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
@@ -165,7 +166,7 @@ export async function analyzeImagesPfc(
   // メモがある場合は常に単一AIコールで処理（写真+メモを一緒に解析）
   // → ダブルカウント（メモが写真の食材を描写する場合の重複計算）を防止
   if (supplementText) {
-    return analyzeImagesSingleCall(images, supplementText, explicit);
+    return analyzeImagesSingleCall(images, supplementText, explicit, previousItems || null);
   }
 
   // 複数枚（メモなし）→ 並列解析で高速化（各皿は別物として合算）
@@ -173,7 +174,7 @@ export async function analyzeImagesPfc(
     return analyzeImagesParallel(images, null);
   }
 
-  return analyzeImagesSingleCall(images, null, false);
+  return analyzeImagesSingleCall(images, null, false, null);
 }
 
 async function analyzeImagesParallel(
@@ -185,7 +186,7 @@ async function analyzeImagesParallel(
   for (let i = 0; i < images.length; i += PARALLEL_BATCH_SIZE) {
     const batch = images.slice(i, i + PARALLEL_BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map((img) => analyzeImagesSingleCall([img], supplementText, false))
+      batch.map((img) => analyzeImagesSingleCall([img], supplementText, false, null))
     );
     results.push(...batchResults);
   }
@@ -213,10 +214,30 @@ async function analyzeImagesParallel(
 async function analyzeImagesSingleCall(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null,
-  explicit: boolean
+  explicit: boolean,
+  previousItems: Array<{ name: string; P: number; F: number; C: number }> | null
 ): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
+
+  const isCorrection =
+    !!previousItems && previousItems.length > 0 && !!supplementText && supplementText.includes('【AI解析の補正】');
+
+  const correctionLine = isCorrection
+    ? `\n\n【補正モード（前回解析の差分更新）】
+前回の解析結果（アンカー）：
+${previousItems!.map((it, i) => `${i + 1}. ${it.name}（P${it.P}/F${it.F}/C${it.C}g）`).join('\n')}
+
+処理ルール（厳守）：
+1. 補正テキストで明示的に言及されたアイテムだけを更新する（名前を差し替える / PFC を調整する）
+2. 補正テキストで言及されていないアイテムは、前回の name と PFC を **そのまま** items 配列に維持する
+   - 写真を見直して数値を「より正確に」変えてはいけない
+   - 名前の表記揺れも避ける（前回が「鮭フレーク 30g」なら、補正対象でない限り「鮭フレーク 30g」のまま）
+3. 補正テキストで「3番」「2つ目」など番号指定があれば、その index のアイテムを対象とする
+4. 補正テキストでアイテム名が指定されていれば（例：「鮭フレークは明太子」）、最も近い名前のアイテムを差し替える
+5. items 配列の数と順序は、補正テキストで追加/削除が指示されない限り、前回と同じに保つ
+`
+    : '';
 
   const supplementLine = supplementText
     ? explicit
@@ -281,7 +302,7 @@ ${accuracyRule}
 - ✅ OK例：定食 → ["白米 茶碗1杯", "唐揚げ 3個", "味噌汁 1杯", "サラダ 1皿"]
 - 一般的な料理名・商品名で記載（例：「ハンバーグ定食」「カルボナーラ」「ショートケーキ 1切れ」「コーヒー Lサイズ」など）
 - "name"は「料理名 分量」の形式（例：「イチゴタルト 1個」「ラーメン 1杯」「ご飯 150g」）
-- 識別が難しい場合でも「不明な料理」ではなく「洋菓子と思われるもの」など推測可能な名前を入れる${supplementLine}
+- 識別が難しい場合でも「不明な料理」ではなく「洋菓子と思われるもの」など推測可能な名前を入れる${supplementLine}${correctionLine}
 
 【詳細栄養素も推定】
 PFCに加えて、以下5つも栄養学の標準値で推定してください：

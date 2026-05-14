@@ -252,7 +252,11 @@ export default function RecordPage() {
     }
   }
 
-  async function runAnalyze(photoList: File[], memo: string) {
+  async function runAnalyze(
+    photoList: File[],
+    memo: string,
+    previousItems?: Array<{ name: string; P: number; F: number; C: number }>
+  ) {
     if (!userId) return;
     if (photoList.length === 0 && !memo.trim()) {
       setError('写真かメモが必要です');
@@ -264,6 +268,9 @@ export default function RecordPage() {
       const formData = new FormData();
       formData.append('lineUserId', userId);
       formData.append('comment', memo);
+      if (previousItems && previousItems.length > 0) {
+        formData.append('previousItems', JSON.stringify(previousItems));
+      }
       photoList.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
@@ -403,8 +410,12 @@ export default function RecordPage() {
     if (!txt) return;
     // 既存メモ + 補正テキストを結合して再解析
     const combinedMemo = (comment ? comment + '\n' : '') + '【AI解析の補正】' + txt;
+    // 補正対象以外を変えないよう、現在のアイテムをアンカーとして渡す
+    const anchor = analyzed
+      .filter((it) => !excluded.has(it.index))
+      .map((it) => ({ name: it.name, P: it.P, F: it.F, C: it.C }));
     setReanalyzeText('');
-    await runAnalyze(photos, combinedMemo);
+    await runAnalyze(photos, combinedMemo, anchor);
   }
 
   // 表示用ラベル：targetDate が「今日/昨日/それ以外」
@@ -569,12 +580,13 @@ export default function RecordPage() {
           <div className="mt-5 bg-white rounded-2xl border border-stone-200 p-4">
             <div className="text-sm font-bold text-stone-800 mb-1">🔄 AIに補正させる</div>
             <p className="text-[11px] text-stone-600 mb-2 leading-relaxed">
-              識別が間違っていれば、テキストで補正内容を書いて再解析できます。例：「3番はたらこじゃなくて鮭フレーク」「ご飯は200g」など
+              アイテム名の取り違えを修正する用途です（例：「3番は明太子じゃなくて鮭フレーク」）。<br />
+              <span className="text-stone-500">PFC・グラム数の細かい調整は各アイテムの「編集」ボタンが正確です。</span>
             </p>
             <textarea
               value={reanalyzeText}
               onChange={(e) => setReanalyzeText(e.target.value)}
-              placeholder="例：たらこじゃなくて鮭フレーク、ご飯200g"
+              placeholder="例：3番は明太子じゃなくて鮭フレーク"
               rows={2}
               className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
