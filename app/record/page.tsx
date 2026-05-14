@@ -659,41 +659,39 @@ export default function RecordPage() {
 
         {/* 大きな日付・食事区分セレクタ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-5 border border-stone-200">
-          <div className="text-center mb-4">
-            <div className="text-xs text-stone-500 mb-1">記録対象</div>
-            <div className="text-2xl font-bold text-stone-900">
-              {dayLabel}
-              {targetDate !== todayStr && targetDate !== yesterdayStr && (
-                <></>
-              )}
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200"
+              aria-label="前日"
+            >
+              ◀
+            </button>
+            <div className="flex-1 text-center">
+              <div className="text-xs text-stone-500 mb-1">記録対象</div>
+              <div className="text-2xl font-bold text-stone-900">{dayLabel}</div>
               {(targetDate === todayStr || targetDate === yesterdayStr) && (
-                <span className="text-base font-normal text-stone-600 ml-2">
-                  {formatJpDateLabel(targetDate)}
-                </span>
+                <div className="text-xs text-stone-500 mt-0.5">{formatJpDateLabel(targetDate)}</div>
               )}
             </div>
-            <div className="mt-2 inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
+            <button
+              type="button"
+              onClick={() => {
+                const next = addDaysStr(targetDate, 1);
+                if (next <= todayStr) setTargetDate(next);
+              }}
+              disabled={targetDate >= todayStr}
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 disabled:opacity-30"
+              aria-label="翌日"
+            >
+              ▶
+            </button>
+          </div>
+          <div className="text-center mb-3">
+            <div className="inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
               {mealType}
             </div>
-          </div>
-
-          <div className="flex gap-2 mb-2">
-            <button
-              onClick={() => setTargetDate(todayStr)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
-                targetDate === todayStr ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
-              }`}
-            >
-              今日
-            </button>
-            <button
-              onClick={() => setTargetDate(yesterdayStr)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
-                targetDate === yesterdayStr ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
-              }`}
-            >
-              昨日
-            </button>
           </div>
           <input
             type="date"
