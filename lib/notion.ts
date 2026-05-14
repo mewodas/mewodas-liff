@@ -17,6 +17,7 @@ function getTenantNotion() {
 export type Customer = {
   pageId: string;
   name: string;
+  lineUserId: string;
   foodStatus: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
   currentWeight: number | null;
@@ -100,6 +101,7 @@ export async function getCustomerByLineId(
   const customer: Customer = {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    lineUserId,
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
       kcal: p['目標カロリー(kcal)']?.number ?? tenant.defaultGoals.kcal,
@@ -119,6 +121,96 @@ export async function getCustomerByLineId(
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
+}
+
+function parseCustomerPage(page: { id: string; properties: Record<string, any> }): Customer {
+  const tenant = getTenantNotion();
+  const p = page.properties;
+  return {
+    pageId: page.id,
+    name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    lineUserId: p['LINEユーザーID']?.rich_text?.[0]?.plain_text || '',
+    foodStatus: p['食事管理ステータス']?.select?.name || null,
+    goals: {
+      kcal: p['目標カロリー(kcal)']?.number ?? tenant.defaultGoals.kcal,
+      P: p['目標P(g)']?.number ?? tenant.defaultGoals.P,
+      F: p['目標F(g)']?.number ?? tenant.defaultGoals.F,
+      C: p['目標C(g)']?.number ?? tenant.defaultGoals.C,
+    },
+    currentWeight: p['現在体重(kg)']?.number ?? null,
+    targetWeight: p['目標体重(kg)']?.number ?? null,
+    targetDate: p['目標達成日']?.date?.start ?? null,
+    foodSheetPageId: (() => {
+      const url = p['食事記録リンク']?.url;
+      if (!url) return null;
+      const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
+      return m ? m[1] : null;
+    })(),
+  };
+}
+
+export async function listAllCustomers(): Promise<Customer[]> {
+  const tenant = getTenantNotion();
+  const results: Customer[] = [];
+  let cursor: string | undefined;
+  // 全ページ取得（最大1000人想定 → 10ページまで）
+  for (let i = 0; i < 10; i++) {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionRequest('POST', `/databases/${tenant.customerDbId}/query`, body);
+    if (Array.isArray(res.results)) {
+      for (const page of res.results) {
+        try {
+          results.push(parseCustomerPage(page));
+        } catch {
+          // 個別ページのパース失敗はスキップ
+        }
+      }
+    }
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return results;
+}
+
+export async function getCustomerByPageId(pageId: string): Promise<Customer | null> {
+  try {
+    const page = await notionRequest('GET', `/pages/${pageId}`);
+    return parseCustomerPage(page);
+  } catch {
+    return null;
+  }
+}
+
+export async function updateCustomer(
+  pageId: string,
+  patch: {
+    goals?: { kcal?: number; P?: number; F?: number; C?: number };
+    targetWeight?: number | null;
+    targetDate?: string | null;
+    foodStatus?: string | null;
+  }
+): Promise<void> {
+  const properties: Record<string, unknown> = {};
+  if (patch.goals) {
+    if (typeof patch.goals.kcal === 'number') properties['目標カロリー(kcal)'] = { number: patch.goals.kcal };
+    if (typeof patch.goals.P === 'number') properties['目標P(g)'] = { number: patch.goals.P };
+    if (typeof patch.goals.F === 'number') properties['目標F(g)'] = { number: patch.goals.F };
+    if (typeof patch.goals.C === 'number') properties['目標C(g)'] = { number: patch.goals.C };
+  }
+  if (patch.targetWeight !== undefined) {
+    properties['目標体重(kg)'] = patch.targetWeight === null ? { number: null } : { number: patch.targetWeight };
+  }
+  if (patch.targetDate !== undefined) {
+    properties['目標達成日'] = patch.targetDate === null ? { date: null } : { date: { start: patch.targetDate } };
+  }
+  if (patch.foodStatus !== undefined) {
+    properties['食事管理ステータス'] = patch.foodStatus === null ? { select: null } : { select: { name: patch.foodStatus } };
+  }
+  if (Object.keys(properties).length === 0) return;
+  await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  // キャッシュは lineUserId キーなので全クリアはせず、関連エントリを除去
+  customerCache.clear();
 }
 
 // 食事記録を削除（Notionページをarchive扱いに）
