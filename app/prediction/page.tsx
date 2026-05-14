@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { TrendingDown } from 'lucide-react';
+import { TrendingDown, BarChart3, CheckCircle2, AlertTriangle, MessageCircle, Lightbulb } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
@@ -122,7 +122,7 @@ export default function PredictionPage() {
 
         {loading && !data && (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <div className="text-3xl mb-2">🔮</div>
+            <TrendingDown className="w-10 h-10 text-purple-500 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-sm font-bold text-stone-800 mb-1">予測中…</div>
             <div className="text-[10px] text-stone-500">直近データを分析しています</div>
           </div>
@@ -134,7 +134,7 @@ export default function PredictionPage() {
 
         {data && !data.prediction && (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <div className="text-3xl mb-2">📊</div>
+            <BarChart3 className="w-10 h-10 text-emerald-500 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-sm font-bold text-stone-800 mb-1">AI予測はデータ不足です</div>
             <div className="text-xs text-stone-600 leading-relaxed">
               {data.message || '体重・食事を継続的に記録すると予測できるようになります。'}
@@ -168,7 +168,8 @@ function PredictionDetail({
   const confLabel =
     p.confidenceLevel === 'high' ? '高' : p.confidenceLevel === 'low' ? '低' : '中';
   const changeIcon = p.monthlyChange < 0 ? '↓' : p.monthlyChange > 0 ? '↑' : '→';
-  const goalEmoji = p.willReachGoal === true ? '✅' : p.willReachGoal === false ? '⚠️' : '';
+  const GoalIcon = p.willReachGoal === true ? CheckCircle2 : p.willReachGoal === false ? AlertTriangle : null;
+  const goalIconColor = p.willReachGoal === true ? 'text-emerald-600' : 'text-amber-600';
 
   return (
     <div className="space-y-4">
@@ -186,8 +187,9 @@ function PredictionDetail({
             <span className="text-sm font-medium text-stone-700">kg</span>
           </div>
           {customer?.targetWeight && (
-            <div className="text-xs text-stone-700">
-              目標 {customer.targetWeight} kg {goalEmoji}
+            <div className="text-xs text-stone-700 inline-flex items-center gap-0.5">
+              目標 {customer.targetWeight} kg
+              {GoalIcon && <GoalIcon className={`w-3 h-3 ${goalIconColor}`} strokeWidth={2.2} />}
             </div>
           )}
           <div className="text-sm font-bold text-purple-800 mt-2">
@@ -195,8 +197,9 @@ function PredictionDetail({
           </div>
         </div>
         {p.comment && (
-          <div className="bg-stone-50 rounded-xl p-3 text-sm text-stone-800 leading-relaxed">
-            💬 {p.comment}
+          <div className="bg-stone-50 rounded-xl p-3 text-sm text-stone-800 leading-relaxed flex items-start gap-1.5">
+            <MessageCircle className="w-4 h-4 text-stone-500 flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+            {p.comment}
           </div>
         )}
       </div>
@@ -204,7 +207,10 @@ function PredictionDetail({
       {/* アドバイス */}
       {p.recommendations.length > 0 && (
         <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-5">
-          <div className="text-xs font-bold text-stone-700 mb-2">💡 AIアドバイス</div>
+          <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />
+            AIアドバイス
+          </div>
           <ul className="space-y-2">
             {p.recommendations.map((r, i) => (
               <li
@@ -271,7 +277,10 @@ function WeightHistoryChart({
   return (
     <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-5">
       <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-base font-bold text-stone-900">📉 体重推移</h2>
+        <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+          <TrendingDown className="w-4 h-4 text-purple-600" strokeWidth={2.2}/>
+          体重推移
+        </h2>
         <span className="text-[11px] text-stone-500">直近{history.length}日分</span>
       </div>
 
