@@ -1,55 +1,63 @@
-# メヲダス 食事管理 LIFF
+# FitMeal
 
-LINE Front-end Framework (LIFF) を使った食事記録アプリ。リッチメニューから起動して、写真+食事区分+メモを1画面で記録できる。
+LINE LIFF を使った食事・体重・運動の記録アプリ。写真+メモから AI が PFC を自動算出。
 
 ## 構成
 
 - **Next.js 16** (App Router)
 - **Tailwind CSS v4**
 - **@line/liff** SDK
-- バックエンド：既存のGAS（食事管理システム）にPOST
+- **Notion** をデータベースとして使用
+- **GAS** を LINE Webhook の受け口として使用
 - ホスティング：Vercel
+
+## 環境
+
+| 環境 | デプロイブランチ | URL |
+|--|--|--|
+| ステージング | `main` | （Vercel `mewodas-liff` プロジェクト） |
+| 本番 | `release` | （Vercel `fitmeal` プロジェクト） |
+
+詳細セットアップ手順は [`docs/staging-prod-setup.md`](docs/staging-prod-setup.md) を参照。
 
 ## ローカル開発
 
 ```bash
 cp .env.example .env.local
-# .env.local を編集して LIFF ID と GAS_RECORD_ENDPOINT を設定
+# .env.local を編集
 npm install
 npm run dev
 ```
 
-## 環境変数
+## 主要環境変数
 
 | 名前 | 用途 |
 |---|---|
-| `NEXT_PUBLIC_LIFF_ID` | LIFFアプリのID（LINE Developer Consoleで取得） |
-| `GAS_RECORD_ENDPOINT` | GAS Web AppのURL |
+| `NEXT_PUBLIC_LIFF_ID` | LIFFアプリのID |
+| `NOTION_API_KEY` | Notion API キー |
+| `NOTION_CUSTOMER_DB_ID` | 顧客DB |
+| `NOTION_FOOD_DB_ID` | 食事記録DB |
+| `NOTION_NOTIFICATIONS_DB_ID` | 通知DB |
+| `GAS_RECORD_ENDPOINT` | GAS Web App URL |
+| `GEMINI_API_KEY` | Gemini API キー（写真解析・AIチャット） |
 
 ## デプロイ
 
-GitHubにpush後、Vercelで自動デプロイ。
+GitHubに push 後、Vercel が自動デプロイ。`main` → ステージング、`release` → 本番。
 
-1. Vercelダッシュボードでこのリポジトリをimport
-2. 環境変数を設定
-3. 自動でビルド・デプロイされる
-
-## LIFF設定
-
-LINE Developer Console の「LIFF」タブで：
-
-- エンドポイントURL：Vercelの本番URL（例：`https://meodas-liff.vercel.app/record`）
-- サイズ：Full
-- Scope：`profile`（必須）、`openid`（推奨）
-
-## ファイル構成
+## ディレクトリ構成
 
 ```
 app/
-  page.tsx          # / → /record にリダイレクト
-  layout.tsx        # ルートレイアウト
-  record/page.tsx   # 食事記録フォーム（メイン画面）
-  api/record/route.ts # POSTを受けてGASに転送するAPI
-lib/
-  liff.ts           # LIFF SDK初期化ヘルパー
+  home/             # ホーム画面
+  record/           # 食事記録
+  history/          # 履歴カレンダー
+  weekly/           # 週次レポート
+  meal-detail/      # 食事区分ごとの詳細
+  notifications/    # お知らせ一覧
+  admin/            # トレーナー管理画面
+  api/              # API ルート
+components/         # UI コンポーネント
+lib/                # 共通ロジック（notion/gemini/cache/tenant等）
+docs/               # ドキュメント
 ```

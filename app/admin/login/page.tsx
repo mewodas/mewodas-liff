@@ -46,7 +46,7 @@ function LoginInner() {
           <h1 className="text-lg font-bold text-stone-900">管理者ログイン</h1>
         </div>
         <p className="text-xs text-stone-600 text-center mb-5">
-          メヲダス / FitMeal 管理画面
+          FitMeal 管理画面
         </p>
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl mb-3">

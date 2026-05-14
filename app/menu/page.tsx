@@ -115,7 +115,7 @@ export default function MenuPage() {
         ))}
 
         <section className="mt-8 text-center text-xs text-stone-400">
-          <p>メヲダス LIFF v1.0</p>
+          <p>FitMeal v1.0</p>
         </section>
       </main>
 

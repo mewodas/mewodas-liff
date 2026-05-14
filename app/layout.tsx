@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "食事管理システム",
-  description: "FitMeal 食事記録LIFFアプリ",
+  title: "FitMeal",
+  description: "食事・体重・運動を記録してPFCを自動管理するアプリ",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "食事管理システム",
+    title: "FitMeal",
   },
   icons: {
     icon: "/icon.svg",
