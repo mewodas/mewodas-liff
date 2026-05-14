@@ -795,10 +795,7 @@ function NutritionSummaryCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-bold text-stone-900">栄養サマリー</h2>
-        <span className="text-[11px] text-stone-500">{kcalPct}% 達成</span>
-      </div>
+      <h2 className="text-base font-bold text-stone-900 mb-3">栄養サマリー</h2>
 
       {/* カロリー大型表示 */}
       <div className="mb-4">
