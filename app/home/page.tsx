@@ -467,44 +467,48 @@ function WeightExerciseCard({
   return (
     <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
       <h2 className="text-base font-bold text-stone-900 mb-3">📝 今日の記録</h2>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 items-stretch">
         <button
           type="button"
           onClick={() => setWeightOpen(true)}
-          className={`flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 ${
+          className={`flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 min-h-[78px] ${
             hasWeight ? 'bg-sky-50 border-sky-300' : 'bg-stone-50 border-stone-200 border-dashed'
           }`}
         >
           <div className="text-xs font-bold text-stone-700 mb-1">⚖️ 体重</div>
-          {hasWeight ? (
-            <div className="text-xl font-bold text-stone-900">
-              {initialWeight}
-              <span className="text-xs font-normal text-stone-500 ml-0.5">kg</span>
-            </div>
-          ) : (
-            <div className="text-xs text-stone-500">タップで入力</div>
-          )}
+          <div className="flex-1 flex items-center w-full">
+            {hasWeight ? (
+              <span className="text-base font-bold text-stone-900 leading-snug">
+                {initialWeight}
+                <span className="text-xs font-normal text-stone-500 ml-0.5">kg</span>
+              </span>
+            ) : (
+              <span className="text-xs text-stone-500">タップで入力</span>
+            )}
+          </div>
         </button>
 
         <button
           type="button"
           onClick={() => setExerciseOpen(true)}
-          className={`flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 ${
+          className={`flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 min-h-[78px] ${
             hasExercise ? 'bg-amber-50 border-amber-300' : 'bg-stone-50 border-stone-200 border-dashed'
           }`}
         >
           <div className="text-xs font-bold text-stone-700 mb-1">🏃 運動</div>
-          {hasExercise ? (
-            initialExerciseContent ? (
-              <div className="text-sm font-bold text-stone-900 line-clamp-2 max-w-[140px] leading-snug">
-                {initialExerciseContent}
-              </div>
+          <div className="flex-1 flex items-center w-full min-w-0">
+            {hasExercise ? (
+              initialExerciseContent ? (
+                <span className="text-base font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words">
+                  {initialExerciseContent}
+                </span>
+              ) : (
+                <span className="text-xs text-stone-500">記録あり</span>
+              )
             ) : (
-              <div className="text-xs text-stone-500">記録あり</div>
-            )
-          ) : (
-            <div className="text-xs text-stone-500">タップで入力</div>
-          )}
+              <span className="text-xs text-stone-500">タップで入力</span>
+            )}
+          </div>
         </button>
       </div>
 
