@@ -75,8 +75,8 @@ export default function WeightExerciseCard({
           <div className="flex-1 flex items-center w-full min-w-0">
             {hasExercise ? (
               initialExerciseContent ? (
-                <span className="text-sm font-bold text-stone-900 truncate leading-snug w-full">
-                  {initialExerciseContent.replace(/\r?\n/g, ' / ')}
+                <span className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
+                  {initialExerciseContent}
                 </span>
               ) : (
                 <span className="text-xs text-stone-500">記録あり</span>
