@@ -399,7 +399,7 @@ function WeeklySummary({
       </div>
       {weightDelta !== null && weightDays.length >= 2 && (
         <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
-          <span className="inline-flex items-center gap-1"><Scale className="w-3 h-3" strokeWidth={2.2}/>{firstWeight}kg（最初）→ {lastWeight}kg（最新）／{weightDays.length}回測定</span>
+          <span className="inline-flex items-center gap-1"><Scale className="w-3 h-3 text-sky-600" strokeWidth={2.2}/>{firstWeight}kg（最初）→ {lastWeight}kg（最新）／{weightDays.length}回測定</span>
         </p>
       )}
     </div>
