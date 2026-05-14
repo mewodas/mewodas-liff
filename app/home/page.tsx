@@ -840,6 +840,23 @@ function DateStrip({
   const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  function updateArrows() {
+    const container = scrollRef.current;
+    if (!container) return;
+    setCanScrollLeft(container.scrollLeft > 4);
+    setCanScrollRight(
+      container.scrollLeft + container.clientWidth < container.scrollWidth - 4
+    );
+  }
+
+  function scrollByAmount(delta: number) {
+    const container = scrollRef.current;
+    if (!container) return;
+    container.scrollBy({ left: delta, behavior: 'smooth' });
+  }
 
   // 初回マウント時：今日のセルを中央に表示
   useEffect(() => {
@@ -849,13 +866,39 @@ function DateStrip({
     const targetLeft =
       btn.offsetLeft - container.clientWidth / 2 + btn.clientWidth / 2;
     container.scrollLeft = Math.max(0, targetLeft);
+    updateArrows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div ref={scrollRef} className="mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
-      <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
-        {dates.map((d) => {
+    <div className="relative mb-4 -mx-4">
+      {canScrollLeft && (
+        <button
+          type="button"
+          onClick={() => scrollByAmount(-200)}
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-md flex items-center justify-center text-stone-700 text-sm font-bold active:bg-stone-100"
+          aria-label="前の日付へ"
+        >
+          ◀
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          type="button"
+          onClick={() => scrollByAmount(200)}
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-md flex items-center justify-center text-stone-700 text-sm font-bold active:bg-stone-100"
+          aria-label="次の日付へ"
+        >
+          ▶
+        </button>
+      )}
+      <div
+        ref={scrollRef}
+        onScroll={updateArrows}
+        className="px-4 overflow-x-auto scrollbar-hide"
+      >
+        <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+          {dates.map((d) => {
           const [y, m, day] = d.split('-').map(Number);
           const date = new Date(y, m - 1, day);
           const weekday = weekdayNames[date.getDay()];
@@ -900,6 +943,7 @@ function DateStrip({
             </button>
           );
         })}
+        </div>
       </div>
     </div>
   );
