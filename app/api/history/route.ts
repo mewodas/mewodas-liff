@@ -21,6 +21,7 @@ type DailyAgg = {
   mealCount: number;
   recorded: boolean;
   exercised: boolean;
+  weight: string; // 体重(kg) 文字列、未記録は ''
 };
 
 function pad2(n: number): string {
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
         mealCount: dayRecords.length,
         recorded: dayRecords.length > 0,
         exercised: ex?.exercised || false,
+        weight: ex?.weight || '',
       });
     }
 

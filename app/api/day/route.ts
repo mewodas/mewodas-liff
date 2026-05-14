@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerByLineId,
   getFoodRecordsByDate,
+  getDailyExtras,
   type FoodRecord,
 } from '@/lib/notion';
 
@@ -43,9 +44,30 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
+    // 体重・運動データを取得（個人シート）
+    let weight = '';
+    let exercised = '';
+    let exerciseContent = '';
+    if (customer.foodSheetPageId) {
+      const [, mm, dd] = date.split('-').map(Number);
+      const dateLabel = `${mm}月${dd}日`;
+      const extras = await getDailyExtras(customer.foodSheetPageId, dateLabel);
+      weight = extras.weight;
+      exercised = extras.exercised;
+      exerciseContent = extras.exerciseContent;
+    }
+
     return NextResponse.json({
       customer: { name: customer.name, goals: customer.goals },
-      day: { date, totals, mealsByType, recordCount: records.length },
+      day: {
+        date,
+        totals,
+        mealsByType,
+        recordCount: records.length,
+        weight,
+        exercised,
+        exerciseContent,
+      },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';

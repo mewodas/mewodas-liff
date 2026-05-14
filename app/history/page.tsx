@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { getCached, setCached } from '@/lib/clientCache';
+import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
+import WeightExerciseCard from '@/components/WeightExerciseCard';
 
 type DailyAgg = {
   day: number;
@@ -17,6 +18,7 @@ type DailyAgg = {
   mealCount: number;
   recorded: boolean;
   exercised: boolean;
+  weight: string;
 };
 
 type HistoryData = {
@@ -60,15 +62,21 @@ function todayJst(): { year: number; month: number; day: number } {
   return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 export default function HistoryPage() {
   const today = todayJst();
+  const todayStr = `${today.year}-${pad2(today.month)}-${pad2(today.day)}`;
   const [year, setYear] = useState(today.year);
   const [month, setMonth] = useState(today.month);
   const [userId, setUserId] = useState<string | null>(null);
   const [data, setData] = useState<HistoryData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // 初期値：当日を選択しておく（クリックなしで詳細が見える）
+  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr);
 
   useEffect(() => {
     (async () => {
@@ -125,24 +133,40 @@ export default function HistoryPage() {
   }, [userId, year, month]);
 
   function gotoPrev() {
+    let newY = year;
+    let newM = month;
     if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
+      newY = year - 1;
+      newM = 12;
     } else {
-      setMonth(month - 1);
+      newM = month - 1;
     }
-    setSelectedDate(null);
+    setYear(newY);
+    setMonth(newM);
+    // 月の最終日を選択（直近の日付）
+    const lastDay = new Date(newY, newM, 0).getDate();
+    setSelectedDate(`${newY}-${pad2(newM)}-${pad2(lastDay)}`);
   }
 
   function gotoNext() {
     if (year > today.year || (year === today.year && month >= today.month)) return;
+    let newY = year;
+    let newM = month;
     if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
+      newY = year + 1;
+      newM = 1;
     } else {
-      setMonth(month + 1);
+      newM = month + 1;
     }
-    setSelectedDate(null);
+    setYear(newY);
+    setMonth(newM);
+    // 当月なら今日、過去月なら月末を選択
+    if (newY === today.year && newM === today.month) {
+      setSelectedDate(todayStr);
+    } else {
+      const lastDay = new Date(newY, newM, 0).getDate();
+      setSelectedDate(`${newY}-${pad2(newM)}-${pad2(lastDay)}`);
+    }
   }
 
   if (!ready) {
@@ -256,7 +280,12 @@ export default function HistoryPage() {
 
         {/* 選択日の詳細 */}
         {selectedDate && userId && (
-          <DayDetail dateString={selectedDate} lineUserId={userId} goals={customer.goals} />
+          <DayDetail
+            dateString={selectedDate}
+            lineUserId={userId}
+            goals={customer.goals}
+            todayStr={todayStr}
+          />
         )}
       </div>
     </main>
@@ -280,7 +309,19 @@ function MonthlySummary({
     recorded.length > 0
       ? Math.round(recorded.reduce((sum, d) => sum + d.kcal, 0) / recorded.length)
       : 0;
-  const totalKcal = recorded.reduce((sum, d) => sum + d.kcal, 0);
+
+  // 体重の増減（最初の記録日と最新の記録日の差分）
+  const weightDays = effectiveDays.filter((d) => d.weight && !isNaN(parseFloat(d.weight)));
+  const firstWeight = weightDays.length > 0 ? parseFloat(weightDays[0].weight) : null;
+  const lastWeight =
+    weightDays.length > 0 ? parseFloat(weightDays[weightDays.length - 1].weight) : null;
+  const weightDelta =
+    firstWeight !== null && lastWeight !== null
+      ? Math.round((lastWeight - firstWeight) * 10) / 10
+      : null;
+  const weightSign = weightDelta === null ? '' : weightDelta > 0 ? '+' : '';
+  const weightDisplay = weightDelta === null ? '—' : `${weightSign}${weightDelta}`;
+
   const totalDaysToShow = effectiveDays.length;
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
@@ -297,16 +338,21 @@ function MonthlySummary({
           unit="日"
         />
         <StatBox
-          label="📊 1日あたり平均カロリー"
+          label="⚖️ 体重の増減"
+          value={weightDisplay}
+          unit={weightDelta !== null ? 'kg' : ''}
+        />
+        <StatBox
+          label="📊 1日あたり平均"
           value={avgKcal > 0 ? `${avgKcal}` : '—'}
           unit={avgKcal > 0 ? 'kcal' : ''}
         />
-        <StatBox
-          label="🔢 今月の合計カロリー"
-          value={totalKcal > 0 ? `${Math.round(totalKcal)}` : '—'}
-          unit={totalKcal > 0 ? 'kcal' : ''}
-        />
       </div>
+      {weightDelta !== null && weightDays.length >= 2 && (
+        <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
+          ⚖️ {firstWeight}kg（最初の記録）→ {lastWeight}kg（最新）／{weightDays.length}回測定
+        </p>
+      )}
     </div>
   );
 }
@@ -380,15 +426,23 @@ function DayDetail({
   dateString,
   lineUserId,
   goals,
+  todayStr,
 }: {
   dateString: string;
   lineUserId: string;
   goals: { kcal: number; P: number; F: number; C: number };
+  todayStr: string;
 }) {
   const [mealsByType, setMealsByType] = useState<Record<string, MealRecord[]> | null>(null);
   const [totals, setTotals] = useState<{ kcal: number; P: number; F: number; C: number } | null>(null);
+  const [dayExtras, setDayExtras] = useState<{ weight: string; exercised: string; exerciseContent: string }>({
+    weight: '',
+    exercised: '',
+    exerciseContent: '',
+  });
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -403,13 +457,18 @@ function DayDetail({
         const json = await res.json();
         setMealsByType(json.day.mealsByType);
         setTotals(json.day.totals);
+        setDayExtras({
+          weight: json.day.weight || '',
+          exercised: json.day.exercised || '',
+          exerciseContent: json.day.exerciseContent || '',
+        });
       } catch (e) {
         setErr(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setLoading(false);
       }
     })();
-  }, [dateString, lineUserId]);
+  }, [dateString, lineUserId, reloadKey]);
 
   return (
     <div className="space-y-4">
@@ -424,6 +483,22 @@ function DayDetail({
       )}
       {!loading && !err && totals && (
         <>
+          {/* 体重・運動カード（ホームと同じUI） */}
+          <WeightExerciseCard
+            selectedDate={dateString}
+            isToday={dateString === todayStr}
+            lineUserId={lineUserId}
+            initialWeight={dayExtras.weight}
+            initialExercised={dayExtras.exercised}
+            initialExerciseContent={dayExtras.exerciseContent}
+            onUpdated={() => {
+              invalidate('today_');
+              invalidate('weekly_');
+              invalidate('history_');
+              setReloadKey((k) => k + 1);
+            }}
+          />
+
           {/* 摂取サマリ */}
           <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
             <h4 className="text-base font-bold text-stone-900 mb-3">📊 摂取</h4>
