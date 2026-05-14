@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomer, patchCustomer, type CustomerPatch } from '@/lib/repository/customers';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdminTenant(async (_req, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const customer = await getCustomer(id);
@@ -19,12 +17,9 @@ export async function GET(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const body = (await req.json()) as CustomerPatch;
@@ -44,4 +39,4 @@ export async function PATCH(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

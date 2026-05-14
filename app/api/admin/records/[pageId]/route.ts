@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { patchRecord, archiveRecord, type RecordPatch } from '@/lib/repository/records';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ pageId: string }> }
-) {
+export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{ pageId: string }> }) => {
   try {
     const { pageId } = await params;
     const body = (await req.json()) as RecordPatch;
@@ -32,12 +30,9 @@ export async function PATCH(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ pageId: string }> }
-) {
+export const DELETE = withAdminTenant(async (_req, { params }: { params: Promise<{ pageId: string }> }) => {
   try {
     const { pageId } = await params;
     await archiveRecord(pageId);
@@ -45,4 +40,4 @@ export async function DELETE(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/repository/customers';
 import { listRecordsByDate } from '@/lib/repository/records';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const date = req.nextUrl.searchParams.get('date');
@@ -28,4 +26,4 @@ export async function GET(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

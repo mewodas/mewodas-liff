@@ -1,24 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/repository/customers';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { getTemplate, DEFAULT_TEMPLATES, isTemplatesConfigured } from '@/lib/templates';
 import { getStaff } from '@/lib/staff';
 import { generateCoachingAnalysis } from '@/lib/gemini';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-function jstToday(): string {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
 function applyVars(s: string, vars: Record<string, string>): string {
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAdminTenant(async (req) => {
   try {
     const body = await req.json();
     const customerId = String(body.customerId || '');
@@ -155,7 +151,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
 
 function diffDays(start: string, end: string): number {
   const [sy, sm, sd] = start.split('-').map(Number);

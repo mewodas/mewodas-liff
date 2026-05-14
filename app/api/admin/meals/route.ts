@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { listAllRecordsInRange } from '@/lib/repository/records';
 import { listCustomers } from '@/lib/repository/customers';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,7 @@ export const maxDuration = 30;
 // 食事区分の並び順
 const MEAL_ORDER = ['朝食', '昼食', '夕食', '間食'];
 
-export async function GET(req: NextRequest) {
+export const GET = withAdminTenant(async (req) => {
   try {
     const sp = req.nextUrl.searchParams;
     const date = sp.get('date'); // 単一日（指定優先）
@@ -167,4 +168,4 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
