@@ -525,7 +525,7 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
           <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-            formatter={(v: number) => [`${v} kcal`, '']}
+            formatter={(v) => [`${v} kcal`, '']}
           />
           {targetKcal > 0 && (
             <ReferenceLine
