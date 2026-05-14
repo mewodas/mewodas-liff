@@ -6,7 +6,16 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import MealRatioChart from '@/components/MealRatioChart';
-import { TrendingUp } from 'lucide-react';
+import {
+  TrendingUp,
+  BarChart3,
+  ClipboardList,
+  Activity,
+  Scale,
+  Lightbulb,
+  AlertTriangle,
+  Sparkles,
+} from 'lucide-react';
 
 type DailyAgg = {
   date: string;
@@ -168,7 +177,7 @@ export default function WeeklyPage() {
 
         {/* 食事ごとの割合（円グラフ） */}
         {week.mealRatio && (
-          <MealRatioChart mealRatio={week.mealRatio} title="🍳 今週の食事割合" />
+          <MealRatioChart mealRatio={week.mealRatio} title="今週の食事割合" />
         )}
 
         {/* 週間平均（PFCバランス含む詳細） */}
@@ -176,7 +185,10 @@ export default function WeeklyPage() {
 
         {/* 日別カロリーグラフ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">📊 日別カロリー</h2>
+          <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+            日別カロリー
+          </h2>
           <DailyKcalChart
             data={week.daily}
             goal={goals.kcal}
@@ -198,7 +210,10 @@ export default function WeeklyPage() {
 
         {/* 日別詳細リスト */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-          <h2 className="text-base font-bold text-stone-900 mb-3">📋 日別詳細</h2>
+          <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <ClipboardList className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+            日別詳細
+          </h2>
           <div className="space-y-1">
             {week.daily.map((d) => (
               <div key={d.date} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-b-0">
@@ -345,32 +360,35 @@ function WeeklySummary({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">📊 週次サマリ</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+        <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+        週次サマリ
+      </h2>
       <div className="grid grid-cols-2 gap-3">
         <SummaryBox
-          label="📝 食事を記録した日数"
+          label="食事を記録した日数"
           value={`${recordedDays}/7`}
           unit="日"
         />
         <SummaryBox
-          label="🏃 運動した日数"
+          label="運動した日数"
           value={`${exerciseDays}/7`}
           unit="日"
         />
         <SummaryBox
-          label="⚖️ 体重の増減"
+          label="体重の増減"
           value={weightDisplay}
           unit={weightDelta !== null ? 'kg' : ''}
         />
         <SummaryBox
-          label="📊 1日あたり平均"
+          label="1日あたり平均"
           value={avgKcal > 0 ? `${Math.round(avgKcal)}` : '—'}
           unit={avgKcal > 0 ? 'kcal' : ''}
         />
       </div>
       {weightDelta !== null && weightDays.length >= 2 && (
         <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
-          ⚖️ {firstWeight}kg（最初）→ {lastWeight}kg（最新）／{weightDays.length}回測定
+          <span className="inline-flex items-center gap-1"><Scale className="w-3 h-3" strokeWidth={2.2}/>{firstWeight}kg（最初）→ {lastWeight}kg（最新）／{weightDays.length}回測定</span>
         </p>
       )}
     </div>
@@ -420,11 +438,16 @@ function WeeklyNutritionSummary({
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-bold text-stone-900">📊 週間平均</h2>
+        <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+          <BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>
+          週間平均
+        </h2>
         <span className="text-[11px] text-stone-500">{kcalPct}% 達成</span>
       </div>
       <div className="text-[11px] text-stone-600 mb-3">
-        📝 記録日数 {recordedDays}/7日 ・ 🏃 運動 {exerciseDays}/7日
+        <span className="inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" strokeWidth={2.2}/>記録日数 {recordedDays}/7日</span>
+        <span className="mx-1">・</span>
+        <span className="inline-flex items-center gap-1"><Activity className="w-3 h-3" strokeWidth={2.2}/>運動 {exerciseDays}/7日</span>
       </div>
 
       <div className="mb-4">
@@ -449,13 +472,14 @@ function WeeklyNutritionSummary({
               : labelStatus === '過剰'
               ? 'text-rose-700 bg-rose-100 border-rose-300'
               : 'text-emerald-700 bg-emerald-100 border-emerald-300';
-          const labelIcon = labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
+          const LabelIcon = labelStatus === '不足' ? Lightbulb : labelStatus === '過剰' ? AlertTriangle : Sparkles;
           return (
             <div key={n.label}>
               <div className="flex items-baseline justify-between mb-1">
                 <span className="text-[10px] font-medium text-stone-700">{n.label}</span>
-                <span className={`text-[9px] font-bold px-1 rounded border ${labelCls}`}>
-                  {labelIcon} {labelStatus}
+                <span className={`text-[9px] font-bold px-1 rounded border inline-flex items-center gap-0.5 ${labelCls}`}>
+                  <LabelIcon className="w-2.5 h-2.5" strokeWidth={2.2} />
+                  {labelStatus}
                 </span>
               </div>
               <div className="flex items-baseline gap-1 mb-1">

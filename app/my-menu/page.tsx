@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { Star } from 'lucide-react';
+import { Star, CheckCircle2, Home, Calendar as CalendarIcon, Plus, Search, Pencil } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import {
@@ -190,13 +190,13 @@ function MyMenuInner() {
         )}
         {success && (
           <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-medium p-3 rounded-xl">
-            ✅ {success}
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>{success}</span>
           </div>
         )}
 
         {items.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <div className="text-3xl mb-2">⭐</div>
+            <Star className="w-8 h-8 text-amber-500 mx-auto mb-2" strokeWidth={2} fill="currentColor"/>
             <div className="text-sm font-bold text-stone-800 mb-1">マイメニューは空です</div>
             <div className="text-xs text-stone-600 leading-relaxed">
               よく食べる料理を登録しておくと、食事記録時にすぐ呼び出せます。
@@ -251,7 +251,7 @@ function MyMenuInner() {
         )}
 
         <Link href="/home" className="block text-center text-xs text-stone-500 underline pt-4">
-          🏠 ホームに戻る
+          <span className="inline-flex items-center gap-1 justify-center"><Home className="w-3.5 h-3.5" strokeWidth={2.2}/>ホームに戻る</span>
         </Link>
       </main>
 
@@ -366,7 +366,7 @@ function RecordPickerSheet({
                 }}
                 className="flex-1 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white active:bg-emerald-700 flex items-center justify-center gap-1"
               >
-                📅 {dayLabel}
+                <><CalendarIcon className="w-3.5 h-3.5" strokeWidth={2.2}/> {dayLabel}</>
               </button>
               <button
                 type="button"
@@ -408,7 +408,7 @@ function RecordPickerSheet({
             disabled={loading}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {loading ? '記録中…' : `✅ ${dayLabel}の${mealType}に記録`}
+            {loading ? '記録中…' : <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{`${dayLabel}の${mealType}に記録`}</span>}
           </button>
         </div>
       </div>
@@ -511,7 +511,7 @@ function AddItemSheet({
         <div className="bg-white pt-3 pb-0 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5 mb-3">
-            <h2 className="text-base font-bold text-stone-900">⭐ 新しいメニューを追加</h2>
+            <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>新しいメニューを追加</span></h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
           {/* タブ：DB / 手入力 */}
@@ -536,7 +536,7 @@ function AddItemSheet({
                   : 'border-transparent text-stone-500 active:text-stone-700'
               }`}
             >
-              ✏️ 自分で入力
+              <span className="inline-flex items-center gap-1"><Pencil className="w-3.5 h-3.5" strokeWidth={2.2}/>自分で入力</span>
             </button>
           </div>
         </div>
@@ -551,7 +551,7 @@ function AddItemSheet({
                 type="text"
                 value={dbQuery}
                 onChange={(e) => setDbQuery(e.target.value)}
-                placeholder="🔍 例：おにぎり、ラーメン、プロテイン"
+                placeholder="例：おにぎり、ラーメン、プロテイン"
                 autoFocus
                 className="w-full bg-white text-stone-900 placeholder:text-stone-400 border-2 border-emerald-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
@@ -601,7 +601,7 @@ function AddItemSheet({
               {/* DBから選択済みの場合のプレビュー＋保存 */}
               {filled && (
                 <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 mt-3">
-                  <div className="text-xs font-bold text-emerald-800 mb-1">✅ 選択中のメニュー</div>
+                  <div className="text-xs font-bold text-emerald-800 mb-1"><span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>選択中のメニュー</span></div>
                   <div className="text-base font-bold text-stone-900">{name}</div>
                   <div className="text-xs text-stone-700 mt-1">
                     {unit} ・ {kcal}kcal ・ P{P}・F{F}・C{C}g
@@ -611,7 +611,7 @@ function AddItemSheet({
                     disabled={!valid}
                     className="w-full mt-3 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
                   >
-                    ⭐ マイメニューに保存
+                    <span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>マイメニューに保存</span>
                   </button>
                   <button
                     type="button"
@@ -734,7 +734,7 @@ function AddItemSheet({
                 disabled={!valid}
                 className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
               >
-                {valid ? '⭐ マイメニューに保存' : '料理名と栄養素を入力してください'}
+                {valid ? '<span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500" strokeWidth={2} fill="currentColor"/>マイメニューに保存</span>' : '料理名と栄養素を入力してください'}
               </button>
             </>
           )}
@@ -798,7 +798,7 @@ function EditItemSheet({
         <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">✏️ マイメニューを編集</h2>
+            <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Pencil className="w-4 h-4" strokeWidth={2.2}/>マイメニューを編集</span></h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
