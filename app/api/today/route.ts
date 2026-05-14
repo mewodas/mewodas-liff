@@ -76,9 +76,10 @@ export async function GET(req: NextRequest) {
     }
 
     const today = dateParam || getTargetDate('今日');
-    const isToday = today === getTargetDate('今日');
+    const todayActual = getTargetDate('今日');
+    // バッジ（ストリーク）は常に「今日基点」で計算するため、選択日に関わらず直近30日を取得
     const startStr = (() => {
-      const d = new Date(today);
+      const d = new Date(todayActual);
       d.setDate(d.getDate() - 29);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
@@ -88,9 +89,7 @@ export async function GET(req: NextRequest) {
     const [customer, records, last30Records] = await Promise.all([
       getCustomerByLineId(lineUserId),
       getFoodRecordsByDate(lineUserId, today),
-      isToday
-        ? getFoodRecordsByDateRange(lineUserId, startStr, today)
-        : Promise.resolve([] as FoodRecord[]),
+      getFoodRecordsByDateRange(lineUserId, startStr, todayActual),
     ]);
 
     if (!customer) {
@@ -126,10 +125,8 @@ export async function GET(req: NextRequest) {
       ? await getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
       : { weight: '', exercised: '', exerciseContent: '' };
 
-    // ストリーク計算（当日表示時のみ）
-    const stats = isToday
-      ? computeStats(last30Records, today, customer.goals.kcal)
-      : null;
+    // ストリーク計算（常に今日基点で計算、過去日選択時もバッジは消えない）
+    const stats = computeStats(last30Records, todayActual, customer.goals.kcal);
 
     const response = NextResponse.json({
       customer: {
