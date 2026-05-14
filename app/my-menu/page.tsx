@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
@@ -17,7 +17,25 @@ import {
 } from '@/lib/myMenu';
 
 type MealType = '朝食' | '昼食' | '夕食' | '間食';
-type DayLabel = '今日' | '昨日';
+
+function jstTodayString(): string {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function addDaysStr(dateString: string, delta: number): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function formatJpDateLabel(dateString: string): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+  return `${String(m).padStart(2, '0')}月${String(d).padStart(2, '0')}日（${wd}）`;
+}
 
 export default function MyMenuPage() {
   return (
@@ -36,7 +54,10 @@ export default function MyMenuPage() {
 function MyMenuInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialDay = (searchParams.get('day') as DayLabel) || '今日';
+  const dateParam = searchParams.get('date');
+  const todayStr = jstTodayString();
+  const initialDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
   const initialMeal = (searchParams.get('meal') as MealType) || '昼食';
 
   const [ready, setReady] = useState(false);
@@ -48,8 +69,8 @@ function MyMenuInner() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<MyMenuItem | null>(null);
   const [recordPicker, setRecordPicker] = useState<MyMenuItem | null>(null);
-  // クエリパラメータからの初期値（/record からの遷移時のみ意味を持つ）
-  const defaultDay: DayLabel = initialDay;
+  // クエリパラメータからの初期値
+  const defaultDate: string = initialDate;
   const defaultMeal: MealType = initialMeal;
 
   useEffect(() => {
@@ -67,7 +88,7 @@ function MyMenuInner() {
     })();
   }, []);
 
-  async function handleRecord(item: MyMenuItem, day: DayLabel, mealType: MealType) {
+  async function handleRecord(item: MyMenuItem, targetDate: string, mealType: MealType) {
     if (!userId) return;
     setBusy(item.id);
     setError(null);
@@ -79,7 +100,7 @@ function MyMenuInner() {
         body: JSON.stringify({
           lineUserId: userId,
           mealType,
-          day,
+          date: targetDate,
           title: `${item.name}（${item.unit}）`,
           kcal: item.kcal,
           P: item.P,
@@ -97,7 +118,13 @@ function MyMenuInner() {
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
-      setSuccess(`${item.name} を ${day}の${mealType} に記録しました`);
+      const dayLabel =
+        targetDate === todayStr
+          ? '今日'
+          : targetDate === addDaysStr(todayStr, -1)
+          ? '昨日'
+          : formatJpDateLabel(targetDate);
+      setSuccess(`${item.name} を ${dayLabel}の${mealType} に記録しました`);
       setRecordPicker(null);
       setTimeout(() => setSuccess(null), 2500);
     } catch (e) {
@@ -259,11 +286,12 @@ function MyMenuInner() {
       {recordPicker && (
         <RecordPickerSheet
           item={recordPicker}
-          defaultDay={defaultDay}
+          defaultDate={defaultDate}
           defaultMeal={defaultMeal}
+          todayStr={todayStr}
           loading={busy === recordPicker.id}
           onClose={() => setRecordPicker(null)}
-          onConfirm={(day, mealType) => handleRecord(recordPicker, day, mealType)}
+          onConfirm={(date, mealType) => handleRecord(recordPicker, date, mealType)}
         />
       )}
 
@@ -274,21 +302,30 @@ function MyMenuInner() {
 
 function RecordPickerSheet({
   item,
-  defaultDay,
+  defaultDate,
   defaultMeal,
+  todayStr,
   loading,
   onClose,
   onConfirm,
 }: {
   item: MyMenuItem;
-  defaultDay: DayLabel;
+  defaultDate: string;
   defaultMeal: MealType;
+  todayStr: string;
   loading: boolean;
   onClose: () => void;
-  onConfirm: (day: DayLabel, mealType: MealType) => void;
+  onConfirm: (date: string, mealType: MealType) => void;
 }) {
-  const [day, setDay] = useState<DayLabel>(defaultDay);
+  const [targetDate, setTargetDate] = useState<string>(defaultDate);
   const [mealType, setMealType] = useState<MealType>(defaultMeal);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const dayLabel =
+    targetDate === todayStr
+      ? '今日'
+      : targetDate === addDaysStr(todayStr, -1)
+      ? '昨日'
+      : formatJpDateLabel(targetDate);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={loading ? undefined : onClose}>
@@ -309,19 +346,46 @@ function RecordPickerSheet({
           </div>
           <div>
             <div className="text-xs font-bold text-stone-700 mb-1">日付</div>
-            <div className="flex gap-2">
-              {(['今日', '昨日'] as DayLabel[]).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDay(d)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold ${
-                    day === d ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-700 border border-stone-300'
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
+                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+                aria-label="前日"
+              >
+                ◀
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = dateInputRef.current;
+                  if (!el) return;
+                  const anyEl = el as HTMLInputElement & { showPicker?: () => void };
+                  if (typeof anyEl.showPicker === 'function') anyEl.showPicker();
+                  else el.click();
+                }}
+                className="flex-1 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white active:bg-emerald-700 flex items-center justify-center gap-1"
+              >
+                📅 {dayLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
+                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+                aria-label="翌日"
+              >
+                ▶
+              </button>
             </div>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={targetDate}
+              onChange={(e) => {
+                if (e.target.value) setTargetDate(e.target.value);
+              }}
+              className="sr-only"
+            />
           </div>
           <div>
             <div className="text-xs font-bold text-stone-700 mb-1">食事区分</div>
@@ -340,11 +404,11 @@ function RecordPickerSheet({
             </div>
           </div>
           <button
-            onClick={() => onConfirm(day, mealType)}
+            onClick={() => onConfirm(targetDate, mealType)}
             disabled={loading}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {loading ? '記録中…' : `✅ ${day}の${mealType}に記録`}
+            {loading ? '記録中…' : `✅ ${dayLabel}の${mealType}に記録`}
           </button>
         </div>
       </div>

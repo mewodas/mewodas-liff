@@ -63,7 +63,14 @@ export default function MealRatioChart({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-4 mb-3 border border-stone-200">
-      <div className="text-xs font-bold text-stone-700 mb-3">{title}</div>
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="text-xs font-bold text-stone-700">{title}</div>
+        <div className="text-right">
+          <span className="text-[10px] text-stone-500">総カロリー </span>
+          <span className="text-base font-bold text-stone-900">{Math.round(total)}</span>
+          <span className="text-[10px] text-stone-500 ml-0.5">kcal</span>
+        </div>
+      </div>
       <div className="flex items-center gap-4">
         <svg viewBox="0 0 100 100" className="w-24 h-24 flex-shrink-0">
           {segments.map((s) => (

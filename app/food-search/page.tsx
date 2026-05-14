@@ -1,11 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
+
+function jstTodayString(): string {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function addDaysStr(dateString: string, delta: number): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function formatJpDateLabel(dateString: string): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+  return `${String(m).padStart(2, '0')}月${String(d).padStart(2, '0')}日（${wd}）`;
+}
 
 type FoodItem = {
   id: string;
@@ -19,20 +39,47 @@ type FoodItem = {
 };
 
 type MealType = '朝食' | '昼食' | '夕食' | '間食';
-type DayLabel = '今日' | '昨日';
 
 type CartLine = { item: FoodItem; qty: number };
 
 const CATEGORIES = ['全て', '主食', '主菜', '副菜', '汁物', '間食', '飲料', '外食', 'コンビニ', '洋食', '中華', 'エスニック', '食材'];
 
 export default function FoodSearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center bg-white">
+          <div className="text-stone-800">読み込み中...</div>
+        </main>
+      }
+    >
+      <FoodSearchInner />
+    </Suspense>
+  );
+}
+
+function FoodSearchInner() {
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const todayStr = jstTodayString();
+  const initialDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
+
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('全て');
   const [results, setResults] = useState<FoodItem[]>([]);
-  const [day, setDay] = useState<DayLabel>('今日');
+  const [targetDate, setTargetDate] = useState<string>(initialDate);
   const [mealType, setMealType] = useState<MealType>('昼食');
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const dayLabel =
+    targetDate === todayStr
+      ? '今日'
+      : targetDate === addDaysStr(todayStr, -1)
+      ? '昨日'
+      : formatJpDateLabel(targetDate);
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -119,7 +166,7 @@ export default function FoodSearchPage() {
               body: JSON.stringify({
                 lineUserId: userId,
                 mealType,
-                day,
+                date: targetDate,
                 title: `${item.name}（${item.unit}）`,
                 kcal: item.kcal,
                 P: item.P,
@@ -140,7 +187,7 @@ export default function FoodSearchPage() {
       invalidate('weekly_');
       invalidate('history_');
       if (failed === 0) {
-        setSuccess(`${okCount}件を ${day}の${mealType} に記録しました`);
+        setSuccess(`${okCount}件を ${dayLabel}の${mealType} に記録しました`);
         clearCart();
         setCartOpen(false);
       } else {
@@ -207,19 +254,46 @@ export default function FoodSearchPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2 mt-3">
-          {(['今日', '昨日'] as DayLabel[]).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDay(d)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
-                day === d ? 'bg-white text-emerald-700' : 'bg-emerald-700/60 text-white'
-              }`}
-            >
-              {d}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2 mt-3">
+          <button
+            type="button"
+            onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
+            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white text-xs font-bold flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
+            aria-label="前日"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const el = dateInputRef.current;
+              if (!el) return;
+              const anyEl = el as HTMLInputElement & { showPicker?: () => void };
+              if (typeof anyEl.showPicker === 'function') anyEl.showPicker();
+              else el.click();
+            }}
+            className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-700 active:bg-stone-100 flex items-center justify-center gap-1"
+          >
+            📅 {dayLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
+            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white text-xs font-bold flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
+            aria-label="翌日"
+          >
+            ▶
+          </button>
         </div>
+        <input
+          ref={dateInputRef}
+          type="date"
+          value={targetDate}
+          onChange={(e) => {
+            if (e.target.value) setTargetDate(e.target.value);
+          }}
+          className="sr-only"
+        />
         <div className="grid grid-cols-4 gap-2 mt-2">
           {(['朝食', '昼食', '夕食', '間食'] as MealType[]).map((m) => (
             <button
@@ -353,7 +427,7 @@ export default function FoodSearchPage() {
               disabled={saving}
               className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? '記録中…' : `✅ ${day}の${mealType}に追加`}
+              {saving ? '記録中…' : `✅ ${dayLabel}の${mealType}に追加`}
             </button>
           </div>
         </div>
@@ -362,7 +436,7 @@ export default function FoodSearchPage() {
       {cartOpen && (
         <CartSheet
           cart={cart}
-          day={day}
+          day={dayLabel}
           mealType={mealType}
           totals={cartTotals}
           saving={saving}
@@ -394,7 +468,7 @@ function CartSheet({
   onCommit,
 }: {
   cart: Record<string, CartLine>;
-  day: DayLabel;
+  day: string;
   mealType: MealType;
   totals: { kcal: number; P: number; F: number; C: number };
   saving: boolean;
