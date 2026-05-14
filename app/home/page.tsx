@@ -834,16 +834,29 @@ function DateStrip({
   todayStr: string;
   onSelect: (d: string) => void;
 }) {
-  // 過去6日 + 今日 の7日間を表示（先頭が古い、末尾が今日）
+  // 過去14日 + 今日 + 未来7日 = 22日間を横スクロール
   const dates: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    dates.push(addDays(todayStr, -i));
-  }
+  for (let i = 14; i >= 1; i--) dates.push(addDays(todayStr, -i));
+  dates.push(todayStr);
+  for (let i = 1; i <= 7; i++) dates.push(addDays(todayStr, i));
 
   const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const todayRef = useRef<HTMLButtonElement | null>(null);
+
+  // 初回マウント時：今日のセルを中央に表示
+  useEffect(() => {
+    const container = scrollRef.current;
+    const btn = todayRef.current;
+    if (!container || !btn) return;
+    const targetLeft =
+      btn.offsetLeft - container.clientWidth / 2 + btn.clientWidth / 2;
+    container.scrollLeft = Math.max(0, targetLeft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+    <div ref={scrollRef} className="mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
       <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
         {dates.map((d) => {
           const [y, m, day] = d.split('-').map(Number);
@@ -851,6 +864,7 @@ function DateStrip({
           const weekday = weekdayNames[date.getDay()];
           const isSelected = d === selectedDate;
           const isToday = d === todayStr;
+          const isFuture = d > todayStr;
           const weekdayColor =
             date.getDay() === 0
               ? 'text-rose-600'
@@ -860,25 +874,28 @@ function DateStrip({
           return (
             <button
               key={d}
+              ref={isToday ? todayRef : undefined}
               onClick={() => onSelect(d)}
               className={`flex flex-col items-center justify-center min-w-[48px] py-2 rounded-2xl transition-all ${
                 isSelected
                   ? 'bg-emerald-500 shadow-md'
                   : isToday
                   ? 'bg-white border-2 border-emerald-300'
+                  : isFuture
+                  ? 'bg-stone-50 border border-stone-200 border-dashed'
                   : 'bg-white border border-stone-200'
               }`}
             >
               <span
                 className={`text-[10px] font-bold ${
-                  isSelected ? 'text-white' : weekdayColor
+                  isSelected ? 'text-white' : isFuture ? 'text-stone-400' : weekdayColor
                 }`}
               >
                 {weekday}
               </span>
               <span
                 className={`text-lg font-bold leading-tight ${
-                  isSelected ? 'text-white' : 'text-stone-900'
+                  isSelected ? 'text-white' : isFuture ? 'text-stone-400' : 'text-stone-900'
                 }`}
               >
                 {day}
