@@ -141,6 +141,14 @@ export async function GET(req: NextRequest) {
     // 運動日数集計
     const exerciseDays = daily.filter((d) => d.exercised).length;
 
+    // 食事区分別の合計kcal（円グラフ用）
+    const mealRatio: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+    for (const r of records) {
+      if (r.mealType in mealRatio) {
+        mealRatio[r.mealType] += r.kcal;
+      }
+    }
+
     return NextResponse.json({
       customer: {
         name: customer.name,
@@ -158,6 +166,7 @@ export async function GET(req: NextRequest) {
         avg,
         recordedDays: recordCount,
         exerciseDays,
+        mealRatio,
       },
     });
   } catch (e) {

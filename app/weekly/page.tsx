@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
+import MealRatioChart from '@/components/MealRatioChart';
 
 type DailyAgg = {
   date: string;
@@ -15,6 +16,8 @@ type DailyAgg = {
   C: number;
   mealCount: number;
   recorded: boolean;
+  weight?: string;
+  exercised?: boolean;
 };
 
 type WeeklyData = {
@@ -34,6 +37,7 @@ type WeeklyData = {
     avg: { kcal: number; P: number; F: number; C: number };
     recordedDays: number;
     exerciseDays: number;
+    mealRatio?: Record<string, number>;
   };
 };
 
@@ -157,7 +161,15 @@ export default function WeeklyPage() {
           )}
         </div>
 
-        {/* 週間サマリー（ホームと同じレポート形式） */}
+        {/* 週次サマリ（履歴と同じレイアウト） */}
+        <WeeklySummary daily={week.daily} recordedDays={week.recordedDays} exerciseDays={week.exerciseDays} avgKcal={week.avg.kcal} />
+
+        {/* 食事ごとの割合（円グラフ） */}
+        {week.mealRatio && (
+          <MealRatioChart mealRatio={week.mealRatio} title="🍳 今週の食事割合" />
+        )}
+
+        {/* 週間平均（PFCバランス含む詳細） */}
         <WeeklyNutritionSummary avg={week.avg} goals={goals} recordedDays={week.recordedDays} exerciseDays={week.exerciseDays} />
 
         {/* 日別カロリーグラフ */}
@@ -299,6 +311,77 @@ function DailyKcalChart({
             {d.weekday}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// 履歴の MonthlySummary と同じレイアウト（週次バージョン）
+function WeeklySummary({
+  daily,
+  recordedDays,
+  exerciseDays,
+  avgKcal,
+}: {
+  daily: DailyAgg[];
+  recordedDays: number;
+  exerciseDays: number;
+  avgKcal: number;
+}) {
+  const weightDays = daily.filter(
+    (d) => d.weight && !isNaN(parseFloat(d.weight))
+  );
+  const firstWeight = weightDays.length > 0 ? parseFloat(weightDays[0].weight!) : null;
+  const lastWeight =
+    weightDays.length > 0 ? parseFloat(weightDays[weightDays.length - 1].weight!) : null;
+  const weightDelta =
+    firstWeight !== null && lastWeight !== null
+      ? Math.round((lastWeight - firstWeight) * 10) / 10
+      : null;
+  const weightSign = weightDelta === null ? '' : weightDelta > 0 ? '+' : '';
+  const weightDisplay = weightDelta === null ? '—' : `${weightSign}${weightDelta}`;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
+      <h2 className="text-base font-bold text-stone-900 mb-3">📊 週次サマリ</h2>
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryBox
+          label="📝 食事を記録した日数"
+          value={`${recordedDays}/7`}
+          unit="日"
+        />
+        <SummaryBox
+          label="🏃 運動した日数"
+          value={`${exerciseDays}/7`}
+          unit="日"
+        />
+        <SummaryBox
+          label="⚖️ 体重の増減"
+          value={weightDisplay}
+          unit={weightDelta !== null ? 'kg' : ''}
+        />
+        <SummaryBox
+          label="📊 1日あたり平均"
+          value={avgKcal > 0 ? `${Math.round(avgKcal)}` : '—'}
+          unit={avgKcal > 0 ? 'kcal' : ''}
+        />
+      </div>
+      {weightDelta !== null && weightDays.length >= 2 && (
+        <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
+          ⚖️ {firstWeight}kg（最初）→ {lastWeight}kg（最新）／{weightDays.length}回測定
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SummaryBox({ label, value, unit }: { label: string; value: string; unit: string }) {
+  return (
+    <div className="bg-stone-50 rounded-xl p-3 border border-stone-200">
+      <div className="text-xs font-medium text-stone-700">{label}</div>
+      <div className="text-lg font-bold text-stone-900 mt-1">
+        {value}
+        <span className="text-xs font-medium text-stone-600 ml-1">{unit}</span>
       </div>
     </div>
   );

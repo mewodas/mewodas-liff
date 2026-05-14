@@ -6,6 +6,7 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
+import MealRatioChart from '@/components/MealRatioChart';
 
 type DailyAgg = {
   day: number;
@@ -32,6 +33,7 @@ type HistoryData = {
     daysInMonth: number;
     firstWeekday: number;
     daily: DailyAgg[];
+    mealRatio?: Record<string, number>;
   };
 };
 
@@ -231,6 +233,11 @@ export default function HistoryPage() {
 
         {/* 月次サマリ */}
         <MonthlySummary daily={m.daily} isCurrentMonth={isCurrentMonth} todayDay={today.day} />
+
+        {/* 食事ごとの割合（円グラフ） */}
+        {m.mealRatio && (
+          <MealRatioChart mealRatio={m.mealRatio} title="🍳 今月の食事割合" />
+        )}
 
         {/* カレンダー */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
