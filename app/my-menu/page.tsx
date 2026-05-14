@@ -232,17 +232,15 @@ function MyMenuInner() {
                   </button>
                   <button
                     onClick={() => setEditing(item)}
-                    className="text-xs text-stone-500 px-1 active:text-emerald-700"
-                    aria-label="編集"
+                    className="text-[11px] font-bold text-emerald-700 border border-emerald-600 px-2.5 py-1 rounded-full active:bg-emerald-50 mr-1"
                   >
-                    ✏️
+                    編集
                   </button>
                   <button
                     onClick={() => handleRemove(item.id)}
-                    className="text-xs text-stone-400 px-1 active:text-red-600"
-                    aria-label="削除"
+                    className="text-[11px] font-bold text-stone-600 border border-stone-300 px-2.5 py-1 rounded-full active:bg-stone-100 active:text-red-600"
                   >
-                    🗑
+                    削除
                   </button>
                 </div>
               );
@@ -438,7 +436,7 @@ function AddItemSheet({
   const [P, setP] = useState('');
   const [F, setF] = useState('');
   const [C, setC] = useState('');
-  const [autoCalc, setAutoCalc] = useState(false);
+  const [autoCalc, setAutoCalc] = useState(true);
   const [dbQuery, setDbQuery] = useState('');
   const [dbResults, setDbResults] = useState<Array<{
     id: string;
@@ -766,7 +764,7 @@ function EditItemSheet({
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
-  const [autoCalc, setAutoCalc] = useState(false);
+  const [autoCalc, setAutoCalc] = useState(true);
 
   function num(v: string): number {
     const n = Number(v);

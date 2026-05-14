@@ -465,7 +465,7 @@ export default function RecordPage() {
           </div>
 
           <h2 className="text-sm font-bold text-stone-800 mb-2 px-1">
-            🍽 識別された食材（左でON/OFF・右の✏️で編集）
+            🍽 識別された食材（左でON/OFF・右で編集）
           </h2>
           <div className="space-y-2">
             {analyzed.map((item) => {
@@ -508,10 +508,9 @@ export default function RecordPage() {
                   <button
                     type="button"
                     onClick={() => setEditingItem(item)}
-                    className="ml-2 w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center active:bg-emerald-100 active:text-emerald-700 flex-shrink-0"
-                    aria-label="編集"
+                    className="ml-2 text-[11px] font-bold text-emerald-700 border border-emerald-600 px-2.5 py-1 rounded-full active:bg-emerald-50 flex-shrink-0"
                   >
-                    ✏️
+                    編集
                   </button>
                 </div>
               );
