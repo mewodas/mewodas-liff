@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode } from 'react';
+import { Home, UtensilsCrossed, MessageCircle, LayoutGrid } from 'lucide-react';
 
 type NavItem = {
   label: string;
@@ -11,38 +12,31 @@ type NavItem = {
   href: string;
 };
 
-const GridIcon = (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    aria-hidden="true"
-    className="w-5 h-5"
-  >
-    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-  </svg>
-);
+const ICON_CLASS = 'w-5 h-5';
 
 const items: NavItem[] = [
   {
     href: '/home',
     label: 'ホーム',
-    icon: '🏠',
+    icon: <Home className={ICON_CLASS} strokeWidth={2.2} />,
     match: (p) => p === '/' || p === '/home' || p.startsWith('/home'),
   },
   {
     href: '/record',
     label: '食事記録',
-    icon: '📝',
+    icon: <UtensilsCrossed className={ICON_CLASS} strokeWidth={2.2} />,
     match: (p) => p.startsWith('/record'),
   },
-  { href: '/chat', label: 'AI相談', icon: '💬', match: (p) => p.startsWith('/chat') },
+  {
+    href: '/chat',
+    label: 'AI相談',
+    icon: <MessageCircle className={ICON_CLASS} strokeWidth={2.2} />,
+    match: (p) => p.startsWith('/chat'),
+  },
   {
     href: '/menu',
     label: 'メニュー',
-    icon: GridIcon,
+    icon: <LayoutGrid className={ICON_CLASS} strokeWidth={2.2} />,
     match: (p) =>
       p.startsWith('/menu') ||
       p.startsWith('/weekly') ||
@@ -68,7 +62,7 @@ export default function FooterNav() {
               className={className}
               data-tour={it.href === '/record' ? 'footer-record' : undefined}
             >
-              <span className="text-xl leading-none flex items-center justify-center h-6">
+              <span className="leading-none flex items-center justify-center h-6">
                 {it.icon}
               </span>
               <span

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Scale, Activity, ClipboardList } from 'lucide-react';
 
 function useDraggableSheet(onClose: () => void) {
   const [expanded, setExpanded] = useState(false);
@@ -81,7 +82,10 @@ export default function WeightExerciseCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">📝 {heading}</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+        <ClipboardList className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+        {heading}
+      </h2>
       <div className="grid grid-cols-2 gap-2 items-stretch">
         <button
           type="button"
@@ -90,7 +94,10 @@ export default function WeightExerciseCard({
             hasWeight ? 'bg-sky-50 border-sky-300' : 'bg-stone-50 border-stone-200 border-dashed'
           }`}
         >
-          <div className="text-xs font-bold text-stone-700 mb-1">⚖️ 体重</div>
+          <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+            <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
+            体重
+          </div>
           <div className="flex-1 flex items-center w-full">
             {hasWeight ? (
               <span className="text-base font-bold text-stone-900 leading-snug">
@@ -110,7 +117,10 @@ export default function WeightExerciseCard({
             hasExercise ? 'bg-amber-50 border-amber-300' : 'bg-stone-50 border-stone-200 border-dashed'
           }`}
         >
-          <div className="text-xs font-bold text-stone-700 mb-1">🏃 運動</div>
+          <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+            <Activity className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.2} />
+            運動
+          </div>
           <div className="flex-1 flex items-center w-full min-w-0">
             {hasExercise ? (
               initialExerciseContent ? (
@@ -217,7 +227,10 @@ function WeightSheet({
         >
           <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">⚖️ 体重を記録</h2>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+              体重を記録
+            </h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
@@ -318,7 +331,10 @@ function ExerciseSheet({
         >
           <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">🏃 運動を記録</h2>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
+              運動を記録
+            </h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>

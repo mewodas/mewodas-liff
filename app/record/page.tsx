@@ -6,6 +6,14 @@ import { initLiff, getLineProfile, closeLiff } from '@/lib/liff';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
+import {
+  Camera,
+  Image as ImageIcon,
+  Star,
+  Search,
+  Receipt,
+  FileText,
+} from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
@@ -744,21 +752,21 @@ export default function RecordPage() {
             htmlFor="record-camera-input"
             className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
           >
-            <span className="text-3xl mb-2">📷</span>
+            <Camera className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
             <span className="text-sm font-bold text-stone-900 text-center leading-tight">写真を撮る</span>
           </label>
           <HubButton
-            icon="🖼"
+            icon={<ImageIcon className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="画像から選ぶ"
             onClick={() => libraryInputRef.current?.click()}
           />
           <HubButton
-            icon="⭐"
+            icon={<Star className="w-7 h-7 text-amber-500" strokeWidth={2} fill="currentColor" />}
             label="マイメニュー"
             onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
           />
           <HubButton
-            icon="🔍"
+            icon={<Search className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="食品DB"
             onClick={() => router.push('/food-search')}
           />
@@ -766,11 +774,11 @@ export default function RecordPage() {
             htmlFor="record-label-input"
             className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
           >
-            <span className="text-3xl mb-2">📋</span>
+            <Receipt className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
             <span className="text-sm font-bold text-stone-900 text-center leading-tight">成分表を撮る</span>
           </label>
           <HubButton
-            icon="📝"
+            icon={<FileText className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="テキストで記録"
             onClick={() => setStage('memo')}
           />
@@ -1141,7 +1149,7 @@ function HubButton({
   label,
   onClick,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   onClick: () => void;
 }) {
@@ -1150,7 +1158,7 @@ function HubButton({
       onClick={onClick}
       className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50"
     >
-      <span className="text-3xl mb-2">{icon}</span>
+      <span className="mb-2 flex items-center justify-center">{icon}</span>
       <span className="text-sm font-bold text-stone-900 text-center leading-tight">{label}</span>
     </button>
   );
