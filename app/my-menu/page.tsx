@@ -525,7 +525,7 @@ function AddItemSheet({
                   : 'border-transparent text-stone-500 active:text-stone-700'
               }`}
             >
-              📚 食品DBから選ぶ
+              <span className="inline-flex items-center gap-1"><Search className="w-3.5 h-3.5" strokeWidth={2.2}/>食品DBから選ぶ</span>
             </button>
             <button
               type="button"

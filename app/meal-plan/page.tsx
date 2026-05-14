@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, Calendar as CalendarIcon, CheckCircle2, Search, Bot, Sparkles, BarChart3, Utensils, Lightbulb, CookingPot, Target, Home, ClipboardList } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
@@ -292,7 +292,7 @@ function MealPlanInner() {
                     : 'bg-stone-100 text-stone-700 border border-stone-300'
                 }`}
               >
-                📅 1日分まるごと提案（朝・昼・夕・間食を一括）
+                <span className="inline-flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" strokeWidth={2.2}/>1日分まるごと提案（朝・昼・夕・間食を一括）</span>
               </button>
               <p className="text-[11px] text-stone-600 leading-relaxed mt-2">
                 {mode === 'one_meal'
@@ -388,7 +388,7 @@ function MealPlanInner() {
               {/* 追加直後のトースト */}
               {justAdded && (
                 <div className="bg-emerald-500 text-white text-xs font-bold rounded-xl px-3 py-2 mb-2 text-center shadow-md animate-pulse">
-                  ✅ 「{justAdded}」を追加しました
+                  <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>「{justAdded}」を追加しました</span>
                 </div>
               )}
 
@@ -426,7 +426,7 @@ function MealPlanInner() {
               </div>
 
               {/* 統合検索：食品DB候補＋手入力追加 */}
-              <div className="text-[10px] font-bold text-stone-600 mb-1">🔍 材料を検索 / 入力</div>
+              <div className="text-[10px] font-bold text-stone-600 mb-1 flex items-center gap-1"><Search className="w-3 h-3" strokeWidth={2.2}/>材料を検索 / 入力</div>
               <div className="flex gap-1.5 mb-1">
                 <input
                   type="text"
@@ -569,7 +569,11 @@ function MealPlanInner() {
               disabled={loading}
               className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
             >
-              {loading ? '🤖 献立作成中…' : '✨ 献立を作る'}
+              {loading ? (
+                <span className="inline-flex items-center justify-center gap-1.5"><Bot className="w-4 h-4" strokeWidth={2.2}/>献立作成中…</span>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1.5"><Sparkles className="w-5 h-5" strokeWidth={2}/>献立を作る</span>
+              )}
             </button>
             {loading && (
               <p className="text-xs text-stone-700 text-center mt-2">
@@ -583,7 +587,7 @@ function MealPlanInner() {
           <>
             {/* 今日の摂取・運動・残りサマリー */}
             <div className="bg-white border border-stone-200 rounded-2xl p-4">
-              <div className="text-xs font-bold text-stone-700 mb-2">📊 今日の状況</div>
+              <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2}/>今日の状況</div>
               <div className={`grid ${(result.exerciseBurn ?? 0) > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
                 <div className="bg-stone-50 rounded-xl p-2">
                   <div className="text-[10px] text-stone-600">食べた</div>
@@ -609,8 +613,9 @@ function MealPlanInner() {
             </div>
 
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-              <div className="text-xs font-bold text-emerald-700 mb-1">
-                🍱 {result.mode === 'one_meal'
+              <div className="text-xs font-bold text-emerald-700 mb-1 inline-flex items-center gap-1">
+                <ChefHat className="w-3.5 h-3.5" strokeWidth={2.2}/>
+                {result.mode === 'one_meal'
                   ? `${result.targetMealType || '指定食事'}の${result.plan.meals.length}案（残りPFC考慮）`
                   : result.mode === 'remaining'
                   ? `${result.plan.meals.length}つの献立案（残りPFCに合わせて）`
@@ -660,21 +665,21 @@ function MealPlanInner() {
                 </div>
                 {meal.note && (
                   <p className="text-[11px] text-stone-500 bg-stone-50 p-2 rounded-lg mb-3">
-                    💡 {meal.note}
+                    <span className="inline-flex items-start gap-1"><Lightbulb className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" strokeWidth={2.2}/>{meal.note}</span>
                   </p>
                 )}
                 <button
                   onClick={() => setRecipeMeal(meal)}
                   className="w-full bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl active:bg-emerald-700"
                 >
-                  🍳 この食事にする（作り方を見る）
+                  <><CookingPot className="w-4 h-4 inline mr-1" strokeWidth={2.2}/>この食事にする（作り方を見る）</>
                 </button>
               </div>
             ))}
 
             {result.plan.advice && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                <div className="text-xs font-bold text-amber-800 mb-1">🎯 ポイント</div>
+                <div className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1"><Target className="w-3.5 h-3.5 text-amber-700" strokeWidth={2.2}/>ポイント</div>
                 <p className="text-sm text-stone-800 leading-relaxed">{result.plan.advice}</p>
               </div>
             )}
@@ -689,7 +694,7 @@ function MealPlanInner() {
               href="/home"
               className="block w-full bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center active:bg-stone-50"
             >
-              🏠 ホームへ
+              <span className="inline-flex items-center gap-1"><Home className="w-3.5 h-3.5" strokeWidth={2.2}/>ホームへ</span>
             </Link>
           </>
         )}
@@ -799,7 +804,7 @@ function RecipeSheet({
         <div className="sticky top-0 bg-stone-50 pt-3 pb-2 border-b border-stone-200 z-10">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900 truncate">🍳 {meal.title}</h2>
+            <h2 className="text-base font-bold text-stone-900 truncate"><><CookingPot className="w-4 h-4 inline mr-1" strokeWidth={2.2}/>{meal.title}</></h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2" disabled={recording}>×</button>
           </div>
           <div className="text-[11px] text-stone-600 px-5 mt-1">
@@ -810,7 +815,7 @@ function RecipeSheet({
         <div className="p-4 space-y-4 pb-32">
           {loading && (
             <div className="bg-white rounded-2xl p-6 text-center">
-              <div className="text-3xl mb-2">🤖</div>
+              <Bot className="w-10 h-10 text-purple-500 mx-auto mb-2" strokeWidth={2}/>
               <div className="text-sm font-bold text-stone-800 mb-1">作り方を生成中…</div>
               <div className="text-xs text-stone-500">約5〜10秒</div>
             </div>
@@ -852,13 +857,13 @@ function RecipeSheet({
 
               {recipe.tips && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                  <div className="text-xs font-bold text-amber-800 mb-1">💡 コツ・ポイント</div>
+                  <div className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-amber-700" strokeWidth={2.2}/>コツ・ポイント</div>
                   <p className="text-xs text-stone-800 leading-relaxed">{recipe.tips}</p>
                 </div>
               )}
 
               <div className="bg-white rounded-2xl p-4 border border-stone-200">
-                <div className="text-xs font-bold text-stone-700 mb-2">📝 完了したら記録します</div>
+                <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2}/>完了したら記録します</div>
                 <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2 text-sm font-bold text-emerald-800 text-center">
                   {formatJpDateShort(targetDate)} の {meal.type}
                 </div>
@@ -874,7 +879,9 @@ function RecipeSheet({
               disabled={loading || recording}
               className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
             >
-              {recording ? '記録中…' : `✅ ${formatJpDateShort(targetDate)} の ${meal.type} に記録`}
+              {recording ? '記録中…' : (
+                <span className="inline-flex items-center justify-center gap-1.5"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{formatJpDateShort(targetDate)} の {meal.type} に記録</span>
+              )}
             </button>
           </div>
         </div>

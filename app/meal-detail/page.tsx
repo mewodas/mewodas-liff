@@ -30,11 +30,19 @@ type TodayData = {
   };
 };
 
-const MEAL_EMOJI: Record<string, string> = {
-  朝食: '🌅',
-  昼食: '☀️',
-  夕食: '🌙',
-  間食: '🍪',
+import { Sunrise, Sun, Moon, Cookie, UtensilsCrossed, CheckCircle2, Trash2, type LucideIcon } from 'lucide-react';
+
+const MEAL_ICON: Record<string, LucideIcon> = {
+  朝食: Sunrise,
+  昼食: Sun,
+  夕食: Moon,
+  間食: Cookie,
+};
+const MEAL_COLOR: Record<string, string> = {
+  朝食: 'text-orange-500',
+  昼食: 'text-amber-500',
+  夕食: 'text-indigo-500',
+  間食: 'text-pink-500',
 };
 
 function jstTodayString(): string {
@@ -205,7 +213,8 @@ function MealDetailInner() {
     }),
     { kcal: 0, P: 0, F: 0, C: 0 }
   );
-  const emoji = MEAL_EMOJI[mealParam] || '🍽️';
+  const MealIcon = MEAL_ICON[mealParam] || UtensilsCrossed;
+  const mealColor = MEAL_COLOR[mealParam] || 'text-stone-600';
 
   return (
     <main className="min-h-screen bg-stone-50 pb-32">
@@ -215,7 +224,11 @@ function MealDetailInner() {
             ×
           </button>
           <h1 className="text-base font-bold text-stone-900">
-            {formatJpDateShort(date)} {emoji} {mealParam}
+            <span className="inline-flex items-center gap-1.5">
+              {formatJpDateShort(date)}
+              <MealIcon className={`w-4 h-4 ${mealColor}`} strokeWidth={2.2} />
+              {mealParam}
+            </span>
           </h1>
           <div className="w-8" />
         </div>
@@ -224,7 +237,7 @@ function MealDetailInner() {
       <div className="px-4 py-4">
         {records.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <div className="text-3xl mb-2">{emoji}</div>
+            <MealIcon className={`w-8 h-8 mx-auto mb-2 ${mealColor}`} strokeWidth={2} />
             <div className="text-sm font-bold text-stone-800 mb-1">{mealParam}は未記録です</div>
             <div className="text-xs text-stone-600 leading-relaxed">
               下の「メニューを追加」から記録できます。
@@ -482,7 +495,9 @@ function PortionSheet({
             disabled={!valid || saving || m === 1}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
           >
-            {saving ? '更新中…' : `✅ ${m === 1 ? '変更なし' : `${m}人前に変更`}`}
+            {saving ? '更新中…' : (
+              <span className="inline-flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{m === 1 ? '変更なし' : `${m}人前に変更`}</span>
+            )}
           </button>
         </div>
       </div>
@@ -507,7 +522,7 @@ function ConfirmDelete({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-3xl mb-2 text-center">🗑️</div>
+        <Trash2 className="w-8 h-8 text-rose-500 mx-auto mb-2" strokeWidth={2} />
         <h3 className="text-base font-bold text-stone-900 mb-2 text-center">この記録を削除しますか？</h3>
         <div className="bg-stone-50 rounded-xl p-3 mb-4 text-center">
           <div className="text-sm font-bold text-stone-800">{shortName(record)}</div>
@@ -682,7 +697,9 @@ function EditModal({
             disabled={saving}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {saving ? '更新中…' : '✅ 更新する'}
+            {saving ? '更新中…' : (
+              <span className="inline-flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>更新する</span>
+            )}
           </button>
         </div>
       </div>

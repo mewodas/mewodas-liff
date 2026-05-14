@@ -227,11 +227,11 @@ export default function ExercisePage() {
             ? '保存中…'
             : existingContent
             ? content.trim()
-              ? '➕ 追加で記録する'
+              ? (<span className="inline-flex items-center justify-center gap-1"><Plus className="w-4 h-4" strokeWidth={2.2}/>追加で記録する</span>)
               : '追加する運動を入力してください'
             : content.trim()
-            ? '✅ 運動を記録する'
-            : '⬜ 運動なしで記録する'}
+            ? (<span className="inline-flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>運動を記録する</span>)
+            : (<span className="inline-flex items-center justify-center gap-1"><Square className="w-4 h-4" strokeWidth={2.2}/>運動なしで記録する</span>)}
         </button>
       </div>
     </main>

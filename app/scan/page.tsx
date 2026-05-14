@@ -5,6 +5,7 @@ import Link from 'next/link';
 import FooterNav from '@/components/FooterNav';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
+import { CheckCircle2, Camera, AlertTriangle, Search, FileText, Home } from 'lucide-react';
 
 type ProductResult = {
   found: boolean;
@@ -177,10 +178,10 @@ export default function ScanPage() {
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
       <header className="bg-emerald-500 text-white px-4 pt-6 pb-5 shadow">
-        <h1 className="text-xl font-bold">📱 バーコードスキャン</h1>
+        <h1 className="text-xl font-bold">バーコードスキャン</h1>
         <p className="text-xs text-emerald-50 mt-1">市販品のJANコードから栄養素を自動取得</p>
         <p className="text-[10px] text-emerald-100 mt-1.5 leading-relaxed">
-          📚 照会先：Open Food Facts（国際的な無料食品DB）。日本製品のカバー率は約30〜50%です。
+          照会先：Open Food Facts（国際的な無料食品DB）。日本製品のカバー率は約30〜50%です。
         </p>
       </header>
 
@@ -192,7 +193,7 @@ export default function ScanPage() {
         )}
         {success && (
           <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-medium p-3 rounded-xl">
-            ✅ {success}
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>{success}</span>
           </div>
         )}
 
@@ -202,7 +203,7 @@ export default function ScanPage() {
               onClick={startScan}
               className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700"
             >
-              📷 カメラでスキャン開始
+              <span className="inline-flex items-center justify-center gap-1.5"><Camera className="w-4 h-4" strokeWidth={2.2}/>カメラでスキャン開始</span>
             </button>
             <p className="text-[11px] text-stone-500 leading-relaxed">
               LINEから「カメラへのアクセス」を許可してください。スキャン中に他のアプリへ切り替えると停止します。
@@ -310,7 +311,9 @@ export default function ScanPage() {
               disabled={submitting}
               className="w-full bg-emerald-500 text-white text-base font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
             >
-              {submitting ? '記録中…' : '✅ この内容で記録する'}
+              {submitting ? '記録中…' : (
+                <span className="inline-flex items-center justify-center gap-1.5"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>この内容で記録する</span>
+              )}
             </button>
             <button
               onClick={() => {
@@ -327,8 +330,9 @@ export default function ScanPage() {
         {lookup && !lookup.found && (
           <div className="space-y-3">
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-              <div className="text-sm font-bold text-amber-900 mb-1">
-                ⚠️ JANコード {barcode} は DB に未登録です
+              <div className="text-sm font-bold text-amber-900 mb-1 inline-flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.2}/>
+                JANコード {barcode} は DB に未登録です
               </div>
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 Open Food Facts は世界中のユーザーが投稿する無料食品DBですが、日本の市販品はまだ少なめ。下記の方法で記録できます。
@@ -338,13 +342,13 @@ export default function ScanPage() {
               href="/food-search"
               className="block bg-emerald-500 text-white text-center font-bold py-3 rounded-xl"
             >
-              🔍 食品DB から探す
+              <span className="inline-flex items-center gap-1"><Search className="w-3.5 h-3.5" strokeWidth={2.2}/>食品DB から探す</span>
             </Link>
             <Link
               href="/record"
               className="block bg-white border border-stone-300 text-stone-900 text-center font-bold py-3 rounded-xl"
             >
-              📝 メモ・写真で記録する
+              <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" strokeWidth={2.2}/>メモ・写真で記録する</span>
             </Link>
             <button
               onClick={() => {
@@ -359,7 +363,7 @@ export default function ScanPage() {
         )}
 
         <Link href="/home" className="block text-center text-xs text-stone-500 underline pt-2">
-          🏠 ホームに戻る
+          <span className="inline-flex items-center gap-1"><Home className="w-3.5 h-3.5" strokeWidth={2.2}/>ホームに戻る</span>
         </Link>
       </main>
 

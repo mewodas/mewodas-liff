@@ -156,7 +156,10 @@ function StreakCard({ stats }: { stats: Stats }) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
-        <h2 className="text-base font-bold text-stone-900 mb-3">🎖 獲得バッジ</h2>
+        <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+          <Trophy className="w-4 h-4 text-amber-600" strokeWidth={2.2}/>
+          獲得バッジ
+        </h2>
         {achieved.length === 0 ? (
           <div className="text-sm text-stone-600">
             まだ獲得していません。連続記録を伸ばすとバッジが手に入ります。

@@ -884,7 +884,10 @@ function PredictionBlock({
   if (loading && !prediction) {
     return (
       <div className="mt-3 pt-3 border-t border-stone-100">
-        <div className="text-xs text-stone-500">🔮 AI予測を生成中…</div>
+        <div className="text-xs text-stone-500 inline-flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-purple-500" strokeWidth={2.2} />
+          AI予測を生成中…
+        </div>
       </div>
     );
   }
@@ -894,7 +897,10 @@ function PredictionBlock({
   if (!prediction.prediction) {
     return (
       <div className="mt-3 pt-3 border-t border-stone-100">
-        <div className="text-xs font-bold text-stone-700 mb-1">🔮 3ヶ月後のAI予測</div>
+        <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-purple-500" strokeWidth={2.2} />
+          3ヶ月後のAI予測
+        </div>
         <div className="text-xs text-stone-600 bg-stone-50 rounded-lg p-2">
           {prediction.message || 'データ不足のため予測できません'}
         </div>
