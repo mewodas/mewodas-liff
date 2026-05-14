@@ -26,6 +26,7 @@ export type Notification = {
   category: NotificationCategory | string;
   title: string;
   body: string;
+  staffName: string;
   read: boolean;
   readAt: string | null;
   createdAt: string;
@@ -67,6 +68,7 @@ function pageToNotification(page: { id: string; properties: Record<string, any>;
     category: p['カテゴリ']?.select?.name || 'お知らせ',
     title: p['タイトル']?.title?.[0]?.plain_text || '',
     body: p['本文']?.rich_text?.map((rt: { plain_text: string }) => rt.plain_text).join('') || '',
+    staffName: p['スタッフ名']?.rich_text?.[0]?.plain_text || '',
     read: !!p['既読']?.checkbox,
     readAt: p['既読日時']?.date?.start || null,
     createdAt: page.created_time,
@@ -79,29 +81,34 @@ export async function createNotification(params: {
   category: NotificationCategory;
   title: string;
   body: string;
+  staffName?: string;
 }): Promise<Notification> {
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_NOTIFICATIONS_DB_ID 未設定');
   const richText = (s: string) => {
-    // Notion は rich_text 1要素 2000文字制限。チャンク分割
     const chunks: string[] = [];
     let rest = s;
     while (rest.length > 0) {
       chunks.push(rest.slice(0, 1800));
       rest = rest.slice(1800);
     }
+    if (chunks.length === 0) chunks.push('');
     return chunks.map((c) => ({ text: { content: c } }));
   };
+  const props: Record<string, unknown> = {
+    タイトル: { title: [{ text: { content: params.title.slice(0, 200) } }] },
+    LINEユーザーID: { rich_text: [{ text: { content: params.lineUserId } }] },
+    顧客名: { rich_text: [{ text: { content: params.customerName.slice(0, 200) } }] },
+    カテゴリ: { select: { name: params.category } },
+    本文: { rich_text: richText(params.body) },
+    既読: { checkbox: false },
+  };
+  if (params.staffName) {
+    props['スタッフ名'] = { rich_text: [{ text: { content: params.staffName.slice(0, 100) } }] };
+  }
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: dbId },
-    properties: {
-      タイトル: { title: [{ text: { content: params.title.slice(0, 200) } }] },
-      LINEユーザーID: { rich_text: [{ text: { content: params.lineUserId } }] },
-      顧客名: { rich_text: [{ text: { content: params.customerName.slice(0, 200) } }] },
-      カテゴリ: { select: { name: params.category } },
-      本文: { rich_text: richText(params.body) },
-      既読: { checkbox: false },
-    },
+    properties: props,
   });
   return pageToNotification(res);
 }
@@ -147,15 +154,17 @@ export async function deleteNotification(id: string): Promise<void> {
 export async function pushLineMessage(
   lineUserId: string,
   title: string,
-  body: string
+  body: string,
+  staffName?: string
 ): Promise<{ pushed: boolean; reason?: string }> {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) return { pushed: false, reason: 'LINE_CHANNEL_ACCESS_TOKEN 未設定' };
   const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL || '';
+  const fromLine = staffName ? `（${staffName}より）` : '';
   const messages: object[] = [
     {
       type: 'text',
-      text: `🔔 ${title}\n\n${body.slice(0, 1900)}`,
+      text: `🔔 ${title}${fromLine ? ' ' + fromLine : ''}\n\n${body.slice(0, 1900)}`,
     },
   ];
   // 顧客LIFFへ誘導するボタン（LIFF URL が設定されている場合のみ）

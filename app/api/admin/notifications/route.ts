@@ -30,9 +30,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const customerId = String(body.customerId || '');
-    const category = (body.category || 'お知らせ') as NotificationCategory;
+    const category = (body.category || '前日レポート') as NotificationCategory;
     const title = String(body.title || '').trim();
     const text = String(body.body || '').trim();
+    const staffName = body.staffName ? String(body.staffName).trim() : '';
     const sendLinePush = body.sendLinePush !== false; // 既定 true
     if (!customerId || !title || !text) {
       return NextResponse.json({ error: 'customerId / title / body が必要' }, { status: 400 });
@@ -48,10 +49,11 @@ export async function POST(req: NextRequest) {
       category,
       title,
       body: text,
+      staffName: staffName || undefined,
     });
     let pushed: { pushed: boolean; reason?: string } = { pushed: false, reason: 'skipped' };
     if (sendLinePush) {
-      pushed = await pushLineMessage(customer.lineUserId, title, text);
+      pushed = await pushLineMessage(customer.lineUserId, title, text, staffName || undefined);
     }
     return NextResponse.json({ ok: true, notification, push: pushed });
   } catch (e) {

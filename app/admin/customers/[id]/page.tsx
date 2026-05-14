@@ -198,22 +198,22 @@ export default function CustomerDetailPage({
           {/* 各種遷移 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             <Link
-              href={`/admin/customers/${id}/notifications`}
+              href={`/admin/reports?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
               <div className="flex items-center gap-2">
                 <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">レポート・お知らせを送る</span>
+                <span className="text-sm font-bold text-stone-900">レポートを送る</span>
               </div>
               <span className="text-stone-400">›</span>
             </Link>
             <Link
-              href={`/admin/customers/${id}/analysis`}
+              href={`/admin/analysis?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">AI 分析・提案を見る</span>
+                <span className="text-sm font-bold text-stone-900">AI 分析を見る</span>
               </div>
               <span className="text-stone-400">›</span>
             </Link>
