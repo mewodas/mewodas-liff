@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { Search } from 'lucide-react';
+import { Search, CheckCircle2, Home, Calendar as CalendarIcon, UtensilsCrossed, Trash2 } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 
@@ -234,7 +234,7 @@ function FoodSearchInner() {
         <PageHeader title="食品DB" Icon={Search} back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
-            <div className="text-5xl mb-2">✅</div>
+            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-2xl font-bold mb-2 text-stone-900">記録しました</div>
             <div className="text-sm text-stone-700 mb-3">
               {dayLabel} の {mealType}
@@ -258,7 +258,7 @@ function FoodSearchInner() {
               onClick={() => router.push('/home')}
               className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400"
             >
-              🏠 ホームへ
+              <span className="inline-flex items-center justify-center gap-1"><Home className="w-3.5 h-3.5" strokeWidth={2.2}/>ホームへ</span>
             </button>
           </div>
         </div>
@@ -318,7 +318,7 @@ function FoodSearchInner() {
             }}
             className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-700 active:bg-stone-100 flex items-center justify-center gap-1"
           >
-            📅 {dayLabel}
+            <><CalendarIcon className="w-3.5 h-3.5" strokeWidth={2.2}/>{dayLabel}</>
           </button>
           <button
             type="button"
@@ -361,7 +361,7 @@ function FoodSearchInner() {
         )}
         {success && (
           <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-medium p-3 rounded-xl">
-            ✅ {success}
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.2}/>{success}</span>
           </div>
         )}
 
@@ -439,7 +439,7 @@ function FoodSearchInner() {
         ))}
 
         <Link href="/home" className="block text-center text-xs text-stone-500 underline pt-4">
-          🏠 ホームに戻る
+          <span className="inline-flex items-center justify-center gap-1"><Home className="w-3.5 h-3.5" strokeWidth={2.2}/>ホームに戻る</span>
         </Link>
       </main>
 
@@ -453,7 +453,7 @@ function FoodSearchInner() {
               className="flex items-center gap-2 active:opacity-70"
             >
               <div className="relative">
-                <span className="text-2xl">🍽️</span>
+                <UtensilsCrossed className="w-6 h-6 text-emerald-600" strokeWidth={2}/>
                 <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center shadow">
                   {cartCount}
                 </span>
@@ -471,7 +471,11 @@ function FoodSearchInner() {
               disabled={saving}
               className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? '記録中…' : `✅ ${dayLabel}の${mealType}に追加`}
+              {saving ? '記録中…' : (
+                <span className="inline-flex items-center justify-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{`${dayLabel}の${mealType}に追加`}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -535,7 +539,10 @@ function CartSheet({
         <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
-            <h2 className="text-base font-bold text-stone-900">🍽️ 記録予定（{count}点）</h2>
+            <h2 className="text-base font-bold text-stone-900 inline-flex items-center gap-1.5">
+              <UtensilsCrossed className="w-4 h-4 text-emerald-600" strokeWidth={2.2}/>
+              記録予定（{count}点）
+            </h2>
             <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
         </div>
@@ -576,7 +583,7 @@ function CartSheet({
                     className="ml-1 text-stone-400 active:text-red-600"
                     aria-label="削除"
                   >
-                    🗑
+                    <Trash2 className="w-4 h-4" strokeWidth={2.2}/>
                   </button>
                 </div>
               </div>
@@ -604,7 +611,11 @@ function CartSheet({
               disabled={saving}
               className="w-full bg-emerald-500 text-white font-bold py-3 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? '記録中…' : `✅ ${count}点を${day}の${mealType}に追加`}
+              {saving ? '記録中…' : (
+                <span className="inline-flex items-center justify-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{`${count}点を${day}の${mealType}に追加`}
+                </span>
+              )}
             </button>
             <button
               type="button"

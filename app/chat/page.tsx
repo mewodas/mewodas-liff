@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, User } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type Message = {
@@ -121,8 +121,8 @@ export default function ChatPage() {
         ))}
         {sending && (
           <div className="flex gap-2 items-start">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm flex-shrink-0">
-              💬
+            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+              <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
             </div>
             <div className="bg-white rounded-2xl px-4 py-3 max-w-[75%] border border-stone-200">
               <div className="flex gap-1">
@@ -200,11 +200,15 @@ function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
+        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
           isUser ? 'bg-stone-300 text-stone-700' : 'bg-emerald-500 text-white'
         }`}
       >
-        {isUser ? '👤' : '💬'}
+        {isUser ? (
+          <User className="w-4 h-4" strokeWidth={2.2} />
+        ) : (
+          <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
+        )}
       </div>
       <div
         className={`rounded-2xl px-4 py-2.5 max-w-[75%] text-sm whitespace-pre-wrap leading-relaxed ${

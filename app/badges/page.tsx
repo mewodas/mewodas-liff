@@ -5,7 +5,7 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { Trophy } from 'lucide-react';
+import { Trophy, BarChart3, Flame, ClipboardList, Target, Lightbulb } from 'lucide-react';
 
 type Stats = {
   streakDays: number;
@@ -79,7 +79,7 @@ export default function BadgesPage() {
         {!error && stats && <StreakCard stats={stats} />}
         {!error && (!stats || allZero(stats)) && (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 text-center">
-            <div className="text-3xl mb-2">🏆</div>
+            <Trophy className="w-10 h-10 text-amber-500 mx-auto mb-2" strokeWidth={2}/>
             <div className="text-sm font-bold text-stone-800 mb-1">まだバッジはありません</div>
             <div className="text-xs text-stone-600 leading-relaxed">
               食事を記録して連続記録を伸ばすと、バッジが獲得できます。
@@ -116,10 +116,10 @@ function StreakCard({ stats }: { stats: Stats }) {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
-        <h2 className="text-base font-bold text-stone-900 mb-3">📊 連続記録</h2>
+        <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-stone-700" strokeWidth={2.2}/>連続記録</h2>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-3">
-            <div className="text-xs font-bold text-stone-800">🔥 連続記録</div>
+            <div className="text-xs font-bold text-stone-800 flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-orange-600" strokeWidth={2.2}/>連続記録</div>
             <div className="text-2xl font-bold text-orange-700 mt-0.5">
               {streakDays}
               <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -129,7 +129,7 @@ function StreakCard({ stats }: { stats: Stats }) {
             </div>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3">
-            <div className="text-xs font-bold text-stone-800">🏆 最長連続</div>
+            <div className="text-xs font-bold text-stone-800 flex items-center gap-1"><Trophy className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.2}/>最長連続</div>
             <div className="text-2xl font-bold text-amber-700 mt-0.5">
               {bestStreakDays}
               <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -139,14 +139,14 @@ function StreakCard({ stats }: { stats: Stats }) {
             </div>
           </div>
           <div className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-3">
-            <div className="text-xs font-bold text-stone-800">📝 今月の記録日数</div>
+            <div className="text-xs font-bold text-stone-800 flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2}/>今月の記録日数</div>
             <div className="text-2xl font-bold text-sky-700 mt-0.5">
               {monthlyRecordedDays}
               <span className="text-xs font-medium text-stone-600 ml-1">日</span>
             </div>
           </div>
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3">
-            <div className="text-xs font-bold text-stone-800">📊 直近30日</div>
+            <div className="text-xs font-bold text-stone-800 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2}/>直近30日</div>
             <div className="text-2xl font-bold text-emerald-700 mt-0.5">
               {last30RecordedDays}
               <span className="text-xs font-medium text-stone-600 ml-1">日</span>
@@ -175,7 +175,7 @@ function StreakCard({ stats }: { stats: Stats }) {
         )}
         {upcoming && (
           <div className="mt-2 bg-stone-50 rounded-xl p-3 border border-stone-200">
-            <div className="text-xs font-bold text-stone-700 mb-1">🎯 次のバッジ</div>
+            <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1"><Target className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2}/>次のバッジ</div>
             <div className="text-sm font-bold text-stone-900">
               {upcoming.icon} {upcoming.label}
             </div>
@@ -187,7 +187,7 @@ function StreakCard({ stats }: { stats: Stats }) {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-        <div className="text-xs font-bold text-amber-800 mb-1">💡 続けるコツ</div>
+        <div className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-amber-700" strokeWidth={2.2}/>続けるコツ</div>
         <ul className="text-xs text-stone-800 space-y-1 leading-relaxed">
           <li>・寝る前にその日の食事を振り返って記録</li>
           <li>・少なくとも1食記録すれば連続日数は途切れない</li>

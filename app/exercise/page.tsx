@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
-import { Activity } from 'lucide-react';
+import { Activity, CheckCircle2, ClipboardList, Plus, Square } from 'lucide-react';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -121,8 +121,8 @@ export default function ExercisePage() {
         <PageHeader title="運動記録" Icon={Activity} back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
-            <div className="text-5xl mb-2">🏃</div>
-            <div className="text-2xl font-bold mb-2 text-stone-900">✅ 記録しました</div>
+            <Activity className="w-12 h-12 text-amber-500 mx-auto mb-2" strokeWidth={2}/>
+            <div className="text-2xl font-bold mb-2 text-stone-900 flex items-center justify-center gap-2"><CheckCircle2 className="w-7 h-7 text-emerald-500" strokeWidth={2}/>記録しました</div>
             <div className="text-sm text-stone-700 mb-1">{fmtJp(date)}</div>
             {savedExercised && content ? (
               <div className="text-sm text-stone-800 mt-2 bg-stone-50 p-3 rounded-xl whitespace-pre-wrap leading-relaxed text-left">
@@ -182,7 +182,7 @@ export default function ExercisePage() {
         {/* 既存運動記録（追記方式の案内） */}
         {existingContent && !loadingExisting && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
-            <div className="text-xs font-bold text-emerald-800 mb-1">📒 {fmtJp(date)}の既存記録</div>
+            <div className="text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" strokeWidth={2.2}/>{fmtJp(date)}の既存記録</div>
             <div className="text-xs text-stone-800 bg-white rounded-lg p-2 whitespace-pre-wrap leading-relaxed">
               {existingContent}
             </div>

@@ -212,7 +212,7 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete }:
             onClick={next}
             className="flex-1 bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl active:bg-emerald-700"
           >
-            {stepIdx + 1 === steps.length ? '✅ 始める' : '次へ →'}
+            {stepIdx + 1 === steps.length ? '始める' : '次へ →'}
           </button>
         </div>
       </div>

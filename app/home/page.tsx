@@ -911,14 +911,18 @@ function PredictionBlock({
       : 'text-amber-700';
   const confidenceLabel =
     p.confidenceLevel === 'high' ? '高' : p.confidenceLevel === 'low' ? '低' : '中';
-  const goalIcon =
-    p.willReachGoal === true ? '✅' : p.willReachGoal === false ? '⚠️' : '';
-  const changeIcon = p.monthlyChange < 0 ? '⬇️' : p.monthlyChange > 0 ? '⬆️' : '→';
+  const GoalIcon =
+    p.willReachGoal === true ? CheckCircle2 : p.willReachGoal === false ? AlertTriangle : null;
+  const goalIconColor = p.willReachGoal === true ? 'text-emerald-600' : 'text-amber-600';
+  const ChangeIcon = p.monthlyChange < 0 ? TrendingDown : p.monthlyChange > 0 ? TrendingUp : ArrowRight;
 
   return (
     <div className="mt-3 pt-3 border-t border-stone-100">
       <div className="flex items-baseline justify-between mb-2">
-        <div className="text-xs font-bold text-stone-700">🔮 3ヶ月後のAI予測</div>
+        <div className="text-xs font-bold text-stone-700 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-purple-600" strokeWidth={2.2} />
+          3ヶ月後のAI予測
+        </div>
         <div className={`text-[10px] font-medium ${confidenceColor}`}>
           信頼度：{confidenceLabel}
         </div>
@@ -929,16 +933,21 @@ function PredictionBlock({
             {p.predictedWeight} kg
           </span>
           {targetWeight && (
-            <span className="text-xs text-stone-600">
-              （目標 {targetWeight} kg {goalIcon}）
+            <span className="text-xs text-stone-600 inline-flex items-center gap-0.5">
+              （目標 {targetWeight} kg
+              {GoalIcon && <GoalIcon className={`w-3 h-3 ${goalIconColor}`} strokeWidth={2.2} />}）
             </span>
           )}
         </div>
-        <div className="text-xs text-stone-700">
-          {changeIcon} 月平均 {Math.abs(p.monthlyChange)} kg/月
+        <div className="text-xs text-stone-700 inline-flex items-center gap-1">
+          <ChangeIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
+          月平均 {Math.abs(p.monthlyChange)} kg/月
         </div>
         {p.comment && (
-          <div className="text-xs font-medium text-stone-800 mt-2">💬 {p.comment}</div>
+          <div className="text-xs font-medium text-stone-800 mt-2 inline-flex items-center gap-1">
+            <MessageCircle className="w-3 h-3" strokeWidth={2.2} />
+            {p.comment}
+          </div>
         )}
       </div>
       {p.recommendations.length > 0 && (
@@ -1086,8 +1095,8 @@ function ProgressRow({
       : labelStatus === '過剰'
       ? 'text-rose-700 bg-rose-100 border-rose-300'
       : 'text-emerald-700 bg-emerald-100 border-emerald-300';
-  const labelIcon =
-    labelStatus === '不足' ? '💡' : labelStatus === '過剰' ? '⚠️' : '✨';
+  const LabelIcon =
+    labelStatus === '不足' ? Lightbulb : labelStatus === '過剰' ? AlertTriangle : Sparkles;
 
   const barColor: Record<string, string> = {
     emerald: 'bg-emerald-500',
@@ -1101,9 +1110,10 @@ function ProgressRow({
         <div className="flex items-center gap-2">
           <span className="font-medium text-stone-800">{label}</span>
           <span
-            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${labelStyle}`}
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${labelStyle}`}
           >
-            {labelIcon} {labelStatus}
+            <LabelIcon className="w-3 h-3" strokeWidth={2.2} />
+            {labelStatus}
           </span>
         </div>
         <span className="font-bold text-stone-900">

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
-import { Scale } from 'lucide-react';
+import { Scale, CheckCircle2 } from 'lucide-react';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -91,8 +91,8 @@ export default function WeightPage() {
         <PageHeader title="体重記録" Icon={Scale} back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
-            <div className="text-5xl mb-2">⚖️</div>
-            <div className="text-2xl font-bold mb-2 text-stone-900">✅ 記録しました</div>
+            <Scale className="w-12 h-12 text-sky-500 mx-auto mb-2" strokeWidth={2}/>
+            <div className="text-2xl font-bold mb-2 text-stone-900 flex items-center justify-center gap-2"><CheckCircle2 className="w-7 h-7 text-emerald-500" strokeWidth={2}/>記録しました</div>
             <div className="text-sm text-stone-700 mb-1">{fmtJp(date)}</div>
             <div className="text-3xl font-bold text-stone-900">{weight} <span className="text-sm text-stone-500">kg</span></div>
           </div>

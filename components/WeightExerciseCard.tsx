@@ -259,7 +259,7 @@ function WeightSheet({
             disabled={saving || !weight}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {saving ? '保存中…' : initialValue ? '✏️ 上書き保存' : '✅ 保存'}
+            {saving ? '保存中…' : initialValue ? '上書き保存' : '保存'}
           </button>
         </div>
       </div>
@@ -361,7 +361,7 @@ function ExerciseSheet({
             disabled={saving}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
-            {saving ? '保存中…' : hasInitial ? '✏️ 上書き保存' : '✅ 保存'}
+            {saving ? '保存中…' : hasInitial ? '上書き保存' : '保存'}
           </button>
         </div>
       </div>
