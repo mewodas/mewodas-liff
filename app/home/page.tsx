@@ -858,15 +858,23 @@ function DateStrip({
     container.scrollBy({ left: delta, behavior: 'smooth' });
   }
 
-  // 初回マウント時：今日のセルを中央に表示
+  // 初回マウント時：今日のセルを中央に表示（次フレームでレイアウト確定後に実行）
   useEffect(() => {
-    const container = scrollRef.current;
-    const btn = todayRef.current;
-    if (!container || !btn) return;
-    const targetLeft =
-      btn.offsetLeft - container.clientWidth / 2 + btn.clientWidth / 2;
-    container.scrollLeft = Math.max(0, targetLeft);
-    updateArrows();
+    const id = requestAnimationFrame(() => {
+      const container = scrollRef.current;
+      const btn = todayRef.current;
+      if (!container || !btn) return;
+      // scrollRef のパディング・矢印幅を含まない実コンテンツ幅で中央計算
+      const containerRect = container.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      const offsetInScroll =
+        btnRect.left - containerRect.left + container.scrollLeft;
+      const targetLeft =
+        offsetInScroll - container.clientWidth / 2 + btn.clientWidth / 2;
+      container.scrollLeft = Math.max(0, targetLeft);
+      updateArrows();
+    });
+    return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
