@@ -16,7 +16,7 @@ import {
   UtensilsCrossed,
   BarChart3,
   ClipboardList,
-  Dumbbell,
+  Footprints,
   Scale,
   Sparkles,
   Circle,
@@ -383,7 +383,7 @@ function MonthlySummary({
           unit="日"
         />
         <StatBox
-          Icon={Dumbbell}
+          Icon={Footprints}
           iconColor="text-amber-600"
           label="運動した日数"
           value={`${exerciseDays}/${totalDaysToShow}`}
@@ -493,7 +493,7 @@ function CalendarCell({
           <span className="text-stone-400">{cell.recorded ? '' : '·'}</span>
         )}
         {cell.exercised && (
-          <Dumbbell className="w-3 h-3 text-amber-600" strokeWidth={2.2} aria-label="運動日" />
+          <Footprints className="w-3 h-3 text-amber-600" strokeWidth={2.2} aria-label="運動日" />
         )}
       </div>
     </button>

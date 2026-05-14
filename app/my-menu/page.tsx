@@ -511,7 +511,10 @@ function AddItemSheet({
         <div className="bg-white pt-3 pb-0 border-b border-stone-200 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5 mb-3">
-            <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Star className="w-4 h-4" strokeWidth={2.2}/>新しいメニューを追加</span></h2>
+            <h2 className="text-base font-bold text-stone-900 inline-flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-emerald-600" strokeWidth={2.2}/>
+              新しいメニューを追加
+            </h2>
             <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
           </div>
           {/* タブ：DB / 手入力 */}

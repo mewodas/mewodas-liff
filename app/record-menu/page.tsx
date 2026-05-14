@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Camera, Scale, Dumbbell, ClipboardList, type LucideIcon } from 'lucide-react';
+import { Camera, Scale, Footprints, ClipboardList, type LucideIcon } from 'lucide-react';
 
 const items: { href: string; Icon: LucideIcon; title: string; desc: string; color: string }[] = [
   {
@@ -20,7 +20,7 @@ const items: { href: string; Icon: LucideIcon; title: string; desc: string; colo
   },
   {
     href: '/exercise',
-    Icon: Dumbbell,
+    Icon: Footprints,
     title: '運動を記録',
     desc: '運動有無＋内容を入力',
     color: 'bg-emerald-500',

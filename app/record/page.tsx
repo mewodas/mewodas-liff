@@ -1233,6 +1233,7 @@ function EditAnalyzedSheet({
   onSave: (patch: Partial<Omit<AnalyzedItem, 'index'>>) => void;
 }) {
   const [name, setName] = useState(item.name);
+  const [portion, setPortion] = useState('1'); // 人前倍率
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
@@ -1244,18 +1245,24 @@ function EditAnalyzedSheet({
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
+  // 倍率が1以外なら、PFC/kcalに倍率を掛けた値を保存する
+  const portionMul = Math.max(0.1, num(portion) || 1);
   const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
   const displayKcal = autoCalc ? calcKcal : num(kcal);
+  const finalP = Math.round(num(P) * portionMul * 10) / 10;
+  const finalF = Math.round(num(F) * portionMul * 10) / 10;
+  const finalC = Math.round(num(C) * portionMul * 10) / 10;
+  const finalKcal = Math.round(displayKcal * portionMul);
   const valid = name.trim().length > 0;
 
   function submit() {
     if (!valid) return;
     onSave({
       name: name.trim(),
-      P: num(P),
-      F: num(F),
-      C: num(C),
-      kcal: displayKcal,
+      P: finalP,
+      F: finalF,
+      C: finalC,
+      kcal: finalKcal,
     });
   }
 
@@ -1287,8 +1294,46 @@ function EditAnalyzedSheet({
             />
           </div>
 
+          {/* 人前倍率 */}
           <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-            <div className="text-xs font-bold text-stone-700 mb-2">栄養素</div>
+            <div className="text-xs font-bold text-stone-700 mb-2">人前（量）</div>
+            <div className="grid grid-cols-5 gap-1.5 mb-2">
+              {['0.5', '1', '1.5', '2', '3'].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setPortion(v)}
+                  className={`py-1.5 rounded-lg text-xs font-bold ${
+                    portion === v
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'bg-white text-stone-700 border border-stone-300'
+                  }`}
+                >
+                  {v}×
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min="0.1"
+                value={portion}
+                onChange={(e) => setPortion(e.target.value)}
+                className="flex-1 bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-xs font-bold text-stone-700">人前</span>
+            </div>
+            {portionMul !== 1 && (
+              <p className="text-[10px] text-emerald-700 mt-1">
+                記録時に PFC・kcal を {portionMul}倍します
+              </p>
+            )}
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+            <div className="text-xs font-bold text-stone-700 mb-2">栄養素（1人前あたり）</div>
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] font-bold text-rose-600 mb-1 block">P タンパク質(g)</label>
@@ -1356,12 +1401,25 @@ function EditAnalyzedSheet({
             )}
           </div>
 
+          {portionMul !== 1 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <div className="text-[10px] font-bold text-emerald-700 mb-1">記録される最終値（{portionMul}人前）</div>
+              <div className="text-xl font-bold text-emerald-700">
+                {finalKcal}<span className="text-sm font-medium ml-1">kcal</span>
+              </div>
+              <div className="text-xs text-stone-700 mt-0.5">
+                P {finalP}g ・ F {finalF}g ・ C {finalC}g
+              </div>
+            </div>
+          )}
+
           <button
             onClick={submit}
             disabled={!valid}
-            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300 flex items-center justify-center gap-2"
           >
-            💾 変更を保存
+            <Save className="w-4 h-4" strokeWidth={2.2} />
+            変更を保存
           </button>
         </div>
       </div>

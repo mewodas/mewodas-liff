@@ -10,7 +10,7 @@ import {
   TrendingUp,
   BarChart3,
   ClipboardList,
-  Dumbbell,
+  Footprints,
   Scale,
   Lightbulb,
   AlertTriangle,
@@ -447,7 +447,7 @@ function WeeklyNutritionSummary({
       <div className="text-[11px] text-stone-600 mb-3">
         <span className="inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" strokeWidth={2.2}/>記録日数 {recordedDays}/7日</span>
         <span className="mx-1">・</span>
-        <span className="inline-flex items-center gap-1"><Dumbbell className="w-3 h-3" strokeWidth={2.2}/>運動 {exerciseDays}/7日</span>
+        <span className="inline-flex items-center gap-1"><Footprints className="w-3 h-3" strokeWidth={2.2}/>運動 {exerciseDays}/7日</span>
       </div>
 
       <div className="mb-4">
