@@ -7,6 +7,7 @@ import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
+import { BookOpen } from 'lucide-react';
 
 type DailyAgg = {
   day: number;
@@ -204,7 +205,7 @@ export default function HistoryPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
-      <PageHeader title="📖 履歴" subtitle="過去の記録をカレンダーで確認" back />
+      <PageHeader title="履歴" Icon={BookOpen} subtitle="過去の記録をカレンダーで確認" back />
       <div className="max-w-md mx-auto px-4 py-6">
         {/* 月ナビ（過去のみ） */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">

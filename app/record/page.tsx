@@ -13,6 +13,8 @@ import {
   Search,
   Receipt,
   FileText,
+  UtensilsCrossed,
+  ClipboardCheck,
 } from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
@@ -457,7 +459,7 @@ export default function RecordPage() {
   if (stage === 'review') {
     return (
       <main className="min-h-screen bg-stone-50 pb-44">
-        <PageHeader title="📋 解析結果の確認" onBack={() => setStage('hub')} />
+        <PageHeader title="解析結果の確認" Icon={ClipboardCheck} onBack={() => setStage('hub')} />
 
         <div className="px-4 py-4">
           {error && (
@@ -637,7 +639,7 @@ export default function RecordPage() {
   if (stage === 'memo') {
     return (
       <main className="min-h-screen bg-stone-50 pb-28">
-        <PageHeader title="📝 テキストで記録" onBack={() => setStage('hub')} />
+        <PageHeader title="テキストで記録" Icon={FileText} onBack={() => setStage('hub')} />
 
         <div className="px-4 py-4 space-y-4">
           {error && (
@@ -671,7 +673,7 @@ export default function RecordPage() {
   // ===== ハブ画面（メイン） =====
   return (
     <main className="min-h-screen bg-stone-50 pb-32">
-      <PageHeader title="🍽️ 食事を記録" onBack={() => router.push('/home')} />
+      <PageHeader title="食事を記録" Icon={UtensilsCrossed} onBack={() => router.push('/home')} />
 
       <div className="px-4 py-5">
         {error && (

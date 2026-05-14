@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
+import { Star } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 import {
@@ -175,7 +176,8 @@ function MyMenuInner() {
   return (
     <div className="min-h-screen bg-stone-50 pb-44">
       <PageHeader
-        title="⭐ マイメニュー"
+        title="マイメニュー"
+        Icon={Star}
         subtitle="よく食べる料理を保存・呼び出し"
         back
       />

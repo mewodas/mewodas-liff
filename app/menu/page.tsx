@@ -1,12 +1,25 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  BookOpen,
+  TrendingUp,
+  MessageCircle,
+  ChefHat,
+  TrendingDown,
+  Trophy,
+  User,
+  Target,
+  Link as LinkIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 
 type MenuItem = {
   href: string;
-  icon: string;
+  Icon: LucideIcon;
+  color: string;
   label: string;
   sub?: string;
   disabled?: boolean;
@@ -21,30 +34,30 @@ const sections: Section[] = [
   {
     title: '記録・分析',
     items: [
-      { href: '/history', icon: '📖', label: '履歴', sub: '過去の記録を確認' },
-      { href: '/weekly', icon: '📈', label: '週次レポート', sub: '7日間の振り返り' },
+      { href: '/history', Icon: BookOpen, color: 'text-emerald-600', label: '履歴', sub: '過去の記録を確認' },
+      { href: '/weekly', Icon: TrendingUp, color: 'text-emerald-600', label: '週次レポート', sub: '7日間の振り返り' },
     ],
   },
   {
     title: 'AI機能',
     items: [
-      { href: '/chat', icon: '💬', label: 'AI食事相談', sub: '栄養士AIに質問' },
-      { href: '/meal-plan', icon: '🍱', label: 'AI献立作成', sub: '1日分の献立提案' },
-      { href: '/prediction', icon: '📉', label: '体重推移・予測', sub: 'グラフ＋AI推測' },
+      { href: '/chat', Icon: MessageCircle, color: 'text-emerald-600', label: 'AI食事相談', sub: '栄養士AIに質問' },
+      { href: '/meal-plan', Icon: ChefHat, color: 'text-emerald-600', label: 'AI献立作成', sub: '1日分の献立提案' },
+      { href: '/prediction', Icon: TrendingDown, color: 'text-emerald-600', label: '体重推移・予測', sub: 'グラフ＋AI推測' },
     ],
   },
   {
     title: '達成状況',
     items: [
-      { href: '/badges', icon: '🏆', label: 'バッジ獲得', sub: '連続記録の振り返り' },
+      { href: '/badges', Icon: Trophy, color: 'text-amber-600', label: 'バッジ獲得', sub: '連続記録の振り返り' },
     ],
   },
   {
     title: '設定',
     items: [
-      { href: '/menu/profile', icon: '👤', label: 'プロフィール', sub: '近日対応', disabled: true },
-      { href: '/menu/goals', icon: '🎯', label: '目標設定', sub: '近日対応', disabled: true },
-      { href: '/menu/sync', icon: '🔗', label: 'データ連携', sub: '近日対応', disabled: true },
+      { href: '/menu/profile', Icon: User, color: 'text-stone-500', label: 'プロフィール', sub: '近日対応', disabled: true },
+      { href: '/menu/goals', Icon: Target, color: 'text-stone-500', label: '目標設定', sub: '近日対応', disabled: true },
+      { href: '/menu/sync', Icon: LinkIcon, color: 'text-stone-500', label: 'データ連携', sub: '近日対応', disabled: true },
     ],
   },
 ];
@@ -52,7 +65,7 @@ const sections: Section[] = [
 export default function MenuPage() {
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
-      <PageHeader title="📂 メニュー" subtitle="すべての機能・設定にアクセス" />
+      <PageHeader title="メニュー" subtitle="すべての機能・設定にアクセス" />
 
       <main className="px-4 py-5 space-y-6">
         {sections.map((section) => (
@@ -66,7 +79,7 @@ export default function MenuPage() {
                   'flex flex-col items-center justify-center bg-white rounded-2xl py-4 px-2 border border-stone-200 shadow-sm';
                 const inner = (
                   <>
-                    <span className="text-2xl">{item.icon}</span>
+                    <item.Icon className={`w-7 h-7 ${item.color}`} strokeWidth={2} />
                     <span className="text-xs font-bold text-stone-900 mt-2 text-center leading-tight">
                       {item.label}
                     </span>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
+import { ChefHat } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
@@ -226,7 +227,8 @@ function MealPlanInner() {
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
       <PageHeader
-        title="🍱 AI献立作成"
+        title="AI献立作成"
+        Icon={ChefHat}
         subtitle={
           targetDate === todayStr
             ? '今日の献立を提案します'

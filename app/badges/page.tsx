@@ -5,6 +5,7 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
+import { Trophy } from 'lucide-react';
 
 type Stats = {
   streakDays: number;
@@ -67,7 +68,7 @@ export default function BadgesPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-24">
-      <PageHeader title="🏆 バッジ獲得" subtitle="連続記録の振り返りと達成バッジ" back />
+      <PageHeader title="バッジ獲得" Icon={Trophy} subtitle="連続記録の振り返りと達成バッジ" back />
 
       <div className="px-4 py-5">
         {error && (

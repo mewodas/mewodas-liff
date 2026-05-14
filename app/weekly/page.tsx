@@ -6,6 +6,7 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import MealRatioChart from '@/components/MealRatioChart';
+import { TrendingUp } from 'lucide-react';
 
 type DailyAgg = {
   date: string;
@@ -130,7 +131,8 @@ export default function WeeklyPage() {
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader
-        title="📈 週次レポート"
+        title="週次レポート"
+        Icon={TrendingUp}
         subtitle={`${offsetLabel}：${weekLabel}`}
         back
       />

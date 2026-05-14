@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
+import { Search } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
 
@@ -230,7 +231,7 @@ function FoodSearchInner() {
   if (completed) {
     return (
       <main className="min-h-screen bg-stone-100 pb-28">
-        <PageHeader title="🔍 食品DB" back />
+        <PageHeader title="食品DB" Icon={Search} back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
             <div className="text-5xl mb-2">✅</div>
@@ -276,7 +277,7 @@ function FoodSearchInner() {
 
   return (
     <div className="min-h-screen bg-stone-50 pb-40">
-      <PageHeader title="🔍 食品DB" back>
+      <PageHeader title="食品DB" Icon={Search} back>
         <input
           type="text"
           value={query}

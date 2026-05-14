@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
+import { TrendingDown } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
@@ -106,7 +107,8 @@ export default function PredictionPage() {
   return (
     <main className="min-h-screen bg-stone-100 pb-24">
       <PageHeader
-        title="📉 体重推移・AI予測"
+        title="体重推移・AI予測"
+        Icon={TrendingDown}
         subtitle="直近30日の体重推移とAI予測"
         back
       />

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
+import { MessageCircle } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type Message = {
@@ -107,7 +108,8 @@ export default function ChatPage() {
   return (
     <main className="min-h-screen bg-stone-100 flex flex-col pb-28">
       <PageHeader
-        title="💬 AIに相談"
+        title="AIに相談"
+        Icon={MessageCircle}
         subtitle="あなた専属のAI管理栄養士"
         back
       />

@@ -2,9 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 type Props = {
   title: string;
+  /** タイトル左に表示するアイコン（lucide） */
+  Icon?: LucideIcon;
   subtitle?: string;
   /** 戻るボタンの挙動：URL指定 / true=router.back() / 省略=非表示。onBack 指定時はこちらを無視 */
   back?: string | true;
@@ -18,6 +21,7 @@ type Props = {
 
 export default function PageHeader({
   title,
+  Icon,
   subtitle,
   back,
   onBack,
@@ -54,8 +58,9 @@ export default function PageHeader({
         ) : (
           <div className="w-12" />
         )}
-        <h1 className="text-base font-bold text-white truncate flex-1 text-center">
-          {title}
+        <h1 className="text-base font-bold text-white truncate flex-1 text-center flex items-center justify-center gap-1.5">
+          {Icon && <Icon className="w-4 h-4" strokeWidth={2.4} />}
+          <span className="truncate">{title}</span>
         </h1>
         <div className="w-12 flex justify-end">{rightSlot}</div>
       </div>
