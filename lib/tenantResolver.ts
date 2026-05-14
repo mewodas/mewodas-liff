@@ -1,0 +1,67 @@
+// テナント解決ロジック
+//
+// Notion「FitMeal テナント」DB から TenantConfig を読み込み、メモリキャッシュ（5分TTL）。
+// マスタの env を引き継ぐ部分（APIキー等）と Notion からの動的部分（顧客DB ID, LIFF ID等）を合成。
+
+import { listTenantRows } from './notion';
+import type { TenantConfig } from './tenant';
+import { FITMEAL_TENANTS_DB_ID } from './tenant';
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let cache: { tenants: Map<string, TenantConfig>; liffMap: Map<string, TenantConfig>; expiry: number } | null = null;
+
+function baseConfig(): Omit<TenantConfig, 'id' | 'name' | 'notionCustomerDbId' | 'notionFoodDbId' | 'liffId'> {
+  return {
+    notionApiKey: process.env.NOTION_API_KEY || '',
+    driveFolderId: process.env.DRIVE_PARENT_FOLDER_ID,
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    gasEndpoint: process.env.GAS_RECORD_ENDPOINT,
+    themeColor: '#059669',
+    defaultGoals: { kcal: 2000, P: 100, F: 56, C: 275 },
+  };
+}
+
+async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liffMap: Map<string, TenantConfig> }> {
+  if (cache && Date.now() < cache.expiry) {
+    return { tenants: cache.tenants, liffMap: cache.liffMap };
+  }
+  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  const tenants = new Map<string, TenantConfig>();
+  const liffMap = new Map<string, TenantConfig>();
+  const base = baseConfig();
+  for (const r of rows) {
+    if (!r.tenantId || !r.customerDbId || !r.foodDbId) continue;
+    if (r.status === '解約') continue;
+    const cfg: TenantConfig = {
+      id: r.tenantId,
+      name: r.name,
+      notionCustomerDbId: r.customerDbId,
+      notionFoodDbId: r.foodDbId,
+      liffId: r.liffId ?? undefined,
+      ...base,
+    };
+    tenants.set(r.tenantId, cfg);
+    if (r.liffId) liffMap.set(r.liffId, cfg);
+  }
+  cache = { tenants, liffMap, expiry: Date.now() + CACHE_TTL_MS };
+  return { tenants, liffMap };
+}
+
+export async function getTenantByIdAsync(id: string): Promise<TenantConfig | null> {
+  const { tenants } = await loadTenants();
+  return tenants.get(id) ?? null;
+}
+
+export async function resolveTenantByLiffId(liffId: string): Promise<TenantConfig | null> {
+  const { liffMap } = await loadTenants();
+  return liffMap.get(liffId) ?? null;
+}
+
+export async function listAllTenants(): Promise<TenantConfig[]> {
+  const { tenants } = await loadTenants();
+  return Array.from(tenants.values());
+}
+
+export function invalidateTenantCache(): void {
+  cache = null;
+}

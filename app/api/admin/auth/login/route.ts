@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
   }
 
-  const cookie = createSessionCookie(email);
-  const res = NextResponse.json({ ok: true, email });
+  // env の ADMIN_EMAIL とログインメールが一致するのでマスタ確定
+  const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
+  const res = NextResponse.json({ ok: true, email, role: 'master' });
   res.cookies.set(cookie.name, cookie.value, cookie.options);
   return res;
 }

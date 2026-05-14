@@ -6,6 +6,8 @@ import {
   insertTenantRow,
 } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID, FITMEAL_TENANTS_PARENT_PAGE_ID } from '@/lib/tenant';
+import { withMasterOnly } from '@/lib/withTenant';
+import { invalidateTenantCache } from '@/lib/tenantResolver';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,16 +28,16 @@ function jstToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-export async function GET() {
+export const GET = withMasterOnly(async () => {
   try {
     const tenants = await listTenantRows(FITMEAL_TENANTS_DB_ID);
     return NextResponse.json({ tenants });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withMasterOnly(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const name = String(body.name || '').trim();
@@ -69,6 +71,9 @@ export async function POST(req: NextRequest) {
       note,
     });
 
+    // 新規テナント追加されたのでキャッシュ無効化
+    invalidateTenantCache();
+
     return NextResponse.json({
       ok: true,
       tenantId,
@@ -81,4 +86,4 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

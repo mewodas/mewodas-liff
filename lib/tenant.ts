@@ -70,11 +70,19 @@ export function getTenantById(id?: string | null): TenantConfig {
 }
 
 /**
- * 現在のデフォルトテナントを返す。
- * Phase 1（単一テナント運用）では常にメヲダス。
- * Phase 2 以降：リクエストコンテキスト（LIFF Channel ID、サブドメイン等）から判定する。
+ * 現在のテナントを返す。
+ * - AsyncLocalStorage に context があればそれを返す（withAdminTenant/withLiffTenant で設定）
+ * - 未設定ならフォールバックで MEWODAS（既存挙動互換）
  */
 export function getCurrentTenant(): TenantConfig {
+  // 循環import回避のため inline require
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getCurrentTenantFromContext } = require('./tenantContext') as typeof import('./tenantContext');
+  return getCurrentTenantFromContext() ?? MEWODAS_TENANT;
+}
+
+/** ラッパーから使う：context 未解決時のフォールバック */
+export function getDefaultTenant(): TenantConfig {
   return MEWODAS_TENANT;
 }
 

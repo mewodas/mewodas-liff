@@ -3,9 +3,15 @@ import { createHmac, scryptSync, timingSafeEqual, randomBytes } from 'crypto';
 const SESSION_COOKIE = 'admin_session';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7日
 
-type SessionPayload = {
+export type AdminRole = 'master' | 'tenant_admin';
+
+export type SessionPayload = {
   email: string;
   exp: number;
+  /** master = FitMeal経営者、tenant_admin = ジム経営者 */
+  role: AdminRole;
+  /** 現在操作中のテナントID。master の場合は切替可能、tenant_admin の場合は固定 */
+  currentTenantId: string;
 };
 
 function getSecret(): string {
@@ -44,9 +50,16 @@ export function verifySession(token: string | undefined | null): SessionPayload 
   if (provided.length !== expected.length) return null;
   if (!timingSafeEqual(provided, expected)) return null;
   try {
-    const payload = JSON.parse(b64urlDecode(body).toString('utf8')) as SessionPayload;
+    const payload = JSON.parse(b64urlDecode(body).toString('utf8')) as Partial<SessionPayload>;
     if (typeof payload.exp !== 'number' || Date.now() > payload.exp) return null;
-    return payload;
+    if (typeof payload.email !== 'string') return null;
+    // 後方互換: 旧セッション（role/currentTenantId 無し）は master/mewodas として扱う
+    return {
+      email: payload.email,
+      exp: payload.exp,
+      role: payload.role === 'tenant_admin' ? 'tenant_admin' : 'master',
+      currentTenantId: payload.currentTenantId || 'mewodas',
+    };
   } catch {
     return null;
   }
@@ -77,8 +90,16 @@ export function getAdminCredentials(): { email: string; passwordHash: string } |
   return { email, passwordHash };
 }
 
-export function createSessionCookie(email: string): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; maxAge: number } } {
-  const value = signSession({ email, exp: Date.now() + SESSION_TTL_MS });
+export function createSessionCookie(
+  email: string,
+  opts?: { role?: AdminRole; currentTenantId?: string }
+): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; maxAge: number } } {
+  const value = signSession({
+    email,
+    exp: Date.now() + SESSION_TTL_MS,
+    role: opts?.role ?? 'master',
+    currentTenantId: opts?.currentTenantId ?? 'mewodas',
+  });
   return {
     name: SESSION_COOKIE,
     value,
