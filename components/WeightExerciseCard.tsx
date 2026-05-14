@@ -76,7 +76,7 @@ export default function WeightExerciseCard({
             {hasExercise ? (
               initialExerciseContent ? (
                 <span className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
-                  {initialExerciseContent}
+                  {initialExerciseContent.replace(/\s*\/\s*/g, '\n')}
                 </span>
               ) : (
                 <span className="text-xs text-stone-500">記録あり</span>
@@ -236,7 +236,7 @@ function ExerciseSheet({
 }) {
   const initialItems = initialContent
     ? initialContent
-        .split(/\r?\n/)
+        .split(/\r?\n|\s*\/\s*/)
         .map((s) => s.trim())
         .filter((s) => s.length > 0)
     : [];
