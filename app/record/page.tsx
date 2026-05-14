@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
+import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import PageHeader from '@/components/PageHeader';
 import {
   Camera,
@@ -946,6 +947,7 @@ function LabelResultSheet({
   const [eC, setEC] = useState(String(result.perServing.C));
   const [eKcalInput, setEKcalInput] = useState(String(result.perServing.kcal));
   const [autoCalc, setAutoCalc] = useState(true);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   function n(v: string): number {
     const x = Number(v);
@@ -980,8 +982,17 @@ function LabelResultSheet({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={busy ? undefined : onClose}>
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white pt-3 pb-2 border-b border-stone-200 z-10">
+      <div
+        className={`bg-white shadow-2xl w-full overflow-y-auto ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[90vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="sticky top-0 bg-white pt-3 pb-2 border-b border-stone-200 z-10 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
@@ -1215,6 +1226,7 @@ function EditAnalyzedSheet({
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
   function num(v: string): number {
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -1243,10 +1255,16 @@ function EditAnalyzedSheet({
   return (
     <div className="fixed inset-0 bg-black/40 z-[80] flex items-end" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] flex flex-col"
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
+        <div
+          {...handleProps}
+          className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">食材を修正</h2>

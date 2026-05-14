@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import { Star, CheckCircle2, Home, Calendar as CalendarIcon, Plus, Search, Pencil } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
+import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import {
   loadMyMenu,
   addMyMenuItem,
@@ -320,6 +321,7 @@ function RecordPickerSheet({
   const [targetDate, setTargetDate] = useState<string>(defaultDate);
   const [mealType, setMealType] = useState<MealType>(defaultMeal);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
   const dayLabel =
     targetDate === todayStr
       ? '今日'
@@ -329,8 +331,17 @@ function RecordPickerSheet({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={loading ? undefined : onClose}>
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-3 pb-2 border-b border-stone-200">
+      <div
+        className={`bg-white shadow-2xl w-full ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="pt-3 pb-2 border-b border-stone-200 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">記録先を選択</h2>
@@ -438,6 +449,7 @@ function AddItemSheet({
   const [F, setF] = useState('');
   const [C, setC] = useState('');
   const [dbQuery, setDbQuery] = useState('');
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
   const [dbResults, setDbResults] = useState<Array<{
     id: string;
     name: string;
@@ -500,10 +512,16 @@ function AddItemSheet({
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl shadow-2xl w-full h-[88vh] flex flex-col"
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl h-[88vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white pt-3 pb-0 border-b border-stone-200 flex-shrink-0">
+        <div
+          {...handleProps}
+          className="bg-white pt-3 pb-0 border-b border-stone-200 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5 mb-3">
             <h2 className="text-base font-bold text-stone-900 inline-flex items-center gap-1.5">
@@ -747,6 +765,7 @@ function EditItemSheet({
   const [P, setP] = useState(String(item.P));
   const [F, setF] = useState(String(item.F));
   const [C, setC] = useState(String(item.C));
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   function num(v: string): number {
     const n = Number(v);
@@ -771,10 +790,16 @@ function EditItemSheet({
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] flex flex-col"
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
+        <div
+          {...handleProps}
+          className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900"><span className="inline-flex items-center gap-1.5"><Pencil className="w-4 h-4" strokeWidth={2.2}/>マイメニューを編集</span></h2>

@@ -9,6 +9,7 @@ import { ChefHat, Calendar as CalendarIcon, CheckCircle2, Search, Bot, Sparkles,
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
+import { useDraggableSheet } from '@/lib/useDraggableSheet';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -737,6 +738,7 @@ function RecipeSheet({
   const [loading, setLoading] = useState(true);
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -798,10 +800,16 @@ function RecipeSheet({
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={recording ? undefined : onClose}>
       <div
-        className="bg-stone-50 rounded-t-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto"
+        className={`bg-stone-50 shadow-2xl w-full overflow-y-auto ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[90vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-stone-50 pt-3 pb-2 border-b border-stone-200 z-10">
+        <div
+          {...handleProps}
+          className="sticky top-0 bg-stone-50 pt-3 pb-2 border-b border-stone-200 z-10 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900 truncate"><><CookingPot className="w-4 h-4 inline mr-1" strokeWidth={2.2}/>{meal.title}</></h2>

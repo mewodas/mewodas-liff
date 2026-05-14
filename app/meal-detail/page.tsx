@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
+import { useDraggableSheet } from '@/lib/useDraggableSheet';
 
 type MealRecord = {
   pageId: string;
@@ -260,29 +261,31 @@ function MealDetailInner() {
                 >
                   {deletingId === r.pageId ? '…' : '×'}
                 </button>
-                <div className="flex-1 min-w-0 ml-3">
+                <div className="flex-1 min-w-0 ml-3 mr-2">
                   <div className="text-sm font-bold text-stone-900 truncate">
                     {shortName(r)}
                   </div>
-                  <div className="text-[11px] text-stone-600 mt-0.5">
+                  <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                     {Math.round(r.kcal)} kcal ・ P{r1(r.P)}・F{r1(r.F)}・C{r1(r.C)}
                   </div>
                 </div>
-                <button
-                  onClick={() => setEditing(r)}
-                  className="flex-shrink-0 text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 mr-2"
-                  type="button"
-                >
-                  編集
-                </button>
-                <button
-                  onClick={() => setPortionEditing(r)}
-                  className="flex-shrink-0 text-[11px] font-medium text-stone-700 border border-stone-300 px-2.5 py-1 rounded-full active:bg-stone-100"
-                  type="button"
-                  aria-label="分量を変更"
-                >
-                  {unitFromName(shortName(r))}
-                </button>
+                <div className="flex flex-col items-stretch gap-1 flex-shrink-0 w-16">
+                  <button
+                    onClick={() => setEditing(r)}
+                    className="text-[11px] font-bold text-emerald-700 border border-emerald-500 py-1 rounded-full active:bg-emerald-50 text-center"
+                    type="button"
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => setPortionEditing(r)}
+                    className="text-[10px] font-medium text-stone-700 border border-stone-300 py-1 rounded-full active:bg-stone-100 text-center truncate px-1"
+                    type="button"
+                    aria-label="分量を変更"
+                  >
+                    {unitFromName(shortName(r))}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -355,6 +358,7 @@ function PortionSheet({
   const [multiplier, setMultiplier] = useState('1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   const m = Number(multiplier);
   const valid = Number.isFinite(m) && m > 0 && m <= 20;
@@ -396,8 +400,17 @@ function PortionSheet({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[75] flex items-end" onClick={saving ? undefined : onClose}>
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-3 pb-2 border-b border-stone-200">
+      <div
+        className={`bg-white shadow-2xl w-full ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="pt-3 pb-2 border-b border-stone-200 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">分量（人前）を変更</h2>
@@ -548,6 +561,7 @@ function EditModal({
   const [C, setC] = useState(String(r1(record.C)));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   const numOr = (v: string): number => {
     const n = Number(v);
@@ -589,10 +603,16 @@ function EditModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={saving ? undefined : onClose}>
       <div
-        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] overflow-y-auto"
+        className={`bg-white shadow-2xl w-full overflow-y-auto ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white pt-3 pb-2 border-b border-stone-200 z-10">
+        <div
+          {...handleProps}
+          className="sticky top-0 bg-white pt-3 pb-2 border-b border-stone-200 z-10 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900">食事を編集</h2>

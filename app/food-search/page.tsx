@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import { Search, CheckCircle2, Home, Calendar as CalendarIcon, UtensilsCrossed, Trash2 } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { invalidate } from '@/lib/clientCache';
+import { useDraggableSheet } from '@/lib/useDraggableSheet';
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -529,14 +530,21 @@ function CartSheet({
 }) {
   const lines = Object.values(cart);
   const count = lines.reduce((acc, l) => acc + l.qty, 0);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={saving ? undefined : onClose}>
       <div
-        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] flex flex-col"
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
+        <div
+          {...handleProps}
+          className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
           <div className="flex justify-between items-center px-5">
             <h2 className="text-base font-bold text-stone-900 inline-flex items-center gap-1.5">
