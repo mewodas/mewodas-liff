@@ -170,12 +170,19 @@ export default function RecordPage() {
     }
   }
 
-  async function saveLabel(quantity: number) {
+  async function saveLabel(
+    quantity: number,
+    edited?: {
+      name: string;
+      perServing: { kcal: number; P: number; F: number; C: number };
+    }
+  ) {
     if (!userId || !labelResult) return;
     setLabelBusy(true);
     setError(null);
     try {
-      const k = labelResult.perServing;
+      const name = edited?.name || labelResult.name;
+      const k = edited?.perServing || labelResult.perServing;
       const res = await fetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,7 +190,7 @@ export default function RecordPage() {
           lineUserId: userId,
           mealType,
           date: targetDate,
-          title: `${labelResult.name}（${quantity}× ${labelResult.servingLabel}）`,
+          title: `${name}（${quantity}× ${labelResult.servingLabel}）`,
           kcal: Math.round(k.kcal * quantity),
           P: Math.round(k.P * quantity * 10) / 10,
           F: Math.round(k.F * quantity * 10) / 10,
@@ -857,7 +864,7 @@ export default function RecordPage() {
           day={dayLabel}
           mealType={mealType}
           onClose={() => setLabelResult(null)}
-          onSave={(q) => saveLabel(q)}
+          onSave={(q, edited) => saveLabel(q, edited)}
         />
       )}
     </main>
@@ -883,17 +890,54 @@ function LabelResultSheet({
   day: string;
   mealType: string;
   onClose: () => void;
-  onSave: (quantity: number) => void;
+  onSave: (
+    quantity: number,
+    edited?: {
+      name: string;
+      perServing: { kcal: number; P: number; F: number; C: number };
+    }
+  ) => void;
 }) {
   const [quantity, setQuantity] = useState('1');
+  // 編集機能
+  const [editing, setEditing] = useState(false);
+  const [eName, setEName] = useState(result.name);
+  const [eP, setEP] = useState(String(result.perServing.P));
+  const [eF, setEF] = useState(String(result.perServing.F));
+  const [eC, setEC] = useState(String(result.perServing.C));
+  const [eKcalInput, setEKcalInput] = useState(String(result.perServing.kcal));
+  const [autoCalc, setAutoCalc] = useState(true);
+
+  function n(v: string): number {
+    const x = Number(v);
+    return Number.isFinite(x) && x >= 0 ? x : 0;
+  }
+  const calcKcal = Math.round(n(eP) * 4 + n(eF) * 9 + n(eC) * 4);
+  const editedPerServing = {
+    kcal: autoCalc ? calcKcal : Math.round(n(eKcalInput)),
+    P: Math.round(n(eP) * 10) / 10,
+    F: Math.round(n(eF) * 10) / 10,
+    C: Math.round(n(eC) * 10) / 10,
+  };
+
   const q = Math.max(0.1, Number(quantity) || 1);
-  const k = result.perServing;
+  // 表示用：編集中なら編集値、そうでなければ元の値
+  const displayName = editing ? eName : result.name;
+  const k = editing ? editedPerServing : result.perServing;
   const total = {
     kcal: Math.round(k.kcal * q),
     P: Math.round(k.P * q * 10) / 10,
     F: Math.round(k.F * q * 10) / 10,
     C: Math.round(k.C * q * 10) / 10,
   };
+
+  function handleSave() {
+    if (editing) {
+      onSave(q, { name: eName.trim() || result.name, perServing: editedPerServing });
+    } else {
+      onSave(q);
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={busy ? undefined : onClose}>
@@ -907,20 +951,126 @@ function LabelResultSheet({
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-stone-50 rounded-xl p-3">
-            <div className="text-xs text-stone-600">商品名</div>
-            <div className="text-base font-bold text-stone-900 mt-0.5">{result.name}</div>
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="text-xs text-stone-600">商品名</div>
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-[11px] font-bold text-emerald-700 border border-emerald-600 px-2.5 py-0.5 rounded-full active:bg-emerald-50"
+                >
+                  編集
+                </button>
+              )}
+            </div>
+            {editing ? (
+              <input
+                type="text"
+                value={eName}
+                onChange={(e) => setEName(e.target.value)}
+                className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            ) : (
+              <div className="text-base font-bold text-stone-900 mt-0.5">{displayName}</div>
+            )}
             <div className="text-[11px] text-stone-600 mt-1">単位：{result.servingLabel}</div>
           </div>
 
-          <div className="bg-white border border-stone-200 rounded-xl p-3">
-            <div className="text-xs font-bold text-stone-700 mb-2">📊 読み取り結果（{result.servingLabel}）</div>
-            <div className="grid grid-cols-4 gap-2 text-center mb-2">
-              <Cell label="kcal" value={k.kcal} />
-              <Cell label="P (g)" value={k.P} />
-              <Cell label="F (g)" value={k.F} />
-              <Cell label="C (g)" value={k.C} />
+          {editing ? (
+            <div className="bg-stone-50 border border-emerald-300 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-bold text-stone-700">📊 栄養素を補正（{result.servingLabel}）</div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-rose-600 mb-1 block">P タンパク質(g)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={eP}
+                    onChange={(e) => setEP(e.target.value)}
+                    className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-amber-600 mb-1 block">F 脂質(g)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={eF}
+                    onChange={(e) => setEF(e.target.value)}
+                    className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-sky-600 mb-1 block">C 炭水化物(g)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={eC}
+                    onChange={(e) => setEC(e.target.value)}
+                    className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+              <div className="bg-white border border-stone-200 rounded-xl p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-stone-700">kcal カロリー</label>
+                  <button
+                    type="button"
+                    onClick={() => setAutoCalc((v) => !v)}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      autoCalc
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={autoCalc ? String(calcKcal) : eKcalInput}
+                  onChange={(e) => setEKcalInput(e.target.value)}
+                  disabled={autoCalc}
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+                />
+                {autoCalc && (
+                  <p className="text-[10px] text-emerald-700 mt-1">
+                    P×4 + F×9 + C×4 = {calcKcal}kcal
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  // 元の値に戻す
+                  setEName(result.name);
+                  setEP(String(result.perServing.P));
+                  setEF(String(result.perServing.F));
+                  setEC(String(result.perServing.C));
+                  setEKcalInput(String(result.perServing.kcal));
+                  setAutoCalc(true);
+                  setEditing(false);
+                }}
+                className="w-full text-[11px] text-stone-600 underline active:text-stone-800"
+              >
+                編集をやめて元に戻す
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white border border-stone-200 rounded-xl p-3">
+              <div className="text-xs font-bold text-stone-700 mb-2">📊 読み取り結果（{result.servingLabel}）</div>
+              <div className="grid grid-cols-4 gap-2 text-center mb-2">
+                <Cell label="kcal" value={k.kcal} />
+                <Cell label="P (g)" value={k.P} />
+                <Cell label="F (g)" value={k.F} />
+                <Cell label="C (g)" value={k.C} />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-bold text-stone-700 mb-1 block">食べた量（{result.servingLabel} の倍数）</label>
@@ -965,7 +1115,7 @@ function LabelResultSheet({
           )}
 
           <button
-            onClick={() => onSave(q)}
+            onClick={handleSave}
             disabled={busy}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
