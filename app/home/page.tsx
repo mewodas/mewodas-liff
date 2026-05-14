@@ -315,7 +315,11 @@ function HomePageInner() {
 
         {/* クイックアクション */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <QuickAction href="/record" icon="📝" label="記録する" />
+          <QuickAction
+            href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
+            icon="📝"
+            label="記録する"
+          />
           <QuickAction href="/chat" icon="💬" label="AI食事相談" />
           <QuickAction
             href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
@@ -1274,11 +1278,12 @@ function MealSection({
   const pctOfDay =
     dayTotalKcal > 0 ? Math.round((totals.kcal / dayTotalKcal) * 100) : 0;
   const hasRecords = records.length > 0;
-  const detailHref = `/meal-detail?date=${selectedDate}&meal=${encodeURIComponent(mealType)}`;
-  const recordHref = `/record?meal=${encodeURIComponent(mealType)}`;
-  const dbHref = `/food-search?meal=${encodeURIComponent(mealType)}`;
-  const memoHref = `/record?meal=${encodeURIComponent(mealType)}&memo=1`;
-  const myMenuHref = `/my-menu?meal=${encodeURIComponent(mealType)}`;
+  const datePart = `date=${selectedDate}`;
+  const detailHref = `/meal-detail?${datePart}&meal=${encodeURIComponent(mealType)}`;
+  const recordHref = `/record?${datePart}&meal=${encodeURIComponent(mealType)}`;
+  const dbHref = `/food-search?${datePart}&meal=${encodeURIComponent(mealType)}`;
+  const memoHref = `/record?${datePart}&meal=${encodeURIComponent(mealType)}&memo=1`;
+  const myMenuHref = `/my-menu?${datePart}&meal=${encodeURIComponent(mealType)}`;
 
   return (
     <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">

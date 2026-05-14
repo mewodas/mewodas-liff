@@ -25,10 +25,12 @@ export async function POST(req: NextRequest) {
     let items: ItemPayload[] = [];
     const images: Array<{ base64: string; mimeType: string }> = [];
 
+    let date = '';
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       lineUserId = String(formData.get('lineUserId') || '');
-      day = String(formData.get('day') || '今日');
+      day = String(formData.get('day') || '');
+      date = String(formData.get('date') || '');
       mealType = String(formData.get('mealType') || '');
       comment = String(formData.get('comment') || '');
       const itemsJson = String(formData.get('items') || '[]');
@@ -49,7 +51,8 @@ export async function POST(req: NextRequest) {
     } else {
       const body = await req.json();
       lineUserId = body.lineUserId || '';
-      day = body.day || '今日';
+      day = body.day || '';
+      date = body.date || '';
       mealType = body.mealType || '';
       comment = body.comment || '';
       items = Array.isArray(body.items) ? body.items : [];
@@ -88,7 +91,10 @@ export async function POST(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    const targetDate = getTargetDate(day);
+    // date(yyyy-MM-dd) があればそれを優先、なければ day(今日/昨日) から算出
+    const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : getTargetDate(day || '今日');
     const trimmedComment = comment.trim() || null;
 
     // 各アイテムを別レコードとして保存（並列）

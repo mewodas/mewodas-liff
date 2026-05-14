@@ -21,12 +21,22 @@ type AnalyzedItem = {
 
 type Stage = 'hub' | 'memo' | 'analyzing' | 'saving' | 'review' | 'saved';
 
-function jstDateLabel(day: DayLabel = '今日'): string {
+function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-  if (day === '昨日') now.setDate(now.getDate() - 1);
-  const m = now.getMonth() + 1;
-  const d = now.getDate();
-  const wd = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function addDaysStr(dateString: string, delta: number): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function formatJpDateLabel(dateString: string): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
   return `${String(m).padStart(2, '0')}月${String(d).padStart(2, '0')}日（${wd}）`;
 }
 
@@ -40,11 +50,13 @@ function guessMeal(): MealType {
 
 export default function RecordPage() {
   const router = useRouter();
+  const todayStr = jstTodayString();
+  const yesterdayStr = addDaysStr(todayStr, -1);
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [day, setDay] = useState<DayLabel>('今日');
+  const [targetDate, setTargetDate] = useState<string>(todayStr);
   const [mealType, setMealType] = useState<MealType>(guessMeal());
   const [comment, setComment] = useState('');
   const [stage, setStage] = useState<Stage>('hub');
@@ -81,8 +93,13 @@ export default function RecordPage() {
           if (mealParam && (['朝食', '昼食', '夕食', '間食'] as string[]).includes(mealParam)) {
             setMealType(mealParam as MealType);
           }
-          const dayParam = params.get('day');
-          if (dayParam === '今日' || dayParam === '昨日') setDay(dayParam);
+          const dateParam = params.get('date');
+          if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+            setTargetDate(dateParam);
+          } else {
+            const dayParam = params.get('day');
+            if (dayParam === '昨日') setTargetDate(addDaysStr(todayStr, -1));
+          }
         }
         setReady(true);
       } catch (e) {
@@ -164,7 +181,7 @@ export default function RecordPage() {
         body: JSON.stringify({
           lineUserId: userId,
           mealType,
-          day,
+          date: targetDate,
           title: `${labelResult.name}（${quantity}× ${labelResult.servingLabel}）`,
           kcal: Math.round(k.kcal * quantity),
           P: Math.round(k.P * quantity * 10) / 10,
@@ -240,7 +257,7 @@ export default function RecordPage() {
     try {
       const formData = new FormData();
       formData.append('lineUserId', userId);
-      formData.append('day', day);
+      formData.append('date', targetDate);
       formData.append('mealType', mealType);
       formData.append('comment', comment);
       formData.append('items', JSON.stringify(selected));
@@ -270,7 +287,13 @@ export default function RecordPage() {
 
   async function handleSkip() {
     if (!userId || skipping) return;
-    const ok = window.confirm(`${day}の${mealType}を「食べなかった」として記録しますか？`);
+    const label =
+      targetDate === todayStr
+        ? '今日'
+        : targetDate === yesterdayStr
+        ? '昨日'
+        : formatJpDateLabel(targetDate);
+    const ok = window.confirm(`${label}の${mealType}を「食べなかった」として記録しますか？`);
     if (!ok) return;
     setSkipping(true);
     setError(null);
@@ -278,7 +301,7 @@ export default function RecordPage() {
       const res = await fetch('/api/record/skip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: userId, mealType, day }),
+        body: JSON.stringify({ lineUserId: userId, mealType, date: targetDate }),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
@@ -343,6 +366,14 @@ export default function RecordPage() {
     setReanalyzeText('');
     await runAnalyze(photos, combinedMemo);
   }
+
+  // 表示用ラベル：targetDate が「今日/昨日/それ以外」
+  const dayLabel =
+    targetDate === todayStr
+      ? '今日'
+      : targetDate === yesterdayStr
+      ? '昨日'
+      : formatJpDateLabel(targetDate);
 
   const selectedTotal = analyzed
     .filter((it) => !excluded.has(it.index))
@@ -416,7 +447,7 @@ export default function RecordPage() {
           )}
 
           <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 mb-4">
-            <div className="text-xs text-stone-600 mb-1">{day}の{mealType}</div>
+            <div className="text-xs text-stone-600 mb-1">{dayLabel}の{mealType}</div>
             <div className="flex items-baseline justify-between mb-3">
               <div className="text-2xl font-bold text-stone-900">
                 合計 {selectedTotal.kcal} <span className="text-sm font-normal">kcal</span>
@@ -545,7 +576,7 @@ export default function RecordPage() {
       <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200">
-            <div className="text-sm font-semibold text-stone-700 mb-1">{day} の {mealType}</div>
+            <div className="text-sm font-semibold text-stone-700 mb-1">{dayLabel} の {mealType}</div>
             <div className="text-2xl font-bold mb-4 text-stone-900">✅ 記録しました</div>
             <div className="flex items-baseline gap-2 mb-4">
               <div className="text-4xl font-bold text-stone-900">{savedTotal.kcal}</div>
@@ -631,27 +662,48 @@ export default function RecordPage() {
           <div className="text-center mb-4">
             <div className="text-xs text-stone-500 mb-1">記録対象</div>
             <div className="text-2xl font-bold text-stone-900">
-              {day === '今日' ? '今日' : '昨日'}
-              <span className="text-base font-normal text-stone-600 ml-2">{jstDateLabel(day)}</span>
+              {dayLabel}
+              {targetDate !== todayStr && targetDate !== yesterdayStr && (
+                <></>
+              )}
+              {(targetDate === todayStr || targetDate === yesterdayStr) && (
+                <span className="text-base font-normal text-stone-600 ml-2">
+                  {formatJpDateLabel(targetDate)}
+                </span>
+              )}
             </div>
             <div className="mt-2 inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
               {mealType}
             </div>
           </div>
 
-          <div className="flex gap-2 mb-3">
-            {(['今日', '昨日'] as DayLabel[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDay(d)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
-                  day === d ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setTargetDate(todayStr)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
+                targetDate === todayStr ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
+              }`}
+            >
+              今日
+            </button>
+            <button
+              onClick={() => setTargetDate(yesterdayStr)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${
+                targetDate === yesterdayStr ? 'bg-emerald-500 text-white shadow-sm' : 'bg-stone-100 text-stone-700 border border-stone-300'
+              }`}
+            >
+              昨日
+            </button>
           </div>
+          <input
+            type="date"
+            value={targetDate}
+            max={todayStr}
+            onChange={(e) => {
+              if (e.target.value) setTargetDate(e.target.value);
+            }}
+            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
+          />
           <div className="grid grid-cols-4 gap-2">
             {(['朝食', '昼食', '夕食', '間食'] as MealType[]).map((m) => (
               <button
@@ -685,7 +737,7 @@ export default function RecordPage() {
           <HubButton
             icon="⭐"
             label="マイメニュー"
-            onClick={() => router.push(`/my-menu?day=${encodeURIComponent(day)}&meal=${encodeURIComponent(mealType)}`)}
+            onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
           />
           <HubButton
             icon="🔍"
@@ -791,7 +843,7 @@ export default function RecordPage() {
         <LabelResultSheet
           result={labelResult}
           busy={labelBusy}
-          day={day}
+          day={dayLabel}
           mealType={mealType}
           onClose={() => setLabelResult(null)}
           onSave={(q) => saveLabel(q)}

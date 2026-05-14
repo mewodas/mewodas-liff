@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { lineUserId, mealType, day } = body;
+    const { lineUserId, mealType, day, date } = body;
 
     if (!lineUserId || !mealType) {
       return NextResponse.json({ error: 'lineUserId, mealType は必須です' }, { status: 400 });
@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const targetDate = getTargetDate(day || '今日');
+    const targetDate =
+      typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? date
+        : getTargetDate(day || '今日');
     const pfc = {
       kcal: 0,
       P: 0,
