@@ -70,6 +70,7 @@ export default function RecordPage() {
   const libraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [labelResult, setLabelResult] = useState<{
     name: string;
     servingLabel: string;
@@ -659,11 +660,11 @@ export default function RecordPage() {
 
         {/* 大きな日付・食事区分セレクタ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-5 border border-stone-200">
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <button
               type="button"
               onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200"
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
               aria-label="前日"
             >
               ◀
@@ -678,30 +679,48 @@ export default function RecordPage() {
             <button
               type="button"
               onClick={() => {
+                const el = dateInputRef.current;
+                if (!el) return;
+                const anyEl = el as HTMLInputElement & { showPicker?: () => void };
+                if (typeof anyEl.showPicker === 'function') {
+                  anyEl.showPicker();
+                } else {
+                  el.click();
+                }
+              }}
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-base flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+              aria-label="カレンダーから選択"
+            >
+              📅
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 const next = addDaysStr(targetDate, 1);
                 if (next <= todayStr) setTargetDate(next);
               }}
               disabled={targetDate >= todayStr}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 disabled:opacity-30"
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 disabled:opacity-30 flex-shrink-0"
               aria-label="翌日"
             >
               ▶
             </button>
           </div>
-          <div className="text-center mb-3">
-            <div className="inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
-              {mealType}
-            </div>
-          </div>
           <input
+            ref={dateInputRef}
             type="date"
             value={targetDate}
             max={todayStr}
             onChange={(e) => {
               if (e.target.value) setTargetDate(e.target.value);
             }}
-            className="w-full bg-stone-50 text-stone-900 border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
+            className="sr-only"
           />
+          <div className="text-center mb-3">
+            <div className="inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
+              {mealType}
+            </div>
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {(['朝食', '昼食', '夕食', '間食'] as MealType[]).map((m) => (
               <button
