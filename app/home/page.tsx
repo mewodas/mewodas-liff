@@ -871,31 +871,20 @@ function DateStrip({
   }, []);
 
   return (
-    <div className="relative mb-4 -mx-4">
-      {canScrollLeft && (
-        <button
-          type="button"
-          onClick={() => scrollByAmount(-200)}
-          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-md flex items-center justify-center text-stone-700 text-sm font-bold active:bg-stone-100"
-          aria-label="前の日付へ"
-        >
-          ◀
-        </button>
-      )}
-      {canScrollRight && (
-        <button
-          type="button"
-          onClick={() => scrollByAmount(200)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-md flex items-center justify-center text-stone-700 text-sm font-bold active:bg-stone-100"
-          aria-label="次の日付へ"
-        >
-          ▶
-        </button>
-      )}
+    <div className="mb-4 -mx-4 flex items-center gap-1 px-2">
+      <button
+        type="button"
+        onClick={() => scrollByAmount(-200)}
+        disabled={!canScrollLeft}
+        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 text-xs font-bold active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
+        aria-label="前の日付へ"
+      >
+        ◀
+      </button>
       <div
         ref={scrollRef}
         onScroll={updateArrows}
-        className="px-4 overflow-x-auto scrollbar-hide"
+        className="flex-1 overflow-x-auto scrollbar-hide"
       >
         <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
           {dates.map((d) => {
@@ -945,6 +934,15 @@ function DateStrip({
         })}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={() => scrollByAmount(200)}
+        disabled={!canScrollRight}
+        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 text-xs font-bold active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
+        aria-label="次の日付へ"
+      >
+        ▶
+      </button>
     </div>
   );
 }
