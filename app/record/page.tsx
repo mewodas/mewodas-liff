@@ -50,6 +50,8 @@ export default function RecordPage() {
   const [stage, setStage] = useState<Stage>('hub');
   const [analyzed, setAnalyzed] = useState<AnalyzedItem[]>([]);
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
+  const [editingItem, setEditingItem] = useState<AnalyzedItem | null>(null);
+  const [reanalyzeText, setReanalyzeText] = useState('');
   const [savedTotal, setSavedTotal] = useState<{ kcal: number; P: number; F: number; C: number } | null>(null);
   const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -315,6 +317,33 @@ export default function RecordPage() {
     });
   }
 
+  function updateItem(idx: number, patch: Partial<Omit<AnalyzedItem, 'index'>>) {
+    setAnalyzed((prev) =>
+      prev.map((it) => {
+        if (it.index !== idx) return it;
+        const merged = { ...it, ...patch };
+        // PFC が更新されたら kcal を自動計算（Atwater 4/9/4）
+        if (
+          patch.P !== undefined ||
+          patch.F !== undefined ||
+          patch.C !== undefined
+        ) {
+          merged.kcal = Math.round(merged.P * 4 + merged.F * 9 + merged.C * 4);
+        }
+        return merged;
+      })
+    );
+  }
+
+  async function reanalyzeWithText() {
+    const txt = reanalyzeText.trim();
+    if (!txt) return;
+    // 既存メモ + 補正テキストを結合して再解析
+    const combinedMemo = (comment ? comment + '\n' : '') + '【AI解析の補正】' + txt;
+    setReanalyzeText('');
+    await runAnalyze(photos, combinedMemo);
+  }
+
   const selectedTotal = analyzed
     .filter((it) => !excluded.has(it.index))
     .reduce(
@@ -404,44 +433,80 @@ export default function RecordPage() {
           </div>
 
           <h2 className="text-sm font-bold text-stone-800 mb-2 px-1">
-            🍽 識別された食材（チェックを外すと除外）
+            🍽 識別された食材（左でON/OFF・右の✏️で編集）
           </h2>
           <div className="space-y-2">
             {analyzed.map((item) => {
               const isExcluded = excluded.has(item.index);
               return (
-                <button
+                <div
                   key={item.index}
-                  onClick={() => toggleItem(item.index)}
-                  className={`w-full flex items-center bg-white border rounded-xl px-3 py-3 active:bg-stone-50 ${
+                  className={`w-full flex items-center bg-white border rounded-xl px-3 py-3 ${
                     isExcluded ? 'border-stone-200 opacity-50' : 'border-emerald-300'
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold mr-3 ${
-                    isExcluded ? 'bg-stone-300' : 'bg-emerald-500'
-                  }`}>
-                    {isExcluded ? '' : '✓'}
-                  </div>
-                  <div className="w-5 h-5 rounded-full bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center justify-center mr-3">
-                    {item.index}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className={`text-sm font-bold truncate ${isExcluded ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
-                      {item.name}
+                  <button
+                    type="button"
+                    onClick={() => toggleItem(item.index)}
+                    className="flex items-center flex-1 min-w-0 active:opacity-70"
+                  >
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold mr-3 flex-shrink-0 ${
+                      isExcluded ? 'bg-stone-300' : 'bg-emerald-500'
+                    }`}>
+                      {isExcluded ? '' : '✓'}
                     </div>
-                    <div className="text-[10px] text-stone-600 mt-0.5">
-                      P{item.P}・F{item.F}・C{item.C}g
+                    <div className="w-5 h-5 rounded-full bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center justify-center mr-3 flex-shrink-0">
+                      {item.index}
                     </div>
-                  </div>
-                  <div className="text-right ml-2">
-                    <div className={`text-sm font-bold ${isExcluded ? 'text-stone-400' : 'text-stone-900'}`}>
-                      {item.kcal}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className={`text-sm font-bold truncate ${isExcluded ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
+                        {item.name}
+                      </div>
+                      <div className="text-[10px] text-stone-600 mt-0.5">
+                        P{item.P}・F{item.F}・C{item.C}g
+                      </div>
                     </div>
-                    <div className="text-[10px] text-stone-500">kcal</div>
-                  </div>
-                </button>
+                    <div className="text-right ml-2 flex-shrink-0">
+                      <div className={`text-sm font-bold ${isExcluded ? 'text-stone-400' : 'text-stone-900'}`}>
+                        {item.kcal}
+                      </div>
+                      <div className="text-[10px] text-stone-500">kcal</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(item)}
+                    className="ml-2 w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center active:bg-emerald-100 active:text-emerald-700 flex-shrink-0"
+                    aria-label="編集"
+                  >
+                    ✏️
+                  </button>
+                </div>
               );
             })}
+          </div>
+
+          {/* AI再解析（補正テキスト） */}
+          <div className="mt-5 bg-white rounded-2xl border border-stone-200 p-4">
+            <div className="text-sm font-bold text-stone-800 mb-1">🔄 AIに補正させる</div>
+            <p className="text-[11px] text-stone-600 mb-2 leading-relaxed">
+              識別が間違っていれば、テキストで補正内容を書いて再解析できます。例：「3番はたらこじゃなくて鮭フレーク」「ご飯は200g」など
+            </p>
+            <textarea
+              value={reanalyzeText}
+              onChange={(e) => setReanalyzeText(e.target.value)}
+              placeholder="例：たらこじゃなくて鮭フレーク、ご飯200g"
+              rows={2}
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={reanalyzeWithText}
+              disabled={!reanalyzeText.trim()}
+              className="w-full mt-2 bg-white border border-emerald-500 text-emerald-700 font-bold py-2.5 rounded-xl active:bg-emerald-50 disabled:opacity-50"
+            >
+              🔄 補正して再解析する
+            </button>
           </div>
         </div>
 
@@ -459,6 +524,17 @@ export default function RecordPage() {
             </button>
           </div>
         </div>
+
+        {editingItem && (
+          <EditAnalyzedSheet
+            item={editingItem}
+            onClose={() => setEditingItem(null)}
+            onSave={(patch) => {
+              updateItem(editingItem.index, patch);
+              setEditingItem(null);
+            }}
+          />
+        )}
       </main>
     );
   }
@@ -872,6 +948,152 @@ function NutRow({ label, value }: { label: string; value: number }) {
     <div>
       <div className="text-lg font-bold text-stone-900">{value}</div>
       <div className="text-[10px] text-stone-600">{label}</div>
+    </div>
+  );
+}
+
+function EditAnalyzedSheet({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: AnalyzedItem;
+  onClose: () => void;
+  onSave: (patch: Partial<Omit<AnalyzedItem, 'index'>>) => void;
+}) {
+  const [name, setName] = useState(item.name);
+  const [P, setP] = useState(String(item.P));
+  const [F, setF] = useState(String(item.F));
+  const [C, setC] = useState(String(item.C));
+  const [kcal, setKcal] = useState(String(item.kcal));
+  const [autoCalc, setAutoCalc] = useState(true);
+
+  function num(v: string): number {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  const calcKcal = Math.round(num(P) * 4 + num(F) * 9 + num(C) * 4);
+  const displayKcal = autoCalc ? calcKcal : num(kcal);
+  const valid = name.trim().length > 0;
+
+  function submit() {
+    if (!valid) return;
+    onSave({
+      name: name.trim(),
+      P: num(P),
+      F: num(F),
+      C: num(C),
+      kcal: displayKcal,
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[80] flex items-end" onClick={onClose}>
+      <div
+        className="bg-white rounded-t-2xl shadow-2xl w-full max-h-[88vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-white pt-3 pb-3 border-b border-stone-200 flex-shrink-0">
+          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2" />
+          <div className="flex justify-between items-center px-5">
+            <h2 className="text-base font-bold text-stone-900">✏️ 食材を修正</h2>
+            <button onClick={onClose} className="text-stone-500 text-2xl leading-none px-2">×</button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">
+              食材名 <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例：鮭フレーク 大さじ2"
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+            <div className="text-xs font-bold text-stone-700 mb-2">栄養素</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-rose-600 mb-1 block">P タンパク質(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={P}
+                  onChange={(e) => setP(e.target.value)}
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-amber-600 mb-1 block">F 脂質(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={F}
+                  onChange={(e) => setF(e.target.value)}
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-sky-600 mb-1 block">C 炭水化物(g)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={C}
+                  onChange={(e) => setC(e.target.value)}
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-stone-700">kcal カロリー</label>
+              <button
+                type="button"
+                onClick={() => setAutoCalc((v) => !v)}
+                className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                  autoCalc
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                {autoCalc ? '✓ PFCから自動計算中' : 'PFCから自動計算'}
+              </button>
+            </div>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={autoCalc ? String(calcKcal) : kcal}
+              onChange={(e) => setKcal(e.target.value)}
+              disabled={autoCalc}
+              className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-base text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100"
+            />
+            {autoCalc && (
+              <p className="text-[10px] text-emerald-700 mt-1">
+                P×4 + F×9 + C×4 = {calcKcal}kcal
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={!valid}
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:bg-stone-300"
+          >
+            💾 変更を保存
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

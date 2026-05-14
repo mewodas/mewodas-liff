@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 選択されたアイテムを集計
+    // 合計（レスポンス用）
     const totals = items.reduce(
       (acc, it) => ({
         kcal: acc.kcal + (it.kcal || 0),
@@ -88,35 +88,38 @@ export async function POST(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    const pfc = {
-      kcal: Math.round(totals.kcal),
-      P: Math.round(totals.P * 10) / 10,
-      F: Math.round(totals.F * 10) / 10,
-      C: Math.round(totals.C * 10) / 10,
-      items: items.map((it) => ({
-        name: it.name,
-        P: it.P,
-        F: it.F,
-        C: it.C,
-      })),
-    };
-
     const targetDate = getTargetDate(day);
-    const notionRes = await saveFoodRecord({
-      customerName: customer.name,
-      lineUserId,
-      pfc,
-      mealType,
-      goals: customer.goals,
-      targetDate,
-      supplementText: comment.trim() || null,
-    });
+    const trimmedComment = comment.trim() || null;
 
-    // Drive保存は非同期
-    if (images.length > 0 && notionRes && notionRes.id) {
+    // 各アイテムを別レコードとして保存（並列）
+    // → ホーム画面で個別の食材として表示できる
+    const saveResults = await Promise.all(
+      items.map((it, idx) =>
+        saveFoodRecord({
+          customerName: customer.name,
+          lineUserId,
+          pfc: {
+            kcal: Math.round(it.kcal || 0),
+            P: Math.round((it.P || 0) * 10) / 10,
+            F: Math.round((it.F || 0) * 10) / 10,
+            C: Math.round((it.C || 0) * 10) / 10,
+            items: [{ name: it.name }],
+          },
+          mealType,
+          goals: customer.goals,
+          targetDate,
+          // 顧客メモは最初のレコードにのみ紐付け（重複を避ける）
+          supplementText: idx === 0 ? trimmedComment : null,
+        })
+      )
+    );
+
+    // Drive保存は最初のレコードにのみ紐付け（画像は1食分共通）
+    const firstRecord = saveResults[0];
+    if (images.length > 0 && firstRecord && firstRecord.id) {
       waitUntil(
         saveImagesToDriveAsync({
-          notionPageId: notionRes.id,
+          notionPageId: firstRecord.id,
           customerName: customer.name,
           lineUserId,
           photos: images,
@@ -124,7 +127,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, pfc });
+    const pfc = {
+      kcal: Math.round(totals.kcal),
+      P: Math.round(totals.P * 10) / 10,
+      F: Math.round(totals.F * 10) / 10,
+      C: Math.round(totals.C * 10) / 10,
+      items: items.map((it) => ({ name: it.name, P: it.P, F: it.F, C: it.C })),
+    };
+
+    return NextResponse.json({ ok: true, pfc, recordCount: saveResults.length });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
