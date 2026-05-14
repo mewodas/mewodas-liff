@@ -2,20 +2,32 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, ChevronLeft, type LucideIcon } from 'lucide-react';
 
 const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
   {
     href: '/admin',
     label: '顧客',
     Icon: Users,
-    match: (p) => p === '/admin' || p.startsWith('/admin/customers'),
+    match: (p) => p === '/admin' || (p.startsWith('/admin/customers') && !p.endsWith('/notifications') && !p.endsWith('/analysis')),
   },
   {
     href: '/admin/meals',
     label: '食事管理',
     Icon: UtensilsCrossed,
     match: (p) => p.startsWith('/admin/meals'),
+  },
+  {
+    href: '/admin/reports',
+    label: 'レポート送付',
+    Icon: Send,
+    match: (p) => p.startsWith('/admin/reports') || p.endsWith('/notifications'),
+  },
+  {
+    href: '/admin/analysis',
+    label: 'AI 分析',
+    Icon: Sparkles,
+    match: (p) => p.startsWith('/admin/analysis') || p.endsWith('/analysis'),
   },
 ];
 

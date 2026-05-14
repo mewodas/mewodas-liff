@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   Calendar as CalendarIcon,
@@ -9,6 +9,8 @@ import {
   Sun,
   Moon,
   Cookie,
+  ChevronLeft,
+  ChevronRight,
   X,
   ImageIcon,
   type LucideIcon,
@@ -35,6 +37,7 @@ type Meal = {
   customerId: string | null;
   customerName: string;
   customerStatus: string | null;
+  groupId: string;
 };
 
 const MEAL_ICON: Record<string, LucideIcon> = {
@@ -49,7 +52,7 @@ const MEAL_COLOR: Record<string, string> = {
   夕食: 'text-indigo-500',
   間食: 'text-pink-500',
 };
-
+const MEAL_TYPES = ['朝食', '昼食', '夕食', '間食'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function jstTodayString(): string {
@@ -78,8 +81,6 @@ function r1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// memo は「食材1 100g / 食材2 1個 / AI識別:...」のような形式。
-// 先頭の「AI識別:」以前を取り出し、ユーザー識別しやすい表示にする。
 function extractFoodLine(m: { title: string; memo: string }): string {
   const memo = (m.memo || '').trim();
   if (memo) {
@@ -91,16 +92,21 @@ function extractFoodLine(m: { title: string; memo: string }): string {
 
 export default function AdminMealsPage() {
   const today = jstTodayString();
-  // 既定：過去7日
-  const [from, setFrom] = useState<string>(addDaysStr(today, -6));
+  const [rangeMode, setRangeMode] = useState<boolean>(false);
+  const [singleDate, setSingleDate] = useState<string>(today);
+  const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
   const [customerId, setCustomerId] = useState<string>('');
-  const [weekday, setWeekday] = useState<string>(''); // '' = all
+  const [mealTypeFilter, setMealTypeFilter] = useState<string>('');
   const [meals, setMeals] = useState<Meal[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<Meal | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveFrom = rangeMode ? from : singleDate;
+  const effectiveTo = rangeMode ? to : singleDate;
 
   useEffect(() => {
     let cancelled = false;
@@ -109,10 +115,10 @@ export default function AdminMealsPage() {
     (async () => {
       try {
         const sp = new URLSearchParams();
-        sp.set('from', from);
-        sp.set('to', to);
+        sp.set('from', effectiveFrom);
+        sp.set('to', effectiveTo);
         if (customerId) sp.set('customerId', customerId);
-        if (weekday) sp.set('weekday', weekday);
+        if (mealTypeFilter) sp.set('mealType', mealTypeFilter);
         const res = await fetch(`/api/admin/meals?${sp.toString()}`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
@@ -128,7 +134,7 @@ export default function AdminMealsPage() {
     return () => {
       cancelled = true;
     };
-  }, [from, to, customerId, weekday]);
+  }, [effectiveFrom, effectiveTo, customerId, mealTypeFilter]);
 
   // 日付ごとにグルーピング
   const grouped = useMemo(() => {
@@ -146,28 +152,118 @@ export default function AdminMealsPage() {
   return (
     <AdminShell title={`食事管理（${totalCount}件）`}>
       <div className="space-y-3">
-        {/* フィルタ */}
+        {/* 日付ナビ */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-stone-600 flex-shrink-0" strokeWidth={2.2} />
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => setFrom(e.target.value)}
-              className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <span className="text-xs text-stone-500">〜</span>
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={(e) => setTo(e.target.value)}
-              className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+          {!rangeMode ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSingleDate(addDaysStr(singleDate, -1))}
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
+                aria-label="前日"
+              >
+                <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+              </button>
+              <div className="flex-1 text-center">
+                <div className="text-lg font-bold text-stone-900 leading-none">
+                  {fmtMd(singleDate)}
+                  <span className="text-xs font-medium text-stone-600 ml-1">
+                    （{WEEKDAYS[weekdayOf(singleDate)]}）
+                  </span>
+                </div>
+                <div className="text-[11px] text-stone-500 mt-0.5">{singleDate}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (singleDate < today) setSingleDate(addDaysStr(singleDate, 1));
+                }}
+                disabled={singleDate >= today}
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0 disabled:opacity-30"
+                aria-label="翌日"
+              >
+                <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
+                  aria-label="カレンダーを開く"
+                >
+                  <CalendarIcon className="w-4 h-4" strokeWidth={2.2} />
+                </button>
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  value={singleDate}
+                  max={today}
+                  onChange={(e) => e.target.value && setSingleDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 pointer-events-none"
+                  tabIndex={-1}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-stone-600 flex-shrink-0" strokeWidth={2.2} />
+              <input
+                type="date"
+                value={from}
+                max={to}
+                onChange={(e) => setFrom(e.target.value)}
+                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-stone-500">〜</span>
+              <input
+                type="date"
+                value={to}
+                min={from}
+                max={today}
+                onChange={(e) => setTo(e.target.value)}
+                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (rangeMode) {
+                  setRangeMode(false);
+                  setSingleDate(today);
+                } else {
+                  setSingleDate(today);
+                }
+              }}
+              className="text-[11px] font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
+            >
+              今日
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRangeMode((v) => !v);
+                if (!rangeMode) {
+                  setFrom(addDaysStr(today, -6));
+                  setTo(today);
+                } else {
+                  setSingleDate(today);
+                }
+              }}
+              className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                rangeMode
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-white text-stone-700 border-stone-300'
+              }`}
+            >
+              {rangeMode ? '日別表示に戻す' : '日付範囲で絞る'}
+            </button>
           </div>
-          <div className="flex gap-2 flex-wrap">
+
+          {/* フィルタ：顧客・食事区分 */}
+          <div className="flex gap-2 flex-wrap pt-1">
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
@@ -180,60 +276,39 @@ export default function AdminMealsPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={weekday}
-              onChange={(e) => setWeekday(e.target.value)}
-              className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">全曜日</option>
-              {WEEKDAYS.map((w, i) => (
-                <option key={i} value={String(i)}>
-                  {w}曜
-                </option>
-              ))}
-            </select>
           </div>
-          <div className="flex gap-1 text-[11px]">
+          <div className="flex gap-1 flex-wrap">
             <button
               type="button"
-              onClick={() => {
-                setFrom(today);
-                setTo(today);
-              }}
-              className="px-2 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
+              onClick={() => setMealTypeFilter('')}
+              className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${
+                mealTypeFilter === ''
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-white text-stone-700 border-stone-300'
+              }`}
             >
-              今日
+              全部
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFrom(addDaysStr(today, -1));
-                setTo(addDaysStr(today, -1));
-              }}
-              className="px-2 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              昨日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFrom(addDaysStr(today, -6));
-                setTo(today);
-              }}
-              className="px-2 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              直近7日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFrom(addDaysStr(today, -29));
-                setTo(today);
-              }}
-              className="px-2 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              直近30日
-            </button>
+            {MEAL_TYPES.map((mt) => {
+              const Icon = MEAL_ICON[mt] || UtensilsCrossed;
+              const color = MEAL_COLOR[mt] || 'text-stone-500';
+              const active = mealTypeFilter === mt;
+              return (
+                <button
+                  key={mt}
+                  type="button"
+                  onClick={() => setMealTypeFilter(mt)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-full border inline-flex items-center gap-1 ${
+                    active
+                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      : 'bg-white text-stone-700 border-stone-300'
+                  }`}
+                >
+                  <Icon className={`w-3 h-3 ${active ? 'text-white' : color}`} strokeWidth={2.4} />
+                  {mt}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -251,12 +326,14 @@ export default function AdminMealsPage() {
           <div className="space-y-3">
             {grouped.map(([date, list]) => (
               <section key={date} className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-stone-900">
-                    {fmtMd(date)}（{WEEKDAYS[weekdayOf(date)]}）
-                  </h3>
-                  <span className="text-[11px] text-stone-500">{list.length}件</span>
-                </div>
+                {(rangeMode || grouped.length > 1) && (
+                  <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-stone-900">
+                      {fmtMd(date)}（{WEEKDAYS[weekdayOf(date)]}）
+                    </h3>
+                    <span className="text-[11px] text-stone-500">{list.length}件</span>
+                  </div>
+                )}
                 <ul className="divide-y divide-stone-100">
                   {list.map((m) => {
                     const Icon = MEAL_ICON[m.mealType] || UtensilsCrossed;
@@ -310,7 +387,13 @@ function Thumb({ url }: { url: string | null }) {
   return (
     <div className="w-14 h-14 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={toDriveThumbnailUrl(url, 200)} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+      <img
+        src={toDriveThumbnailUrl(url, 200)}
+        alt=""
+        className="w-full h-full object-cover"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
     </div>
   );
 }
@@ -352,13 +435,8 @@ function MealDetailModal({ meal, onClose }: { meal: Meal; onClose: () => void })
           <div>
             <div className="text-[10px] font-bold text-stone-500 mb-0.5">食事名・食材</div>
             <div className="text-sm font-bold text-stone-900 whitespace-pre-wrap break-words">
-              {meal.title || meal.memo || '（なし）'}
+              {extractFoodLine(meal)}
             </div>
-            {meal.title && meal.memo && meal.title !== meal.memo && (
-              <div className="text-xs text-stone-700 mt-1 whitespace-pre-wrap break-words">
-                {meal.memo}
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
@@ -386,16 +464,10 @@ function MealDetailModal({ meal, onClose }: { meal: Meal; onClose: () => void })
           </div>
 
           {meal.customerId && (
-            <div className="pt-2 border-t border-stone-100 flex gap-2">
-              <Link
-                href={`/admin/customers/${meal.customerId}/records?date=${meal.date}`}
-                className="flex-1 text-center text-xs font-bold text-emerald-700 border border-emerald-500 px-3 py-2 rounded-xl hover:bg-emerald-50"
-              >
-                この日の全食事を見る
-              </Link>
+            <div className="pt-2 border-t border-stone-100">
               <Link
                 href={`/admin/customers/${meal.customerId}`}
-                className="flex-1 text-center text-xs font-bold text-stone-700 border border-stone-300 px-3 py-2 rounded-xl hover:bg-stone-50"
+                className="block text-center text-xs font-bold text-stone-700 border border-stone-300 px-3 py-2 rounded-xl hover:bg-stone-50"
               >
                 顧客プロフィール
               </Link>

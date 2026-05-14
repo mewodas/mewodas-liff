@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const to = sp.get('to'); // 範囲終了
     const customerId = sp.get('customerId'); // pageId
     const weekday = sp.get('weekday'); // 0-6（日〜土）。'all' は無効値
+    const mealType = sp.get('mealType'); // 朝食/昼食/夕食/間食。空は全部
 
     let startDate: string;
     let endDate: string;
@@ -51,7 +52,9 @@ export async function GET(req: NextRequest) {
         const c = r.lineUserId ? idx.get(r.lineUserId) : undefined;
         if (!c || c.pageId !== customerId) return false;
       }
-      // 曜日フィルタ
+      // 食事区分フィルタ
+      if (mealType && r.mealType !== mealType) return false;
+      // 曜日フィルタ（互換のため残すが、UIからは消す）
       if (weekday !== null && weekday !== '' && weekday !== 'all') {
         const w = Number(weekday);
         if (Number.isFinite(w) && w >= 0 && w <= 6) {
@@ -63,9 +66,62 @@ export async function GET(req: NextRequest) {
       return true;
     });
 
-    // 顧客名を埋め込んだ拡張オブジェクトに変換
-    const enriched = filtered.map((r) => {
+    // 同写真食事をグルーピング:
+    // 同じ (lineUserId, date, mealType) で recordedAt が ±60秒以内なら同じ "写真" 由来とみなす
+    // → imageUrl を持つ records から兄弟へ伝播 + groupId を付与
+    type Enriched = {
+      pageId: string;
+      date: string;
+      recordedAt: string;
+      mealType: string;
+      title: string;
+      memo: string;
+      kcal: number;
+      P: number;
+      F: number;
+      C: number;
+      imageUrl: string | null;
+      details: typeof filtered[number]['details'];
+      lineUserId: string;
+      customerId: string | null;
+      customerName: string;
+      customerStatus: string | null;
+      groupId: string;
+    };
+    const sorted = [...filtered].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+    const groupAssign = new Map<string, { groupId: string; imageUrl: string | null }>(); // pageId → group情報
+    let groupCounter = 0;
+    type GroupBucket = { groupId: string; lastTime: number; imageUrl: string | null };
+    const buckets = new Map<string, GroupBucket>(); // key: lineUserId|date|mealType
+    for (const r of sorted) {
+      const key = `${r.lineUserId || ''}|${r.date}|${r.mealType}`;
+      const t = Date.parse(r.recordedAt) || 0;
+      const existing = buckets.get(key);
+      let bucket = existing;
+      if (!existing || Math.abs(t - existing.lastTime) > 60_000) {
+        groupCounter++;
+        bucket = { groupId: `g${groupCounter}`, lastTime: t, imageUrl: r.imageUrl || null };
+        buckets.set(key, bucket);
+      } else {
+        bucket = existing;
+        bucket.lastTime = t;
+        if (!bucket.imageUrl && r.imageUrl) bucket.imageUrl = r.imageUrl;
+      }
+      groupAssign.set(r.pageId, { groupId: bucket.groupId, imageUrl: bucket.imageUrl });
+    }
+    // 2nd pass: バケット最終確定 imageUrl を全 members へ伝播
+    for (const r of sorted) {
+      const key = `${r.lineUserId || ''}|${r.date}|${r.mealType}`;
+      const bucket = buckets.get(key);
+      const entry = groupAssign.get(r.pageId);
+      if (entry && bucket && entry.groupId === bucket.groupId && bucket.imageUrl) {
+        entry.imageUrl = bucket.imageUrl;
+      }
+    }
+
+    const enriched: Enriched[] = filtered.map((r) => {
       const c = r.lineUserId ? idx.get(r.lineUserId) : undefined;
+      const g = groupAssign.get(r.pageId);
       return {
         pageId: r.pageId,
         date: r.date,
@@ -77,12 +133,13 @@ export async function GET(req: NextRequest) {
         P: r.P,
         F: r.F,
         C: r.C,
-        imageUrl: r.imageUrl,
+        imageUrl: g?.imageUrl ?? r.imageUrl,
         details: r.details,
         lineUserId: r.lineUserId || '',
         customerId: c?.pageId || null,
         customerName: c?.name || '不明',
         customerStatus: c?.foodStatus || null,
+        groupId: g?.groupId || '',
       };
     });
 
