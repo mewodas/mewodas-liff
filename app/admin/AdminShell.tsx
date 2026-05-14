@@ -1,8 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { LogOut, Users, ChevronLeft } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut, Users, UtensilsCrossed, ChevronLeft, type LucideIcon } from 'lucide-react';
+
+const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
+  {
+    href: '/admin',
+    label: '顧客',
+    Icon: Users,
+    match: (p) => p === '/admin' || p.startsWith('/admin/customers'),
+  },
+  {
+    href: '/admin/meals',
+    label: '食事管理',
+    Icon: UtensilsCrossed,
+    match: (p) => p.startsWith('/admin/meals'),
+  },
+];
 
 export default function AdminShell({
   title,
@@ -14,6 +29,7 @@ export default function AdminShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname() || '';
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
@@ -47,6 +63,27 @@ export default function AdminShell({
             ログアウト
           </button>
         </div>
+        <nav className="max-w-5xl mx-auto px-4">
+          <div className="flex gap-1 -mb-px">
+            {TABS.map((t) => {
+              const active = t.match(pathname);
+              return (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold border-b-2 ${
+                    active
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <t.Icon className="w-4 h-4" strokeWidth={2.2} />
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-4">{children}</main>
     </div>

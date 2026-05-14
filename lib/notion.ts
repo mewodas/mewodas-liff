@@ -47,6 +47,7 @@ export type FoodRecord = {
   imageUrl: string | null;
   title: string;
   details: NutritionDetailsRecord | null;
+  lineUserId?: string;
 };
 
 async function notionRequest(
@@ -421,7 +422,46 @@ function notionPageToFoodRecord(page: { id: string; properties: Record<string, u
     imageUrl: p['画像URL']?.url || null,
     title: p['食事メモ']?.title?.[0]?.plain_text || '',
     details,
+    lineUserId: p['LINE_UserID']?.rich_text?.[0]?.plain_text || undefined,
   };
+}
+
+export async function getAllFoodRecordsByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<FoodRecord[]> {
+  const tenant = getTenantNotion();
+  const results: FoodRecord[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < 20; i++) {
+    const body: Record<string, unknown> = {
+      filter: {
+        and: [
+          { property: '日付', date: { on_or_after: startDate } },
+          { property: '日付', date: { on_or_before: endDate } },
+        ],
+      },
+      sorts: [
+        { property: '日付', direction: 'descending' },
+        { timestamp: 'created_time', direction: 'descending' },
+      ],
+      page_size: 100,
+    };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionRequest('POST', `/databases/${tenant.foodDbId}/query`, body);
+    if (Array.isArray(res.results)) {
+      for (const page of res.results) {
+        try {
+          results.push(notionPageToFoodRecord(page));
+        } catch {
+          // skip
+        }
+      }
+    }
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return results;
 }
 
 // AI補正データ分析用：日付範囲内の全顧客の食事記録から AI推定値 vs 現在値の差分を計算

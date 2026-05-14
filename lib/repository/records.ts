@@ -6,12 +6,20 @@
 import {
   getFoodRecordsByDate,
   getFoodRecordsByDateRange,
+  getAllFoodRecordsByDateRange,
   updateFoodRecord,
   deleteFoodRecord,
   type FoodRecord,
 } from '@/lib/notion';
 
 export type { FoodRecord };
+
+export async function listAllRecordsInRange(
+  startDate: string,
+  endDate: string
+): Promise<FoodRecord[]> {
+  return getAllFoodRecordsByDateRange(startDate, endDate);
+}
 
 export type RecordPatch = {
   kcal?: number;
