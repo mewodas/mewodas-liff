@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCorrectionRecords } from '@/lib/notion';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -34,7 +35,7 @@ function daysAgo(n: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withAdminTenant(async (req) => {
   try {
     // 簡易認証：ADMIN_KEY と一致するかチェック
     const queryKey = req.nextUrl.searchParams.get('key');
@@ -144,4 +145,4 @@ export async function GET(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

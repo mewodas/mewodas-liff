@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   createNotification,
   listAllNotifications,
@@ -7,20 +7,21 @@ import {
   type NotificationCategory,
 } from '@/lib/notifications';
 import { getCustomer } from '@/lib/repository/customers';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET() {
+export const GET = withAdminTenant(async () => {
   if (!isNotificationsConfigured()) {
     return NextResponse.json({ configured: false, notifications: [] });
   }
   const notifications = await listAllNotifications(100);
   return NextResponse.json({ configured: true, notifications });
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAdminTenant(async (req) => {
   if (!isNotificationsConfigured()) {
     return NextResponse.json(
       { error: 'NOTION_NOTIFICATIONS_DB_ID 未設定（通知DB を作成して環境変数を設定してください）' },
@@ -59,4 +60,4 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

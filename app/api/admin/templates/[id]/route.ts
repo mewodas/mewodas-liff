@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { updateTemplate, deleteTemplate, isTemplatesConfigured } from '@/lib/templates';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
   if (!isTemplatesConfigured()) return NextResponse.json({ error: 'NOTION_TEMPLATES_DB_ID 未設定' }, { status: 503 });
   try {
     const { id } = await params;
@@ -25,12 +23,9 @@ export async function PATCH(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAdminTenant(async (_req, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     await deleteTemplate(id);
@@ -38,4 +33,4 @@ export async function DELETE(
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

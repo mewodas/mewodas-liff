@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Plus, ExternalLink, Mail } from 'lucide-react';
+import { Building2, Plus, Mail } from 'lucide-react';
 import AdminShell from '../AdminShell';
 
 type Tenant = {
@@ -60,8 +60,8 @@ export default function AdminTenantsPage() {
         ) : (
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             {tenants.map((t) => (
-              <li key={t.pageId} className="p-4">
-                <div className="flex items-start gap-3">
+              <li key={t.pageId}>
+                <Link href={`/admin/tenants/${t.pageId}`} className="flex items-start gap-3 p-4 hover:bg-stone-50 active:bg-stone-100">
                   <Building2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" strokeWidth={2.2} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -77,26 +77,6 @@ export default function AdminTenantsPage() {
                       </div>
                     )}
                     <div className="flex gap-2 mt-2 flex-wrap">
-                      {t.customerDbId && (
-                        <a
-                          href={`https://www.notion.so/${t.customerDbId.replace(/-/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] font-bold text-stone-700 border border-stone-300 px-2 py-0.5 rounded-full hover:bg-stone-50 inline-flex items-center gap-0.5"
-                        >
-                          顧客DB <ExternalLink className="w-2.5 h-2.5" strokeWidth={2.4} />
-                        </a>
-                      )}
-                      {t.foodDbId && (
-                        <a
-                          href={`https://www.notion.so/${t.foodDbId.replace(/-/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] font-bold text-stone-700 border border-stone-300 px-2 py-0.5 rounded-full hover:bg-stone-50 inline-flex items-center gap-0.5"
-                        >
-                          食事DB <ExternalLink className="w-2.5 h-2.5" strokeWidth={2.4} />
-                        </a>
-                      )}
                       {t.liffId ? (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                           LIFF: {t.liffId.slice(0, 16)}...
@@ -108,7 +88,7 @@ export default function AdminTenantsPage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

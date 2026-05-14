@@ -1,19 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { listTemplates, createTemplate, isTemplatesConfigured, DEFAULT_TEMPLATES } from '@/lib/templates';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET() {
+export const GET = withAdminTenant(async () => {
   if (!isTemplatesConfigured()) {
     return NextResponse.json({ configured: false, templates: DEFAULT_TEMPLATES });
   }
   const templates = await listTemplates();
   return NextResponse.json({ configured: true, templates });
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAdminTenant(async (req) => {
   if (!isTemplatesConfigured()) {
     return NextResponse.json({ error: 'NOTION_TEMPLATES_DB_ID 未設定' }, { status: 503 });
   }
@@ -33,4 +34,4 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});

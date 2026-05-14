@@ -20,7 +20,8 @@ export type Staff = {
 };
 
 function getDbId(): string | null {
-  return process.env.NOTION_STAFF_DB_ID || null;
+  // env > フォールバック（FitMeal スタッフ DB）
+  return process.env.NOTION_STAFF_DB_ID || '3c460c49a58d4d8daee197dbe211cb4b';
 }
 
 export function isStaffConfigured(): boolean {

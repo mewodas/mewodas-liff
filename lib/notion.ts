@@ -406,6 +406,28 @@ export type TenantRow = {
   startDate: string | null;
 };
 
+export async function updateTenantRow(
+  pageId: string,
+  patch: { liffId?: string | null; plan?: string; ownerEmail?: string; status?: string; note?: string }
+): Promise<void> {
+  const properties: Record<string, unknown> = {};
+  if (patch.liffId !== undefined) {
+    properties['LIFF ID'] = patch.liffId
+      ? { rich_text: [{ type: 'text', text: { content: patch.liffId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.plan !== undefined) properties['プラン'] = { select: { name: patch.plan } };
+  if (patch.ownerEmail !== undefined) properties['オーナーメール'] = { email: patch.ownerEmail };
+  if (patch.status !== undefined) properties['契約状態'] = { select: { name: patch.status } };
+  if (patch.note !== undefined) {
+    properties['備考'] = patch.note
+      ? { rich_text: [{ type: 'text', text: { content: patch.note } }] }
+      : { rich_text: [] };
+  }
+  if (Object.keys(properties).length === 0) return;
+  await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+}
+
 export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> {
   const data = await notionRequest('POST', `/databases/${tenantsDbId}/query`, { page_size: 100 });
   return (data.results || []).map((page: { id: string; properties: Record<string, any> }) => {

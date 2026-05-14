@@ -1,17 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { listStaff, createStaff, isStaffConfigured } from '@/lib/staff';
+import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET() {
+export const GET = withAdminTenant(async () => {
   if (!isStaffConfigured()) return NextResponse.json({ configured: false, staff: [] });
   const staff = await listStaff();
   return NextResponse.json({ configured: true, staff });
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAdminTenant(async (req) => {
   if (!isStaffConfigured()) {
     return NextResponse.json({ error: 'NOTION_STAFF_DB_ID 未設定' }, { status: 503 });
   }
@@ -28,4 +29,4 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-}
+});
