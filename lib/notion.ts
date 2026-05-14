@@ -24,6 +24,11 @@ export type Customer = {
   targetWeight: number | null;
   targetDate: string | null;
   foodSheetPageId: string | null;
+  gender: string | null;
+  heightCm: number | null;
+  age: number | null;
+  activityLevel: string | null;
+  plan: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -119,6 +124,11 @@ export async function getCustomerByLineId(
       const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
       return m ? m[1] : null;
     })(),
+    gender: p['性別']?.select?.name ?? null,
+    heightCm: p['身長(cm)']?.number ?? null,
+    age: p['年齢']?.number ?? null,
+    activityLevel: p['活動レベル']?.select?.name ?? null,
+    plan: p['プラン']?.select?.name ?? null,
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -147,6 +157,11 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
       const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
       return m ? m[1] : null;
     })(),
+    gender: p['性別']?.select?.name ?? null,
+    heightCm: p['身長(cm)']?.number ?? null,
+    age: p['年齢']?.number ?? null,
+    activityLevel: p['活動レベル']?.select?.name ?? null,
+    plan: p['プラン']?.select?.name ?? null,
   };
 }
 
@@ -156,7 +171,10 @@ export async function listAllCustomers(): Promise<Customer[]> {
   let cursor: string | undefined;
   // 全ページ取得（最大1000人想定 → 10ページまで）
   for (let i = 0; i < 10; i++) {
-    const body: Record<string, unknown> = { page_size: 100 };
+    const body: Record<string, unknown> = {
+      page_size: 100,
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+    };
     if (cursor) body.start_cursor = cursor;
     const res = await notionRequest('POST', `/databases/${tenant.customerDbId}/query`, body);
     if (Array.isArray(res.results)) {
@@ -190,6 +208,11 @@ export async function updateCustomer(
     targetWeight?: number | null;
     targetDate?: string | null;
     foodStatus?: string | null;
+    gender?: string | null;
+    heightCm?: number | null;
+    age?: number | null;
+    activityLevel?: string | null;
+    plan?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -207,6 +230,21 @@ export async function updateCustomer(
   }
   if (patch.foodStatus !== undefined) {
     properties['食事管理ステータス'] = patch.foodStatus === null ? { select: null } : { select: { name: patch.foodStatus } };
+  }
+  if (patch.gender !== undefined) {
+    properties['性別'] = patch.gender === null ? { select: null } : { select: { name: patch.gender } };
+  }
+  if (patch.heightCm !== undefined) {
+    properties['身長(cm)'] = patch.heightCm === null ? { number: null } : { number: patch.heightCm };
+  }
+  if (patch.age !== undefined) {
+    properties['年齢'] = patch.age === null ? { number: null } : { number: patch.age };
+  }
+  if (patch.activityLevel !== undefined) {
+    properties['活動レベル'] = patch.activityLevel === null ? { select: null } : { select: { name: patch.activityLevel } };
+  }
+  if (patch.plan !== undefined) {
+    properties['プラン'] = patch.plan === null ? { select: null } : { select: { name: patch.plan } };
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });

@@ -87,12 +87,36 @@ export async function POST(
 
     const rangeLabel = `${from} 〜 ${today}（${days}日間）`;
 
+    // 日別データ（チャート用）— 期間内の全日を埋めて、記録なしは null
+    const daily: Array<{ date: string; kcal: number | null; P: number | null; F: number | null; C: number | null; count: number }> = [];
+    for (let i = 0; i < days; i++) {
+      const d = addDays(from, i);
+      const v = byDay.get(d);
+      daily.push({
+        date: d,
+        kcal: v ? Math.round(v.kcal) : null,
+        P: v ? Math.round(v.P * 10) / 10 : null,
+        F: v ? Math.round(v.F * 10) / 10 : null,
+        C: v ? Math.round(v.C * 10) / 10 : null,
+        count: v ? v.count : 0,
+      });
+    }
+
+    const target = {
+      currentWeight: customer.currentWeight,
+      targetWeight: customer.targetWeight,
+      targetDate: customer.targetDate,
+    };
+
     if (totalDays === 0) {
       return NextResponse.json({
         analysis: null,
         message: '期間内に食事記録がないため分析を実行できません',
         rangeLabel,
         stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
+        daily,
+        goals: customer.goals,
+        target,
       });
     }
 
@@ -110,6 +134,9 @@ export async function POST(
       analysis,
       rangeLabel,
       stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
+      daily,
+      goals: customer.goals,
+      target,
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });

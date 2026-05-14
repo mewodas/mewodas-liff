@@ -16,14 +16,14 @@ type Customer = {
   targetDate: string | null;
 };
 
-const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '進行中', '設定中', '休止中', '卒業'];
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('進行中');
+  const [statusFilter, setStatusFilter] = useState<string>('すべて');
 
   useEffect(() => {
     (async () => {
@@ -132,6 +132,8 @@ function StatusBadge({ status }: { status: string | null }) {
   const cls =
     status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+      : status === '設定中'
+      ? 'bg-violet-100 text-violet-700 border-violet-300'
       : status === '休止中'
       ? 'bg-amber-100 text-amber-800 border-amber-300'
       : status === '卒業'

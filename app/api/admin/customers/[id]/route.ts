@@ -33,6 +33,11 @@ export async function PATCH(
     if ('targetWeight' in body) patch.targetWeight = body.targetWeight;
     if ('targetDate' in body) patch.targetDate = body.targetDate;
     if ('foodStatus' in body) patch.foodStatus = body.foodStatus;
+    if ('gender' in body) patch.gender = body.gender;
+    if ('heightCm' in body) patch.heightCm = body.heightCm;
+    if ('age' in body) patch.age = body.age;
+    if ('activityLevel' in body) patch.activityLevel = body.activityLevel;
+    if ('plan' in body) patch.plan = body.plan;
     await patchCustomer(id, patch);
     const customer = await getCustomer(id);
     return NextResponse.json({ ok: true, customer });

@@ -7,7 +7,7 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function fmtMd(s: string): string {
   const [, m, d] = s.split('-');
-  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
+  return `${parseInt(m, 10).toString().padStart(2, '0')}/${parseInt(d, 10).toString().padStart(2, '0')}`;
 }
 function weekdayOf(s: string): number {
   const [y, m, d] = s.split('-').map(Number);
@@ -40,43 +40,61 @@ export default function DateRangePicker({
   const fromRef = useRef<HTMLInputElement>(null);
   const toRef = useRef<HTMLInputElement>(null);
 
+  const isToday = isSingleDay && from === today;
+  const isYesterday = isSingleDay && from === addDaysStr(today, -1);
+  const isLast7 = !isSingleDay && from === addDaysStr(today, -6) && to === today;
+  const isLast30 = !isSingleDay && from === addDaysStr(today, -29) && to === today;
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
+    <div className="space-y-2.5">
+      {/* 単日 or 範囲の見出し（横矢印で前後に移動） */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onShift(-1)}
-          className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
           aria-label="前へ"
         >
-          <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+          <ChevronLeft className="w-5 h-5" strokeWidth={2.4} />
         </button>
-        <div className="flex-1 flex items-center gap-1 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
-          <button
-            type="button"
-            onClick={() => fromRef.current?.showPicker?.()}
-            className="flex-1 text-sm font-bold text-stone-900 text-center hover:text-emerald-700"
-          >
-            {fmtMd(from)}
-            <span className="text-[10px] text-stone-500 ml-1">({WEEKDAYS[weekdayOf(from)]})</span>
-            <input
-              ref={fromRef}
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => e.target.value && onChangeFrom(e.target.value)}
-              className="sr-only"
-              tabIndex={-1}
-            />
-          </button>
-          <span className="text-xs text-stone-400">〜</span>
-          <button
-            type="button"
-            onClick={() => toRef.current?.showPicker?.()}
-            className="flex-1 text-sm font-bold text-stone-900 text-center hover:text-emerald-700"
-          >
-            {fmtMd(to)}
-            <span className="text-[10px] text-stone-500 ml-1">({WEEKDAYS[weekdayOf(to)]})</span>
+
+        <button
+          type="button"
+          onClick={() => fromRef.current?.showPicker?.()}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 py-1 rounded-xl hover:bg-stone-50 active:bg-stone-100"
+        >
+          {isSingleDay ? (
+            <>
+              <span className="text-xl font-bold text-stone-900 tracking-tight">{fmtMd(from)}</span>
+              <span className="text-sm font-bold text-stone-700">（{WEEKDAYS[weekdayOf(from)]}）</span>
+            </>
+          ) : (
+            <span className="text-sm font-bold text-stone-900">
+              {fmtMd(from)}（{WEEKDAYS[weekdayOf(from)]}）
+              <span className="text-stone-400 mx-1">〜</span>
+              {fmtMd(to)}（{WEEKDAYS[weekdayOf(to)]}）
+            </span>
+          )}
+          <CalendarIcon className="w-4 h-4 text-stone-400 ml-0.5" strokeWidth={2.2} />
+          <input
+            ref={fromRef}
+            type="date"
+            value={from}
+            max={isSingleDay ? today : to}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) return;
+              if (isSingleDay) {
+                onChangeFrom(v);
+                onChangeTo(v);
+              } else {
+                onChangeFrom(v);
+              }
+            }}
+            className="sr-only"
+            tabIndex={-1}
+          />
+          {!isSingleDay && (
             <input
               ref={toRef}
               type="date"
@@ -87,24 +105,36 @@ export default function DateRangePicker({
               className="sr-only"
               tabIndex={-1}
             />
-          </button>
-          <CalendarIcon className="w-4 h-4 text-stone-400 flex-shrink-0 ml-0.5" strokeWidth={2.2} />
-        </div>
+          )}
+        </button>
+
         <button
           type="button"
           onClick={() => onShift(1)}
           disabled={to >= today}
-          className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0 disabled:opacity-30"
+          className="w-10 h-10 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0 disabled:opacity-30"
           aria-label="次へ"
         >
-          <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
+          <ChevronRight className="w-5 h-5" strokeWidth={2.4} />
         </button>
       </div>
+
+      {/* 範囲指定クイックボタン */}
       <div className="flex gap-1 flex-wrap">
-        <Quick label="今日" onClick={() => { onChangeFrom(today); onChangeTo(today); }} />
-        <Quick label="昨日" onClick={() => { const y = addDaysStr(today, -1); onChangeFrom(y); onChangeTo(y); }} />
-        <Quick label="直近7日" onClick={() => { onChangeFrom(addDaysStr(today, -6)); onChangeTo(today); }} />
-        <Quick label="直近30日" onClick={() => { onChangeFrom(addDaysStr(today, -29)); onChangeTo(today); }} />
+        <Quick label="今日" active={isToday} onClick={() => { onChangeFrom(today); onChangeTo(today); }} />
+        <Quick label="昨日" active={isYesterday} onClick={() => { const y = addDaysStr(today, -1); onChangeFrom(y); onChangeTo(y); }} />
+        <Quick label="直近7日" active={isLast7} onClick={() => { onChangeFrom(addDaysStr(today, -6)); onChangeTo(today); }} />
+        <Quick label="直近30日" active={isLast30} onClick={() => { onChangeFrom(addDaysStr(today, -29)); onChangeTo(today); }} />
+        {!isSingleDay && (
+          <button
+            type="button"
+            onClick={() => toRef.current?.showPicker?.()}
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1"
+          >
+            <CalendarIcon className="w-3 h-3" strokeWidth={2.4} />
+            終了日
+          </button>
+        )}
         <span className="text-[10px] text-stone-400 self-center ml-auto">
           {isSingleDay ? '1日' : `${diffDays(from, to)}日間`}
         </span>
@@ -113,12 +143,16 @@ export default function DateRangePicker({
   );
 }
 
-function Quick({ label, onClick }: { label: string; onClick: () => void }) {
+function Quick({ label, onClick, active = false }: { label: string; onClick: () => void; active?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-700 hover:bg-stone-50"
+      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+        active
+          ? 'bg-emerald-500 text-white border-emerald-500'
+          : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
+      }`}
     >
       {label}
     </button>

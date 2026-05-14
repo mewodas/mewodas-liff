@@ -1,14 +1,13 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Send,
   Sparkles,
   RefreshCw,
-  FileText,
   Check,
+  FileText,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
@@ -26,10 +25,6 @@ function addDaysStr(s: string, n: number): string {
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + n);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-}
-function fmtMd(s: string): string {
-  const [, m, d] = s.split('-');
-  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
 }
 
 export default function AdminReportsPage() {
@@ -54,8 +49,8 @@ function Inner() {
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
   const [staffId, setStaffId] = useState<string>('');
   const [templateId, setTemplateId] = useState<string>('');
-  const [from, setFrom] = useState<string>(addDaysStr(today, -1));
-  const [to, setTo] = useState<string>(addDaysStr(today, -1));
+  const [from, setFrom] = useState<string>(today);
+  const [to, setTo] = useState<string>(today);
 
   const [title, setTitle] = useState(initialDraft ? 'トレーナーからのレポート' : '');
   const [body, setBody] = useState(initialDraft);
@@ -63,6 +58,10 @@ function Inner() {
   const [sending, setSending] = useState(false);
   const [sendLinePush, setSendLinePush] = useState(true);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+
+  // body が「テンプレ由来の初期値」のままか、ユーザーが編集したかを判定するため
+  // テンプレ適用時の値を ref に保持
+  const templateBaselineRef = useRef<{ title: string; body: string }>({ title: '', body: initialDraft });
 
   const startDate = from;
   const endDate = to;
@@ -83,32 +82,39 @@ function Inner() {
         const [cJ, sJ, tJ] = await Promise.all([cRes.json(), sRes.json(), tRes.json()]);
         setCustomers((cJ.customers || []).filter((c: Customer) => !!c.foodStatus));
         setStaffList(sJ.staff || []);
-        setTemplates(tJ.templates || []);
+        const tList: Template[] = tJ.templates || [];
+        setTemplates(tList);
+        // 初期テンプレ選択（URL draft が無いとき最初のテンプレを採用）
+        if (!initialDraft && tList.length > 0) {
+          setTemplateId(tList[0].id);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
-
-  // テンプレ選択時、カテゴリに応じて期間プリセット
-  useEffect(() => {
-    const t = templates.find((x) => x.id === templateId);
-    if (!t) return;
-    if (t.category === '週次レポート') {
-      setFrom(addDaysStr(today, -6));
-      setTo(today);
-    } else if (t.category === '前日レポート') {
-      const y = addDaysStr(today, -1);
-      setFrom(y);
-      setTo(y);
-    }
-  }, [templateId, templates, today]);
+  }, [initialDraft]);
 
   const selectedCustomer = useMemo(() => customers.find((c) => c.pageId === customerId), [customers, customerId]);
   const selectedStaff = useMemo(() => staffList.find((s) => s.id === staffId), [staffList, staffId]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
+
+  // テンプレ切替時：タイトル・本文をテンプレのベーステキストで上書き
+  // ただしユーザーが編集済みなら上書きしない
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    const baseTitle = selectedTemplate.titleTemplate || '';
+    const baseBody = selectedTemplate.useAi
+      ? (selectedTemplate.bodyTemplate || '')
+      : (selectedTemplate.bodyTemplate || '');
+    const userEditedTitle = title !== templateBaselineRef.current.title && title !== '';
+    const userEditedBody = body !== templateBaselineRef.current.body && body !== '';
+    if (!userEditedTitle) setTitle(baseTitle);
+    if (!userEditedBody) setBody(baseBody);
+    templateBaselineRef.current = { title: baseTitle, body: baseBody };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, templates]);
 
   async function generate() {
     if (!customerId) {
@@ -137,6 +143,7 @@ function Inner() {
       const j = await res.json();
       setTitle(j.title || '');
       setBody(j.body || '');
+      templateBaselineRef.current = { title: j.title || '', body: j.body || '' };
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -182,7 +189,7 @@ function Inner() {
   return (
     <AdminShell title="レポート送付">
       <div className="space-y-3">
-        {/* 顧客選択 */}
+        {/* ① 顧客 */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <label className="text-xs font-bold text-stone-700 mb-1 block">① 顧客</label>
           <select
@@ -199,26 +206,9 @@ function Inner() {
           </select>
         </section>
 
-        {/* テンプレ選択 */}
+        {/* ② 期間（食事管理と同じ DateRangePicker・今日デフォルト） */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-          <label className="text-xs font-bold text-stone-700 mb-1 block">② テンプレ</label>
-          <select
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="">テンプレなし（AI 標準分析）</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}（{t.category}）{t.useAi ? ' [AI]' : ''}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        {/* 日付（常時表示） */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-          <div className="text-xs font-bold text-stone-700 mb-2">③ 期間</div>
+          <div className="text-xs font-bold text-stone-700 mb-2">② 期間</div>
           <DateRangePicker
             from={from}
             to={to}
@@ -230,9 +220,9 @@ function Inner() {
           />
         </section>
 
-        {/* スタッフ */}
+        {/* ③ スタッフ */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-          <label className="text-xs font-bold text-stone-700 mb-1 block">④ 送信者（スタッフ）</label>
+          <label className="text-xs font-bold text-stone-700 mb-1 block">③ 送信者（スタッフ）</label>
           <select
             value={staffId}
             onChange={(e) => setStaffId(e.target.value)}
@@ -248,25 +238,82 @@ function Inner() {
           </select>
         </section>
 
-        {/* レポート作成 */}
-        <button
-          type="button"
-          onClick={generate}
-          disabled={generating || !customerId}
-          className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-        >
-          {generating ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
-              生成中…（10〜20秒）
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" strokeWidth={2.2} />
-              レポート作成
-            </>
-          )}
-        </button>
+        {/* ④ テンプレ（チップ形式で並べる・切替で本文が変わる） */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold text-stone-700">④ テンプレ</div>
+            {selectedTemplate && (
+              <span className="text-[10px] text-stone-500">
+                {selectedTemplate.category}
+                {selectedTemplate.useAi ? ' ・AI' : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-1.5 flex-wrap">
+            <TemplateChip
+              label="テンプレなし"
+              active={templateId === ''}
+              onClick={() => setTemplateId('')}
+            />
+            {templates.map((t) => (
+              <TemplateChip
+                key={t.id}
+                label={t.name}
+                useAi={t.useAi}
+                active={templateId === t.id}
+                onClick={() => setTemplateId(t.id)}
+              />
+            ))}
+          </div>
+
+          {/* タイトル */}
+          <div className="pt-1">
+            <label className="text-[10px] font-bold text-stone-700 block mb-1">タイトル</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="タイトルを入力"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* 本文（ベーステキスト、最初から表示） */}
+          <div>
+            <label className="text-[10px] font-bold text-stone-700 block mb-1 inline-flex items-center gap-1">
+              <FileText className="w-3 h-3" strokeWidth={2.4} />
+              本文（ベーステキスト・編集可）
+            </label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={12}
+              placeholder={selectedTemplate?.useAi ? 'AI生成ボタンを押すと本文がここに入ります' : 'テンプレを選ぶとベース本文がここに入ります'}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
+            />
+          </div>
+
+          {/* AI 生成（useAi のテンプレで実データ反映） */}
+          <button
+            type="button"
+            onClick={generate}
+            disabled={generating || !customerId}
+            className="w-full bg-white border border-emerald-500 text-emerald-700 text-xs font-bold py-2 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+          >
+            {generating ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={2.2} />
+                生成中…（10〜20秒）
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5" strokeWidth={2.2} />
+                {selectedTemplate?.useAi ? 'AIで実データから生成' : 'AIで内容を補正'}
+              </>
+            )}
+          </button>
+        </section>
 
         {error && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>}
         {resultMsg && (
@@ -276,96 +323,59 @@ function Inner() {
           </div>
         )}
 
-        {/* プレビュー&編集 */}
-        {(title || body) && (
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
-            <div className="text-xs font-bold text-stone-700">⑤ 内容を確認・編集</div>
-
-            {/* テンプレ切替（インライン） */}
-            <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 space-y-2">
-              <label className="text-[10px] font-bold text-stone-700 block">
-                テンプレート（切替で AI が補正再生成）
-              </label>
-              <select
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">テンプレなし</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}（{t.category}）{t.useAi ? ' [AI]' : ''}
-                  </option>
-                ))}
-              </select>
-              {selectedTemplate && (
-                <div className="bg-white border border-stone-200 rounded-lg p-2 text-[11px] text-stone-700 leading-relaxed">
-                  <div className="font-bold text-stone-800 mb-0.5">{selectedTemplate.name}</div>
-                  {selectedTemplate.titleTemplate && (
-                    <div className="text-[10px] text-stone-500">タイトル雛形: {selectedTemplate.titleTemplate}</div>
-                  )}
-                  {selectedTemplate.useAi ? (
-                    <div className="mt-1 whitespace-pre-wrap break-words">
-                      <span className="text-[10px] text-stone-500">AI指示:</span>{' '}
-                      {selectedTemplate.aiPrompt || '（指示なし。標準で AI が分析）'}
-                    </div>
-                  ) : selectedTemplate.bodyTemplate ? (
-                    <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-[11px]">{selectedTemplate.bodyTemplate}</pre>
-                  ) : null}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={generate}
-                disabled={generating}
-                className="w-full bg-white border border-emerald-500 text-emerald-700 text-xs font-bold py-2 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-1"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} strokeWidth={2.2} />
-                {generating ? '再生成中…' : 'テンプレで AI 再生成'}
-              </button>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold text-stone-700 block mb-1">タイトル</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-stone-700 block mb-1">本文</label>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={14}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={sendLinePush}
-                onChange={(e) => setSendLinePush(e.target.checked)}
-                className="w-4 h-4 accent-emerald-500"
-              />
-              <span className="text-stone-700">LINE プッシュ通知も同時送信</span>
-            </label>
-            <button
-              type="button"
-              onClick={send}
-              disabled={sending || !customerId || !title.trim() || !body.trim()}
-              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" strokeWidth={2.2} />
-              {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} に送信`}
-            </button>
-          </section>
-        )}
+        {/* 送信 */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={sendLinePush}
+              onChange={(e) => setSendLinePush(e.target.checked)}
+              className="w-4 h-4 accent-emerald-500"
+            />
+            <span className="text-stone-700">LINE プッシュ通知も同時送信</span>
+          </label>
+          <button
+            type="button"
+            onClick={send}
+            disabled={sending || !customerId || !title.trim() || !body.trim()}
+            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" strokeWidth={2.2} />
+            {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} に送信`}
+          </button>
+        </section>
 
         {loading && <div className="text-center text-stone-500 py-6">読み込み中…</div>}
       </div>
     </AdminShell>
+  );
+}
+
+function TemplateChip({
+  label,
+  useAi = false,
+  active,
+  onClick,
+}: {
+  label: string;
+  useAi?: boolean;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-[11px] font-bold px-3 py-1.5 rounded-full border inline-flex items-center gap-1 ${
+        active
+          ? 'bg-emerald-500 text-white border-emerald-500'
+          : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
+      }`}
+    >
+      {label}
+      {useAi && (
+        <Sparkles className={`w-3 h-3 ${active ? 'text-white' : 'text-emerald-600'}`} strokeWidth={2.4} />
+      )}
+    </button>
   );
 }

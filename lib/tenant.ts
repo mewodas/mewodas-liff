@@ -38,7 +38,7 @@ const MEWODAS_TENANT: TenantConfig = {
   name: 'メヲダス 五反田店',
   notionApiKey: process.env.NOTION_API_KEY || '',
   notionCustomerDbId:
-    process.env.NOTION_CUSTOMER_DB_ID || '7324e5a590ad46a595f0c6fc58c34816',
+    process.env.NOTION_CUSTOMER_DB_ID || '2d6ec0c0531b4ef6a4c396baa6807546',
   notionFoodDbId:
     process.env.NOTION_FOOD_DB_ID || '8719d5ab23074ea5bf6e77fde352db86',
   driveFolderId: process.env.DRIVE_PARENT_FOLDER_ID,

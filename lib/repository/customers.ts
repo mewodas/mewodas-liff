@@ -17,6 +17,11 @@ export type CustomerPatch = {
   targetWeight?: number | null;
   targetDate?: string | null;
   foodStatus?: string | null;
+  gender?: string | null;
+  heightCm?: number | null;
+  age?: number | null;
+  activityLevel?: string | null;
+  plan?: string | null;
 };
 
 export async function listCustomers(): Promise<Customer[]> {
