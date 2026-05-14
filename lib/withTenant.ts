@@ -23,7 +23,13 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     const tenantId = session.currentTenantId || 'mewodas';
-    const tenant = (await getTenantByIdAsync(tenantId)) || getDefaultTenant();
+    // Notion テナント DB アクセス失敗時はデフォルト（MEWODAS）にフォールバック
+    let tenant;
+    try {
+      tenant = (await getTenantByIdAsync(tenantId)) || getDefaultTenant();
+    } catch {
+      tenant = getDefaultTenant();
+    }
     return runInTenantContext(tenant, () => handler(req, ctx));
   };
 }
@@ -34,7 +40,11 @@ export function withLiffTenant(handler: RouteHandler): RouteHandler {
     const liffId = req.headers.get('x-liff-id') || '';
     let tenant = null;
     if (liffId) {
-      tenant = await resolveTenantByLiffId(liffId);
+      try {
+        tenant = await resolveTenantByLiffId(liffId);
+      } catch {
+        tenant = null;
+      }
     }
     // LIFF ID 未提供 or 未登録ならフォールバック（移行期）
     if (!tenant) tenant = getDefaultTenant();
