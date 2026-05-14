@@ -34,7 +34,7 @@ const items: NavItem[] = [
   },
   {
     href: '/record',
-    label: '記録',
+    label: '食事記録',
     icon: '📝',
     match: (p) => p.startsWith('/record'),
   },

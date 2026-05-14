@@ -318,7 +318,7 @@ function HomePageInner() {
           <QuickAction
             href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
             icon="📝"
-            label="記録する"
+            label="食事記録"
           />
           <QuickAction href="/chat" icon="💬" label="AI食事相談" />
           <QuickAction
