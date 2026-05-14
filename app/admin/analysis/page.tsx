@@ -1,13 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Sparkles,
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   ThumbsUp,
   AlertTriangle,
@@ -17,6 +14,7 @@ import {
   Send,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import DateRangePicker from '../DateRangePicker';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
 
@@ -52,10 +50,6 @@ function diffDays(start: string, end: string): number {
   const e = new Date(ey, em - 1, ed);
   return Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1;
 }
-function fmtMd(s: string): string {
-  const [, m, d] = s.split('-');
-  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
-}
 
 export default function AdminAnalysisPage() {
   return (
@@ -71,8 +65,6 @@ function Inner() {
   const today = jstToday();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
-  const [rangeMode, setRangeMode] = useState<boolean>(true);
-  const [singleDate, setSingleDate] = useState<string>(today);
   const [from, setFrom] = useState<string>(addDaysStr(today, -29));
   const [to, setTo] = useState<string>(today);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -82,7 +74,6 @@ function Inner() {
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -99,9 +90,15 @@ function Inner() {
     })();
   }, []);
 
-  const startDate = rangeMode ? from : singleDate;
-  const endDate = rangeMode ? to : singleDate;
+  const startDate = from;
+  const endDate = to;
+  const isSingleDay = from === to;
   const periodDays = useMemo(() => diffDays(startDate, endDate), [startDate, endDate]);
+
+  function shiftRange(delta: number) {
+    setFrom(addDaysStr(from, delta));
+    setTo(addDaysStr(to, delta));
+  }
 
   async function run() {
     if (!customerId) {
@@ -156,108 +153,17 @@ function Inner() {
           {loadingCustomers && <div className="text-[11px] text-stone-500 mt-1">顧客読み込み中…</div>}
         </section>
 
-        {/* 日付 */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          <div className="text-xs font-bold text-stone-700 mb-1">期間（{periodDays}日間）</div>
-          {!rangeMode ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSingleDate(addDaysStr(singleDate, -1))}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
-                aria-label="前日"
-              >
-                <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="flex-1 text-center">
-                <div className="text-base font-bold text-stone-900">{fmtMd(singleDate)}</div>
-                <div className="text-[10px] text-stone-500">{singleDate}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (singleDate < today) setSingleDate(addDaysStr(singleDate, 1));
-                }}
-                disabled={singleDate >= today}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 disabled:opacity-30"
-                aria-label="翌日"
-              >
-                <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
-                  aria-label="カレンダー"
-                >
-                  <CalendarIcon className="w-4 h-4" strokeWidth={2.2} />
-                </button>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={singleDate}
-                  max={today}
-                  onChange={(e) => e.target.value && setSingleDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 pointer-events-none"
-                  tabIndex={-1}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-stone-600 flex-shrink-0" strokeWidth={2.2} />
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-stone-500">〜</span>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={today}
-                onChange={(e) => setTo(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (rangeMode) {
-                  setRangeMode(false);
-                  setSingleDate(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className="text-[11px] font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRangeMode((v) => !v);
-                if (!rangeMode) {
-                  setFrom(addDaysStr(today, -29));
-                  setTo(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                rangeMode ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-stone-700 border-stone-300'
-              }`}
-            >
-              {rangeMode ? '単日に戻す' : '期間で絞る'}
-            </button>
-          </div>
+        {/* 日付（常時表示） */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
+          <DateRangePicker
+            from={from}
+            to={to}
+            today={today}
+            onChangeFrom={setFrom}
+            onChangeTo={setTo}
+            onShift={shiftRange}
+            isSingleDay={isSingleDay}
+          />
         </section>
 
         <button

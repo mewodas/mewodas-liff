@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, UserCog, ChevronLeft, type LucideIcon } from 'lucide-react';
 
 const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
   {
     href: '/admin',
     label: '顧客',
     Icon: Users,
-    match: (p) => p === '/admin' || (p.startsWith('/admin/customers') && !p.endsWith('/notifications') && !p.endsWith('/analysis')),
+    match: (p) => p === '/admin' || p.startsWith('/admin/customers'),
   },
   {
     href: '/admin/meals',
@@ -21,13 +21,19 @@ const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) 
     href: '/admin/reports',
     label: 'レポート送付',
     Icon: Send,
-    match: (p) => p.startsWith('/admin/reports') || p.endsWith('/notifications'),
+    match: (p) => p.startsWith('/admin/reports') || p.startsWith('/admin/templates'),
   },
   {
     href: '/admin/analysis',
     label: 'AI 分析',
     Icon: Sparkles,
-    match: (p) => p.startsWith('/admin/analysis') || p.endsWith('/analysis'),
+    match: (p) => p.startsWith('/admin/analysis'),
+  },
+  {
+    href: '/admin/staff',
+    label: 'スタッフ',
+    Icon: UserCog,
+    match: (p) => p.startsWith('/admin/staff'),
   },
 ];
 
@@ -75,21 +81,21 @@ export default function AdminShell({
             ログアウト
           </button>
         </div>
-        <nav className="max-w-5xl mx-auto px-4">
-          <div className="flex gap-1 -mb-px">
+        <nav className="max-w-5xl mx-auto px-4 overflow-x-auto">
+          <div className="flex gap-1 -mb-px min-w-max">
             {TABS.map((t) => {
               const active = t.match(pathname);
               return (
                 <Link
                   key={t.href}
                   href={t.href}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold border-b-2 ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
                     active
                       ? 'border-emerald-600 text-emerald-700'
                       : 'border-transparent text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  <t.Icon className="w-4 h-4" strokeWidth={2.2} />
+                  <t.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
                   {t.label}
                 </Link>
               );

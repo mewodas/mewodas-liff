@@ -116,13 +116,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // テンプレ本文がある場合は AI に「これをベースに不足部分を実データで補完して」と指示
+    const templateContext: string[] = [];
+    if (template?.aiPrompt) {
+      templateContext.push(`【トレーナーからの追加指示】\n${template.aiPrompt}`);
+    }
+    if (template?.bodyTemplate) {
+      templateContext.push(
+        `【ベース文面（この構成を尊重し、空欄や曖昧な部分を実データで埋める）】\n${template.bodyTemplate}`
+      );
+    }
+    const augmentedSummary = templateContext.length
+      ? `${templateContext.join('\n\n')}\n\n【期間の記録データ】\n${recordsSummary}`
+      : recordsSummary;
+
     const analysis = await generateCoachingAnalysis({
       customerName: customer.name,
       goals: customer.goals,
       currentWeight: customer.currentWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
-      recordsSummary: (template?.aiPrompt ? `${template.aiPrompt}\n\n` : '') + recordsSummary,
+      recordsSummary: augmentedSummary,
       rangeLabel,
     });
 

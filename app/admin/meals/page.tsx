@@ -1,21 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Calendar as CalendarIcon,
   UtensilsCrossed,
   Sunrise,
   Sun,
   Moon,
   Cookie,
-  ChevronLeft,
-  ChevronRight,
   X,
   ImageIcon,
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
@@ -92,8 +90,6 @@ function extractFoodLine(m: { title: string; memo: string }): string {
 
 export default function AdminMealsPage() {
   const today = jstTodayString();
-  const [rangeMode, setRangeMode] = useState<boolean>(false);
-  const [singleDate, setSingleDate] = useState<string>(today);
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
   const [customerId, setCustomerId] = useState<string>('');
@@ -103,10 +99,15 @@ export default function AdminMealsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<Meal | null>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const effectiveFrom = rangeMode ? from : singleDate;
-  const effectiveTo = rangeMode ? to : singleDate;
+  const effectiveFrom = from;
+  const effectiveTo = to;
+  const isSingleDay = from === to;
+
+  function shiftRange(delta: number) {
+    setFrom(addDaysStr(from, delta));
+    setTo(addDaysStr(to, delta));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -152,131 +153,30 @@ export default function AdminMealsPage() {
   return (
     <AdminShell title={`食事管理（${totalCount}件）`}>
       <div className="space-y-3">
-        {/* 日付ナビ */}
+        {/* 日付ナビ（常時表示） */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          {!rangeMode ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSingleDate(addDaysStr(singleDate, -1))}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
-                aria-label="前日"
-              >
-                <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="flex-1 text-center">
-                <div className="text-lg font-bold text-stone-900 leading-none">
-                  {fmtMd(singleDate)}
-                  <span className="text-xs font-medium text-stone-600 ml-1">
-                    （{WEEKDAYS[weekdayOf(singleDate)]}）
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-500 mt-0.5">{singleDate}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (singleDate < today) setSingleDate(addDaysStr(singleDate, 1));
-                }}
-                disabled={singleDate >= today}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0 disabled:opacity-30"
-                aria-label="翌日"
-              >
-                <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
-                  aria-label="カレンダーを開く"
-                >
-                  <CalendarIcon className="w-4 h-4" strokeWidth={2.2} />
-                </button>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={singleDate}
-                  max={today}
-                  onChange={(e) => e.target.value && setSingleDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 pointer-events-none"
-                  tabIndex={-1}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-stone-600 flex-shrink-0" strokeWidth={2.2} />
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-stone-500">〜</span>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={today}
-                onChange={(e) => setTo(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (rangeMode) {
-                  setRangeMode(false);
-                  setSingleDate(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className="text-[11px] font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRangeMode((v) => !v);
-                if (!rangeMode) {
-                  setFrom(addDaysStr(today, -6));
-                  setTo(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                rangeMode
-                  ? 'bg-emerald-500 text-white border-emerald-500'
-                  : 'bg-white text-stone-700 border-stone-300'
-              }`}
-            >
-              {rangeMode ? '日別表示に戻す' : '日付範囲で絞る'}
-            </button>
-          </div>
-
+          <DateRangePicker
+            from={from}
+            to={to}
+            today={today}
+            onChangeFrom={setFrom}
+            onChangeTo={setTo}
+            onShift={shiftRange}
+            isSingleDay={isSingleDay}
+          />
           {/* フィルタ：顧客・食事区分 */}
-          <div className="flex gap-2 flex-wrap pt-1">
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="flex-1 min-w-[10rem] bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">すべての顧客</option>
-              {customers.map((c) => (
-                <option key={c.pageId} value={c.pageId}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="">すべての顧客</option>
+            {customers.map((c) => (
+              <option key={c.pageId} value={c.pageId}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-1 flex-wrap">
             <button
               type="button"
@@ -326,7 +226,7 @@ export default function AdminMealsPage() {
           <div className="space-y-3">
             {grouped.map(([date, list]) => (
               <section key={date} className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                {(rangeMode || grouped.length > 1) && (
+                {(!isSingleDay || grouped.length > 1) && (
                   <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                     <h3 className="text-sm font-bold text-stone-900">
                       {fmtMd(date)}（{WEEKDAYS[weekdayOf(date)]}）

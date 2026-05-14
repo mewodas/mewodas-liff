@@ -1,24 +1,21 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Send,
   Sparkles,
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   FileText,
-  Users,
   Check,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import DateRangePicker from '../DateRangePicker';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
 type Staff = { id: string; name: string; shop: string; role: string };
-type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean };
+type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string };
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -57,10 +54,8 @@ function Inner() {
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
   const [staffId, setStaffId] = useState<string>('');
   const [templateId, setTemplateId] = useState<string>('');
-  const [rangeMode, setRangeMode] = useState<boolean>(false);
-  const [singleDate, setSingleDate] = useState<string>(today);
-  const [from, setFrom] = useState<string>(addDaysStr(today, -6));
-  const [to, setTo] = useState<string>(today);
+  const [from, setFrom] = useState<string>(addDaysStr(today, -1));
+  const [to, setTo] = useState<string>(addDaysStr(today, -1));
 
   const [title, setTitle] = useState(initialDraft ? 'トレーナーからのレポート' : '');
   const [body, setBody] = useState(initialDraft);
@@ -68,10 +63,14 @@ function Inner() {
   const [sending, setSending] = useState(false);
   const [sendLinePush, setSendLinePush] = useState(true);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const startDate = rangeMode ? from : singleDate;
-  const endDate = rangeMode ? to : singleDate;
+  const startDate = from;
+  const endDate = to;
+  const isSingleDay = from === to;
+  function shiftRange(delta: number) {
+    setFrom(addDaysStr(from, delta));
+    setTo(addDaysStr(to, delta));
+  }
 
   useEffect(() => {
     (async () => {
@@ -93,17 +92,17 @@ function Inner() {
     })();
   }, []);
 
-  // テンプレ選択時、カテゴリに応じて日付モード調整
+  // テンプレ選択時、カテゴリに応じて期間プリセット
   useEffect(() => {
     const t = templates.find((x) => x.id === templateId);
     if (!t) return;
     if (t.category === '週次レポート') {
-      setRangeMode(true);
       setFrom(addDaysStr(today, -6));
       setTo(today);
     } else if (t.category === '前日レポート') {
-      setRangeMode(false);
-      setSingleDate(addDaysStr(today, -1));
+      const y = addDaysStr(today, -1);
+      setFrom(y);
+      setTo(y);
     }
   }, [templateId, templates, today]);
 
@@ -183,24 +182,6 @@ function Inner() {
   return (
     <AdminShell title="レポート送付">
       <div className="space-y-3">
-        {/* 設定リンク */}
-        <div className="flex gap-2 flex-wrap">
-          <Link
-            href="/admin/templates"
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-700 bg-white border border-stone-300 px-3 py-1.5 rounded-full hover:bg-stone-50"
-          >
-            <FileText className="w-3.5 h-3.5" strokeWidth={2.2} />
-            テンプレ管理
-          </Link>
-          <Link
-            href="/admin/staff"
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-700 bg-white border border-stone-300 px-3 py-1.5 rounded-full hover:bg-stone-50"
-          >
-            <Users className="w-3.5 h-3.5" strokeWidth={2.2} />
-            スタッフ管理
-          </Link>
-        </div>
-
         {/* 顧客選択 */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <label className="text-xs font-bold text-stone-700 mb-1 block">① 顧客</label>
@@ -235,108 +216,18 @@ function Inner() {
           </select>
         </section>
 
-        {/* 日付 */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          <div className="text-xs font-bold text-stone-700 mb-1">③ 期間</div>
-          {!rangeMode ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSingleDate(addDaysStr(singleDate, -1))}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
-                aria-label="前日"
-              >
-                <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="flex-1 text-center">
-                <div className="text-base font-bold text-stone-900">{fmtMd(singleDate)}</div>
-                <div className="text-[10px] text-stone-500">{singleDate}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (singleDate < today) setSingleDate(addDaysStr(singleDate, 1));
-                }}
-                disabled={singleDate >= today}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 disabled:opacity-30"
-                aria-label="翌日"
-              >
-                <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
-                  aria-label="カレンダー"
-                >
-                  <CalendarIcon className="w-4 h-4" strokeWidth={2.2} />
-                </button>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={singleDate}
-                  max={today}
-                  onChange={(e) => e.target.value && setSingleDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 pointer-events-none"
-                  tabIndex={-1}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-stone-600 flex-shrink-0" strokeWidth={2.2} />
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-stone-500">〜</span>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={today}
-                onChange={(e) => setTo(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (rangeMode) {
-                  setRangeMode(false);
-                  setSingleDate(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className="text-[11px] font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200"
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRangeMode((v) => !v);
-                if (!rangeMode) {
-                  setFrom(addDaysStr(today, -6));
-                  setTo(today);
-                } else {
-                  setSingleDate(today);
-                }
-              }}
-              className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                rangeMode ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-stone-700 border-stone-300'
-              }`}
-            >
-              {rangeMode ? '単日に戻す' : '期間で絞る'}
-            </button>
-          </div>
+        {/* 日付（常時表示） */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
+          <div className="text-xs font-bold text-stone-700 mb-2">③ 期間</div>
+          <DateRangePicker
+            from={from}
+            to={to}
+            today={today}
+            onChangeFrom={setFrom}
+            onChangeTo={setTo}
+            onShift={shiftRange}
+            isSingleDay={isSingleDay}
+          />
         </section>
 
         {/* スタッフ */}
@@ -389,6 +280,51 @@ function Inner() {
         {(title || body) && (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
             <div className="text-xs font-bold text-stone-700">⑤ 内容を確認・編集</div>
+
+            {/* テンプレ切替（インライン） */}
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 space-y-2">
+              <label className="text-[10px] font-bold text-stone-700 block">
+                テンプレート（切替で AI が補正再生成）
+              </label>
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">テンプレなし</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}（{t.category}）{t.useAi ? ' [AI]' : ''}
+                  </option>
+                ))}
+              </select>
+              {selectedTemplate && (
+                <div className="bg-white border border-stone-200 rounded-lg p-2 text-[11px] text-stone-700 leading-relaxed">
+                  <div className="font-bold text-stone-800 mb-0.5">{selectedTemplate.name}</div>
+                  {selectedTemplate.titleTemplate && (
+                    <div className="text-[10px] text-stone-500">タイトル雛形: {selectedTemplate.titleTemplate}</div>
+                  )}
+                  {selectedTemplate.useAi ? (
+                    <div className="mt-1 whitespace-pre-wrap break-words">
+                      <span className="text-[10px] text-stone-500">AI指示:</span>{' '}
+                      {selectedTemplate.aiPrompt || '（指示なし。標準で AI が分析）'}
+                    </div>
+                  ) : selectedTemplate.bodyTemplate ? (
+                    <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-[11px]">{selectedTemplate.bodyTemplate}</pre>
+                  ) : null}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={generate}
+                disabled={generating}
+                className="w-full bg-white border border-emerald-500 text-emerald-700 text-xs font-bold py-2 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} strokeWidth={2.2} />
+                {generating ? '再生成中…' : 'テンプレで AI 再生成'}
+              </button>
+            </div>
+
             <div>
               <label className="text-[10px] font-bold text-stone-700 block mb-1">タイトル</label>
               <input
@@ -403,7 +339,7 @@ function Inner() {
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                rows={12}
+                rows={14}
                 className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
               />
             </div>
