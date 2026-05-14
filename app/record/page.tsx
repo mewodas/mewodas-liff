@@ -660,7 +660,7 @@ export default function RecordPage() {
 
         {/* 大きな日付・食事区分セレクタ */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-5 border border-stone-200">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-between gap-2 mb-4">
             <button
               type="button"
               onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
@@ -669,13 +669,6 @@ export default function RecordPage() {
             >
               ◀
             </button>
-            <div className="flex-1 text-center">
-              <div className="text-xs text-stone-500 mb-1">記録対象</div>
-              <div className="text-2xl font-bold text-stone-900">{dayLabel}</div>
-              {(targetDate === todayStr || targetDate === yesterdayStr) && (
-                <div className="text-xs text-stone-500 mt-0.5">{formatJpDateLabel(targetDate)}</div>
-              )}
-            </div>
             <button
               type="button"
               onClick={() => {
@@ -688,10 +681,17 @@ export default function RecordPage() {
                   el.click();
                 }
               }}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-base flex items-center justify-center active:bg-stone-200 flex-shrink-0"
-              aria-label="カレンダーから選択"
+              className="flex-1 text-center px-2 py-1 rounded-xl active:bg-stone-50"
+              aria-label="カレンダーから日付を選択"
             >
-              📅
+              <div className="text-xs text-stone-500 mb-1 flex items-center justify-center gap-1">
+                <span>📅</span>
+                <span>記録対象</span>
+              </div>
+              <div className="text-2xl font-bold text-stone-900">{dayLabel}</div>
+              {(targetDate === todayStr || targetDate === yesterdayStr) && (
+                <div className="text-xs text-stone-500 mt-0.5">{formatJpDateLabel(targetDate)}</div>
+              )}
             </button>
             <button
               type="button"
