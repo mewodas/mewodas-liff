@@ -1,11 +1,16 @@
 // テナント（ジム）設定の抽象化レイヤー
 //
-// 現状：単一テナント（メヲダス）のみ対応。
-// 将来：複数ジムを1つのVercelデプロイメントで運用するための土台。
-//
-// 使い方：
-//   const tenant = getTenantById('mewodas');
-//   const customer = await getCustomerByLineId(lineUserId, tenant);
+// 現状：単一テナント（メヲダス）のみ静的に定義。
+// テナント自動プロビジョニング先は Notion「FitMeal テナント」DB（FITMEAL_TENANTS_DB_ID）。
+// 将来：getCurrentTenant() を非同期化してリクエストコンテキストから解決。
+
+/** FitMeal テナント管理用 Notion DB ID */
+export const FITMEAL_TENANTS_DB_ID =
+  process.env.FITMEAL_TENANTS_DB_ID || '4468b0213fd04328b93c13e71fd3dde7';
+
+/** 新規テナント DB の親ページ（🥗 食事管理システム｜メヲダス五反田店） */
+export const FITMEAL_TENANTS_PARENT_PAGE_ID =
+  process.env.FITMEAL_TENANTS_PARENT_PAGE_ID || '34ea47a8738d8155a2b1e9f4607e8986';
 
 export type TenantConfig = {
   /** テナント識別子（gym_id） */

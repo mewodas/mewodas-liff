@@ -257,6 +257,174 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
+// ===== テナント自動プロビジョニング =====
+
+// 新規ジム用の「{ジム名} 顧客」DB を作成。FitMeal 顧客スキーマと同じ構造。
+export async function createTenantCustomerDb(
+  tenantName: string,
+  parentPageId: string
+): Promise<string> {
+  const res = await notionRequest('POST', '/databases', {
+    parent: { type: 'page_id', page_id: parentPageId },
+    title: [{ type: 'text', text: { content: `${tenantName} 顧客` } }],
+    properties: {
+      氏名: { title: {} },
+      LINEユーザーID: { rich_text: {} },
+      食事管理ステータス: {
+        select: {
+          options: [
+            { name: '進行中', color: 'green' },
+            { name: '設定中', color: 'purple' },
+            { name: '休止中', color: 'orange' },
+            { name: '卒業', color: 'blue' },
+          ],
+        },
+      },
+      性別: {
+        select: {
+          options: [
+            { name: '男性', color: 'blue' },
+            { name: '女性', color: 'pink' },
+          ],
+        },
+      },
+      '身長(cm)': { number: {} },
+      年齢: { number: {} },
+      活動レベル: {
+        select: {
+          options: [
+            { name: 'ほぼ運動なし', color: 'gray' },
+            { name: '軽い', color: 'blue' },
+            { name: '中等度', color: 'green' },
+            { name: '激しい', color: 'orange' },
+          ],
+        },
+      },
+      プラン: {
+        select: {
+          options: [
+            { name: '減量', color: 'red' },
+            { name: '維持', color: 'gray' },
+            { name: '増量', color: 'green' },
+          ],
+        },
+      },
+      '現在体重(kg)': { number: {} },
+      '目標体重(kg)': { number: {} },
+      目標達成日: { date: {} },
+      '目標カロリー(kcal)': { number: {} },
+      '目標P(g)': { number: {} },
+      '目標F(g)': { number: {} },
+      '目標C(g)': { number: {} },
+      食事記録リンク: { url: {} },
+    },
+  });
+  return res.id as string;
+}
+
+// 新規ジム用の「{ジム名} 食事記録」DB を作成。既存食事記録DBと同じ構造。
+export async function createTenantFoodDb(
+  tenantName: string,
+  parentPageId: string
+): Promise<string> {
+  const res = await notionRequest('POST', '/databases', {
+    parent: { type: 'page_id', page_id: parentPageId },
+    title: [{ type: 'text', text: { content: `${tenantName} 食事記録` } }],
+    properties: {
+      タイトル: { title: {} },
+      LINEユーザーID: { rich_text: {} },
+      日付: { date: {} },
+      食事区分: {
+        select: {
+          options: [
+            { name: '朝食', color: 'orange' },
+            { name: '昼食', color: 'yellow' },
+            { name: '夕食', color: 'purple' },
+            { name: '間食', color: 'pink' },
+          ],
+        },
+      },
+      カロリー_kcal: { number: {} },
+      タンパク質_g: { number: {} },
+      脂質_g: { number: {} },
+      炭水化物_g: { number: {} },
+      食物繊維_g: { number: {} },
+      塩分_g: { number: {} },
+      鉄分_mg: { number: {} },
+      カルシウム_mg: { number: {} },
+      ビタミンC_mg: { number: {} },
+      食材メモ: { rich_text: {} },
+      画像URL: { url: {} },
+      記録日時: { date: {} },
+    },
+  });
+  return res.id as string;
+}
+
+// テナントDBに新規行を追加
+export async function insertTenantRow(
+  tenantsDbId: string,
+  row: {
+    name: string;
+    tenantId: string;
+    plan: string;
+    customerDbId: string;
+    foodDbId: string;
+    ownerEmail: string;
+    startDate: string;
+    note?: string;
+  }
+): Promise<string> {
+  const res = await notionRequest('POST', '/pages', {
+    parent: { database_id: tenantsDbId },
+    properties: {
+      ジム名: { title: [{ type: 'text', text: { content: row.name } }] },
+      tenant_id: { rich_text: [{ type: 'text', text: { content: row.tenantId } }] },
+      プラン: { select: { name: row.plan } },
+      'Notion 顧客DB ID': { rich_text: [{ type: 'text', text: { content: row.customerDbId } }] },
+      'Notion 食事DB ID': { rich_text: [{ type: 'text', text: { content: row.foodDbId } }] },
+      オーナーメール: { email: row.ownerEmail },
+      契約状態: { select: { name: 'アクティブ' } },
+      契約開始日: { date: { start: row.startDate } },
+      備考: row.note ? { rich_text: [{ type: 'text', text: { content: row.note } }] } : { rich_text: [] },
+    },
+  });
+  return res.id as string;
+}
+
+// テナント一覧を Notion から取得
+export type TenantRow = {
+  pageId: string;
+  name: string;
+  tenantId: string;
+  plan: string | null;
+  customerDbId: string | null;
+  foodDbId: string | null;
+  liffId: string | null;
+  ownerEmail: string | null;
+  status: string | null;
+  startDate: string | null;
+};
+
+export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> {
+  const data = await notionRequest('POST', `/databases/${tenantsDbId}/query`, { page_size: 100 });
+  return (data.results || []).map((page: { id: string; properties: Record<string, any> }) => {
+    const p = page.properties;
+    return {
+      pageId: page.id,
+      name: p['ジム名']?.title?.[0]?.plain_text || '(無名)',
+      tenantId: p['tenant_id']?.rich_text?.[0]?.plain_text || '',
+      plan: p['プラン']?.select?.name || null,
+      customerDbId: p['Notion 顧客DB ID']?.rich_text?.[0]?.plain_text || null,
+      foodDbId: p['Notion 食事DB ID']?.rich_text?.[0]?.plain_text || null,
+      liffId: p['LIFF ID']?.rich_text?.[0]?.plain_text || null,
+      ownerEmail: p['オーナーメール']?.email || null,
+      status: p['契約状態']?.select?.name || null,
+      startDate: p['契約開始日']?.date?.start || null,
+    };
+  });
+}
+
 // 食事記録のPFC・カロリー・メモを部分更新
 export async function updateFoodRecord(
   pageId: string,

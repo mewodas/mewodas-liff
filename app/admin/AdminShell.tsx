@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, UserCog, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, UserCog, Building2, ChevronLeft, type LucideIcon } from 'lucide-react';
 
 const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
   {
@@ -34,6 +34,12 @@ const TABS: { href: string; label: string; Icon: LucideIcon; match: (p: string) 
     label: 'スタッフ',
     Icon: UserCog,
     match: (p) => p.startsWith('/admin/staff'),
+  },
+  {
+    href: '/admin/tenants',
+    label: 'テナント',
+    Icon: Building2,
+    match: (p) => p.startsWith('/admin/tenants'),
   },
 ];
 
