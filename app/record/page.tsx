@@ -889,14 +889,7 @@ export default function RecordPage() {
               disabled={skipping}
               className="w-full bg-white border-2 border-stone-300 text-stone-700 font-bold py-3 rounded-2xl active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {skipping ? (
-                '記録中…'
-              ) : (
-                <>
-                  <Ban className="w-4 h-4 text-stone-500" strokeWidth={2.2} />
-                  {mealType}は食べなかった
-                </>
-              )}
+              {skipping ? '記録中…' : `🚫 ${mealType}は食べなかった`}
             </button>
           )}
         </div>

@@ -1214,14 +1214,7 @@ function MealSection({
                   <div key={r.pageId} className="flex items-center px-4 py-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-stone-900 truncate">
-                        {isSkipped ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Ban className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />
-                            食べなかった
-                          </span>
-                        ) : (
-                          name
-                        )}
+                        {isSkipped ? '🚫 食べなかった' : name}
                       </div>
                       <div className="text-[10px] text-stone-600 mt-0.5">
                         {Math.round(r.kcal)} kcal
