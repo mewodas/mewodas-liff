@@ -861,7 +861,6 @@ function DateStrip({
           const weekday = weekdayNames[date.getDay()];
           const isSelected = d === selectedDate;
           const isToday = d === todayStr;
-          const isFuture = d > todayStr;
           const weekdayColor =
             date.getDay() === 0
               ? 'text-rose-600'
@@ -878,21 +877,19 @@ function DateStrip({
                   ? 'bg-emerald-500 shadow-md'
                   : isToday
                   ? 'bg-white border-2 border-emerald-300'
-                  : isFuture
-                  ? 'bg-stone-50 border border-stone-200 border-dashed'
                   : 'bg-white border border-stone-200'
               }`}
             >
               <span
                 className={`text-[10px] font-bold ${
-                  isSelected ? 'text-white' : isFuture ? 'text-stone-400' : weekdayColor
+                  isSelected ? 'text-white' : weekdayColor
                 }`}
               >
                 {weekday}
               </span>
               <span
                 className={`text-lg font-bold leading-tight ${
-                  isSelected ? 'text-white' : isFuture ? 'text-stone-400' : 'text-stone-900'
+                  isSelected ? 'text-white' : 'text-stone-900'
                 }`}
               >
                 {day}
