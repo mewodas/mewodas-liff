@@ -370,10 +370,11 @@ function HomePageInner() {
           </div>
         )}
 
-        {/* 今日の体重・運動（常時表示・タップで入力/編集） */}
-        {isToday && userId && (
+        {/* 体重・運動カード（未来日以外で表示。過去日もタップで入力/編集可能） */}
+        {userId && selectedDate <= todayStr && (
           <WeightExerciseCard
             selectedDate={selectedDate}
+            isToday={isToday}
             lineUserId={userId}
             initialWeight={today.weight}
             initialExercised={today.exercised}
@@ -444,6 +445,7 @@ function HomePageInner() {
 
 function WeightExerciseCard({
   selectedDate,
+  isToday,
   lineUserId,
   initialWeight,
   initialExercised,
@@ -451,6 +453,7 @@ function WeightExerciseCard({
   onUpdated,
 }: {
   selectedDate: string;
+  isToday: boolean;
   lineUserId: string;
   initialWeight?: string;
   initialExercised?: string;
@@ -464,9 +467,13 @@ function WeightExerciseCard({
   const exercised = initialExercised === '✅';
   const hasExercise = !!initialExercised;
 
+  // 見出し：今日/昨日/MM月DD日
+  const [, mm, dd] = selectedDate.split('-');
+  const heading = isToday ? '今日の記録' : `${parseInt(mm, 10)}月${parseInt(dd, 10)}日の記録`;
+
   return (
     <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
-      <h2 className="text-base font-bold text-stone-900 mb-3">📝 今日の記録</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3">📝 {heading}</h2>
       <div className="grid grid-cols-2 gap-2 items-stretch">
         <button
           type="button"
