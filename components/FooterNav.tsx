@@ -60,7 +60,13 @@ export default function FooterNav() {
               key={it.href}
               href={it.href}
               className={className}
-              data-tour={it.href === '/record' ? 'footer-record' : undefined}
+              data-tour={
+                it.href === '/record'
+                  ? 'footer-record'
+                  : it.href === '/menu'
+                  ? 'footer-menu'
+                  : undefined
+              }
             >
               <span className="leading-none flex items-center justify-center h-6">
                 {it.icon}

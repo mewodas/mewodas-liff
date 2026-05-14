@@ -9,35 +9,25 @@ import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
 
-const HOME_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'date-strip',
-    title: '📅 日付を選ぶ',
-    description:
-      'この横スクロールバーで日付を切り替えます。今日が中央に来るので、過去・未来の食事もここから記録できます。',
-  },
-  {
-    target: 'nutrition-summary',
-    title: '📊 栄養サマリー',
-    description: '今日の摂取カロリー・PFCバランス・達成率がひと目で分かります。',
-  },
-  {
-    target: 'today-record-card',
-    title: '⚖️ 体重と運動を記録',
-    description:
-      'タップでその場で入力できます。書いた内容はそのまま保存され、再記録で上書きされます。',
-  },
-  {
-    target: 'meal-section',
-    title: '🍽 食事を記録',
-    description:
-      '各食事をタップして写真・テキスト・食品DB・マイメニューなどから記録します。AIが食材を識別します。',
-  },
+// アクション型オンボーディング：
+// step1（初回起動）：食事を記録してみよう → 食事記録ボタンを指す
+// step2（食事記録完了後）：振り返りはここから → メニュータブを指す
+const ONBOARDING_STEP1: TourStep[] = [
   {
     target: 'footer-record',
-    title: '📝 下のメニューから',
+    title: 'まずは食事を1つ記録しましょう',
     description:
-      '画面下の「食事記録」からも記録画面を開けます。AI相談やメニュー画面もここから移動できます。',
+      '下の「食事記録」をタップ。写真や食品DB、テキストなどお好きな方法で記録できます。',
+    placement: 'top',
+  },
+];
+const ONBOARDING_STEP2: TourStep[] = [
+  {
+    target: 'footer-menu',
+    title: '記録お疲れさまでした！',
+    description:
+      '「メニュー」タブから履歴・週次レポート・AI献立など、振り返り機能にアクセスできます。',
+    placement: 'top',
   },
 ];
 
@@ -490,13 +480,59 @@ function HomePageInner() {
         <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
       )}
 
-      {/* 初回オンボーディング（テックタッチ） */}
+      {/* オンボーディング（アクション誘導型） */}
       {ready && data && (
-        <OnboardingTour storageKey="mewodas_onboarding_v1" steps={HOME_TOUR_STEPS} />
+        <HomeOnboarding hasRecords={today.recordCount > 0} />
       )}
     </main>
   );
 }
+function HomeOnboarding({ hasRecords }: { hasRecords: boolean }) {
+  const [step, setStep] = useState<'step1' | 'step2' | 'done' | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('mewodas_onboarding_step');
+    if (stored === 'completed') {
+      setStep('done');
+    } else if (stored === 'meal_done') {
+      setStep('step2');
+    } else if (!hasRecords) {
+      setStep('step1');
+    } else {
+      // 既に食事を記録済み（オンボ未経由）→ オンボ完了扱い
+      window.localStorage.setItem('mewodas_onboarding_step', 'completed');
+      setStep('done');
+    }
+  }, [hasRecords]);
+
+  if (step === 'step1') {
+    return (
+      <OnboardingTour
+        storageKey="mewodas_onboarding_step1_seen"
+        steps={ONBOARDING_STEP1}
+      />
+    );
+  }
+  if (step === 'step2') {
+    return (
+      <OnboardingTour
+        storageKey="mewodas_onboarding_step2_seen"
+        steps={ONBOARDING_STEP2}
+        onComplete={() => {
+          try {
+            window.localStorage.setItem('mewodas_onboarding_step', 'completed');
+          } catch {
+            // ignore
+          }
+          setStep('done');
+        }}
+      />
+    );
+  }
+  return null;
+}
+
 function BadgeModal({
   stats,
   onClose,

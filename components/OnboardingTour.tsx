@@ -17,9 +17,11 @@ type Props = {
   steps: TourStep[];
   /** 強制表示（デバッグ用、storageKeyを無視） */
   force?: boolean;
+  /** すべてのステップ完了 or スキップ時に呼ばれる */
+  onComplete?: () => void;
 };
 
-export default function OnboardingTour({ storageKey, steps, force }: Props) {
+export default function OnboardingTour({ storageKey, steps, force, onComplete }: Props) {
   const [active, setActive] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -75,6 +77,7 @@ export default function OnboardingTour({ storageKey, steps, force }: Props) {
         // ignore
       }
     }
+    if (onComplete) onComplete();
   }
 
   function next() {

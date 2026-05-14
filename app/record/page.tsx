@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { initLiff, getLineProfile, closeLiff } from '@/lib/liff';
+import { initLiff, getLineProfile } from '@/lib/liff';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
@@ -87,6 +87,20 @@ export default function RecordPage() {
     note: string;
   } | null>(null);
   const [labelBusy, setLabelBusy] = useState(false);
+
+  // 食事記録が完了したらオンボの段階を進める
+  useEffect(() => {
+    if (stage === 'saved' && typeof window !== 'undefined') {
+      try {
+        const current = window.localStorage.getItem('mewodas_onboarding_step');
+        if (current !== 'completed') {
+          window.localStorage.setItem('mewodas_onboarding_step', 'meal_done');
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [stage]);
 
   useEffect(() => {
     (async () => {
@@ -603,23 +617,17 @@ export default function RecordPage() {
               <NutRow label="C (g)" value={savedTotal.C} />
             </div>
           </div>
-          <div className="flex gap-2 mb-2">
-            <button onClick={reset} className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700">
+          <div className="flex gap-2">
+            <button onClick={reset} className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-50">
               もう一回記録する
             </button>
-            <button
-              onClick={() => { void closeLiff(); }}
-              className="flex-1 bg-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-400"
+            <a
+              href="/home"
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl text-center active:bg-emerald-700"
             >
-              閉じる
-            </button>
+              ホームへ
+            </a>
           </div>
-          <a
-            href="/home"
-            className="block bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl text-center active:bg-stone-50"
-          >
-            🏠 マイページへ
-          </a>
         </div>
       </main>
     );
