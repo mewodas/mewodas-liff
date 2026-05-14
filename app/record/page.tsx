@@ -695,12 +695,8 @@ export default function RecordPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                const next = addDaysStr(targetDate, 1);
-                if (next <= todayStr) setTargetDate(next);
-              }}
-              disabled={targetDate >= todayStr}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 disabled:opacity-30 flex-shrink-0"
+              onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
               aria-label="翌日"
             >
               ▶
@@ -710,7 +706,6 @@ export default function RecordPage() {
             ref={dateInputRef}
             type="date"
             value={targetDate}
-            max={todayStr}
             onChange={(e) => {
               if (e.target.value) setTargetDate(e.target.value);
             }}
