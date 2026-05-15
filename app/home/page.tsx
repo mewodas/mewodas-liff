@@ -172,6 +172,7 @@ function HomePageInner() {
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [refetching, setRefetching] = useState(false); // 日付切替時の再fetch中フラグ
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -270,7 +271,13 @@ function HomePageInner() {
         setError(null);
         return; // freshなら再取得しない
       }
+      // ステイル → バックグラウンドで再fetch、現データは表示し続ける
+      setRefetching(true);
+    } else if (data) {
+      // 別日のキャッシュなし: 旧データを薄く表示しつつ取得（リロード感を消す）
+      setRefetching(true);
     } else {
+      // 初回マウント時のみ「読み込み中...」表示
       setReady(false);
     }
     setError(null);
@@ -307,6 +314,7 @@ function HomePageInner() {
         if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
+        setRefetching(false);
       }
     })();
   }, [userId, selectedDate]);
@@ -409,8 +417,11 @@ function HomePageInner() {
           />
         </div>
 
-        {/* 栄養サマリー（カロミル風） */}
-        <div data-tour="nutrition-summary">
+        {/* 栄養サマリー（カロミル風）— 日付切替中は薄くして fade */}
+        <div
+          data-tour="nutrition-summary"
+          className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}
+        >
           <NutritionSummaryCard totals={totals} goals={goals} />
         </div>
 
@@ -480,7 +491,10 @@ function HomePageInner() {
 
         {/* 体重・運動カード（未来日以外で表示。過去日もタップで入力/編集可能） */}
         {userId && selectedDate <= todayStr && (
-          <div data-tour="today-record-card">
+          <div
+            data-tour="today-record-card"
+            className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}
+          >
           <WeightExerciseCard
             selectedDate={selectedDate}
             isToday={isToday}
@@ -510,6 +524,7 @@ function HomePageInner() {
         )}
 
         {/* 今日の食事（各食事をカード化） */}
+        <div className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}>
         <h2 className="text-base font-bold text-stone-900 mb-2 px-1 flex items-center gap-1.5" data-tour="meal-section">
           <UtensilsCrossed className="w-4 h-4 text-stone-700" strokeWidth={2.2} />
           {isToday ? '今日' : 'この日'}の食事
@@ -553,6 +568,7 @@ function HomePageInner() {
               }}
             />
           ))}
+        </div>
         </div>
 
       </div>
