@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Store, Building2, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, ChevronLeft, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean };
@@ -32,12 +32,6 @@ const TABS: Tab[] = [
     label: 'AI 分析',
     Icon: Sparkles,
     match: (p, base) => p.startsWith(`${base}/analysis`),
-  },
-  {
-    suffix: '/stores',
-    label: '店舗',
-    Icon: Store,
-    match: (p, base) => p.startsWith(`${base}/stores`),
   },
   {
     suffix: '/tenants',
@@ -105,7 +99,7 @@ export default function AdminShell({
                 <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
               </Link>
             ) : isStore ? (
-              <Store className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
+              <Building2 className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             ) : (
               <Users className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             )}

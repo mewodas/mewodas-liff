@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Save, ExternalLink, Mail, Hash, Tag } from 'lucide-react';
+import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 type Tenant = {
@@ -21,6 +21,19 @@ type Tenant = {
 const PLANS = ['5-10名', '11-20名', '21名+', 'モニター', '無料'];
 const STATUSES = ['アクティブ', '休止', '解約', '商談中'];
 
+type Store = {
+  pageId: string;
+  storeId: string;
+  name: string;
+  tenantId: string;
+  address: string;
+  phone: string;
+  hours: string;
+  manager: string;
+  signature: string;
+  active: boolean;
+};
+
 export default function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -33,6 +46,21 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [plan, setPlan] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [status, setStatus] = useState('');
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeFormOpen, setStoreFormOpen] = useState(false);
+  const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
+
+  async function loadStores() {
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/stores`, { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        setStores(j.stores || []);
+      }
+    } catch {
+      // 失敗時は空のまま
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -52,6 +80,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         setLoading(false);
       }
     })();
+    loadStores();
   }, [id]);
 
   async function save() {
@@ -158,6 +187,102 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             </div>
           </section>
 
+          {/* 店舗管理 */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                <StoreIcon className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                店舗（{stores.length}件）
+              </h2>
+              {!storeFormOpen && !editingStoreId && (
+                <button
+                  type="button"
+                  onClick={() => setStoreFormOpen(true)}
+                  className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full hover:bg-emerald-100 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" strokeWidth={2.4} />
+                  店舗追加
+                </button>
+              )}
+            </div>
+
+            {storeFormOpen && tenant && (
+              <StoreForm
+                tenantPageId={tenant.pageId}
+                onCancel={() => setStoreFormOpen(false)}
+                onSaved={() => {
+                  setStoreFormOpen(false);
+                  loadStores();
+                }}
+              />
+            )}
+
+            {stores.length === 0 && !storeFormOpen ? (
+              <div className="text-[11px] text-stone-500 text-center py-3 bg-stone-50 rounded-xl border border-stone-200">
+                店舗が登録されていません
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {stores.map((s) =>
+                  editingStoreId === s.pageId ? (
+                    <li key={s.pageId}>
+                      <StoreForm
+                        tenantPageId={tenant!.pageId}
+                        initial={s}
+                        onCancel={() => setEditingStoreId(null)}
+                        onSaved={() => {
+                          setEditingStoreId(null);
+                          loadStores();
+                        }}
+                      />
+                    </li>
+                  ) : (
+                    <li key={s.pageId} className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 flex items-start gap-2">
+                      <StoreIcon className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-stone-900">{s.name}</span>
+                          <span className="text-[10px] font-mono text-stone-500">[{s.storeId}]</span>
+                        </div>
+                        <div className="text-[11px] text-stone-600 mt-0.5 space-y-0.5">
+                          {s.address && (
+                            <div className="inline-flex items-center gap-1">
+                              <MapPin className="w-3 h-3" strokeWidth={2.2} />
+                              {s.address}
+                            </div>
+                          )}
+                          {s.phone && (
+                            <div className="inline-flex items-center gap-1 ml-2">
+                              <Phone className="w-3 h-3" strokeWidth={2.2} />
+                              {s.phone}
+                            </div>
+                          )}
+                          {s.manager && (
+                            <div className="inline-flex items-center gap-1 ml-2">
+                              <User className="w-3 h-3" strokeWidth={2.2} />
+                              {s.manager}
+                            </div>
+                          )}
+                        </div>
+                        {s.signature && (
+                          <div className="text-[10px] text-stone-500 mt-0.5 italic truncate">署名: 「{s.signature}」</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingStoreId(s.pageId)}
+                        className="text-stone-500 hover:text-stone-900 p-1 flex-shrink-0"
+                        aria-label="編集"
+                      >
+                        <Edit className="w-3.5 h-3.5" strokeWidth={2.2} />
+                      </button>
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </section>
+
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
             <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
               <Tag className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
@@ -232,6 +357,140 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
     <div className="grid grid-cols-[7rem,1fr] gap-2 py-0.5 text-sm">
       <div className="text-stone-600">{label}</div>
       <div className={`text-stone-900 break-all ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</div>
+    </div>
+  );
+}
+
+function StoreForm({
+  tenantPageId,
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  tenantPageId: string;
+  initial?: Store;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(initial?.name || '');
+  const [storeId, setStoreId] = useState(initial?.storeId || '');
+  const [address, setAddress] = useState(initial?.address || '');
+  const [phone, setPhone] = useState(initial?.phone || '');
+  const [manager, setManager] = useState(initial?.manager || '');
+  const [signature, setSignature] = useState(initial?.signature || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (!name || !storeId) {
+      setError('店舗名・店舗ID 必須');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const url = initial ? `/api/admin/stores/${initial.pageId}` : `/api/admin/tenants/${tenantPageId}/stores`;
+      const method = initial ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, storeId, address, phone, manager, signature }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `保存失敗（${res.status}）`);
+      }
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archive() {
+    if (!initial) return;
+    if (!confirm(`「${initial.name}」を削除しますか？`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/stores/${initial.pageId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 space-y-2">
+      <div className="text-[11px] font-bold text-emerald-700">{initial ? '店舗を編集' : '新規店舗'}</div>
+      {error && <div className="bg-red-100 border border-red-300 text-red-800 text-[11px] p-1.5 rounded-lg">{error}</div>}
+      <div className="grid grid-cols-2 gap-1.5">
+        <SmallField label="店舗名（必須）" value={name} onChange={setName} />
+        <SmallField label="店舗ID（必須・英数字）" value={storeId} onChange={setStoreId} mono />
+      </div>
+      <SmallField label="住所" value={address} onChange={setAddress} />
+      <div className="grid grid-cols-2 gap-1.5">
+        <SmallField label="電話番号" value={phone} onChange={setPhone} />
+        <SmallField label="担当者" value={manager} onChange={setManager} />
+      </div>
+      <SmallField label="レポート署名" value={signature} onChange={setSignature} />
+      <div className="flex gap-1.5 pt-0.5">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex-1 bg-emerald-600 text-white font-bold text-xs py-1.5 rounded-lg active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+        >
+          <Save className="w-3 h-3" strokeWidth={2.4} />
+          {saving ? '保存中…' : '保存'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="bg-white border border-stone-300 text-stone-700 font-bold text-xs px-2.5 py-1.5 rounded-lg active:bg-stone-50"
+        >
+          <X className="w-3 h-3" strokeWidth={2.4} />
+        </button>
+        {initial && (
+          <button
+            type="button"
+            onClick={archive}
+            disabled={saving}
+            className="bg-red-50 border border-red-200 text-red-700 font-bold text-xs px-2.5 py-1.5 rounded-lg active:bg-red-100"
+            aria-label="削除"
+          >
+            <Trash2 className="w-3 h-3" strokeWidth={2.4} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SmallField({
+  label,
+  value,
+  onChange,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-[9px] font-bold text-stone-700 block mb-0.5">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full bg-white border border-stone-200 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 ${mono ? 'font-mono' : ''}`}
+      />
     </div>
   );
 }

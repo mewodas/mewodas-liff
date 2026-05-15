@@ -75,6 +75,20 @@ export async function listStoresForCurrentTenant(): Promise<Store[]> {
   return (res.results || []).map(pageToStore);
 }
 
+/** 指定テナントの店舗を取得（マスタがテナント詳細から呼ぶ） */
+export async function listStoresByTenantId(tenantId: string): Promise<Store[]> {
+  const res = await notionRequest('POST', `/databases/${FITMEAL_STORES_DB_ID}/query`, {
+    page_size: 100,
+    filter: {
+      and: [
+        { property: 'tenant_id', rich_text: { equals: tenantId } },
+        { property: '有効', checkbox: { equals: true } },
+      ],
+    },
+  });
+  return (res.results || []).map(pageToStore);
+}
+
 /** 全店舗を取得（マスタ画面用、テナント横断） */
 export async function listAllStores(): Promise<Store[]> {
   const res = await notionRequest('POST', `/databases/${FITMEAL_STORES_DB_ID}/query`, {
