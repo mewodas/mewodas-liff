@@ -58,6 +58,13 @@ function jstToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+function addDaysStr(s: string, n: number): string {
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 export default function CustomerDetailPage({
   params,
 }: {
@@ -97,7 +104,11 @@ export default function CustomerDetailPage({
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setStores(j?.stores || []))
       .catch(() => {});
-  }, []);
+    fetch(`/api/admin/customers/${id}/notifications`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setNotifications(j?.notifications || []))
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     (async () => {
@@ -439,6 +450,16 @@ export default function CustomerDetailPage({
           {/* 各種遷移 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             <Link
+              href={`${base}/meals?customerId=${id}&from=${addDaysStr(today, -6)}&to=${today}`}
+              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+            >
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
+                <span className="text-sm font-bold text-stone-900">食事記録を見る（直近7日）</span>
+              </div>
+              <span className="text-stone-400">›</span>
+            </Link>
+            <Link
               href={`${base}/reports?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
@@ -459,6 +480,55 @@ export default function CustomerDetailPage({
               <span className="text-stone-400">›</span>
             </Link>
           </section>
+
+          {/* 送信履歴 */}
+          {notifications.length > 0 && (
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setNotifOpen((v) => !v)}
+                className="w-full flex items-center justify-between p-3 active:bg-stone-50"
+              >
+                <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                  <History className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+                  送信履歴（{notifications.length}件）
+                </span>
+                {notifOpen ? (
+                  <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+                )}
+              </button>
+              {notifOpen && (
+                <ul className="divide-y divide-stone-100">
+                  {notifications.slice(0, 20).map((n) => {
+                    const date = new Date(n.createdAt).toLocaleString('ja-JP', {
+                      timeZone: 'Asia/Tokyo',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
+                    return (
+                      <li key={n.id} className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                            {n.category}
+                          </span>
+                          <span className="text-[11px] text-stone-500 flex-shrink-0">{date}</span>
+                          {n.read && (
+                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex-shrink-0">既読</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-stone-900 mt-1 truncate">{n.title}</div>
+                        <div className="text-[11px] text-stone-600 mt-0.5 line-clamp-2">{n.body}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
         </div>
       )}
     </AdminShell>
