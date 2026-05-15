@@ -365,7 +365,7 @@ function HomePageInner() {
         {/* ヘッダー：挨拶＋バッジ＋カレンダー */}
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-stone-600">{dateLabel}</p>
+            <p className="text-base font-bold text-stone-800">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {data.stats && (
