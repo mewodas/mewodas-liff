@@ -17,7 +17,8 @@ import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null };
+type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Store = { pageId: string; storeId: string; name: string };
 
 type Meal = {
   pageId: string;
@@ -96,6 +97,8 @@ export default function AdminMealsPage() {
   const [to, setTo] = useState<string>(today);
   const [customerId, setCustomerId] = useState<string>('');
   const [mealTypeFilter, setMealTypeFilter] = useState<string>('');
+  const [storeFilter, setStoreFilter] = useState<string>(''); // '' = すべて
+  const [stores, setStores] = useState<Store[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +113,14 @@ export default function AdminMealsPage() {
     setFrom(addDaysStr(from, delta));
     setTo(addDaysStr(to, delta));
   }
+
+  useEffect(() => {
+    // 店舗マスタは独立に1回だけ取得
+    fetch('/api/admin/stores', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setStores(j?.stores || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,18 +150,34 @@ export default function AdminMealsPage() {
     };
   }, [effectiveFrom, effectiveTo, customerId, mealTypeFilter]);
 
+  // 顧客 → storeId のインデックス
+  const customerStoreMap = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const c of customers) m.set(c.pageId, c.storeId);
+    return m;
+  }, [customers]);
+
+  // 店舗フィルタを適用
+  const visibleMeals = useMemo(() => {
+    if (!storeFilter) return meals;
+    return meals.filter((m) => {
+      if (!m.customerId) return false;
+      return customerStoreMap.get(m.customerId) === storeFilter;
+    });
+  }, [meals, storeFilter, customerStoreMap]);
+
   // 日付ごとにグルーピング
   const grouped = useMemo(() => {
     const map = new Map<string, Meal[]>();
-    for (const m of meals) {
+    for (const m of visibleMeals) {
       const arr = map.get(m.date) || [];
       arr.push(m);
       map.set(m.date, arr);
     }
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [meals]);
+  }, [visibleMeals]);
 
-  const totalCount = meals.length;
+  const totalCount = visibleMeals.length;
 
   return (
     <AdminShell title={`食事管理（${totalCount}件）`}>
@@ -166,18 +193,49 @@ export default function AdminMealsPage() {
             onShift={shiftRange}
             isSingleDay={isSingleDay}
           />
-          {/* フィルタ：顧客・食事区分 */}
+          {/* フィルタ：店舗・顧客・食事区分 */}
+          {stores.length > 1 && (
+            <div className="flex gap-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setStoreFilter('')}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                  storeFilter === ''
+                    ? 'bg-violet-500 text-white border-violet-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                全店舗
+              </button>
+              {stores.map((s) => (
+                <button
+                  key={s.storeId}
+                  type="button"
+                  onClick={() => setStoreFilter(s.storeId)}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                    storeFilter === s.storeId
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-stone-700 border-stone-300'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
           <select
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">すべての顧客</option>
-            {customers.map((c) => (
-              <option key={c.pageId} value={c.pageId}>
-                {c.name}
-              </option>
-            ))}
+            {customers
+              .filter((c) => !storeFilter || c.storeId === storeFilter)
+              .map((c) => (
+                <option key={c.pageId} value={c.pageId}>
+                  {c.name}
+                </option>
+              ))}
           </select>
           <div className="flex gap-1 flex-wrap">
             <button

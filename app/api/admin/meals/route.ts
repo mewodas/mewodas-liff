@@ -158,7 +158,7 @@ export const GET = withAdminTenant(async (req) => {
     // 顧客一覧（フィルタ用のセレクトボックス）も返す
     const customerList = customers
       .filter((c) => !!c.foodStatus)
-      .map((c) => ({ pageId: c.pageId, name: c.name, foodStatus: c.foodStatus }));
+      .map((c) => ({ pageId: c.pageId, name: c.name, foodStatus: c.foodStatus, storeId: c.storeId }));
 
     return NextResponse.json({
       meals: enriched,

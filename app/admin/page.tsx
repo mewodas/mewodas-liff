@@ -15,7 +15,10 @@ type Customer = {
   currentWeight: number | null;
   targetWeight: number | null;
   targetDate: string | null;
+  storeId: string | null;
 };
+
+type Store = { pageId: string; storeId: string; name: string };
 
 const STATUSES = ['すべて', '進行中', '設定中', '休止中', '卒業'];
 
@@ -26,16 +29,22 @@ export default function AdminCustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('すべて');
+  const [storeFilter, setStoreFilter] = useState<string>(''); // '' = すべて
+  const [stores, setStores] = useState<Store[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/admin/customers', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
-        const j = await res.json();
-        // ステータス未設定は管理対象外として除外
-        const list: Customer[] = (j.customers || []).filter((c: Customer) => !!c.foodStatus);
+        const [cRes, sRes] = await Promise.all([
+          fetch('/api/admin/customers', { cache: 'no-store' }),
+          fetch('/api/admin/stores', { cache: 'no-store' }),
+        ]);
+        if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
+        const cJ = await cRes.json();
+        const sJ = sRes.ok ? await sRes.json() : { stores: [] };
+        const list: Customer[] = (cJ.customers || []).filter((c: Customer) => !!c.foodStatus);
         setCustomers(list);
+        setStores(sJ.stores || []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -48,10 +57,17 @@ export default function AdminCustomersPage() {
     const qn = q.trim();
     return customers.filter((c) => {
       if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
+      if (storeFilter && c.storeId !== storeFilter) return false;
       if (qn && !c.name.includes(qn)) return false;
       return true;
     });
-  }, [customers, q, statusFilter]);
+  }, [customers, q, statusFilter, storeFilter]);
+
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of stores) m.set(s.storeId, s.name);
+    return m;
+  }, [stores]);
 
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
@@ -91,6 +107,35 @@ export default function AdminCustomersPage() {
               </button>
             ))}
           </div>
+          {stores.length > 1 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setStoreFilter('')}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                  storeFilter === ''
+                    ? 'bg-violet-500 text-white border-violet-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                全店舗
+              </button>
+              {stores.map((s) => (
+                <button
+                  key={s.storeId}
+                  type="button"
+                  onClick={() => setStoreFilter(s.storeId)}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                    storeFilter === s.storeId
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-stone-700 border-stone-300'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -110,9 +155,14 @@ export default function AdminCustomersPage() {
                   className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
                       <StatusBadge status={c.foodStatus} />
+                      {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
+                        <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                          {storeNameById.get(c.storeId)}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                       {c.currentWeight !== null ? `現在 ${c.currentWeight}kg` : '体重未登録'}

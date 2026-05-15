@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean };
+type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
 
 const TABS: Tab[] = [
   {
@@ -32,6 +32,13 @@ const TABS: Tab[] = [
     label: 'AI 分析',
     Icon: Sparkles,
     match: (p, base) => p.startsWith(`${base}/analysis`),
+  },
+  {
+    suffix: '/stores',
+    label: '店舗',
+    Icon: Store,
+    match: (p, base) => p.startsWith(`${base}/stores`),
+    storeOnly: true,
   },
   {
     suffix: '/tenants',
@@ -79,6 +86,7 @@ export default function AdminShell({
 
   const visibleTabs = TABS.filter((t) => {
     if (isStore && t.storeHidden) return false;
+    if (!isStore && t.storeOnly) return false;
     if (t.masterOnly && me?.role !== 'master') return false;
     return true;
   });

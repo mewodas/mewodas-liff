@@ -15,16 +15,23 @@ export const GET = withAdminTenant(async () => {
   }
 });
 
+function genStoreId(): string {
+  return 'store_' + Math.random().toString(36).slice(2, 8);
+}
+
 export const POST = withAdminTenant(async (req) => {
   try {
     const body = await req.json();
     const name = String(body.name || '').trim();
-    const storeId = String(body.storeId || '').trim();
     if (!name) return NextResponse.json({ error: '店舗名必須' }, { status: 400 });
-    if (!storeId) return NextResponse.json({ error: '店舗ID必須' }, { status: 400 });
-    if (!/^[a-z0-9_-]+$/i.test(storeId)) {
+    // storeId は省略時に自動生成（英数字スラッグが取れない日本語名にも対応）
+    let storeId = String(body.storeId || '').trim();
+    if (!storeId) storeId = genStoreId();
+    else if (!/^[a-z0-9_-]+$/i.test(storeId)) {
       return NextResponse.json({ error: '店舗IDは英数字・ハイフン・アンダースコアのみ' }, { status: 400 });
     }
+    // 署名は省略時に店舗名をそのまま使う
+    const signature = body.signature ? String(body.signature) : name;
     const store = await createStore({
       name,
       storeId,
@@ -32,7 +39,7 @@ export const POST = withAdminTenant(async (req) => {
       phone: body.phone ? String(body.phone) : undefined,
       hours: body.hours ? String(body.hours) : undefined,
       manager: body.manager ? String(body.manager) : undefined,
-      signature: body.signature ? String(body.signature) : undefined,
+      signature,
     });
     return NextResponse.json({ ok: true, store });
   } catch (e) {
