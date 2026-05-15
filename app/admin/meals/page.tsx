@@ -11,6 +11,7 @@ import {
   ImageIcon,
   Check,
   Copy,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
@@ -403,11 +404,14 @@ export default function AdminMealsPage() {
             meal={detail}
             onClose={() => setDetail(null)}
             onSaved={(updated) => {
-              // 一覧をローカルで更新（再フェッチを避けて即時反映）
               setMeals((prev) =>
                 prev.map((m) => (m.pageId === updated.pageId ? { ...m, ...updated } : m))
               );
               setDetail({ ...detail, ...updated });
+            }}
+            onDeleted={(pageId) => {
+              setMeals((prev) => prev.filter((m) => m.pageId !== pageId));
+              setDetail(null);
             }}
           />
         )}
@@ -442,10 +446,12 @@ function MealDetailModal({
   meal,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   meal: Meal;
   onClose: () => void;
   onSaved: (updated: Pick<Meal, 'pageId' | 'kcal' | 'P' | 'F' | 'C'>) => void;
+  onDeleted: (pageId: string) => void;
 }) {
   const Icon = MEAL_ICON[meal.mealType] || UtensilsCrossed;
   const color = MEAL_COLOR[meal.mealType] || 'text-stone-500';
@@ -490,6 +496,26 @@ function MealDetailModal({
     setC(r1(meal.C));
     setEditing(false);
     setSaveError(null);
+  }
+
+  const [deleting, setDeleting] = useState(false);
+
+  async function doDelete() {
+    if (!confirm(`この食事記録を削除します。\n\n「${extractFoodLine(meal)}」\n${Math.round(meal.kcal)}kcal / P${r1(meal.P)} F${r1(meal.F)} C${r1(meal.C)}\n\n削除すると元に戻せません。よろしいですか？`)) return;
+    setDeleting(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/admin/records/${meal.pageId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `削除失敗（${res.status}）`);
+      }
+      onDeleted(meal.pageId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -606,6 +632,22 @@ function MealDetailModal({
 
           <div className="text-[10px] text-stone-500">
             記録時刻: {new Date(meal.recordedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+          </div>
+
+          {/* 削除ボタン（重複削除等） */}
+          <div className="pt-2 border-t border-stone-100">
+            <button
+              type="button"
+              onClick={doDelete}
+              disabled={deleting || editing}
+              className="w-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs py-2 rounded-xl active:bg-rose-100 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} />
+              {deleting ? '削除中…' : 'この食事記録を削除'}
+            </button>
+            <div className="text-[10px] text-stone-500 text-center mt-1">
+              重複記録や誤登録の削除に使用
+            </div>
           </div>
         </div>
       </div>
