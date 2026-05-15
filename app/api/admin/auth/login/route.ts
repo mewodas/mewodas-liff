@@ -23,16 +23,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'email/password 必須' }, { status: 400 });
   }
 
-  // ① マスタログイン（env ADMIN_EMAIL）
+  // ① マスタログイン（env ADMIN_EMAIL）— パスワード一致時のみ通す。
+  //    一致しない場合は tenant_admin 認証へフォールバック（同じメールが両方に登録されているケースに対応）
   const masterCreds = getAdminCredentials();
   if (masterCreds && email === masterCreds.email.toLowerCase()) {
-    if (!verifyPassword(password, masterCreds.passwordHash)) {
-      return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
+    if (verifyPassword(password, masterCreds.passwordHash)) {
+      const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
+      const res = NextResponse.json({ ok: true, email, role: 'master', currentTenantId: 'mewodas' });
+      res.cookies.set(cookie.name, cookie.value, cookie.options);
+      return res;
     }
-    const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
-    const res = NextResponse.json({ ok: true, email, role: 'master', currentTenantId: 'mewodas' });
-    res.cookies.set(cookie.name, cookie.value, cookie.options);
-    return res;
+    // パスワード不一致 → tenant_admin 経路へフォールスルー
   }
 
   // ② テナント admin ログイン（FitMeal テナント DB から検索）

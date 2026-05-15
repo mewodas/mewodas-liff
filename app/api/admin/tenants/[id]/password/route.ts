@@ -4,6 +4,7 @@ import { listTenantRows, setTenantPasswordHash } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { withMasterOnly } from '@/lib/withTenant';
 import { invalidateTenantCache } from '@/lib/tenantResolver';
+import { sendEmail, loginInfoEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ export const POST = withMasterOnly(async (req, { params }: { params: Promise<{ i
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || ''); // 'set' or 'generate'
+    const sendMail = body.sendMail !== false; // 既定 true
 
     // tenant pageId 解決
     const all = await listTenantRows(FITMEAL_TENANTS_DB_ID);
@@ -43,12 +45,32 @@ export const POST = withMasterOnly(async (req, { params }: { params: Promise<{ i
     await setTenantPasswordHash(tenant.pageId, hash);
     invalidateTenantCache();
 
+    // メール送信（オーナーメール設定済みかつ送信希望時）
+    let mail: { sent: boolean; reason?: string; mailtoUrl?: string; error?: string } = { sent: false };
+    if (sendMail && tenant.ownerEmail) {
+      const payload = loginInfoEmail({
+        tenantName: tenant.name,
+        ownerEmail: tenant.ownerEmail,
+        password,
+      });
+      const result = await sendEmail(payload);
+      if (result.sent) {
+        mail = { sent: true };
+      } else if (result.reason === 'no_provider') {
+        const { buildMailtoUrl } = await import('@/lib/email');
+        mail = { sent: false, reason: 'no_provider', mailtoUrl: buildMailtoUrl(payload) };
+      } else {
+        mail = { sent: false, reason: 'error', error: result.error };
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       // generate 時のみ平文を返す（マスタが控える用）
       password: action === 'generate' ? password : undefined,
       ownerEmail: tenant.ownerEmail,
       tenantName: tenant.name,
+      mail,
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });

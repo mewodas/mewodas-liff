@@ -486,6 +486,8 @@ function PasswordSection({
   const [mode, setMode] = useState<'idle' | 'manual' | 'result'>('idle');
   const [password, setPassword] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [mailResult, setMailResult] = useState<{ sent: boolean; reason?: string; mailtoUrl?: string; error?: string } | null>(null);
+  const [sendMail, setSendMail] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -501,17 +503,15 @@ function PasswordSection({
       const res = await fetch(`/api/admin/tenants/${tenantPageId}/password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(action === 'generate' ? { action: 'generate' } : { password }),
+        body: JSON.stringify(
+          action === 'generate' ? { action: 'generate', sendMail } : { password, sendMail }
+        ),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || `保存失敗（${res.status}）`);
-      if (action === 'generate') {
-        setGeneratedPassword(j.password);
-        setMode('result');
-      } else {
-        setMode('result');
-        setGeneratedPassword(null);
-      }
+      setGeneratedPassword(action === 'generate' ? j.password : null);
+      setMailResult(j.mail || null);
+      setMode('result');
       setPassword('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
@@ -553,6 +553,15 @@ function PasswordSection({
               ジムオーナーが <a href="https://app.fitmeal.jp/store/login" target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">/store/login</a> でログインするためのパスワードを発行します。
             </div>
           </div>
+          <label className="flex items-center gap-2 text-[11px] text-stone-700">
+            <input
+              type="checkbox"
+              checked={sendMail}
+              onChange={(e) => setSendMail(e.target.checked)}
+              className="w-4 h-4 accent-amber-500"
+            />
+            <span>新しいパスワードをオーナーにメール送信</span>
+          </label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -613,9 +622,38 @@ function PasswordSection({
       {mode === 'result' && (
         <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 space-y-2">
           <div className="text-[11px] font-bold text-emerald-800">✅ パスワード設定完了</div>
+
+          {/* メール送信結果 */}
+          {mailResult && (
+            mailResult.sent ? (
+              <div className="bg-white border border-emerald-200 rounded-lg p-2 text-[11px] text-emerald-800 inline-flex items-center gap-1">
+                <Mail className="w-3 h-3" strokeWidth={2.4} />
+                メール送信済み（→ {ownerEmail}）
+              </div>
+            ) : mailResult.reason === 'no_provider' && mailResult.mailtoUrl ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-800 space-y-1.5">
+                <div className="inline-flex items-center gap-1 font-bold">
+                  <Mail className="w-3 h-3" strokeWidth={2.4} />
+                  メール自動送信は未設定（RESEND_API_KEY）
+                </div>
+                <div className="opacity-90">下記ボタンで標準メーラー起動 → そのまま送信できます</div>
+                <a
+                  href={mailResult.mailtoUrl}
+                  className="block text-center bg-amber-600 text-white font-bold text-xs py-1.5 rounded-lg active:bg-amber-700"
+                >
+                  メーラーを開いて送信
+                </a>
+              </div>
+            ) : mailResult.reason === 'error' ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-[11px] text-red-700">
+                メール送信失敗: {mailResult.error}
+              </div>
+            ) : null
+          )}
+
           {generatedPassword ? (
             <>
-              <div className="text-[10px] text-emerald-700">⚠️ このパスワードは1度しか表示されません。今すぐコピーしてジムオーナーに伝えてください。</div>
+              <div className="text-[10px] text-emerald-700">⚠️ このパスワードは1度しか表示されません。今すぐコピーしてください。</div>
               <div className="bg-white border border-emerald-300 rounded-lg p-2 space-y-1 text-[11px]">
                 <div><span className="text-stone-600">URL:</span> <code className="text-stone-900">https://app.fitmeal.jp/store/login</code></div>
                 <div><span className="text-stone-600">メール:</span> <code className="text-stone-900">{ownerEmail}</code></div>
@@ -634,7 +672,7 @@ function PasswordSection({
           )}
           <button
             type="button"
-            onClick={() => { setMode('idle'); setGeneratedPassword(null); }}
+            onClick={() => { setMode('idle'); setGeneratedPassword(null); setMailResult(null); }}
             className="w-full text-[11px] text-stone-600 hover:text-stone-900 py-1"
           >
             閉じる

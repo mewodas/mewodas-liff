@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
@@ -123,6 +123,15 @@ export default function AdminShell({
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                 店舗
               </span>
+            )}
+            {me?.role === 'tenant_admin' && (
+              <Link
+                href={`${base}/account/password`}
+                className="text-xs font-bold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-stone-100"
+                title="パスワード変更"
+              >
+                <Key className="w-3.5 h-3.5" strokeWidth={2.2} />
+              </Link>
             )}
             <button
               type="button"
