@@ -663,7 +663,8 @@ function DateStrip({
 
   const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const todayRef = useRef<HTMLButtonElement | null>(null);
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
+  const isFirstScrollRef = useRef(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -682,25 +683,28 @@ function DateStrip({
     container.scrollBy({ left: delta, behavior: 'smooth' });
   }
 
-  // 初回マウント時：今日のセルを中央に表示（次フレームでレイアウト確定後に実行）
+  // 選択日が変わるたびに、選択日のセルを中央にスクロール
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       const container = scrollRef.current;
-      const btn = todayRef.current;
+      const btn = selectedRef.current;
       if (!container || !btn) return;
-      // scrollRef のパディング・矢印幅を含まない実コンテンツ幅で中央計算
       const containerRect = container.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
       const offsetInScroll =
         btnRect.left - containerRect.left + container.scrollLeft;
       const targetLeft =
         offsetInScroll - container.clientWidth / 2 + btn.clientWidth / 2;
-      container.scrollLeft = Math.max(0, targetLeft);
+      // 初回はジャンプ、それ以降はスムーススクロール
+      container.scrollTo({
+        left: Math.max(0, targetLeft),
+        behavior: isFirstScrollRef.current ? 'auto' : 'smooth',
+      });
+      isFirstScrollRef.current = false;
       updateArrows();
     });
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="mb-4 -mx-4 flex items-center gap-1 px-2">
@@ -734,7 +738,7 @@ function DateStrip({
           return (
             <button
               key={d}
-              ref={isToday ? todayRef : undefined}
+              ref={isSelected ? selectedRef : undefined}
               onClick={() => onSelect(d)}
               className={`flex flex-col items-center justify-center min-w-[48px] py-2 rounded-2xl transition-all ${
                 isSelected

@@ -13,6 +13,10 @@ import {
   Calculator,
   ArrowRight,
   Hourglass,
+  UtensilsCrossed,
+  History,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
@@ -36,6 +40,15 @@ type Customer = {
 };
 
 type Store = { pageId: string; storeId: string; name: string };
+type Notification = {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+  staffName: string;
+  read: boolean;
+  createdAt: string;
+};
 
 const STATUS_OPTIONS = ['進行中', '設定中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
@@ -74,6 +87,8 @@ export default function CustomerDetailPage({
   const [plan, setPlan] = useState('');
   const [storeId, setStoreId] = useState('');
   const [stores, setStores] = useState<Store[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const today = jstToday();
 
