@@ -11,7 +11,7 @@
 import { getTenantNotion } from '@/lib/notion';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
-const NOTION_API_VERSION = '2025-09-03';
+const NOTION_API_VERSION = '2022-06-28';
 
 export type ReportTemplate = {
   id: string;
