@@ -1513,3 +1513,77 @@ JSON形式で返してください：
     reportDraft: String(parsed.reportDraft || ''),
   };
 }
+
+
+/** レポートテンプレ内の {ai_*} 変数を AI で個別に埋めるための関数 */
+export async function generateReportComments(input: {
+  customerName: string;
+  date: string;
+  sum: { kcal: number; P: number; F: number; C: number };
+  goals: { kcal: number; P: number; F: number; C: number };
+  currentWeight: number | null;
+  targetWeight: number | null;
+  requiredKeys: string[]; // 例: ["ai_good_points", "ai_advice"]
+}): Promise<Record<string, string>> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY 未設定");
+  if (input.requiredKeys.length === 0) return {};
+
+  // 各 AI 変数の意味（プロンプトで AI に伝える）
+  const DESCS: Record<string, string> = {
+    ai_summary: "全体の評価を1-2行で。達成状況や全体感を一言でまとめる",
+    ai_good_points: "良かった点を1-2点、箇条書きで具体的に（食事名・数字含めて）",
+    ai_advice: "今日のアドバイスを1点、実行しやすい具体行動で",
+    ai_one_word: "応援の一言メッセージ（1行、明るく前向き）",
+    ai_keep_doing: "続けてほしいことを1点",
+    ai_improvement: "改善ポイントを1点",
+  };
+
+  const desc = input.requiredKeys
+    .map((k) => `- ${k}: ${DESCS[k] || "1-2文で適切なコメント"}`)
+    .join("\n");
+
+  const weightStr = input.currentWeight !== null ? `${input.currentWeight}kg` : "未測定";
+  const targetWStr = input.targetWeight !== null ? `${input.targetWeight}kg` : "未設定";
+  const ratio = input.goals.kcal > 0 ? Math.round((input.sum.kcal / input.goals.kcal) * 100) : 0;
+
+  const prompt = `あなたはパーソナルトレーナーです。以下の顧客データを元に、レポートの各コメントセクションを書いてください。
+
+【顧客】${input.customerName}さん
+【日付】${input.date}
+【摂取】${input.sum.kcal}kcal / P${input.sum.P}g / F${input.sum.F}g / C${input.sum.C}g
+【目標】${input.goals.kcal}kcal / P${input.goals.P}g / F${input.goals.F}g / C${input.goals.C}g（達成率${ratio}%）
+【体重】現在${weightStr} → 目標${targetWStr}
+
+【生成してほしいセクション】
+${desc}
+
+【出力ルール】
+- JSON形式で、各キーに上記説明に沿った日本語の文章を入れる
+- 敬体、トレーナー目線、優しく前向きに
+- 1セクションあたり1-2行、箇条書き指定ありなら「・」で始める
+- 絵文字は控えめに（必要なら1個まで）
+
+出力例:
+{
+${input.requiredKeys.map((k) => `  "${k}": "..."`).join(",\n")}
+}`;
+
+  const text = await callGemini([{ text: prompt }], apiKey);
+  const cleaned = stripMarkdown(text);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    try {
+      parsed = JSON.parse(repairLlmJson(cleaned));
+    } catch {
+      throw new Error("AIコメントJSON解析失敗: " + cleaned.slice(0, 200));
+    }
+  }
+  const result: Record<string, string> = {};
+  for (const k of input.requiredKeys) {
+    result[k] = String(parsed[k] ?? "").trim();
+  }
+  return result;
+}

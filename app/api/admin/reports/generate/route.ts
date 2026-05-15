@@ -4,7 +4,7 @@ import { listRecordsInRange } from '@/lib/repository/records';
 import { getTemplate, DEFAULT_TEMPLATES, isTemplatesConfigured } from '@/lib/templates';
 import { getStaff } from '@/lib/staff';
 import { getStoreByStoreId } from '@/lib/stores';
-import { generateCoachingAnalysis } from '@/lib/gemini';
+import { generateCoachingAnalysis, generateReportComments } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -109,12 +109,39 @@ export const POST = withAdminTenant(async (req) => {
 
     const title = template?.titleTemplate ? applyVars(template.titleTemplate, vars) : (template?.name || 'レポート');
 
-    // 静的本文 → 変数置換のみ
+    // 静的本文 → 変数置換 + AI コメント補完
     if (template && !template.useAi) {
+      let body = applyVars(template.bodyTemplate, vars);
+      // {ai_*} 形式の AI コメント変数を検出して個別に AI で生成
+      const aiVarRegex = /\{(ai_\w+)\}/g;
+      const aiVars = new Set<string>();
+      let m;
+      while ((m = aiVarRegex.exec(body)) !== null) aiVars.add(m[1]);
+
+      let aiComments: Record<string, string> = {};
+      if (aiVars.size > 0) {
+        try {
+          aiComments = await generateReportComments({
+            customerName: customer.name,
+            date: endDate,
+            sum: { kcal: showKcal, P: showP, F: showF, C: showC },
+            goals: customer.goals,
+            currentWeight: customer.currentWeight,
+            targetWeight: customer.targetWeight,
+            requiredKeys: Array.from(aiVars),
+          });
+        } catch (e) {
+          // AI 失敗時はプレースホルダのまま残す（送信時に手動で書き換え可）
+          console.error('[reports/generate] AI comment failed:', e instanceof Error ? e.message : 'unknown');
+        }
+        // AI コメントで置換
+        body = body.replace(/\{(ai_\w+)\}/g, (_, k) => aiComments[k] ?? `{${k}}`);
+      }
+
       return NextResponse.json({
         title,
-        body: applyVars(template.bodyTemplate, vars),
-        usedAi: false,
+        body,
+        usedAi: aiVars.size > 0,
         stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
       });
     }

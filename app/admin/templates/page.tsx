@@ -59,6 +59,17 @@ const VARIABLE_GROUPS = [
       { key: '{endDate}', label: '終了日' },
     ],
   },
+  {
+    title: '✨ AIコメント自動生成（送信時に Gemini が書く）',
+    vars: [
+      { key: '{ai_summary}', label: '全体評価' },
+      { key: '{ai_good_points}', label: '良かった点' },
+      { key: '{ai_advice}', label: 'アドバイス' },
+      { key: '{ai_one_word}', label: '応援一言' },
+      { key: '{ai_keep_doing}', label: '続けたいこと' },
+      { key: '{ai_improvement}', label: '改善ポイント' },
+    ],
+  },
 ];
 
 export default function AdminTemplatesPage() {
