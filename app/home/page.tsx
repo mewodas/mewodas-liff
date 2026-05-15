@@ -32,6 +32,7 @@ import {
   TrendingUp,
   TrendingDown,
   Bell,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -352,6 +353,14 @@ function HomePageInner() {
 
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
+      {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
+      {refetching && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+            <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
+          </div>
+        </div>
+      )}
       <div className="max-w-md mx-auto">
         {/* ヘッダー：挨拶＋バッジ＋カレンダー */}
         <div className="mb-3 flex items-start justify-between gap-2">
