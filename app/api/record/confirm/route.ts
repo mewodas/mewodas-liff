@@ -145,12 +145,16 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Drive保存は最初のレコードにのみ紐付け（画像は1食分共通）
+    // Drive保存：全レコードに同じ画像URLを書き込む（AI一括登録で写真を共有）
     const firstRecord = saveResults[0];
     if (images.length > 0 && firstRecord && firstRecord.id) {
+      const allPageIds = saveResults
+        .map((r) => r?.id)
+        .filter((id): id is string => typeof id === 'string');
       waitUntil(
         saveImagesToDriveAsync({
           notionPageId: firstRecord.id,
+          notionPageIds: allPageIds,
           customerName: customer.name,
           lineUserId,
           photos: images,
