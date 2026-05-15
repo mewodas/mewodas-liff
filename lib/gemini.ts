@@ -470,28 +470,15 @@ export async function predictWeight(params: {
     targetDate,
   } = params;
 
-  // 決定論的に線形回帰でトレンド計算
+  // 参考データ：線形回帰トレンド（30日全体）
   const trend = calcWeightTrend(weightHistory);
-  const predictedWeight = Math.round(trend.predicted90 * 10) / 10;
-  const monthlyChange = Math.round(trend.monthlyChange * 10) / 10;
-  // 信頼度: 点数が多く、R二乗が高いほど high
-  let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
-  if (weightHistory.length >= 15 && trend.rSquared >= 0.5) confidenceLevel = 'high';
-  else if (weightHistory.length >= 10 && trend.rSquared >= 0.3) confidenceLevel = 'medium';
-
-  // 目標達成判定（決定論的）
-  let willReachGoal: boolean | null = null;
-  if (targetWeight !== null && targetDate && currentWeight !== null) {
-    const daysToTarget = Math.max(
-      0,
-      Math.round((new Date(targetDate).getTime() - new Date(weightHistory[weightHistory.length - 1].date).getTime()) / 86_400_000)
-    );
-    const projectedAtTarget = weightHistory[weightHistory.length - 1].weight + trend.slopeKgPerDay * daysToTarget;
-    const goingDown = targetWeight < currentWeight;
-    willReachGoal = goingDown
-      ? projectedAtTarget <= targetWeight + 0.5
-      : projectedAtTarget >= targetWeight - 0.5;
-  }
+  // 参考データ：直近7日のサブトレンド（短期傾向）
+  const last7 = weightHistory.slice(-7);
+  const trend7 = last7.length >= 2 ? calcWeightTrend(last7) : trend;
+  // カロリー収支から推定する月間体重変化（脂肪 1kg ≒ 7,200 kcal）
+  // ※ 推定 BMR/TDEE は不明なので、目標kcal を維持カロリーの近似とみなして差分計算
+  const dailyDeficit = goalKcal - avgKcal;
+  const kcalBasedMonthlyChange = -((dailyDeficit * 30) / 7200);
 
   const weightTrendStr = weightHistory
     .map((w) => `${w.date}: ${w.weight}kg`)
@@ -499,51 +486,76 @@ export async function predictWeight(params: {
 
   const targetInfo =
     targetWeight && targetDate
-      ? `\n【目標】\n- 目標体重: ${targetWeight}kg\n- 目標達成日: ${targetDate}\n- 目標達成見込み: ${willReachGoal === null ? '不明' : willReachGoal ? '達成見込みあり' : '未達見込み'}`
+      ? `\n【目標】\n- 目標体重: ${targetWeight}kg\n- 目標達成日: ${targetDate}`
       : '\n【目標】未設定';
 
-  // 数値は決定論的に算出済み。Gemini にはコメントとアドバイスだけ依頼
-  const prompt = `あなたは管理栄養士・パーソナルトレーナーです。
-顧客の食事・運動データと体重推移を踏まえてコメントとアドバイスを返してください。
+  const prompt = `あなたは経験 15 年のパーソナルトレーナー兼管理栄養士です。
+顧客の食事・運動・体重データを総合的に判断して、3ヶ月後の体重を予測してください。
 
-【直近30日のデータ】
-- 平均カロリー摂取: ${avgKcal} kcal/日（目標: ${goalKcal} kcal、差: ${avgKcal - goalKcal} kcal）
-- 平均PFC: P${avgP}g / F${avgF}g / C${avgC}g
-- 運動日数: ${exerciseDays}日 / 30日
+【顧客データ】
+- 現在体重: ${currentWeight ?? '不明'} kg
 - 体重推移（${weightHistory.length}日分の実測値）:
   ${weightTrendStr || '（データなし）'}
-- 現在体重: ${currentWeight ?? '不明'} kg
-${targetInfo}
+- 平均カロリー摂取（直近30日）: ${avgKcal} kcal/日
+- 目標カロリー: ${goalKcal} kcal/日（差分: ${dailyDeficit > 0 ? '+' : ''}${dailyDeficit} kcal/日）
+- 平均PFC: P${avgP}g / F${avgF}g / C${avgC}g
+- 運動日数: ${exerciseDays}日 / 30日${targetInfo}
 
-【コード側で算出済みの値（これらを参照してコメントを書いてください。数値は変更しないでください）】
-- 月平均の体重変化（実測トレンドの線形回帰）: ${monthlyChange} kg/月
-- 3ヶ月後の予測体重: ${predictedWeight} kg
-- 信頼度: ${confidenceLevel}（データ点数 ${weightHistory.length}、R² ${trend.rSquared.toFixed(2)}）
+【参考：機械的計算（盲信しないでください）】
+- 30日トレンドの線形外挿（90日後）: ${trend.predicted90.toFixed(1)} kg（月平均 ${(trend.monthlyChange).toFixed(2)} kg/月）
+- 直近7日の傾き: 月換算 ${(trend7.monthlyChange).toFixed(2)} kg/月
+- カロリー収支による推定: 月 ${kcalBasedMonthlyChange.toFixed(2)} kg
 
-【コメントの観点】
-- 実測体重トレンドと、カロリー摂取量・PFCバランス・運動頻度の整合性
-- 食事内容や運動の改善点
-- ${monthlyChange < 0 ? '減量ペース' : monthlyChange > 0 ? '増量ペース' : '体重維持'}についての評価
+【予測する上で必ず考慮すべき生理学的事実】
+1. **減量開始の最初の1〜2週間は水分・グリコーゲンの減少が大きい**
+   - 初期に 1〜2kg 減ってもそれを線形に外挿してはいけない
+   - 例：1週間で 2kg 減 → そのまま 3ヶ月で 25kg 減るわけではない
+2. **持続可能な脂肪減ペース上限**
+   - 健康的減量: 体重の 0.5〜1.0% /週 が上限（例：80kg なら 週400-800g）
+   - 月換算で 2〜3.5kg を超える減量予測は非現実的
+3. **代謝適応（メタボリックアダプテーション）**
+   - 減量を続けると BMR が下がり、減量ペースが鈍化する
+   - カロリー収支の単純計算より、実際の減量ペースは 60〜80% 程度に留まる
+4. **増量側も同様**
+   - 急な体重増加は水分・グリコーゲン・腸内容物の影響が大きい
+5. **データの信頼性**
+   - 体重測定が週1-3回程度で 2-3 週分しかない場合、トレンドはノイジー
+   - 30日全体トレンドと直近7日が大きく乖離している場合、最近の変化は短期ノイズの可能性が高い
+
+【判断の方針】
+- まず実測トレンド（30日 vs 直近7日）と理論値（カロリー収支）を見比べる
+- 短期の急変は割り引く
+- 0.5〜1.0% /週 を超える変化が出ている場合、3ヶ月後はそれより緩やかになると予測
+- 信頼度は「データ点数・トレンド一致度・観察期間」から判定
+- 月 3kg 以上の極端な変化を予測してはいけない（健康的減量・増量の範囲を超える）
 
 【出力JSON形式（必ずこの形式）】
 {
-  "predictedWeight": ${predictedWeight},
-  "monthlyChange": ${monthlyChange},
-  "confidenceLevel": "${confidenceLevel}",
-  "willReachGoal": ${willReachGoal === null ? 'null' : willReachGoal ? 'true' : 'false'},
-  "comment": "30文字以内の総評",
-  "recommendations": ["アドバイス1", "アドバイス2", "アドバイス3"]
+  "predictedWeight": 3ヶ月後の予測体重(kg)数値（小数1桁）,
+  "monthlyChange": 月平均の体重変化(kg/月)数値（減量はマイナス、月3kg超は禁止）,
+  "confidenceLevel": "high" | "medium" | "low",
+  "willReachGoal": 目標体重を期限内に達成できるかtrue/false（目標未設定ならnull）,
+  "comment": "プロのトレーナーとして30文字以内で総評",
+  "recommendations": ["具体的アドバイス1", "具体的アドバイス2", "具体的アドバイス3"]
 }`;
 
   const text = await callGemini([{ text: prompt }], apiKey);
-  const result = parseWeightPredictionJson(text);
-  // 数値は決定論的な値で上書き（Gemini が書き換えても無視）
+  const raw = parseWeightPredictionJson(text);
+
+  // セーフティ：常識外れの値をクリップ
+  const last = weightHistory[weightHistory.length - 1]?.weight ?? currentWeight ?? raw.predictedWeight;
+  const MAX_MONTHLY_CHANGE = 3.0; // kg/月
+  const clippedMonthly = Math.max(-MAX_MONTHLY_CHANGE, Math.min(MAX_MONTHLY_CHANGE, raw.monthlyChange));
+  // monthlyChange と predictedWeight に矛盾があれば monthlyChange を優先
+  const expectedPredicted = last + clippedMonthly * 3;
+  const predictedClipped = Math.abs(raw.predictedWeight - expectedPredicted) > 1
+    ? Math.round(expectedPredicted * 10) / 10
+    : raw.predictedWeight;
+
   return {
-    ...result,
-    predictedWeight,
-    monthlyChange,
-    confidenceLevel,
-    willReachGoal,
+    ...raw,
+    monthlyChange: Math.round(clippedMonthly * 10) / 10,
+    predictedWeight: predictedClipped,
   };
 }
 
