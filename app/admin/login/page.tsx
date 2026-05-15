@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Lock, LogIn, Store } from 'lucide-react';
+import PasswordInput from '@/components/PasswordInput';
 
 function LoginInner() {
   const router = useRouter();
@@ -72,14 +73,15 @@ function LoginInner() {
           className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
         />
         <label className="block text-xs font-bold text-stone-700 mb-1">パスワード</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-          className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-4"
-        />
+        <div className="mb-4">
+          <PasswordInput
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            required
+            accent={isStore ? 'violet' : 'emerald'}
+          />
+        </div>
         <button
           type="submit"
           disabled={submitting}

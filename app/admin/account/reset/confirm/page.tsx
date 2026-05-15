@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Key, Save, Check, AlertTriangle, ArrowLeft } from 'lucide-react';
+import PasswordInput from '@/components/PasswordInput';
 
 function Inner() {
   const router = useRouter();
@@ -115,26 +116,28 @@ function Inner() {
               </div>
             )}
             <label className="block text-xs font-bold text-stone-700 mb-1">新しいパスワード（8文字以上）</label>
-            <input
-              type="password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              autoComplete="new-password"
-              required
-              autoFocus
-              minLength={8}
-              className={`w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-${accent}-500 mb-3`}
-            />
+            <div className="mb-3">
+              <PasswordInput
+                value={next}
+                onChange={setNext}
+                autoComplete="new-password"
+                autoFocus
+                minLength={8}
+                required
+                accent={isStore ? 'violet' : 'emerald'}
+              />
+            </div>
             <label className="block text-xs font-bold text-stone-700 mb-1">確認用（同じものを再入力）</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              autoComplete="new-password"
-              required
-              minLength={8}
-              className={`w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-${accent}-500 mb-4`}
-            />
+            <div className="mb-4">
+              <PasswordInput
+                value={confirm}
+                onChange={setConfirm}
+                autoComplete="new-password"
+                minLength={8}
+                required
+                accent={isStore ? 'violet' : 'emerald'}
+              />
+            </div>
             <button
               type="submit"
               disabled={submitting || next.length < 8 || next !== confirm}
