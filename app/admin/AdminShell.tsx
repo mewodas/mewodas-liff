@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, UserCog, Building2, ChevronLeft, ChevronDown, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Store, Building2, ChevronLeft, ChevronDown, type LucideIcon } from 'lucide-react';
 
 type Tab = { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean; masterOnly?: boolean };
 
@@ -33,10 +33,10 @@ const TABS: Tab[] = [
     match: (p) => p.startsWith('/admin/analysis'),
   },
   {
-    href: '/admin/staff',
-    label: 'スタッフ',
-    Icon: UserCog,
-    match: (p) => p.startsWith('/admin/staff'),
+    href: '/admin/stores',
+    label: '店舗',
+    Icon: Store,
+    match: (p) => p.startsWith('/admin/stores'),
   },
   {
     href: '/admin/tenants',

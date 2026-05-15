@@ -29,6 +29,7 @@ export type Customer = {
   age: number | null;
   activityLevel: string | null;
   plan: string | null;
+  storeId: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -129,6 +130,7 @@ export async function getCustomerByLineId(
     age: p['年齢']?.number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
+    storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -162,6 +164,7 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
     age: p['年齢']?.number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
+    storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
   };
 }
 
@@ -213,6 +216,7 @@ export async function updateCustomer(
     age?: number | null;
     activityLevel?: string | null;
     plan?: string | null;
+    storeId?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -245,6 +249,11 @@ export async function updateCustomer(
   }
   if (patch.plan !== undefined) {
     properties['プラン'] = patch.plan === null ? { select: null } : { select: { name: patch.plan } };
+  }
+  if (patch.storeId !== undefined) {
+    properties['所属店舗'] = patch.storeId
+      ? { rich_text: [{ type: 'text', text: { content: patch.storeId } }] }
+      : { rich_text: [] };
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
@@ -316,6 +325,7 @@ export async function createTenantCustomerDb(
       '目標P(g)': { number: {} },
       '目標F(g)': { number: {} },
       '目標C(g)': { number: {} },
+      所属店舗: { rich_text: {} },
       食事記録リンク: { url: {} },
     },
   });

@@ -8,6 +8,7 @@ import {
 import { FITMEAL_TENANTS_DB_ID, FITMEAL_TENANTS_PARENT_PAGE_ID } from '@/lib/tenant';
 import { withMasterOnly } from '@/lib/withTenant';
 import { invalidateTenantCache } from '@/lib/tenantResolver';
+import { createStore, FITMEAL_STORES_DB_ID } from '@/lib/stores';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,6 +72,21 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
       note,
     });
 
+    // 4. デフォルト店舗を自動作成（1店舗運用ならこれで十分、複数店舗は後から追加）
+    let defaultStoreId: string | null = null;
+    try {
+      const store = await createStore({
+        name,
+        storeId: 'main',
+        tenantId,
+        manager: ownerEmail.split('@')[0],
+        signature: `${name} 担当`,
+      });
+      defaultStoreId = store.pageId;
+    } catch {
+      // 店舗作成失敗してもテナント作成は成功扱い（後から手動作成可能）
+    }
+
     // 新規テナント追加されたのでキャッシュ無効化
     invalidateTenantCache();
 
@@ -80,8 +96,10 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
       tenantPageId,
       customerDbId,
       foodDbId,
+      defaultStoreId,
       customerDbUrl: `https://www.notion.so/${customerDbId.replace(/-/g, '')}`,
       foodDbUrl: `https://www.notion.so/${foodDbId.replace(/-/g, '')}`,
+      storesDbUrl: `https://www.notion.so/${FITMEAL_STORES_DB_ID.replace(/-/g, '')}`,
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });

@@ -31,7 +31,10 @@ type Customer = {
   age: number | null;
   activityLevel: string | null;
   plan: string | null;
+  storeId: string | null;
 };
+
+type Store = { pageId: string; storeId: string; name: string };
 
 const STATUS_OPTIONS = ['進行中', '設定中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
@@ -67,8 +70,17 @@ export default function CustomerDetailPage({
   const [age, setAge] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
   const [plan, setPlan] = useState('');
+  const [storeId, setStoreId] = useState('');
+  const [stores, setStores] = useState<Store[]>([]);
 
   const today = jstToday();
+
+  useEffect(() => {
+    fetch('/api/admin/stores', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setStores(j?.stores || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -90,6 +102,7 @@ export default function CustomerDetailPage({
         setAge(c.age !== null ? String(c.age) : '');
         setActivityLevel(c.activityLevel || '');
         setPlan(c.plan || '');
+        setStoreId(c.storeId || '');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -147,6 +160,7 @@ export default function CustomerDetailPage({
         age: age ? parseInt(age, 10) : null,
         activityLevel: activityLevel || null,
         plan: plan || null,
+        storeId: storeId || null,
       };
       const res = await fetch(`/api/admin/customers/${id}`, {
         method: 'PATCH',
@@ -213,6 +227,19 @@ export default function CustomerDetailPage({
                   {customer.currentWeight !== null ? `${customer.currentWeight} kg` : '未登録'}
                 </div>
               </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs font-bold text-stone-700 mb-1 block">所属店舗</label>
+              <select
+                value={storeId}
+                onChange={(e) => setStoreId(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">—</option>
+                {stores.map((s) => (
+                  <option key={s.storeId} value={s.storeId}>{s.name}</option>
+                ))}
+              </select>
             </div>
           </section>
 

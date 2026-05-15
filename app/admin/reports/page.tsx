@@ -12,8 +12,8 @@ import {
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null };
-type Staff = { id: string; name: string; shop: string; role: string };
+type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Store = { pageId: string; storeId: string; name: string; signature: string };
 type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string };
 
 function jstToday(): string {
@@ -41,13 +41,12 @@ function Inner() {
   const initialDraft = sp.get('draft') || '';
   const today = jstToday();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
-  const [staffId, setStaffId] = useState<string>('');
   const [templateId, setTemplateId] = useState<string>('');
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
@@ -76,12 +75,12 @@ function Inner() {
       try {
         const [cRes, sRes, tRes] = await Promise.all([
           fetch('/api/admin/customers', { cache: 'no-store' }),
-          fetch('/api/admin/staff', { cache: 'no-store' }),
+          fetch('/api/admin/stores', { cache: 'no-store' }),
           fetch('/api/admin/templates', { cache: 'no-store' }),
         ]);
         const [cJ, sJ, tJ] = await Promise.all([cRes.json(), sRes.json(), tRes.json()]);
         setCustomers((cJ.customers || []).filter((c: Customer) => !!c.foodStatus));
-        setStaffList(sJ.staff || []);
+        setStores(sJ.stores || []);
         const tList: Template[] = tJ.templates || [];
         setTemplates(tList);
         // 初期テンプレ選択（URL draft が無いとき最初のテンプレを採用）
@@ -97,7 +96,10 @@ function Inner() {
   }, [initialDraft]);
 
   const selectedCustomer = useMemo(() => customers.find((c) => c.pageId === customerId), [customers, customerId]);
-  const selectedStaff = useMemo(() => staffList.find((s) => s.id === staffId), [staffList, staffId]);
+  const customerStore = useMemo(() => {
+    if (!selectedCustomer?.storeId) return null;
+    return stores.find((s) => s.storeId === selectedCustomer.storeId) || null;
+  }, [selectedCustomer, stores]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
 
   // テンプレ切替時：タイトル・本文をテンプレのベーステキストで上書き
@@ -131,7 +133,6 @@ function Inner() {
         body: JSON.stringify({
           customerId,
           templateId: templateId || undefined,
-          staffId: staffId || undefined,
           startDate,
           endDate,
         }),
@@ -161,6 +162,11 @@ function Inner() {
     setResultMsg(null);
     try {
       const category = selectedTemplate?.category || 'カスタム';
+      // 顧客の所属店舗の署名を本文末尾に自動付与（テンプレに署名が無い場合のみ）
+      const sig = customerStore?.signature?.trim() || '';
+      const bodyText = sig && !body.includes(sig)
+        ? `${body.trim()}\n\n— ${sig}`
+        : body.trim();
       const res = await fetch('/api/admin/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,8 +174,8 @@ function Inner() {
           customerId,
           category,
           title: title.trim(),
-          body: body.trim(),
-          staffName: selectedStaff?.name || '',
+          body: bodyText,
+          staffName: customerStore?.name || '',
           sendLinePush,
         }),
       });
@@ -220,23 +226,22 @@ function Inner() {
           />
         </section>
 
-        {/* ③ スタッフ */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-          <label className="text-xs font-bold text-stone-700 mb-1 block">③ 送信者（スタッフ）</label>
-          <select
-            value={staffId}
-            onChange={(e) => setStaffId(e.target.value)}
-            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="">指定しない</option>
-            {staffList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.shop ? `（${s.shop}）` : ''}
-              </option>
-            ))}
-          </select>
-        </section>
+        {/* ③ 所属店舗（顧客から自動判定、レポート署名に使用） */}
+        {customerStore && (
+          <section className="bg-violet-50 border border-violet-200 rounded-2xl p-3">
+            <div className="text-[11px] font-bold text-violet-800 mb-0.5">③ 送信元店舗（顧客の所属から自動）</div>
+            <div className="text-sm font-bold text-violet-900">{customerStore.name}</div>
+            {customerStore.signature && (
+              <div className="text-[10px] text-violet-700 mt-1 italic">本文末尾に「— {customerStore.signature}」を自動付与</div>
+            )}
+          </section>
+        )}
+        {selectedCustomer && !customerStore && (
+          <section className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <div className="text-[11px] font-bold text-amber-800">⚠ 顧客に所属店舗が設定されていません</div>
+            <div className="text-[10px] text-amber-700 mt-0.5">レポート末尾の署名は自動付与されません。顧客詳細から店舗を設定してください。</div>
+          </section>
+        )}
 
         {/* ④ テンプレ（チップ形式で並べる・切替で本文が変わる） */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
