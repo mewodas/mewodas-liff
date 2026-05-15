@@ -232,7 +232,7 @@ function FoodSearchInner() {
   if (completed) {
     return (
       <main className="min-h-screen bg-stone-100 pb-28">
-        <PageHeader title="食品DB" Icon={Search} back />
+        <PageHeader title="食品DB" Icon={Search} subtitle="2000以上の食品から検索して記録" back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" strokeWidth={2}/>

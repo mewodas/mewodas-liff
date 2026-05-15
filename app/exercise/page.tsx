@@ -118,7 +118,7 @@ export default function ExercisePage() {
   if (success) {
     return (
       <main className="min-h-screen bg-stone-100 pb-28">
-        <PageHeader title="運動記録" Icon={Footprints} back />
+        <PageHeader title="運動記録" Icon={Footprints} subtitle="今日の運動内容を入力" back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
             <Footprints className="w-12 h-12 text-amber-500 mx-auto mb-2" strokeWidth={2}/>
@@ -160,7 +160,7 @@ export default function ExercisePage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
-      <PageHeader title="運動記録" Icon={Footprints} back />
+      <PageHeader title="運動記録" Icon={Footprints} subtitle="今日の運動内容を入力" back />
       <div className="max-w-md mx-auto px-4 py-6">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">

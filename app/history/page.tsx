@@ -25,6 +25,9 @@ import {
   Ban,
   Lightbulb,
   AlertTriangle,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -103,6 +106,7 @@ export default function HistoryPage() {
   const [data, setData] = useState<HistoryData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [refetching, setRefetching] = useState(false);
   // 初期値：当日を選択しておく（クリックなしで詳細が見える）
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr);
 
@@ -135,6 +139,10 @@ export default function HistoryPage() {
         setError(null);
         return;
       }
+      setRefetching(true);
+    } else if (data) {
+      // 別月への切替: 旧データを薄く表示しつつ取得
+      setRefetching(true);
     } else {
       setReady(false);
     }
@@ -156,6 +164,7 @@ export default function HistoryPage() {
         if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
+        setRefetching(false);
       }
     })();
   }, [userId, year, month]);
@@ -231,7 +240,15 @@ export default function HistoryPage() {
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader title="履歴" Icon={BookOpen} subtitle="過去の記録をカレンダーで確認" back />
-      <div className="max-w-md mx-auto px-4 py-6">
+      {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
+      {refetching && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+            <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
+          </div>
+        </div>
+      )}
+      <div className={`max-w-md mx-auto px-4 py-6 transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}>
         {/* 月ナビ（過去のみ） */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-stone-200">
           <div className="flex items-center justify-between">
@@ -325,15 +342,102 @@ export default function HistoryPage() {
 
         {/* 選択日の詳細 */}
         {selectedDate && userId && (
-          <DayDetail
-            dateString={selectedDate}
-            lineUserId={userId}
-            goals={customer.goals}
-            todayStr={todayStr}
-          />
+          <>
+            {/* 日付ストリップ（前後3日へジャンプ） */}
+            <DayDateStrip
+              selectedDate={selectedDate}
+              todayStr={todayStr}
+              onSelect={(d) => setSelectedDate(d)}
+            />
+            <DayDetail
+              dateString={selectedDate}
+              lineUserId={userId}
+              goals={customer.goals}
+              todayStr={todayStr}
+            />
+          </>
         )}
       </div>
     </main>
+  );
+}
+
+function DayDateStrip({
+  selectedDate,
+  todayStr,
+  onSelect,
+}: {
+  selectedDate: string;
+  todayStr: string;
+  onSelect: (d: string) => void;
+}) {
+  // 選択日の前後 ±3 日 + 選択日 = 7日
+  const dates: string[] = [];
+  for (let i = -3; i <= 3; i++) {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + i);
+    const s = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    dates.push(s);
+  }
+  const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  function shift(delta: number) {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + delta);
+    const s = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    if (s <= todayStr) onSelect(s);
+  }
+
+  return (
+    <div className="my-4 flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => shift(-1)}
+        className="w-8 h-8 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 active:bg-stone-100 flex-shrink-0"
+        aria-label="前日"
+      >
+        <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+      </button>
+      <div className="flex-1 grid grid-cols-7 gap-1">
+        {dates.map((d) => {
+          const [y, m, day] = d.split('-').map(Number);
+          const date = new Date(y, m - 1, day);
+          const isSelected = d === selectedDate;
+          const isFuture = d > todayStr;
+          const weekday = weekdayNames[date.getDay()];
+          const weekdayColor =
+            date.getDay() === 0 ? 'text-rose-600' : date.getDay() === 6 ? 'text-sky-600' : 'text-stone-500';
+          return (
+            <button
+              key={d}
+              onClick={() => !isFuture && onSelect(d)}
+              disabled={isFuture}
+              className={`rounded-xl py-1 px-1 flex flex-col items-center justify-center disabled:opacity-30 ${
+                isSelected
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'bg-white border border-stone-200 text-stone-900 active:bg-stone-50'
+              }`}
+            >
+              <span className={`text-[9px] font-medium ${isSelected ? 'text-emerald-50' : weekdayColor}`}>
+                {weekday}
+              </span>
+              <span className="text-sm font-bold leading-tight">{day}</span>
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => shift(1)}
+        disabled={selectedDate >= todayStr}
+        className="w-8 h-8 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
+        aria-label="翌日"
+      >
+        <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
+      </button>
+    </div>
   );
 }
 

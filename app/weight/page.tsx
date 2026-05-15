@@ -88,7 +88,7 @@ export default function WeightPage() {
   if (success) {
     return (
       <main className="min-h-screen bg-stone-100 pb-28">
-        <PageHeader title="体重記録" Icon={Scale} back />
+        <PageHeader title="体重記録" Icon={Scale} subtitle="毎日の体重を入力" back />
         <div className="max-w-md mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-md p-6 mb-4 border border-stone-200 text-center">
             <Scale className="w-12 h-12 text-sky-500 mx-auto mb-2" strokeWidth={2}/>
@@ -120,7 +120,7 @@ export default function WeightPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
-      <PageHeader title="体重記録" Icon={Scale} back />
+      <PageHeader title="体重記録" Icon={Scale} subtitle="毎日の体重を入力" back />
       <div className="max-w-md mx-auto px-4 py-6">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">

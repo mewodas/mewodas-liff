@@ -17,6 +17,7 @@ import {
   Lightbulb,
   AlertTriangle,
   Sparkles,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -60,6 +61,7 @@ export default function WeeklyPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [refetching, setRefetching] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -90,6 +92,10 @@ export default function WeeklyPage() {
         setError(null);
         return;
       }
+      setRefetching(true);
+    } else if (data) {
+      // 別週への切替: 旧データを薄く表示しつつ取得
+      setRefetching(true);
     } else {
       setReady(false);
     }
@@ -108,8 +114,10 @@ export default function WeeklyPage() {
         if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
       } finally {
         setReady(true);
+        setRefetching(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, offset]);
 
   if (!ready) {
@@ -148,7 +156,15 @@ export default function WeeklyPage() {
         subtitle={`${offsetLabel}：${weekLabel}`}
         back
       />
-      <div className="max-w-md mx-auto px-4 py-6">
+      {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
+      {refetching && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+            <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
+          </div>
+        </div>
+      )}
+      <div className={`max-w-md mx-auto px-4 py-6 transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}>
         {/* 週ナビゲーション（過去のみ） */}
         <div className="flex gap-2 mb-4">
           <button
