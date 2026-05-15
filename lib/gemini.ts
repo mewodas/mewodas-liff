@@ -476,9 +476,40 @@ export async function predictWeight(params: {
   const last7 = weightHistory.slice(-7);
   const trend7 = last7.length >= 2 ? calcWeightTrend(last7) : trend;
   // カロリー収支から推定する月間体重変化（脂肪 1kg ≒ 7,200 kcal）
-  // ※ 推定 BMR/TDEE は不明なので、目標kcal を維持カロリーの近似とみなして差分計算
   const dailyDeficit = goalKcal - avgKcal;
   const kcalBasedMonthlyChange = -((dailyDeficit * 30) / 7200);
+
+  // 信頼度メトリクスを事前計算
+  const nPoints = weightHistory.length;
+  const observationDays = nPoints >= 2
+    ? Math.round(
+        (new Date(weightHistory[nPoints - 1].date).getTime() -
+          new Date(weightHistory[0].date).getTime()) /
+          86_400_000
+      ) + 1
+    : 0;
+  const measureFrequency = observationDays > 0 ? nPoints / observationDays : 0; // 日数あたり測定回数
+  // 短期 vs 長期トレンド一致度（差が小さいほど高信頼）
+  const trendDivergence = Math.abs(trend.monthlyChange - trend7.monthlyChange);
+  // カロリー収支ベース vs 実測トレンドの一致度
+  const kcalVsActualDivergence = Math.abs(trend.monthlyChange - kcalBasedMonthlyChange);
+
+  // 信頼度の決定論的算出（AI が同じ判断をするための明確な基準）
+  let confidenceLevel: 'high' | 'medium' | 'low';
+  const isHigh =
+    observationDays >= 21 &&
+    nPoints >= 12 &&
+    trend.rSquared >= 0.5 &&
+    trendDivergence <= 1.5 &&
+    measureFrequency >= 0.5;
+  const isMedium =
+    observationDays >= 14 &&
+    nPoints >= 7 &&
+    trend.rSquared >= 0.25 &&
+    trendDivergence <= 2.5;
+  if (isHigh) confidenceLevel = 'high';
+  else if (isMedium) confidenceLevel = 'medium';
+  else confidenceLevel = 'low';
 
   const weightTrendStr = weightHistory
     .map((w) => `${w.date}: ${w.weight}kg`)
@@ -502,9 +533,15 @@ export async function predictWeight(params: {
 - 運動日数: ${exerciseDays}日 / 30日${targetInfo}
 
 【参考：機械的計算（盲信しないでください）】
-- 30日トレンドの線形外挿（90日後）: ${trend.predicted90.toFixed(1)} kg（月平均 ${(trend.monthlyChange).toFixed(2)} kg/月）
+- 30日トレンドの線形外挿（90日後）: ${trend.predicted90.toFixed(1)} kg（月平均 ${(trend.monthlyChange).toFixed(2)} kg/月、R²=${trend.rSquared.toFixed(2)}）
 - 直近7日の傾き: 月換算 ${(trend7.monthlyChange).toFixed(2)} kg/月
 - カロリー収支による推定: 月 ${kcalBasedMonthlyChange.toFixed(2)} kg
+
+【信頼度メトリクス（コードで決定済み: ${confidenceLevel}）】
+- 観測期間: ${observationDays}日
+- 測定回数: ${nPoints}回（頻度 ${measureFrequency.toFixed(2)} 回/日）
+- 短期 vs 長期トレンド乖離: ${trendDivergence.toFixed(2)} kg/月
+- カロリー収支 vs 実測乖離: ${kcalVsActualDivergence.toFixed(2)} kg/月
 
 【予測する上で必ず考慮すべき生理学的事実】
 1. **減量開始の最初の1〜2週間は水分・グリコーゲンの減少が大きい**
@@ -526,7 +563,7 @@ export async function predictWeight(params: {
 - まず実測トレンド（30日 vs 直近7日）と理論値（カロリー収支）を見比べる
 - 短期の急変は割り引く
 - 0.5〜1.0% /週 を超える変化が出ている場合、3ヶ月後はそれより緩やかになると予測
-- 信頼度は「データ点数・トレンド一致度・観察期間」から判定
+- 信頼度は上記のメトリクスからコード側で既に判定済み（${confidenceLevel}）。これを採用してください
 - 月 3kg 以上の極端な変化を予測してはいけない（健康的減量・増量の範囲を超える）
 
 【出力JSON形式（必ずこの形式）】
@@ -556,6 +593,7 @@ export async function predictWeight(params: {
     ...raw,
     monthlyChange: Math.round(clippedMonthly * 10) / 10,
     predictedWeight: predictedClipped,
+    confidenceLevel,
   };
 }
 

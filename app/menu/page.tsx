@@ -11,6 +11,9 @@ import {
   User,
   Target,
   Link as LinkIcon,
+  ClipboardList,
+  Sparkles,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import FooterNav from '@/components/FooterNav';
@@ -27,12 +30,16 @@ type MenuItem = {
 
 type Section = {
   title: string;
+  Icon: LucideIcon;
+  iconColor: string;
   items: MenuItem[];
 };
 
 const sections: Section[] = [
   {
     title: '記録・分析',
+    Icon: ClipboardList,
+    iconColor: 'text-emerald-600',
     items: [
       { href: '/history', Icon: BookOpen, color: 'text-emerald-600', label: '履歴', sub: '過去の記録を確認' },
       { href: '/weekly', Icon: TrendingUp, color: 'text-emerald-600', label: '週次レポート', sub: '7日間の振り返り' },
@@ -40,6 +47,8 @@ const sections: Section[] = [
   },
   {
     title: 'AI機能',
+    Icon: Sparkles,
+    iconColor: 'text-violet-600',
     items: [
       { href: '/chat', Icon: MessageCircle, color: 'text-emerald-600', label: 'AI食事相談', sub: '栄養士AIに質問' },
       { href: '/meal-plan', Icon: ChefHat, color: 'text-emerald-600', label: 'AI献立作成', sub: '1日分の献立提案' },
@@ -48,12 +57,16 @@ const sections: Section[] = [
   },
   {
     title: '達成状況',
+    Icon: Trophy,
+    iconColor: 'text-amber-600',
     items: [
       { href: '/badges', Icon: Trophy, color: 'text-amber-600', label: 'バッジ獲得', sub: '連続記録の振り返り' },
     ],
   },
   {
     title: '設定',
+    Icon: Settings,
+    iconColor: 'text-stone-500',
     items: [
       { href: '/menu/profile', Icon: User, color: 'text-stone-500', label: 'プロフィール', sub: '近日対応', disabled: true },
       { href: '/menu/goals', Icon: Target, color: 'text-stone-500', label: '目標設定', sub: '近日対応', disabled: true },
@@ -70,7 +83,8 @@ export default function MenuPage() {
       <main className="px-4 py-5 space-y-6">
         {sections.map((section) => (
           <section key={section.title}>
-            <h2 className="text-xs font-bold text-stone-500 mb-2 px-1">
+            <h2 className="text-xs font-bold text-stone-500 mb-2 px-1 flex items-center gap-1.5">
+              <section.Icon className={`w-4 h-4 ${section.iconColor}`} strokeWidth={2.4} />
               {section.title}
             </h2>
             <div className="grid grid-cols-3 gap-3">

@@ -64,9 +64,13 @@ export default function PageHeader({
         </h1>
         <div className="w-12 flex justify-end">{rightSlot}</div>
       </div>
-      {subtitle && (
-        <p className="text-[11px] text-emerald-50 mt-1 text-center">{subtitle}</p>
-      )}
+      {/* subtitle 領域は常に同じ高さで確保（複数ページで揃えるため） */}
+      <p
+        className="text-[11px] text-emerald-50 mt-1 text-center leading-[15px]"
+        aria-hidden={!subtitle}
+      >
+        {subtitle || ' '}
+      </p>
       {children}
     </header>
   );
