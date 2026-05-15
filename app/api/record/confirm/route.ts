@@ -97,6 +97,31 @@ export async function POST(req: NextRequest) {
       : getTargetDate(day || '今日');
     const trimmedComment = comment.trim() || null;
 
+    // 重複「合計エントリ」フィルタ：他のアイテムの名前を2つ以上含むエントリは
+    // AI が生成した「全体まとめ」とみなして除外（ダブルカウント防止）
+    const beforeDedup = items.length;
+    items = items.filter((it, idx) => {
+      const name = String(it.name || '');
+      if (!name) return false;
+      let containsCount = 0;
+      for (let j = 0; j < items.length; j++) {
+        if (j === idx) continue;
+        const other = String(items[j].name || '');
+        if (other && other.length >= 2 && name !== other && name.includes(other)) {
+          containsCount++;
+        }
+      }
+      // 他の item を2つ以上含む = 合計エントリと判定
+      return containsCount < 2;
+    });
+    if (items.length !== beforeDedup) {
+      console.log(`[record/confirm] dedup: ${beforeDedup} → ${items.length} items`);
+    }
+
+    if (items.length === 0) {
+      return NextResponse.json({ error: 'すべてのitemsが除外されました（重複検出）' }, { status: 400 });
+    }
+
     // 各アイテムを別レコードとして保存（並列）
     // → ホーム画面で個別の食材として表示できる
     const saveResults = await Promise.all(
