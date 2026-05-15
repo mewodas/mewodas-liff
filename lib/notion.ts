@@ -535,6 +535,7 @@ export async function setTenantPasswordHash(pageId: string, passwordHash: string
 }
 
 // 食事記録のPFC・カロリー・メモを部分更新
+// correctedBy: 'AI' | '顧客' | 'トレーナー' — 補正者を記録（AI学習データ抽出用）
 export async function updateFoodRecord(
   pageId: string,
   patch: {
@@ -543,6 +544,7 @@ export async function updateFoodRecord(
     F?: number;
     C?: number;
     memo?: string;
+    correctedBy?: 'AI' | '顧客' | 'トレーナー';
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -553,8 +555,22 @@ export async function updateFoodRecord(
   if (typeof patch.memo === 'string') {
     properties['食材メモ'] = { rich_text: [{ text: { content: patch.memo } }] };
   }
+  if (patch.correctedBy) {
+    properties['補正者'] = { select: { name: patch.correctedBy } };
+  }
   if (Object.keys(properties).length === 0) return;
-  await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  try {
+    await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  } catch (e) {
+    // 「補正者」列が未追加のテナント向け：補正者を除いて再試行
+    const message = e instanceof Error ? e.message : '';
+    if (patch.correctedBy && /補正者|property/i.test(message)) {
+      delete (properties as Record<string, unknown>)['補正者'];
+      await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+      return;
+    }
+    throw e;
+  }
 }
 
 // 個人シートの食事記録テーブルから複数日付の体重・運動データをまとめて取得
@@ -789,6 +805,8 @@ export type CorrectionRecord = {
   aiOriginal: { kcal: number; P: number; F: number; C: number };
   diff: { kcal: number; P: number; F: number; C: number };
   hasCorrection: boolean;
+  /** 補正者: 'AI'（未補正）/ '顧客' / 'トレーナー' */
+  correctedBy: 'AI' | '顧客' | 'トレーナー' | null;
 };
 
 export async function getCorrectionRecords(
@@ -849,6 +867,7 @@ export async function getCorrectionRecords(
       };
       const hasCorrection =
         diff.kcal !== 0 || diff.P !== 0 || diff.F !== 0 || diff.C !== 0;
+      const correctedByName = p['補正者']?.select?.name as 'AI' | '顧客' | 'トレーナー' | undefined;
       records.push({
         pageId: page.id,
         date: p['日付']?.date?.start || '',
@@ -858,6 +877,7 @@ export async function getCorrectionRecords(
         aiOriginal: ai,
         diff,
         hasCorrection,
+        correctedBy: correctedByName ?? null,
       });
     }
     cursor = res.has_more ? res.next_cursor : undefined;

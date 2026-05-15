@@ -25,6 +25,8 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
     ) {
       patch.kcal = Math.round(patch.P * 4 + patch.F * 9 + patch.C * 4);
     }
+    // admin/store ルートからの変更は常にトレーナー補正として記録
+    patch.correctedBy = 'トレーナー';
     await patchRecord(pageId, patch);
     return NextResponse.json({ ok: true });
   } catch (e) {

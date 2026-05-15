@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   UtensilsCrossed,
   Sunrise,
@@ -15,7 +14,6 @@ import {
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
-import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 type Store = { pageId: string; storeId: string; name: string };
@@ -91,7 +89,6 @@ function extractFoodLine(m: { title: string; memo: string }): string {
 }
 
 export default function AdminMealsPage() {
-  const base = useAdminBase();
   const today = jstTodayString();
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
@@ -330,7 +327,19 @@ export default function AdminMealsPage() {
           </div>
         )}
 
-        {detail && <MealDetailModal meal={detail} onClose={() => setDetail(null)} base={base} />}
+        {detail && (
+          <MealDetailModal
+            meal={detail}
+            onClose={() => setDetail(null)}
+            onSaved={(updated) => {
+              // 一覧をローカルで更新（再フェッチを避けて即時反映）
+              setMeals((prev) =>
+                prev.map((m) => (m.pageId === updated.pageId ? { ...m, ...updated } : m))
+              );
+              setDetail({ ...detail, ...updated });
+            }}
+          />
+        )}
       </div>
     </AdminShell>
   );
@@ -358,9 +367,57 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function MealDetailModal({ meal, onClose, base }: { meal: Meal; onClose: () => void; base: string }) {
+function MealDetailModal({
+  meal,
+  onClose,
+  onSaved,
+}: {
+  meal: Meal;
+  onClose: () => void;
+  onSaved: (updated: Pick<Meal, 'pageId' | 'kcal' | 'P' | 'F' | 'C'>) => void;
+}) {
   const Icon = MEAL_ICON[meal.mealType] || UtensilsCrossed;
   const color = MEAL_COLOR[meal.mealType] || 'text-stone-500';
+  const [editing, setEditing] = useState(false);
+  const [p, setP] = useState(r1(meal.P));
+  const [f, setF] = useState(r1(meal.F));
+  const [c, setC] = useState(r1(meal.C));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const calcKcal = Math.round(p * 4 + f * 9 + c * 4);
+
+  async function save() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const body = { P: p, F: f, C: c, kcal: calcKcal };
+      const res = await fetch(`/api/admin/records/${meal.pageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `保存失敗（${res.status}）`);
+      }
+      onSaved({ pageId: meal.pageId, kcal: calcKcal, P: p, F: f, C: c });
+      setEditing(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function reset() {
+    setP(r1(meal.P));
+    setF(r1(meal.F));
+    setC(r1(meal.C));
+    setEditing(false);
+    setSaveError(null);
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center px-4 py-6" onClick={onClose}>
       <div
@@ -399,12 +456,60 @@ function MealDetailModal({ meal, onClose, base }: { meal: Meal; onClose: () => v
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
-            <Stat label="kcal" value={Math.round(meal.kcal)} unit="" highlight />
-            <Stat label="P" value={r1(meal.P)} unit="g" />
-            <Stat label="F" value={r1(meal.F)} unit="g" />
-            <Stat label="C" value={r1(meal.C)} unit="g" />
-          </div>
+          {/* PFC エリア（編集モード切替） */}
+          {!editing ? (
+            <>
+              <div className="grid grid-cols-4 gap-2">
+                <Stat label="kcal" value={Math.round(meal.kcal)} unit="" highlight />
+                <Stat label="P" value={r1(meal.P)} unit="g" />
+                <Stat label="F" value={r1(meal.F)} unit="g" />
+                <Stat label="C" value={r1(meal.C)} unit="g" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="w-full text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-2 rounded-xl active:bg-emerald-100"
+              >
+                ✏️ PFC を補正する
+              </button>
+            </>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 space-y-2">
+              <div className="text-[11px] font-bold text-emerald-800">PFC 補正（kcal は自動再計算）</div>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-white border border-emerald-200 rounded-lg p-2 text-center">
+                  <div className="text-[10px] font-bold text-emerald-700">kcal</div>
+                  <div className="text-base font-bold text-emerald-900">{calcKcal}</div>
+                </div>
+                <EditNum label="P" value={p} onChange={setP} />
+                <EditNum label="F" value={f} onChange={setF} />
+                <EditNum label="C" value={c} onChange={setC} />
+              </div>
+              {saveError && (
+                <div className="bg-red-100 border border-red-300 text-red-800 text-[11px] p-1.5 rounded-lg">
+                  {saveError}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="flex-1 bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
+                >
+                  {saving ? '保存中…' : '保存（トレーナー補正）'}
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  disabled={saving}
+                  className="bg-white border border-stone-300 text-stone-700 font-bold text-xs px-3 py-2 rounded-xl active:bg-stone-50"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          )}
 
           {meal.details && (
             <div>
@@ -422,19 +527,24 @@ function MealDetailModal({ meal, onClose, base }: { meal: Meal; onClose: () => v
           <div className="text-[10px] text-stone-500">
             記録時刻: {new Date(meal.recordedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
           </div>
-
-          {meal.customerId && (
-            <div className="pt-2 border-t border-stone-100">
-              <Link
-                href={`${base}/customers/${meal.customerId}`}
-                className="block text-center text-xs font-bold text-stone-700 border border-stone-300 px-3 py-2 rounded-xl hover:bg-stone-50"
-              >
-                顧客プロフィール
-              </Link>
-            </div>
-          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EditNum({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="bg-white border border-emerald-200 rounded-lg p-1.5 text-center">
+      <div className="text-[10px] font-bold text-emerald-700">{label}</div>
+      <input
+        type="number"
+        step="0.1"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="w-full bg-transparent text-emerald-900 font-bold text-base text-center focus:outline-none"
+      />
     </div>
   );
 }

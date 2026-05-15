@@ -27,6 +27,7 @@ export type RecordPatch = {
   F?: number;
   C?: number;
   memo?: string;
+  correctedBy?: 'AI' | '顧客' | 'トレーナー';
 };
 
 export async function listRecordsByDate(

@@ -130,6 +130,18 @@ export const GET = withAdminTenant(async (req) => {
       };
     }
 
+    // 補正者別の集計（AI学習データ抽出用）
+    const byCorrector: Record<'トレーナー' | '顧客' | 'AI', { count: number; records: typeof corrected }> = {
+      'トレーナー': { count: 0, records: [] },
+      '顧客': { count: 0, records: [] },
+      AI: { count: 0, records: [] },
+    };
+    for (const r of corrected) {
+      const key = r.correctedBy && r.correctedBy in byCorrector ? r.correctedBy : 'AI';
+      byCorrector[key].count++;
+      if (byCorrector[key].records.length < 100) byCorrector[key].records.push(r);
+    }
+
     return NextResponse.json({
       period: { from, to },
       totalRecords: records.length,
@@ -139,7 +151,14 @@ export const GET = withAdminTenant(async (req) => {
       avgDiff,
       calibrationSuggestion,
       byMealType,
-      records: corrected.slice(0, 100), // 補正された個別レコード最大100件
+      byCorrector: {
+        トレーナー: byCorrector['トレーナー'].count,
+        顧客: byCorrector['顧客'].count,
+        未補正: records.length - corrected.length,
+      },
+      // AI 学習データとして使う: トレーナー補正だけ抽出
+      trainerCorrections: byCorrector['トレーナー'].records,
+      records: corrected.slice(0, 100),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
