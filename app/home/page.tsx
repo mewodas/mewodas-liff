@@ -582,7 +582,7 @@ function HomePageInner() {
             {} as Record<string, number>
           )}
         />
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3 mb-4" data-onboarding="meal-cards">
           {(['朝食', '昼食', '夕食', '間食'] as const).map((meal) => (
             <MealSection
               key={meal}

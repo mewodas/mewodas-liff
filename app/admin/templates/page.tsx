@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -117,6 +117,7 @@ export default function AdminTemplatesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -143,6 +144,29 @@ export default function AdminTemplatesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  async function duplicateTemplate(id: string) {
+    setDuplicatingId(id);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/templates/duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId: id }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `複製失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      await load();
+      setEditingId(j.template.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '複製エラー');
+    } finally {
+      setDuplicatingId(null);
+    }
+  }
 
   async function moveTemplate(idx: number, dir: -1 | 1) {
     const swapIdx = idx + dir;
@@ -286,7 +310,7 @@ export default function AdminTemplatesPage() {
                       )}
                     </div>
                     {!t.id.startsWith('default-') && (
-                      <div className="flex gap-1.5 flex-shrink-0">
+                      <div className="flex gap-1.5 flex-shrink-0 flex-wrap">
                         <button
                           type="button"
                           onClick={() => setEditingId(t.id)}
@@ -294,6 +318,16 @@ export default function AdminTemplatesPage() {
                         >
                           <Edit className="w-3 h-3" strokeWidth={2.4} />
                           編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => duplicateTemplate(t.id)}
+                          disabled={duplicatingId === t.id}
+                          className="text-[11px] font-bold text-sky-700 border border-sky-300 px-2.5 py-1 rounded-full active:bg-sky-50 disabled:opacity-50 inline-flex items-center gap-1"
+                          aria-label="複製"
+                        >
+                          <Copy className="w-3 h-3" strokeWidth={2.2} />
+                          {duplicatingId === t.id ? '複製中…' : '複製'}
                         </button>
                         <button
                           type="button"
