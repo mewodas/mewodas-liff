@@ -10,8 +10,19 @@ export const GET = withAdminTenant(async () => {
   if (!isTemplatesConfigured()) {
     return NextResponse.json({ configured: false, templates: DEFAULT_TEMPLATES });
   }
-  const templates = await listTemplates();
-  return NextResponse.json({ configured: true, templates });
+  try {
+    const templates = await listTemplates();
+    return NextResponse.json({ configured: true, templates });
+  } catch (e) {
+    // Notion 接続失敗時（Integration 未招待等）はデフォルトテンプレを返す
+    const message = e instanceof Error ? e.message : 'unknown';
+    return NextResponse.json({
+      configured: true,
+      templates: DEFAULT_TEMPLATES,
+      error: `Notion接続失敗: ${message.slice(0, 200)}`,
+      hint: 'FitMeal テンプレートDB に Notion Integration を招待してください',
+    });
+  }
 });
 
 export const POST = withAdminTenant(async (req) => {

@@ -75,23 +75,35 @@ function Inner() {
 
   useEffect(() => {
     (async () => {
+      // 各 API を独立して try/catch。1つ失敗しても他は動かす。
+      async function safeFetch<T>(url: string, fallback: T): Promise<T> {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) return fallback;
+          const text = await res.text();
+          if (!text) return fallback;
+          try {
+            return JSON.parse(text) as T;
+          } catch {
+            return fallback;
+          }
+        } catch {
+          return fallback;
+        }
+      }
       try {
-        const [cRes, sRes, tRes] = await Promise.all([
-          fetch('/api/admin/customers', { cache: 'no-store' }),
-          fetch('/api/admin/stores', { cache: 'no-store' }),
-          fetch('/api/admin/templates', { cache: 'no-store' }),
+        const [cJ, sJ, tJ] = await Promise.all([
+          safeFetch<{ customers?: Customer[] }>('/api/admin/customers', {}),
+          safeFetch<{ stores?: Store[] }>('/api/admin/stores', {}),
+          safeFetch<{ templates?: Template[] }>('/api/admin/templates', {}),
         ]);
-        const [cJ, sJ, tJ] = await Promise.all([cRes.json(), sRes.json(), tRes.json()]);
         setCustomers((cJ.customers || []).filter((c: Customer) => !!c.foodStatus));
         setStores(sJ.stores || []);
         const tList: Template[] = tJ.templates || [];
         setTemplates(tList);
-        // 初期テンプレ選択（URL draft が無いとき最初のテンプレを採用）
         if (!initialDraft && tList.length > 0) {
           setTemplateId(tList[0].id);
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'エラー');
       } finally {
         setLoading(false);
       }

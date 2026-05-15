@@ -30,7 +30,17 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     } catch {
       tenant = getDefaultTenant();
     }
-    return runInTenantContext(tenant, () => handler(req, ctx));
+    // ハンドラ実行を try/catch でラップ：例外時も必ず JSON レスポンスを返す
+    // フロント側 res.json() の「Unexpected end of JSON input」を防止
+    try {
+      return await runInTenantContext(tenant, () => handler(req, ctx));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'unknown error';
+      return NextResponse.json(
+        { error: message.slice(0, 500), errorType: 'handler_exception' },
+        { status: 500 }
+      );
+    }
   };
 }
 
