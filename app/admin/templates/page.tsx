@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, Sparkles } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useAdminBase } from '@/lib/useAdminBase';
 
 type Template = {
   id: string;
@@ -17,6 +18,7 @@ type Template = {
 const CATEGORIES = ['前日レポート', '週次レポート', 'カスタム'];
 
 export default function AdminTemplatesPage() {
+  const base = useAdminBase();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [configured, setConfigured] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function AdminTemplatesPage() {
   }, []);
 
   return (
-    <AdminShell title="テンプレート管理" back={{ href: '/admin/reports' }}>
+    <AdminShell title="テンプレート管理" back={{ href: `${base}/reports` }}>
       <div className="space-y-3">
         {!configured && (
           <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex items-start gap-2">

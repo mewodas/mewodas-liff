@@ -24,7 +24,7 @@ export type ReportTemplate = {
 };
 
 function getDbId(): string | null {
-  return process.env.NOTION_TEMPLATES_DB_ID || null;
+  return process.env.NOTION_TEMPLATES_DB_ID || 'cdcfe37b69714617be8628c81563920a';
 }
 
 export function isTemplatesConfigured(): boolean {
