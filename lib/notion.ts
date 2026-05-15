@@ -481,11 +481,24 @@ export type TenantRow = {
   status: string | null;
   startDate: string | null;
   passwordHash: string | null;
+  lineChannelToken: string | null;
+  lineAutoSendEnabled: boolean;
+  /** "HH:MM" 形式の JST 送信時刻。未設定なら "06:00" 想定 */
+  autoSendTime: string | null;
 };
 
 export async function updateTenantRow(
   pageId: string,
-  patch: { liffId?: string | null; plan?: string; ownerEmail?: string; status?: string; note?: string }
+  patch: {
+    liffId?: string | null;
+    plan?: string;
+    ownerEmail?: string;
+    status?: string;
+    note?: string;
+    lineChannelToken?: string | null;
+    lineAutoSendEnabled?: boolean;
+    autoSendTime?: string | null;
+  }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
   if (patch.liffId !== undefined) {
@@ -499,6 +512,19 @@ export async function updateTenantRow(
   if (patch.note !== undefined) {
     properties['備考'] = patch.note
       ? { rich_text: [{ type: 'text', text: { content: patch.note } }] }
+      : { rich_text: [] };
+  }
+  if (patch.lineChannelToken !== undefined) {
+    properties['LINE Channel Token'] = patch.lineChannelToken
+      ? { rich_text: [{ type: 'text', text: { content: patch.lineChannelToken } }] }
+      : { rich_text: [] };
+  }
+  if (patch.lineAutoSendEnabled !== undefined) {
+    properties['LINE自動送付'] = { checkbox: patch.lineAutoSendEnabled };
+  }
+  if (patch.autoSendTime !== undefined) {
+    properties['自動送付時刻'] = patch.autoSendTime
+      ? { rich_text: [{ type: 'text', text: { content: patch.autoSendTime } }] }
       : { rich_text: [] };
   }
   if (Object.keys(properties).length === 0) return;
@@ -521,6 +547,9 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       status: p['契約状態']?.select?.name || null,
       startDate: p['契約開始日']?.date?.start || null,
       passwordHash: p['パスワードハッシュ']?.rich_text?.[0]?.plain_text || null,
+      lineChannelToken: p['LINE Channel Token']?.rich_text?.[0]?.plain_text || null,
+      lineAutoSendEnabled: !!p['LINE自動送付']?.checkbox,
+      autoSendTime: p['自動送付時刻']?.rich_text?.[0]?.plain_text || null,
     };
   });
 }

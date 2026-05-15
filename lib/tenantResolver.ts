@@ -40,6 +40,9 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
       notionCustomerDbId: r.customerDbId,
       notionFoodDbId: r.foodDbId,
       liffId: r.liffId ?? undefined,
+      lineChannelToken: r.lineChannelToken ?? undefined,
+      lineAutoSendEnabled: r.lineAutoSendEnabled,
+      autoSendTime: r.autoSendTime ?? undefined,
       ...base,
     };
     tenants.set(r.tenantId, cfg);

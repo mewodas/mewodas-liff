@@ -24,12 +24,24 @@ export const PATCH = withMasterOnly(async (req, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await req.json();
-    const patch: { liffId?: string | null; plan?: string; ownerEmail?: string; status?: string; note?: string } = {};
+    const patch: {
+      liffId?: string | null;
+      plan?: string;
+      ownerEmail?: string;
+      status?: string;
+      note?: string;
+      lineChannelToken?: string | null;
+      lineAutoSendEnabled?: boolean;
+      autoSendTime?: string | null;
+    } = {};
     if ('liffId' in body) patch.liffId = body.liffId ? String(body.liffId).trim() : null;
     if ('plan' in body && body.plan) patch.plan = String(body.plan);
     if ('ownerEmail' in body && body.ownerEmail) patch.ownerEmail = String(body.ownerEmail);
     if ('status' in body && body.status) patch.status = String(body.status);
     if ('note' in body) patch.note = String(body.note || '');
+    if ('lineChannelToken' in body) patch.lineChannelToken = body.lineChannelToken ? String(body.lineChannelToken).trim() : null;
+    if ('lineAutoSendEnabled' in body) patch.lineAutoSendEnabled = !!body.lineAutoSendEnabled;
+    if ('autoSendTime' in body) patch.autoSendTime = body.autoSendTime ? String(body.autoSendTime).trim() : null;
 
     // pageId 必要：tenantId 文字列で来たら一覧から解決
     let pageId = id;

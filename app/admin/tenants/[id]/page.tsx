@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw } from 'lucide-react';
+import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw, MessageCircle, Clock } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 type Tenant = {
@@ -16,6 +16,9 @@ type Tenant = {
   ownerEmail: string | null;
   status: string | null;
   startDate: string | null;
+  lineChannelToken: string | null;
+  lineAutoSendEnabled: boolean;
+  autoSendTime: string | null;
 };
 
 const PLANS = ['5-10名', '11-20名', '21名+', 'モニター', '無料'];
@@ -46,6 +49,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [plan, setPlan] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [status, setStatus] = useState('');
+  const [lineChannelToken, setLineChannelToken] = useState('');
+  const [lineAutoSendEnabled, setLineAutoSendEnabled] = useState(false);
+  const [autoSendTime, setAutoSendTime] = useState('06:00');
   const [stores, setStores] = useState<Store[]>([]);
   const [storeFormOpen, setStoreFormOpen] = useState(false);
   const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
@@ -74,6 +80,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         setPlan(t.plan || '');
         setOwnerEmail(t.ownerEmail || '');
         setStatus(t.status || '');
+        setLineChannelToken(t.lineChannelToken || '');
+        setLineAutoSendEnabled(!!t.lineAutoSendEnabled);
+        setAutoSendTime(t.autoSendTime || '06:00');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -97,6 +106,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
           plan,
           ownerEmail,
           status,
+          lineChannelToken: lineChannelToken || null,
+          lineAutoSendEnabled,
+          autoSendTime: autoSendTime || null,
         }),
       });
       if (!res.ok) {
@@ -284,6 +296,60 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                 )}
               </ul>
             )}
+          </section>
+
+          {/* LINE Messaging API（push送信用） */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+            <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+              <MessageCircle className="w-4 h-4 text-green-600" strokeWidth={2.2} />
+              LINE 配信設定
+            </h2>
+            <div>
+              <label className="text-xs font-bold text-stone-700 mb-1 block">Channel Access Token</label>
+              <input
+                type="text"
+                value={lineChannelToken}
+                onChange={(e) => setLineChannelToken(e.target.value)}
+                placeholder="LINE Developers の「Messaging API設定」で発行した長期トークン"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <div className="text-[10px] text-stone-500 mt-1 leading-relaxed">
+                ジムの LINE 公式から顧客にレポートを push 送信するために必要。<br />
+                <a
+                  href="https://developers.line.biz/console/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green-700 underline"
+                >
+                  LINE Developers Console
+                </a>
+                {' '}→ チャネル選択 →「Messaging API設定」タブ →「チャネルアクセストークン（長期）」発行
+              </div>
+            </div>
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lineAutoSendEnabled}
+                  onChange={(e) => setLineAutoSendEnabled(e.target.checked)}
+                  className="w-4 h-4 accent-green-500"
+                />
+                <span className="font-bold text-stone-900">前日レポートを自動送信する</span>
+              </label>
+              <div className="grid grid-cols-[auto,1fr] items-center gap-2 pl-6">
+                <Clock className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={autoSendTime}
+                    onChange={(e) => setAutoSendTime(e.target.value)}
+                    disabled={!lineAutoSendEnabled}
+                    className="bg-white border border-stone-300 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                  />
+                  <span className="text-[10px] text-stone-500">JST に「メヲダス前日レポート」テンプレで全顧客へ送信</span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">

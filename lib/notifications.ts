@@ -13,6 +13,7 @@
 // オプション環境変数: LINE_CHANNEL_ACCESS_TOKEN（あれば LINE push 同時実行）
 
 import { getTenantNotion } from '@/lib/notion';
+import { getCurrentTenant } from '@/lib/tenant';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2025-09-03';
@@ -150,15 +151,26 @@ export async function deleteNotification(id: string): Promise<void> {
 }
 
 // LINE Messaging API: 顧客にpushメッセージを送る
-// LINE_CHANNEL_ACCESS_TOKEN が未設定の場合は何もしない（保存のみ）
+// トークン解決優先度:
+//   1. 現在テナント設定の lineChannelToken (テナント別運用)
+//   2. env LINE_CHANNEL_ACCESS_TOKEN (フォールバック、メヲダス互換)
+// どちらも無ければ送信スキップ
 export async function pushLineMessage(
   lineUserId: string,
   title: string,
   body: string,
-  staffName?: string
+  staffName?: string,
+  options?: { tokenOverride?: string }
 ): Promise<{ pushed: boolean; reason?: string }> {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) return { pushed: false, reason: 'LINE_CHANNEL_ACCESS_TOKEN 未設定' };
+  const tenantToken = (() => {
+    try {
+      return getCurrentTenant().lineChannelToken || undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const token = options?.tokenOverride || tenantToken || process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) return { pushed: false, reason: 'LINE Channel Token 未設定（テナント設定・env共に未設定）' };
   const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL || '';
   const fromLine = staffName ? `（${staffName}より）` : '';
   const messages: object[] = [
