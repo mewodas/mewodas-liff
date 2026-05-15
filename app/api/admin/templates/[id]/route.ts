@@ -23,6 +23,9 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
       rangeType: 'rangeType' in body
         ? (body.rangeType === null ? null : RANGE_TYPES.includes(body.rangeType) ? (body.rangeType as RangeType) : undefined)
         : undefined,
+      sortOrder: 'sortOrder' in body
+        ? (body.sortOrder === null ? null : typeof body.sortOrder === 'number' ? body.sortOrder : undefined)
+        : undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

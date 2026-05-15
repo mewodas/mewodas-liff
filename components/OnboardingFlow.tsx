@@ -41,13 +41,13 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   useEffect(() => {
     if (step === 6) {
       autoRef.current = setTimeout(() => {
-        router.push('/home');
-      }, 2000);
+        window.location.href = '/home';
+      }, 1500);
     }
     return () => {
       if (autoRef.current) clearTimeout(autoRef.current);
     };
-  }, [step, router]);
+  }, [step]);
 
   async function complete() {
     if (completing) return;
@@ -57,9 +57,9 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         method: 'POST',
       });
     } catch {
-      // ignore
+      // ignore – fail-safe: proceed to home regardless
     }
-    setStep(6);
+    window.location.href = '/home';
   }
 
   function skip() {

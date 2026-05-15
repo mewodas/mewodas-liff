@@ -26,6 +26,7 @@ export type ReportTemplate = {
   useAi: boolean;
   aiPrompt: string;
   rangeType?: RangeType;
+  sortOrder?: number;
 };
 
 function getDbId(): string | null {
@@ -75,6 +76,7 @@ function pageToTemplate(page: { id: string; properties: Record<string, any> }): 
     useAi: !!p['AI生成']?.checkbox,
     aiPrompt: richJoin('AIプロンプト'),
     rangeType: toRangeType(p['対象期間']?.select?.name),
+    sortOrder: typeof p['並び順']?.number === 'number' ? p['並び順'].number : undefined,
   };
 }
 
@@ -99,7 +101,14 @@ export async function listTemplates(opts?: { noCache?: boolean }): Promise<Repor
     if (hit) return hit;
   }
   const res = await notionRequest('POST', `/databases/${dbId}/query`, { page_size: 100 });
-  const result = (res.results || []).map(pageToTemplate);
+  const result = (res.results || [])
+    .map(pageToTemplate)
+    .sort((a: ReportTemplate, b: ReportTemplate) => {
+      const sa = a.sortOrder ?? 9999;
+      const sb = b.sortOrder ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return a.name.localeCompare(b.name, 'ja');
+    });
   setCached(key, result, 300_000);
   return result;
 }
@@ -122,6 +131,7 @@ export async function createTemplate(params: {
   useAi: boolean;
   aiPrompt: string;
   rangeType?: RangeType;
+  sortOrder?: number;
 }): Promise<ReportTemplate> {
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
@@ -136,6 +146,7 @@ export async function createTemplate(params: {
     AIプロンプト: { rich_text: richText(params.aiPrompt) },
   };
   if (params.rangeType) properties['対象期間'] = { select: { name: params.rangeType } };
+  if (params.sortOrder !== undefined) properties['並び順'] = { number: params.sortOrder };
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: dbId },
     properties,
@@ -145,7 +156,7 @@ export async function createTemplate(params: {
 
 export async function updateTemplate(
   id: string,
-  patch: Partial<{ name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType: RangeType | null }>
+  patch: Partial<{ name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType: RangeType | null; sortOrder: number | null }>
 ): Promise<void> {
   if (!getDbId()) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
   const tenantId = getCurrentTenant().id;
@@ -159,6 +170,9 @@ export async function updateTemplate(
   if (patch.aiPrompt !== undefined) properties['AIプロンプト'] = { rich_text: richText(patch.aiPrompt) };
   if (patch.rangeType !== undefined) {
     properties['対象期間'] = patch.rangeType ? { select: { name: patch.rangeType } } : { select: null };
+  }
+  if (patch.sortOrder !== undefined) {
+    properties['並び順'] = patch.sortOrder !== null ? { number: patch.sortOrder } : { number: null };
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${id}`, { properties });

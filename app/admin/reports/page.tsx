@@ -16,7 +16,7 @@ import DateRangePicker from '../DateRangePicker';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 type Store = { pageId: string; storeId: string; name: string; signature: string };
-type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string };
+type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType?: string; sortOrder?: number };
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -27,6 +27,49 @@ function addDaysStr(s: string, n: number): string {
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + n);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function rangeTypeToFromTo(rangeType: string | undefined, today: string): { from: string; to: string } | null {
+  if (!rangeType || rangeType === 'カスタム') return null;
+  const [y, m, d] = today.split('-').map(Number);
+  const todayDt = new Date(y, m - 1, d);
+  if (rangeType === '今日') return { from: today, to: today };
+  if (rangeType === '昨日') {
+    const dt = new Date(todayDt);
+    dt.setDate(dt.getDate() - 1);
+    const s = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { from: s, to: s };
+  }
+  if (rangeType === '今週') {
+    const dow = todayDt.getDay();
+    const monday = new Date(todayDt);
+    monday.setDate(todayDt.getDate() - ((dow === 0 ? 7 : dow) - 1));
+    const s = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+    return { from: s, to: today };
+  }
+  if (rangeType === '先週') {
+    const dow = todayDt.getDay();
+    const lastMonday = new Date(todayDt);
+    lastMonday.setDate(todayDt.getDate() - ((dow === 0 ? 7 : dow) - 1) - 7);
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    const s = `${lastMonday.getFullYear()}-${String(lastMonday.getMonth() + 1).padStart(2, '0')}-${String(lastMonday.getDate()).padStart(2, '0')}`;
+    const e = `${lastSunday.getFullYear()}-${String(lastSunday.getMonth() + 1).padStart(2, '0')}-${String(lastSunday.getDate()).padStart(2, '0')}`;
+    return { from: s, to: e };
+  }
+  if (rangeType === '今月') {
+    const firstDay = new Date(todayDt.getFullYear(), todayDt.getMonth(), 1);
+    const s = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
+    return { from: s, to: today };
+  }
+  if (rangeType === '先月') {
+    const firstDay = new Date(todayDt.getFullYear(), todayDt.getMonth() - 1, 1);
+    const lastDay = new Date(todayDt.getFullYear(), todayDt.getMonth(), 0);
+    const s = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
+    const e = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+    return { from: s, to: e };
+  }
+  return null;
 }
 
 export default function AdminReportsPage() {
@@ -134,17 +177,21 @@ function Inner() {
 
   // テンプレ切替時：タイトル・本文をテンプレのベーステキストで上書き
   // ただしユーザーが編集済みなら上書きしない
+  // rangeType がある場合は from/to も自動更新（バグ1修正）
   useEffect(() => {
     if (!selectedTemplate) return;
     const baseTitle = selectedTemplate.titleTemplate || '';
-    const baseBody = selectedTemplate.useAi
-      ? (selectedTemplate.bodyTemplate || '')
-      : (selectedTemplate.bodyTemplate || '');
+    const baseBody = selectedTemplate.bodyTemplate || '';
     const userEditedTitle = title !== templateBaselineRef.current.title && title !== '';
     const userEditedBody = body !== templateBaselineRef.current.body && body !== '';
     if (!userEditedTitle) setTitle(baseTitle);
     if (!userEditedBody) setBody(baseBody);
     templateBaselineRef.current = { title: baseTitle, body: baseBody };
+    const range = rangeTypeToFromTo(selectedTemplate.rangeType, today);
+    if (range) {
+      setFrom(range.from);
+      setTo(range.to);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, templates]);
 
@@ -337,20 +384,27 @@ function Inner() {
             <div className="text-[11px] text-stone-400 py-1">読み込み中…</div>
           ) : (
             <div className="flex gap-1.5 flex-wrap">
+              {[...templates]
+                .sort((a, b) => {
+                  const sa = a.sortOrder ?? 9999;
+                  const sb = b.sortOrder ?? 9999;
+                  if (sa !== sb) return sa - sb;
+                  return a.name.localeCompare(b.name, 'ja');
+                })
+                .map((t) => (
+                  <TemplateChip
+                    key={t.id}
+                    label={t.name}
+                    useAi={t.useAi}
+                    active={templateId === t.id}
+                    onClick={() => setTemplateId(t.id)}
+                  />
+                ))}
               <TemplateChip
                 label="テンプレなし"
                 active={templateId === ''}
                 onClick={() => setTemplateId('')}
               />
-              {templates.map((t) => (
-                <TemplateChip
-                  key={t.id}
-                  label={t.name}
-                  useAi={t.useAi}
-                  active={templateId === t.id}
-                  onClick={() => setTemplateId(t.id)}
-                />
-              ))}
             </div>
           )}
 
@@ -427,7 +481,7 @@ function Inner() {
             className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" strokeWidth={2.2} />
-            {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} に送信`}
+            {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} 様に送信`}
           </button>
           <button
             type="button"
@@ -436,7 +490,7 @@ function Inner() {
             className="w-full bg-green-500 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
           >
             <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
-            {sendingLine ? 'LINE 送信中…' : 'LINE で送信'}
+            {sendingLine ? 'LINE 送信中…' : `${selectedCustomer?.name || '顧客'} 様に LINE 送信`}
           </button>
         </section>
 

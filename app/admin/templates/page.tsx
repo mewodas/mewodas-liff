@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -16,6 +16,7 @@ type Template = {
   useAi: boolean;
   aiPrompt: string;
   rangeType?: RangeType;
+  sortOrder?: number;
 };
 
 const RANGE_OPTIONS: { value: '' | RangeType; label: string }[] = [
@@ -115,6 +116,7 @@ export default function AdminTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -123,7 +125,14 @@ export default function AdminTemplatesPage() {
       const res = await fetch('/api/admin/templates', { cache: 'no-store' });
       if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
       const j = await res.json();
-      setTemplates(j.templates || []);
+      const list: Template[] = j.templates || [];
+      list.sort((a, b) => {
+        const sa = a.sortOrder ?? 9999;
+        const sb = b.sortOrder ?? 9999;
+        if (sa !== sb) return sa - sb;
+        return a.name.localeCompare(b.name, 'ja');
+      });
+      setTemplates(list);
       if (j.error) setError(j.hint || j.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
@@ -134,6 +143,36 @@ export default function AdminTemplatesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  async function moveTemplate(idx: number, dir: -1 | 1) {
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= templates.length) return;
+    const a = templates[idx];
+    const b = templates[swapIdx];
+    if (a.id.startsWith('default-') || b.id.startsWith('default-')) return;
+    setMovingId(a.id);
+    try {
+      const aOrder = a.sortOrder ?? (idx + 1) * 10;
+      const bOrder = b.sortOrder ?? (swapIdx + 1) * 10;
+      await Promise.all([
+        fetch(`/api/admin/templates/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: bOrder }),
+        }),
+        fetch(`/api/admin/templates/${b.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: aOrder }),
+        }),
+      ]);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '並び替えエラー');
+    } finally {
+      setMovingId(null);
+    }
+  }
 
   return (
     <AdminShell title="レポートテンプレート管理" back={{ href: `${base}/reports` }}>
@@ -184,7 +223,7 @@ export default function AdminTemplatesPage() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {templates.map((t) =>
+            {templates.map((t, idx) =>
               editingId === t.id ? (
                 <li key={t.id}>
                   <TemplateEditor
@@ -203,6 +242,26 @@ export default function AdminTemplatesPage() {
               ) : (
                 <li key={t.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
                   <div className="flex items-start gap-2">
+                    <div className="flex-col flex-shrink-0 flex gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => moveTemplate(idx, -1)}
+                        disabled={idx === 0 || movingId === t.id || t.id.startsWith('default-')}
+                        className="text-stone-400 hover:text-stone-700 disabled:opacity-30 p-0.5"
+                        aria-label="上に移動"
+                      >
+                        <ChevronUp className="w-4 h-4" strokeWidth={2.4} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveTemplate(idx, 1)}
+                        disabled={idx === templates.length - 1 || movingId === t.id || t.id.startsWith('default-')}
+                        className="text-stone-400 hover:text-stone-700 disabled:opacity-30 p-0.5"
+                        aria-label="下に移動"
+                      >
+                        <ChevronDown className="w-4 h-4" strokeWidth={2.4} />
+                      </button>
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-bold text-stone-900 truncate">{t.name}</span>
@@ -210,6 +269,9 @@ export default function AdminTemplatesPage() {
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                             {t.rangeType}
                           </span>
+                        )}
+                        {t.sortOrder !== undefined && (
+                          <span className="text-[9px] text-stone-400"># {t.sortOrder}</span>
                         )}
                       </div>
                       {t.titleTemplate && (
