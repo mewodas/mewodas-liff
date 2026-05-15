@@ -10,6 +10,7 @@ import {
   X,
   ImageIcon,
   Check,
+  Copy,
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
@@ -310,21 +311,33 @@ export default function AdminMealsPage() {
 
         {/* 集計サマリー（顧客選択時のみ） */}
         {summary && selectedCustomer && (
-          <section className="bg-gradient-to-br from-emerald-50 to-sky-50 rounded-2xl border border-emerald-200 shadow-sm p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-bold text-stone-900">
-                {selectedCustomer.name} ・ {visibleMeals.length}件
-                {mealTypeFilter && <span className="text-stone-500 ml-1">（{mealTypeFilter}のみ）</span>}
+          <>
+            <section className="bg-gradient-to-br from-emerald-50 to-sky-50 rounded-2xl border border-emerald-200 shadow-sm p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold text-stone-900">
+                  {selectedCustomer.name} ・ {visibleMeals.length}件
+                  {mealTypeFilter && <span className="text-stone-500 ml-1">（{mealTypeFilter}のみ）</span>}
+                </div>
+                <div className="text-[10px] text-stone-500">合計 / 1日目標</div>
               </div>
-              <div className="text-[10px] text-stone-500">合計 / 1日目標</div>
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              <SummaryCell label="kcal" value={summary.sum.kcal} goal={summary.goals.kcal} ratio={summary.ratio.kcal} primary />
-              <SummaryCell label="P (g)" value={summary.sum.P} goal={summary.goals.P} ratio={summary.ratio.P} />
-              <SummaryCell label="F (g)" value={summary.sum.F} goal={summary.goals.F} ratio={summary.ratio.F} />
-              <SummaryCell label="C (g)" value={summary.sum.C} goal={summary.goals.C} ratio={summary.ratio.C} />
-            </div>
-          </section>
+              <div className="grid grid-cols-4 gap-1.5">
+                <SummaryCell label="kcal" value={summary.sum.kcal} goal={summary.goals.kcal} ratio={summary.ratio.kcal} primary />
+                <SummaryCell label="P (g)" value={summary.sum.P} goal={summary.goals.P} ratio={summary.ratio.P} />
+                <SummaryCell label="F (g)" value={summary.sum.F} goal={summary.goals.F} ratio={summary.ratio.F} />
+                <SummaryCell label="C (g)" value={summary.sum.C} goal={summary.goals.C} ratio={summary.ratio.C} />
+              </div>
+            </section>
+            <TextDigest
+              customerName={selectedCustomer.name}
+              fromDate={effectiveFrom}
+              toDate={effectiveTo}
+              mealTypeFilter={mealTypeFilter}
+              meals={visibleMeals}
+              sum={summary.sum}
+              ratio={summary.ratio}
+              goals={summary.goals}
+            />
+          </>
         )}
 
         {error && (
@@ -597,6 +610,108 @@ function MealDetailModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function TextDigest({
+  customerName,
+  fromDate,
+  toDate,
+  mealTypeFilter,
+  meals,
+  sum,
+  ratio,
+  goals,
+}: {
+  customerName: string;
+  fromDate: string;
+  toDate: string;
+  mealTypeFilter: string;
+  meals: Meal[];
+  sum: { kcal: number; P: number; F: number; C: number };
+  ratio: { kcal: number; P: number; F: number; C: number };
+  goals: { kcal: number; P: number; F: number; C: number };
+}) {
+  const [copied, setCopied] = useState(false);
+
+  // 日付＆食事区分の順で並べ替え
+  const sortedMeals = useMemo(() => {
+    const order = ['朝食', '昼食', '夕食', '間食'];
+    return [...meals].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      const ai = order.indexOf(a.mealType);
+      const bi = order.indexOf(b.mealType);
+      const av = ai < 0 ? 99 : ai;
+      const bv = bi < 0 ? 99 : bi;
+      if (av !== bv) return av - bv;
+      return a.recordedAt.localeCompare(b.recordedAt);
+    });
+  }, [meals]);
+
+  // テキストを構築
+  const text = useMemo(() => {
+    const lines: string[] = [];
+    const period = fromDate === toDate
+      ? `${parseInt(fromDate.split('-')[1], 10)}/${parseInt(fromDate.split('-')[2], 10)}`
+      : `${parseInt(fromDate.split('-')[1], 10)}/${parseInt(fromDate.split('-')[2], 10)} 〜 ${parseInt(toDate.split('-')[1], 10)}/${parseInt(toDate.split('-')[2], 10)}`;
+    lines.push(`【${customerName} ・ ${period}${mealTypeFilter ? ` ・ ${mealTypeFilter}` : ''}】`);
+    lines.push('');
+
+    let currentSection = '';
+    for (const m of sortedMeals) {
+      const sectionKey = fromDate === toDate ? m.mealType : `${m.date} ${m.mealType}`;
+      if (sectionKey !== currentSection) {
+        if (currentSection !== '') lines.push('');
+        lines.push(`■ ${sectionKey}`);
+        currentSection = sectionKey;
+      }
+      const food = (m.memo || m.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim() || '食事';
+      lines.push(`・${food}`);
+      lines.push(`  ${Math.round(m.kcal)}kcal / P${r1(m.P)} F${r1(m.F)} C${r1(m.C)}`);
+    }
+
+    lines.push('');
+    lines.push('━━━━━━━━━━━━');
+    lines.push(`合計: ${sum.kcal}kcal / P${sum.P}g / F${sum.F}g / C${sum.C}g`);
+    lines.push(`目標: ${goals.kcal}kcal / P${goals.P}g / F${goals.F}g / C${goals.C}g`);
+    lines.push(`達成率: kcal ${ratio.kcal}% / P ${ratio.P}% / F ${ratio.F}% / C ${ratio.C}%`);
+    return lines.join('\n');
+  }, [customerName, fromDate, toDate, mealTypeFilter, sortedMeals, sum, ratio, goals]);
+
+  function copy() {
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (meals.length === 0) return null;
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-bold text-stone-700">テキスト一覧</div>
+        <button
+          type="button"
+          onClick={copy}
+          className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full hover:bg-emerald-100 inline-flex items-center gap-1"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3" strokeWidth={2.4} />
+              コピー済み
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" strokeWidth={2.4} />
+              コピー
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-[11px] text-stone-800 leading-relaxed whitespace-pre-wrap break-words font-sans max-h-80 overflow-y-auto">
+        {text}
+      </pre>
+    </section>
   );
 }
 
