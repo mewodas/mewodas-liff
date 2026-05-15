@@ -534,6 +534,14 @@ function MealDetailModal({
 }
 
 function EditNum({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  // ローカル文字列で保持：空欄や中間入力（"0.", "."）を許容、フォーカス外したら数値化
+  const [str, setStr] = useState<string>(value === 0 ? '' : String(value));
+  // 親側で reset した時に同期
+  useEffect(() => {
+    setStr(value === 0 ? '' : String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   return (
     <div className="bg-white border border-emerald-200 rounded-lg p-1.5 text-center">
       <div className="text-[10px] font-bold text-emerald-700">{label}</div>
@@ -541,8 +549,14 @@ function EditNum({ label, value, onChange }: { label: string; value: number; onC
         type="number"
         step="0.1"
         inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        value={str}
+        placeholder="0"
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          setStr(e.target.value);
+          const n = parseFloat(e.target.value);
+          onChange(isNaN(n) ? 0 : n);
+        }}
         className="w-full bg-transparent text-emerald-900 font-bold text-base text-center focus:outline-none"
       />
     </div>
