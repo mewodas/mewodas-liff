@@ -85,11 +85,17 @@ export async function GET(req: NextRequest) {
     })();
 
     // すべての主要Notion取得を最大限並列化
-    // customer.foodSheetPageIdが必要なgetDailyExtrasのみ後置
+    // 30日分の取得はバッジ計算用なので、遅い場合は空配列で返してホーム表示を優先（12秒）
+    const last30TimeoutMs = 12_000;
     const [customer, records, last30Records] = await Promise.all([
       getCustomerByLineId(lineUserId),
       getFoodRecordsByDate(lineUserId, today),
-      getFoodRecordsByDateRange(lineUserId, startStr, todayActual),
+      Promise.race([
+        getFoodRecordsByDateRange(lineUserId, startStr, todayActual).catch(() => [] as FoodRecord[]),
+        new Promise<FoodRecord[]>((resolve) =>
+          setTimeout(() => resolve([]), last30TimeoutMs)
+        ),
+      ]),
     ]);
 
     if (!customer) {
@@ -120,10 +126,17 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // 個人シート（体重・運動）はcustomer取得後にしか走らせられない
+    // 個人シート（体重・運動）はNotionブロック走査で重いことがあるため、
+    // 8秒でタイムアウト → タイムアウト時は空値で返してページ表示を優先
+    const extrasEmpty = { weight: '', exercised: '', exerciseContent: '' };
     const extras = customer.foodSheetPageId
-      ? await getDailyExtras(customer.foodSheetPageId, isoToJpMd(today))
-      : { weight: '', exercised: '', exerciseContent: '' };
+      ? await Promise.race([
+          getDailyExtras(customer.foodSheetPageId, isoToJpMd(today)).catch(() => extrasEmpty),
+          new Promise<typeof extrasEmpty>((resolve) =>
+            setTimeout(() => resolve(extrasEmpty), 8000)
+          ),
+        ])
+      : extrasEmpty;
 
     // ストリーク計算（常に今日基点で計算、過去日選択時もバッジは消えない）
     const stats = computeStats(last30Records, todayActual, customer.goals.kcal);
