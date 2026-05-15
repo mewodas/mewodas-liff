@@ -7,6 +7,8 @@ import { listTenantRows } from './notion';
 import type { TenantConfig } from './tenant';
 import { FITMEAL_TENANTS_DB_ID } from './tenant';
 
+export { FITMEAL_TENANTS_DB_ID };
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { tenants: Map<string, TenantConfig>; liffMap: Map<string, TenantConfig>; expiry: number } | null = null;
 
@@ -55,6 +57,30 @@ export async function getTenantByIdAsync(id: string): Promise<TenantConfig | nul
 export async function resolveTenantByLiffId(liffId: string): Promise<TenantConfig | null> {
   const { liffMap } = await loadTenants();
   return liffMap.get(liffId) ?? null;
+}
+
+/** Tenant admin ログイン用: email でテナントを検索（ハッシュも合わせて返す） */
+export async function findTenantAdminByEmail(email: string): Promise<{
+  tenantId: string;
+  tenantName: string;
+  pageId: string;
+  passwordHash: string;
+} | null> {
+  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  const normalized = email.toLowerCase();
+  const row = rows.find(
+    (r) =>
+      r.ownerEmail?.toLowerCase() === normalized &&
+      !!r.passwordHash &&
+      r.status !== '解約'
+  );
+  if (!row) return null;
+  return {
+    tenantId: row.tenantId,
+    tenantName: row.name,
+    pageId: row.pageId,
+    passwordHash: row.passwordHash!,
+  };
 }
 
 export async function listAllTenants(): Promise<TenantConfig[]> {

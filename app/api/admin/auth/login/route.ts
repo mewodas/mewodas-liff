@@ -4,6 +4,7 @@ import {
   getAdminCredentials,
   verifyPassword,
 } from '@/lib/adminAuth';
+import { findTenantAdminByEmail } from '@/lib/tenantResolver';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,23 +22,33 @@ export async function POST(req: NextRequest) {
   if (!email || !password) {
     return NextResponse.json({ error: 'email/password 必須' }, { status: 400 });
   }
-  const creds = getAdminCredentials();
-  if (!creds) {
-    return NextResponse.json(
-      { error: 'ADMIN_EMAIL / ADMIN_PASSWORD_HASH が未設定です' },
-      { status: 500 }
-    );
-  }
-  if (email !== creds.email.toLowerCase()) {
-    return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
-  }
-  if (!verifyPassword(password, creds.passwordHash)) {
-    return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
+
+  // ① マスタログイン（env ADMIN_EMAIL）
+  const masterCreds = getAdminCredentials();
+  if (masterCreds && email === masterCreds.email.toLowerCase()) {
+    if (!verifyPassword(password, masterCreds.passwordHash)) {
+      return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
+    }
+    const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
+    const res = NextResponse.json({ ok: true, email, role: 'master', currentTenantId: 'mewodas' });
+    res.cookies.set(cookie.name, cookie.value, cookie.options);
+    return res;
   }
 
-  // env の ADMIN_EMAIL とログインメールが一致するのでマスタ確定
-  const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
-  const res = NextResponse.json({ ok: true, email, role: 'master' });
-  res.cookies.set(cookie.name, cookie.value, cookie.options);
-  return res;
+  // ② テナント admin ログイン（FitMeal テナント DB から検索）
+  try {
+    const tenant = await findTenantAdminByEmail(email);
+    if (!tenant) {
+      return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
+    }
+    if (!verifyPassword(password, tenant.passwordHash)) {
+      return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
+    }
+    const cookie = createSessionCookie(email, { role: 'tenant_admin', currentTenantId: tenant.tenantId });
+    const res = NextResponse.json({ ok: true, email, role: 'tenant_admin', currentTenantId: tenant.tenantId, tenantName: tenant.tenantName });
+    res.cookies.set(cookie.name, cookie.value, cookie.options);
+    return res;
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+  }
 }

@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User } from 'lucide-react';
+import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 type Tenant = {
@@ -161,6 +161,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               )}
             </div>
           </section>
+
+          {/* パスワード発行 */}
+          <PasswordSection tenantPageId={tenant.pageId} ownerEmail={tenant.ownerEmail || ''} tenantName={tenant.name} />
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
             <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
@@ -468,6 +471,177 @@ function StoreForm({
         )}
       </div>
     </div>
+  );
+}
+
+function PasswordSection({
+  tenantPageId,
+  ownerEmail,
+  tenantName,
+}: {
+  tenantPageId: string;
+  ownerEmail: string;
+  tenantName: string;
+}) {
+  const [mode, setMode] = useState<'idle' | 'manual' | 'result'>('idle');
+  const [password, setPassword] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function submit(action: 'set' | 'generate') {
+    if (action === 'set' && password.length < 8) {
+      setError('パスワードは8文字以上必要');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantPageId}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action === 'generate' ? { action: 'generate' } : { password }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || `保存失敗（${res.status}）`);
+      if (action === 'generate') {
+        setGeneratedPassword(j.password);
+        setMode('result');
+      } else {
+        setMode('result');
+        setGeneratedPassword(null);
+      }
+      setPassword('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function copyAll() {
+    if (!generatedPassword) return;
+    const text = `${tenantName} ログイン情報\n\nURL: https://app.fitmeal.jp/store/login\nメール: ${ownerEmail}\nパスワード: ${generatedPassword}\n※初回ログイン後、必ずパスワードを変更してください`;
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+      <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+        <Key className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
+        ログインパスワード
+      </h2>
+
+      {!ownerEmail && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800">
+          オーナーメールが未設定です。先に契約情報のメールを保存してください。
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
+      )}
+
+      {mode === 'idle' && ownerEmail && (
+        <div className="space-y-2">
+          <div className="text-[11px] text-stone-600 bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+            <div className="font-bold">ログインID（メール）: <code className="text-stone-900">{ownerEmail}</code></div>
+            <div className="mt-1">
+              ジムオーナーが <a href="https://app.fitmeal.jp/store/login" target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">/store/login</a> でログインするためのパスワードを発行します。
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => submit('generate')}
+              disabled={saving}
+              className="flex-1 bg-amber-500 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} strokeWidth={2.4} />
+              自動生成して発行
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('manual')}
+              disabled={saving}
+              className="flex-1 bg-white border border-stone-300 text-stone-700 font-bold text-xs py-2 rounded-xl active:bg-stone-50"
+            >
+              手動で設定
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'manual' && (
+        <div className="space-y-2">
+          <div>
+            <label className="text-[10px] font-bold text-stone-700 block mb-1">新しいパスワード（8文字以上）</label>
+            <input
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="任意のパスワード"
+              autoFocus
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => submit('set')}
+              disabled={saving || password.length < 8}
+              className="flex-1 bg-amber-500 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+            >
+              <Save className="w-3.5 h-3.5" strokeWidth={2.4} />
+              {saving ? '保存中…' : '保存'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('idle'); setPassword(''); }}
+              disabled={saving}
+              className="bg-white border border-stone-300 text-stone-700 font-bold text-xs px-3 py-2 rounded-xl active:bg-stone-50"
+            >
+              <X className="w-3.5 h-3.5" strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'result' && (
+        <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 space-y-2">
+          <div className="text-[11px] font-bold text-emerald-800">✅ パスワード設定完了</div>
+          {generatedPassword ? (
+            <>
+              <div className="text-[10px] text-emerald-700">⚠️ このパスワードは1度しか表示されません。今すぐコピーしてジムオーナーに伝えてください。</div>
+              <div className="bg-white border border-emerald-300 rounded-lg p-2 space-y-1 text-[11px]">
+                <div><span className="text-stone-600">URL:</span> <code className="text-stone-900">https://app.fitmeal.jp/store/login</code></div>
+                <div><span className="text-stone-600">メール:</span> <code className="text-stone-900">{ownerEmail}</code></div>
+                <div><span className="text-stone-600">パスワード:</span> <code className="text-stone-900 font-mono font-bold">{generatedPassword}</code></div>
+              </div>
+              <button
+                type="button"
+                onClick={copyAll}
+                className="w-full bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-1"
+              >
+                {copied ? <><Check className="w-3.5 h-3.5" strokeWidth={2.4} /> コピーしました</> : <><Copy className="w-3.5 h-3.5" strokeWidth={2.4} /> 全部コピー</>}
+              </button>
+            </>
+          ) : (
+            <div className="text-[11px] text-emerald-700">手動入力したパスワードが設定されました。</div>
+          )}
+          <button
+            type="button"
+            onClick={() => { setMode('idle'); setGeneratedPassword(null); }}
+            className="w-full text-[11px] text-stone-600 hover:text-stone-900 py-1"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 

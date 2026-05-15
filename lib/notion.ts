@@ -480,6 +480,7 @@ export type TenantRow = {
   ownerEmail: string | null;
   status: string | null;
   startDate: string | null;
+  passwordHash: string | null;
 };
 
 export async function updateTenantRow(
@@ -519,7 +520,17 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       ownerEmail: p['オーナーメール']?.email || null,
       status: p['契約状態']?.select?.name || null,
       startDate: p['契約開始日']?.date?.start || null,
+      passwordHash: p['パスワードハッシュ']?.rich_text?.[0]?.plain_text || null,
     };
+  });
+}
+
+/** テナント admin のパスワードハッシュを設定（マスタ専用） */
+export async function setTenantPasswordHash(pageId: string, passwordHash: string): Promise<void> {
+  await notionRequest('PATCH', `/pages/${pageId}`, {
+    properties: {
+      パスワードハッシュ: { rich_text: [{ type: 'text', text: { content: passwordHash } }] },
+    },
   });
 }
 
