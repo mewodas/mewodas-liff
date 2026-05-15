@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
+import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
 
@@ -89,6 +90,7 @@ export default function AdminAnalysisPage() {
 
 function Inner() {
   const sp = useSearchParams();
+  const base = useAdminBase();
   const initialCustomerId = sp.get('customerId') || '';
   const today = jstToday();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -376,7 +378,7 @@ function Inner() {
             {customerId && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 <Link
-                  href={`/admin/reports?customerId=${customerId}&draft=${encodeURIComponent(analysis.reportDraft)}`}
+                  href={`${base}/reports?customerId=${customerId}&draft=${encodeURIComponent(analysis.reportDraft)}`}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-500 text-white text-sm font-bold px-3 py-2 rounded-xl active:bg-emerald-700"
                 >
                   <Send className="w-4 h-4" strokeWidth={2.2} />

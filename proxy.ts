@@ -5,12 +5,18 @@ import { verifySession, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (!pathname.startsWith('/admin') && !pathname.startsWith('/api/admin')) {
+  const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+  const isStore = pathname.startsWith('/store') || pathname.startsWith('/api/store');
+  if (!isAdmin && !isStore) {
     return NextResponse.next();
   }
 
   // ログインページと認証APIは素通し
-  if (pathname === '/admin/login' || pathname === '/api/admin/auth/login') {
+  if (
+    pathname === '/admin/login' ||
+    pathname === '/store/login' ||
+    pathname === '/api/admin/auth/login'
+  ) {
     return NextResponse.next();
   }
 
@@ -22,8 +28,9 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    // ページは /admin/login にリダイレクト
-    const loginUrl = new URL('/admin/login', request.url);
+    // ページは /admin/login or /store/login にリダイレクト
+    const loginPath = pathname.startsWith('/store') ? '/store/login' : '/admin/login';
+    const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -32,5 +39,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  matcher: ['/admin/:path*', '/api/admin/:path*', '/store/:path*'],
 };

@@ -4,46 +4,48 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Store, Building2, ChevronLeft, ChevronDown, type LucideIcon } from 'lucide-react';
+import { useAdminBase } from '@/lib/useAdminBase';
 
-type Tab = { href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean; masterOnly?: boolean };
+type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean };
 
 const TABS: Tab[] = [
   {
-    href: '/admin',
+    suffix: '',
     label: '顧客',
     Icon: Users,
-    match: (p) => p === '/admin' || p.startsWith('/admin/customers'),
+    match: (p, base) => p === base || p.startsWith(`${base}/customers`),
   },
   {
-    href: '/admin/meals',
+    suffix: '/meals',
     label: '食事管理',
     Icon: UtensilsCrossed,
-    match: (p) => p.startsWith('/admin/meals'),
+    match: (p, base) => p.startsWith(`${base}/meals`),
   },
   {
-    href: '/admin/reports',
+    suffix: '/reports',
     label: 'レポート送付',
     Icon: Send,
-    match: (p) => p.startsWith('/admin/reports') || p.startsWith('/admin/templates'),
+    match: (p, base) => p.startsWith(`${base}/reports`) || p.startsWith(`${base}/templates`),
   },
   {
-    href: '/admin/analysis',
+    suffix: '/analysis',
     label: 'AI 分析',
     Icon: Sparkles,
-    match: (p) => p.startsWith('/admin/analysis'),
+    match: (p, base) => p.startsWith(`${base}/analysis`),
   },
   {
-    href: '/admin/stores',
+    suffix: '/stores',
     label: '店舗',
     Icon: Store,
-    match: (p) => p.startsWith('/admin/stores'),
+    match: (p, base) => p.startsWith(`${base}/stores`),
   },
   {
-    href: '/admin/tenants',
+    suffix: '/tenants',
     label: 'テナント',
     Icon: Building2,
-    match: (p) => p.startsWith('/admin/tenants'),
+    match: (p, base) => p.startsWith(`${base}/tenants`),
     masterOnly: true,
+    storeHidden: true,
   },
 ];
 
@@ -65,6 +67,8 @@ export default function AdminShell({
 }) {
   const router = useRouter();
   const pathname = usePathname() || '';
+  const base = useAdminBase();
+  const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(null);
   const [switching, setSwitching] = useState(false);
 
@@ -77,7 +81,7 @@ export default function AdminShell({
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
-    router.replace('/admin/login');
+    router.replace(`${base}/login`);
   }
 
   async function switchTenant(tenantId: string) {
@@ -90,7 +94,6 @@ export default function AdminShell({
         body: JSON.stringify({ tenantId }),
       });
       if (res.ok) {
-        // セッション更新後、ページリロードで全データ再取得
         window.location.reload();
       }
     } finally {
@@ -98,8 +101,13 @@ export default function AdminShell({
     }
   }
 
-  const visibleTabs = TABS.filter((t) => !t.masterOnly || me?.role === 'master');
-  const currentTenantName = me?.availableTenants.find((t) => t.id === me.currentTenantId)?.name || me?.currentTenantId || '';
+  const visibleTabs = TABS.filter((t) => {
+    if (isStore && t.storeHidden) return false;
+    if (t.masterOnly && me?.role !== 'master') return false;
+    return true;
+  });
+
+  const headerIconColor = isStore ? 'text-violet-600' : 'text-emerald-600';
 
   return (
     <div className="min-h-screen bg-stone-100">
@@ -114,13 +122,15 @@ export default function AdminShell({
               >
                 <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
               </Link>
+            ) : isStore ? (
+              <Store className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             ) : (
-              <Users className="w-5 h-5 text-emerald-600 flex-shrink-0" strokeWidth={2.2} />
+              <Users className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             )}
             <h1 className="text-sm sm:text-base font-bold text-stone-900 truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {me?.role === 'master' && me.availableTenants.length > 1 && (
+            {!isStore && me?.role === 'master' && me.availableTenants.length > 1 && (
               <div className="relative">
                 <select
                   value={me.currentTenantId}
@@ -137,9 +147,14 @@ export default function AdminShell({
                 <ChevronDown className="w-3 h-3 text-violet-700 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={2.4} />
               </div>
             )}
-            {me?.role === 'master' && me.availableTenants.length <= 1 && (
-              <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full" title={currentTenantName}>
+            {!isStore && me?.role === 'master' && me.availableTenants.length <= 1 && (
+              <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
                 マスタ
+              </span>
+            )}
+            {isStore && (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                店舗
               </span>
             )}
             <button
@@ -155,14 +170,17 @@ export default function AdminShell({
         <nav className="max-w-5xl mx-auto px-4 overflow-x-auto">
           <div className="flex gap-1 -mb-px min-w-max">
             {visibleTabs.map((t) => {
-              const active = t.match(pathname);
+              const href = `${base}${t.suffix}`;
+              const active = t.match(pathname, base);
               return (
                 <Link
-                  key={t.href}
-                  href={t.href}
+                  key={href}
+                  href={href}
                   className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
                     active
-                      ? 'border-emerald-600 text-emerald-700'
+                      ? isStore
+                        ? 'border-violet-600 text-violet-700'
+                        : 'border-emerald-600 text-emerald-700'
                       : 'border-transparent text-stone-600 hover:text-stone-900'
                   }`}
                 >

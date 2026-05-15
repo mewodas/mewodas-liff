@@ -15,6 +15,7 @@ import {
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
+import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null };
 
@@ -89,6 +90,7 @@ function extractFoodLine(m: { title: string; memo: string }): string {
 }
 
 export default function AdminMealsPage() {
+  const base = useAdminBase();
   const today = jstTodayString();
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
@@ -270,7 +272,7 @@ export default function AdminMealsPage() {
           </div>
         )}
 
-        {detail && <MealDetailModal meal={detail} onClose={() => setDetail(null)} />}
+        {detail && <MealDetailModal meal={detail} onClose={() => setDetail(null)} base={base} />}
       </div>
     </AdminShell>
   );
@@ -298,7 +300,7 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function MealDetailModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
+function MealDetailModal({ meal, onClose, base }: { meal: Meal; onClose: () => void; base: string }) {
   const Icon = MEAL_ICON[meal.mealType] || UtensilsCrossed;
   const color = MEAL_COLOR[meal.mealType] || 'text-stone-500';
   return (
@@ -366,7 +368,7 @@ function MealDetailModal({ meal, onClose }: { meal: Meal; onClose: () => void })
           {meal.customerId && (
             <div className="pt-2 border-t border-stone-100">
               <Link
-                href={`/admin/customers/${meal.customerId}`}
+                href={`${base}/customers/${meal.customerId}`}
                 className="block text-center text-xs font-bold text-stone-700 border border-stone-300 px-3 py-2 rounded-xl hover:bg-stone-50"
               >
                 顧客プロフィール

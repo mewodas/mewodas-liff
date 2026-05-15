@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, Circle, ChevronRight } from 'lucide-react';
 import AdminShell from './AdminShell';
+import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = {
   pageId: string;
@@ -19,6 +20,7 @@ type Customer = {
 const STATUSES = ['すべて', '進行中', '設定中', '休止中', '卒業'];
 
 export default function AdminCustomersPage() {
+  const base = useAdminBase();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export default function AdminCustomersPage() {
             {filtered.map((c) => (
               <li key={c.pageId}>
                 <Link
-                  href={`/admin/customers/${c.pageId}`}
+                  href={`${base}/customers/${c.pageId}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
                 >
                   <div className="flex-1 min-w-0">

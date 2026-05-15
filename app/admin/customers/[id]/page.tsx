@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
+import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = {
   pageId: string;
@@ -50,6 +51,7 @@ export default function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const base = useAdminBase();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +185,7 @@ export default function CustomerDetailPage({
   }
 
   return (
-    <AdminShell title={customer?.name || '顧客詳細'} back={{ href: '/admin' }}>
+    <AdminShell title={customer?.name || '顧客詳細'} back={{ href: base }}>
       {loading ? (
         <div className="text-center text-stone-500 py-10">読み込み中…</div>
       ) : !customer ? (
@@ -422,7 +424,7 @@ export default function CustomerDetailPage({
           {/* 各種遷移 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             <Link
-              href={`/admin/reports?customerId=${id}`}
+              href={`${base}/reports?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
               <div className="flex items-center gap-2">
@@ -432,7 +434,7 @@ export default function CustomerDetailPage({
               <span className="text-stone-400">›</span>
             </Link>
             <Link
-              href={`/admin/analysis?customerId=${id}`}
+              href={`${base}/analysis?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
               <div className="flex items-center gap-2">

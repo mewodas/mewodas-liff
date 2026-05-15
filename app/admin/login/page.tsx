@@ -1,13 +1,15 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, LogIn } from 'lucide-react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Lock, LogIn, Store } from 'lucide-react';
 
 function LoginInner() {
   const router = useRouter();
   const sp = useSearchParams();
-  const from = sp.get('from') || '/admin';
+  const pathname = usePathname() || '';
+  const isStore = pathname.startsWith('/store');
+  const from = sp.get('from') || (isStore ? '/store' : '/admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -42,11 +44,17 @@ function LoginInner() {
         className="w-full max-w-sm bg-white rounded-2xl shadow-md p-6 border border-stone-200"
       >
         <div className="flex items-center justify-center gap-2 mb-1">
-          <Lock className="w-5 h-5 text-emerald-600" strokeWidth={2.2} />
-          <h1 className="text-lg font-bold text-stone-900">管理者ログイン</h1>
+          {isStore ? (
+            <Store className="w-5 h-5 text-violet-600" strokeWidth={2.2} />
+          ) : (
+            <Lock className="w-5 h-5 text-emerald-600" strokeWidth={2.2} />
+          )}
+          <h1 className="text-lg font-bold text-stone-900">
+            {isStore ? '店舗ログイン' : '管理者ログイン'}
+          </h1>
         </div>
         <p className="text-xs text-stone-600 text-center mb-5">
-          FitMeal 管理画面
+          {isStore ? 'FitMeal 店舗管理' : 'FitMeal 管理画面'}
         </p>
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl mb-3">
@@ -74,7 +82,11 @@ function LoginInner() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className={`w-full text-white font-bold py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 ${
+            isStore
+              ? 'bg-violet-500 active:bg-violet-700'
+              : 'bg-emerald-500 active:bg-emerald-700'
+          }`}
         >
           <LogIn className="w-4 h-4" strokeWidth={2.2} />
           {submitting ? 'ログイン中…' : 'ログイン'}
