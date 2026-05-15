@@ -35,6 +35,11 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
     const records = await listRecordsInRange(customer.lineUserId, from, today);
 
     // 日別集計
+    // 食事区分別kcal集計（グラフ用）
+    const mealTypeKcal: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+    // 食材頻度カウント
+    const foodCount = new Map<string, number>();
+
     const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
     for (const r of records) {
       const cur = byDay.get(r.date) || { kcal: 0, P: 0, F: 0, C: 0, count: 0, meals: [] };
@@ -46,6 +51,20 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
       const item = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim().slice(0, 50);
       if (item) cur.meals.push(`${r.mealType}:${item}`);
       byDay.set(r.date, cur);
+
+      // mealType 別kcal
+      if (r.mealType in mealTypeKcal) {
+        mealTypeKcal[r.mealType] += r.kcal;
+      }
+      // 食材カウント（メモから抽出）
+      const rawItem = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
+      if (rawItem) {
+        // 「、」「,」「 」「・」区切りで分割して各食材を独立カウント
+        const parts = rawItem.split(/[、,・\s]+/).filter((s) => s.length > 0 && s.length <= 20);
+        for (const p of parts) {
+          foodCount.set(p, (foodCount.get(p) || 0) + 1);
+        }
+      }
     }
     const sorted = Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1));
     const totalDays = sorted.length;
@@ -83,6 +102,13 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
     }
     const recordsSummary = lines.join('\n');
 
+    // 食材頻出Top20リスト（AI に渡す）
+    const top20Foods = Array.from(foodCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([name, cnt]) => `${name}(${cnt}回)`)
+      .join('、');
+
     const rangeLabel = `${from} 〜 ${today}（${days}日間）`;
 
     // 日別データ（チャート用）— 期間内の全日を埋めて、記録なしは null
@@ -113,6 +139,7 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
         rangeLabel,
         stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
         daily,
+        mealTypeKcal,
         goals: customer.goals,
         target,
       });
@@ -126,6 +153,7 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
       targetDate: customer.targetDate,
       recordsSummary,
       rangeLabel,
+      foodList: top20Foods || undefined,
     });
 
     return NextResponse.json({
@@ -133,6 +161,7 @@ export const POST = withAdminTenant(async (req, { params }: { params: Promise<{ 
       rangeLabel,
       stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
       daily,
+      mealTypeKcal,
       goals: customer.goals,
       target,
     });

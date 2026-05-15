@@ -1435,6 +1435,9 @@ export type CoachingAnalysis = {
   concerns: string[]; // 懸念点 1-3個
   patterns: string[]; // 食事パターン特徴 1-3個
   recommendations: string[]; // 具体的な提案 2-4個
+  improvements: string[]; // 改善点（具体アクション） 3-5個
+  foodAdvice: string[]; // 食材・栄養アドバイス（食物繊維・発酵食品等） 3-5個
+  actionPlan: string[]; // 来週のアクションプラン 3個
   reportDraft: string; // 顧客に送るレポート文ドラフト（5-10行）
 };
 
@@ -1446,6 +1449,7 @@ export async function generateCoachingAnalysis(input: {
   targetDate: string | null;
   recordsSummary: string; // 過去30日のサマリー（テキスト）
   rangeLabel: string; // 例: "2026-04-15 〜 2026-05-14"
+  foodList?: string; // 最頻出食材リスト（カンマ区切り）
 }): Promise<CoachingAnalysis> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
@@ -1455,6 +1459,7 @@ export async function generateCoachingAnalysis(input: {
       ? `${input.targetWeight}kg（${input.targetDate || '期限未設定'}まで）`
       : '未設定';
   const currentWeightStr = input.currentWeight !== null ? `${input.currentWeight}kg` : '未測定';
+  const foodListSection = input.foodList ? `\n【食材一覧（頻出順）】\n${input.foodList}` : '';
 
   const prompt = `あなたはプロのパーソナルトレーナー兼栄養士です。以下の顧客データを分析し、コーチング視点で評価とアドバイスを生成してください。
 
@@ -1466,27 +1471,26 @@ export async function generateCoachingAnalysis(input: {
 - 目標体重：${goalWeightStr}
 
 【期間中の記録サマリー】
-${input.recordsSummary}
-
-【分析観点】
-1. 目標達成度（カロリー摂取、PFCバランスが目標に対してどうか）
-2. 食事の傾向（時間帯、メニューの偏り、外食頻度、間食頻度など）
-3. 体重推移の評価（目標に対するペース）
-4. リスク要因（栄養不足、過剰、不規則）
-5. 強み（継続している良い習慣）
+${input.recordsSummary}${foodListSection}
 
 【出力ルール】
 - 厳しく数字で評価する。「順調です」「頑張りましょう」のような曖昧な言葉だけで終わらない
-- 具体的な改善アクションを書く（例：「タンパク質が平均18g不足。朝食にギリシャヨーグルト150g追加で+15g」）
+- concerns は数値ベースで指摘（例: 「カロリー目標未達 15% / 脂質目標 130% で過剰」）
+- improvements は具体アクション（例: 「タンパク質を毎食 20g 確保するため、鶏胸肉・卵・豆類を毎食1品」）
+- foodAdvice は食材バリエーション・不足栄養素・食物繊維・発酵食品を具体的に（例: 「海藻・きのこ・ごぼうを1日1品追加で食物繊維+5g」「ヨーグルト・納豆・キムチで腸内環境改善」）
+- actionPlan は来週から実行できる具体行動3つ
 - reportDraft は顧客に直接送る文体（〜です／〜ます調、敬体）。具体的な数字を含める
 
 JSON形式で返してください：
 {
   "summary": "（2-3文の総評）",
   "strengths": ["（強み1）", "（強み2）"],
-  "concerns": ["（懸念1）", "（懸念2）"],
+  "concerns": ["（数値ベースの懸念1）", "（懸念2）"],
   "patterns": ["（パターン1）"],
   "recommendations": ["（提案1）", "（提案2）"],
+  "improvements": ["（具体アクション1）", "（具体アクション2）", "（具体アクション3）"],
+  "foodAdvice": ["（食材・栄養アドバイス1）", "（食材・栄養アドバイス2）", "（食物繊維・発酵食品アドバイス）"],
+  "actionPlan": ["（来週のアクション1）", "（来週のアクション2）", "（来週のアクション3）"],
   "reportDraft": "（顧客に直接送る本文。改行可。500文字程度）"
 }`;
 
@@ -1510,6 +1514,9 @@ JSON形式で返してください：
     concerns: toStringArr(parsed.concerns),
     patterns: toStringArr(parsed.patterns),
     recommendations: toStringArr(parsed.recommendations),
+    improvements: toStringArr(parsed.improvements),
+    foodAdvice: toStringArr(parsed.foodAdvice),
+    actionPlan: toStringArr(parsed.actionPlan),
     reportDraft: String(parsed.reportDraft || ''),
   };
 }

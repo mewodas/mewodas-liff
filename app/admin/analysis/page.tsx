@@ -45,6 +45,9 @@ type Analysis = {
   concerns: string[];
   patterns: string[];
   recommendations: string[];
+  improvements: string[];
+  foodAdvice: string[];
+  actionPlan: string[];
   reportDraft: string;
 };
 
@@ -100,6 +103,7 @@ function Inner() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<Daily[]>([]);
+  const [mealTypeKcal, setMealTypeKcal] = useState<Record<string, number> | null>(null);
   const [goals, setGoals] = useState<Goals | null>(null);
   const [target, setTarget] = useState<TargetInfo | null>(null);
   const [rangeLabel, setRangeLabel] = useState<string>('');
@@ -145,6 +149,7 @@ function Inner() {
     setAnalysis(null);
     setStats(null);
     setDaily([]);
+    setMealTypeKcal(null);
     setGoals(null);
     setTarget(null);
     try {
@@ -161,6 +166,7 @@ function Inner() {
       setAnalysis(j.analysis);
       setStats(j.stats);
       setDaily(j.daily || []);
+      setMealTypeKcal(j.mealTypeKcal || null);
       setGoals(j.goals || null);
       setTarget(j.target || null);
       setRangeLabel(j.rangeLabel || '');
@@ -304,16 +310,29 @@ function Inner() {
           </section>
         )}
 
-        {/* ---- ③ PFC バランス ---- */}
-        {stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0) && (
+        {/* ---- ③ 食事区分別カロリー + PFC バランス ---- */}
+        {(stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0)) || mealTypeKcal ? (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
             <h3 className="text-sm font-bold text-stone-900 mb-2 inline-flex items-center gap-1.5">
               <TargetIcon className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              PFC バランス
+              食事バランス
             </h3>
-            <PfcPie avg={stats.avg} target={goals} />
+            <div className="flex flex-col sm:flex-row gap-4">
+              {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別カロリー</div>
+                  <MealTypePie mealTypeKcal={mealTypeKcal} />
+                </div>
+              )}
+              {stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0) && (
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">PFC バランス</div>
+                  <PfcPie avg={stats.avg} target={goals} />
+                </div>
+              )}
+            </div>
           </section>
-        )}
+        ) : null}
 
         {/* ---- ④ AIテキスト分析（折りたたみ可・グラフより下） ---- */}
         {analysis && (
@@ -358,6 +377,21 @@ function Inner() {
                 {analysis.recommendations.length > 0 && (
                   <Sub title="提案" icon={<Lightbulb className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />}>
                     <Bullets items={analysis.recommendations} />
+                  </Sub>
+                )}
+                {analysis.improvements && analysis.improvements.length > 0 && (
+                  <Sub title="改善点" icon={<span className="text-base leading-none">✅</span>}>
+                    <Bullets items={analysis.improvements} />
+                  </Sub>
+                )}
+                {analysis.foodAdvice && analysis.foodAdvice.length > 0 && (
+                  <Sub title="食材アドバイス" icon={<span className="text-base leading-none">🥬</span>}>
+                    <Bullets items={analysis.foodAdvice} />
+                  </Sub>
+                )}
+                {analysis.actionPlan && analysis.actionPlan.length > 0 && (
+                  <Sub title="来週のアクションプラン" icon={<span className="text-base leading-none">🎯</span>}>
+                    <Bullets items={analysis.actionPlan} />
                   </Sub>
                 )}
               </div>
@@ -611,6 +645,62 @@ function PfcPie({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+const MEAL_TYPE_COLORS: Record<string, string> = {
+  朝食: '#f97316', // orange
+  昼食: '#eab308', // yellow
+  夕食: '#8b5cf6', // purple
+  間食: '#ec4899', // pink
+};
+
+function MealTypePie({ mealTypeKcal }: { mealTypeKcal: Record<string, number> }) {
+  const total = Object.values(mealTypeKcal).reduce((a, b) => a + b, 0);
+  const data = total > 0
+    ? Object.entries(mealTypeKcal)
+        .filter(([, v]) => v > 0)
+        .map(([name, value]) => ({
+          name,
+          value: Math.round((value / total) * 100),
+          color: MEAL_TYPE_COLORS[name] || '#a8a29e',
+        }))
+    : [];
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-28 h-28 flex-shrink-0">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              innerRadius={28}
+              outerRadius={52}
+              stroke="none"
+              startAngle={90}
+              endAngle={-270}
+            >
+              {data.map((d, i) => (
+                <Cell key={i} fill={d.color} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex-1 space-y-1.5">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-2 text-xs">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+            <span className="font-bold text-stone-900 w-6">{d.name.slice(0, 2)}</span>
+            <span className="text-stone-600 flex-1">
+              {Math.round(mealTypeKcal[d.name])}kcal
+            </span>
+            <span className="font-bold text-stone-900 text-[11px] w-9 text-right">{d.value}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );
