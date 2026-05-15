@@ -9,6 +9,7 @@ import {
   Cookie,
   X,
   ImageIcon,
+  Check,
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
@@ -384,6 +385,7 @@ function MealDetailModal({
   const [c, setC] = useState(r1(meal.C));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedToast, setSavedToast] = useState(false);
 
   const calcKcal = Math.round(p * 4 + f * 9 + c * 4);
 
@@ -403,6 +405,8 @@ function MealDetailModal({
       }
       onSaved({ pageId: meal.pageId, kcal: calcKcal, P: p, F: f, C: c });
       setEditing(false);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 2000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -420,6 +424,12 @@ function MealDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center px-4 py-6" onClick={onClose}>
+      {savedToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[90] bg-emerald-600 text-white text-sm font-bold px-5 py-3 rounded-full shadow-2xl inline-flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+          <Check className="w-5 h-5" strokeWidth={2.6} />
+          完了しました
+        </div>
+      )}
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
