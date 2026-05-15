@@ -107,7 +107,7 @@ export default function AdminCustomersPage() {
               </button>
             ))}
           </div>
-          {stores.length > 1 && (
+          {stores.length > 0 && (
             <div className="flex gap-2 mt-2 overflow-x-auto">
               <button
                 type="button"

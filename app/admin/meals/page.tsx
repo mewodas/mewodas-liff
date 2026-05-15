@@ -192,7 +192,7 @@ export default function AdminMealsPage() {
             isSingleDay={isSingleDay}
           />
           {/* フィルタ：店舗・顧客・食事区分 */}
-          {stores.length > 1 && (
+          {stores.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               <button
                 type="button"
