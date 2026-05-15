@@ -47,6 +47,7 @@ function Inner() {
   const [stores, setStores] = useState<Store[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [templateError, setTemplateError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
@@ -95,12 +96,24 @@ function Inner() {
         const [cJ, sJ, tJ] = await Promise.all([
           safeFetch<{ customers?: Customer[] }>('/api/admin/customers', {}),
           safeFetch<{ stores?: Store[] }>('/api/admin/stores', {}),
-          safeFetch<{ templates?: Template[] }>('/api/admin/templates', {}),
+          fetch('/api/admin/templates', { cache: 'no-store' })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(`テンプレ取得失敗（${res.status}）`);
+              const j = await res.json();
+              return j as { templates?: Template[]; error?: string; hint?: string };
+            })
+            .catch((e: unknown) => {
+              setTemplateError(e instanceof Error ? e.message : 'テンプレ取得エラー');
+              return {} as { templates?: Template[] };
+            }),
         ]);
         setCustomers((cJ.customers || []).filter((c: Customer) => !!c.foodStatus));
         setStores(sJ.stores || []);
         const tList: Template[] = tJ.templates || [];
         setTemplates(tList);
+        if (tJ && 'error' in tJ && tJ.error) {
+          setTemplateError((tJ as { hint?: string; error?: string }).hint || (tJ as { error?: string }).error || null);
+        }
         if (!initialDraft && tList.length > 0) {
           setTemplateId(tList[0].id);
         }
@@ -278,22 +291,31 @@ function Inner() {
             )}
           </div>
 
-          <div className="flex gap-1.5 flex-wrap">
-            <TemplateChip
-              label="テンプレなし"
-              active={templateId === ''}
-              onClick={() => setTemplateId('')}
-            />
-            {templates.map((t) => (
+          {templateError && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] p-2 rounded-lg">
+              {templateError}
+            </div>
+          )}
+          {loading ? (
+            <div className="text-[11px] text-stone-400 py-1">読み込み中…</div>
+          ) : (
+            <div className="flex gap-1.5 flex-wrap">
               <TemplateChip
-                key={t.id}
-                label={t.name}
-                useAi={t.useAi}
-                active={templateId === t.id}
-                onClick={() => setTemplateId(t.id)}
+                label="テンプレなし"
+                active={templateId === ''}
+                onClick={() => setTemplateId('')}
               />
-            ))}
-          </div>
+              {templates.map((t) => (
+                <TemplateChip
+                  key={t.id}
+                  label={t.name}
+                  useAi={t.useAi}
+                  active={templateId === t.id}
+                  onClick={() => setTemplateId(t.id)}
+                />
+              ))}
+            </div>
+          )}
 
           {/* タイトル */}
           <div className="pt-1">
@@ -373,7 +395,6 @@ function Inner() {
           </button>
         </section>
 
-        {loading && <div className="text-center text-stone-500 py-6">読み込み中…</div>}
       </div>
     </AdminShell>
   );

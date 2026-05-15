@@ -6,6 +6,7 @@ import { getStaff } from '@/lib/staff';
 import { getStoreByStoreId } from '@/lib/stores';
 import { generateCoachingAnalysis, generateReportComments } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
+import { buildReportVariables } from '@/lib/reports/variables';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export const POST = withAdminTenant(async (req) => {
     // 期間内の食事記録を先に取得（変数置換でも使うため、static body 分岐の前に実行）
     const records = await listRecordsInRange(customer.lineUserId, startDate, endDate);
 
-    // 日別集計
+    // 日別集計（AI レポート用サマリ生成に使用）
     const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
     for (const r of records) {
       const cur = byDay.get(r.date) || { kcal: 0, P: 0, F: 0, C: 0, count: 0, meals: [] };
@@ -72,39 +73,17 @@ export const POST = withAdminTenant(async (req) => {
     // 顧客の所属店舗を取得（署名・店舗名変数用）
     const store = customer.storeId ? await getStoreByStoreId(customer.storeId).catch(() => null) : null;
 
-    // 全変数を構築（単日レポートなら sum、範囲なら avg を使用）
     const isSingleDay = startDate === endDate;
     const showKcal = isSingleDay ? Math.round(sum.kcal) : avg.kcal;
     const showP = isSingleDay ? Math.round(sum.P * 10) / 10 : avg.P;
     const showF = isSingleDay ? Math.round(sum.F * 10) / 10 : avg.F;
     const showC = isSingleDay ? Math.round(sum.C * 10) / 10 : avg.C;
 
-    const kcalRatio = customer.goals.kcal > 0 ? Math.round((showKcal / customer.goals.kcal) * 100) : 0;
-
+    // 全変数を構築（食事区分別を含む）
     const vars: Record<string, string> = {
-      customer: customer.name,
-      date: endDate,
-      startDate,
-      endDate,
+      ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }),
       staff: staff?.name || '',
       shop: staff?.shop || '',
-      // 食事データ（単日：その日の合計、範囲：日平均）
-      kcal: String(showKcal),
-      P: String(showP),
-      F: String(showF),
-      C: String(showC),
-      // 目標値
-      targetKcal: String(customer.goals.kcal),
-      targetP: String(customer.goals.P),
-      targetF: String(customer.goals.F),
-      targetC: String(customer.goals.C),
-      kcalRatio: String(kcalRatio),
-      // 体重
-      weight: customer.currentWeight !== null ? String(customer.currentWeight) : '-',
-      targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
-      // 店舗
-      storeName: store?.name || '',
-      signature: store?.signature || '',
     };
 
     const title = template?.titleTemplate ? applyVars(template.titleTemplate, vars) : (template?.name || 'レポート');

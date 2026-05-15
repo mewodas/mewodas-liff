@@ -53,6 +53,27 @@ const VARIABLE_GROUPS = [
     ],
   },
   {
+    title: '食事別',
+    vars: [
+      { key: '{breakfast_kcal}', label: '朝食kcal' },
+      { key: '{breakfast_P}', label: '朝食P' },
+      { key: '{breakfast_F}', label: '朝食F' },
+      { key: '{breakfast_C}', label: '朝食C' },
+      { key: '{lunch_kcal}', label: '昼食kcal' },
+      { key: '{lunch_P}', label: '昼食P' },
+      { key: '{lunch_F}', label: '昼食F' },
+      { key: '{lunch_C}', label: '昼食C' },
+      { key: '{dinner_kcal}', label: '夕食kcal' },
+      { key: '{dinner_P}', label: '夕食P' },
+      { key: '{dinner_F}', label: '夕食F' },
+      { key: '{dinner_C}', label: '夕食C' },
+      { key: '{snack_kcal}', label: '間食kcal' },
+      { key: '{snack_P}', label: '間食P' },
+      { key: '{snack_F}', label: '間食F' },
+      { key: '{snack_C}', label: '間食C' },
+    ],
+  },
+  {
     title: '範囲レポート',
     vars: [
       { key: '{startDate}', label: '開始日' },
@@ -181,14 +202,34 @@ export default function AdminTemplatesPage() {
                       )}
                     </div>
                     {!t.id.startsWith('default-') && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(t.id)}
-                        className="text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 inline-flex items-center gap-1 flex-shrink-0"
-                      >
-                        <Edit className="w-3 h-3" strokeWidth={2.4} />
-                        編集
-                      </button>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(t.id)}
+                          className="text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 inline-flex items-center gap-1"
+                        >
+                          <Edit className="w-3 h-3" strokeWidth={2.4} />
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`テンプレ「${t.name}」を削除しますか？`)) return;
+                            try {
+                              const res = await fetch(`/api/admin/templates/${t.id}`, { method: 'DELETE' });
+                              if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+                              await load();
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : '削除エラー');
+                            }
+                          }}
+                          className="text-[11px] font-bold text-rose-700 border border-rose-300 px-2.5 py-1 rounded-full active:bg-rose-50 inline-flex items-center gap-1"
+                          aria-label="削除"
+                        >
+                          <Trash2 className="w-3 h-3" strokeWidth={2.2} />
+                          削除
+                        </button>
+                      </div>
                     )}
                   </div>
                 </li>
