@@ -113,6 +113,12 @@ export function buildReportVariables(
     kcalRatio: String(kcalRatio),
     weight: customer.currentWeight !== null ? String(customer.currentWeight) : '-',
     targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
+    daysToGoal: (() => {
+      if (!customer.targetDate) return '-';
+      const target = new Date(customer.targetDate).getTime();
+      const today = new Date().setHours(0, 0, 0, 0);
+      return String(Math.max(0, Math.ceil((target - today) / 86400000)));
+    })(),
     storeName: store?.name || '',
     signature: store?.signature || '',
     ...pfcVars('breakfast', mealSums.breakfast),

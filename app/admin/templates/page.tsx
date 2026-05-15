@@ -64,6 +64,7 @@ const VARIABLE_GROUPS = [
     vars: [
       { key: '{weight}', label: '現在体重' },
       { key: '{targetWeight}', label: '目標体重' },
+      { key: '{daysToGoal}', label: '残り日数' },
     ],
   },
   {
@@ -407,6 +408,9 @@ function TemplateEditor({
         />
         <div className="text-[10px] text-stone-500 mt-0.5">
           ボタンで変数を挿入できます。送信時に実データに自動置換。
+        </div>
+        <div className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-2 mt-1">
+          {'{ai_summary}'} などの AI 変数を本文に入れると、レポート作成時に Gemini が自動でコメント文を生成して埋め込みます。
         </div>
       </div>
 
