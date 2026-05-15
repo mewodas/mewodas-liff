@@ -12,17 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ダークモード自動切替を無効化：
+   アプリ全体がライトモード設計のため、スマホがダーク設定だと真っ黒画面になる不具合を防止 */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #ffffff;
+  color: #171717;
   font-family: Arial, Helvetica, sans-serif;
+  /* スマホのダーク設定でも常にライトとして表示 */
+  color-scheme: light only;
+}
+
+html {
+  color-scheme: light only;
 }
 
 /* 横スクロール時のスクロールバーを非表示（業界標準パターン） */
