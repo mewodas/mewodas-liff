@@ -275,12 +275,12 @@ function Inner() {
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
-              ④ レポート文面
+              ④ レポートテンプレート
               <Link
                 href={isStore ? '/store/templates' : '/admin/templates'}
                 className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
               >
-                ⚙ レポート文面管理
+                ⚙ レポートテンプレート管理
               </Link>
             </div>
             {selectedTemplate && (
@@ -353,12 +353,12 @@ function Inner() {
             {generating ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
-                レポート作成中…（10〜20秒）
+                文章を生成中…
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" strokeWidth={2.2} />
-                レポート作成
+                文章を生成する
               </>
             )}
           </button>

@@ -121,7 +121,7 @@ export default function AdminTemplatesPage() {
   }, []);
 
   return (
-    <AdminShell title="レポート文面管理" back={{ href: `${base}/reports` }}>
+    <AdminShell title="レポートテンプレート管理" back={{ href: `${base}/reports` }}>
       <div className="space-y-3">
         {error && (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl inline-flex items-start gap-2">
@@ -133,10 +133,10 @@ export default function AdminTemplatesPage() {
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5 mb-1">
             <FileText className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-            レポート文面一覧（{templates.length}件）
+            レポートテンプレート一覧（{templates.length}件）
           </h2>
           <p className="text-[10px] text-stone-500">
-            ジムオーナーが顧客に送るレポート文章のひな形。本文に変数（例：<code>{'{customer}'}</code>）を入れると送信時に実データに自動置換されます。
+            ジムオーナーが顧客に送るレポートのテンプレート。本文に変数（例：<code>{'{customer}'}</code>）を入れると送信時に実データに自動置換されます。
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export default function AdminTemplatesPage() {
             className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" strokeWidth={2.4} />
-            新規レポート文面追加
+            新規レポートテンプレート追加
           </button>
         )}
 
@@ -165,7 +165,7 @@ export default function AdminTemplatesPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : templates.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">
-            レポート文面がありません
+            レポートテンプレートがありません
           </div>
         ) : (
           <ul className="space-y-2">
@@ -214,7 +214,7 @@ export default function AdminTemplatesPage() {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (!confirm(`テンプレ「${t.name}」を削除しますか？`)) return;
+                            if (!confirm(`レポートテンプレート「${t.name}」を削除しますか？`)) return;
                             try {
                               const res = await fetch(`/api/admin/templates/${t.id}`, { method: 'DELETE' });
                               if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
@@ -281,7 +281,7 @@ function TemplateEditor({
     setSaving(true);
     setError(null);
     try {
-      if (!name.trim()) throw new Error('テンプレ名は必須です');
+      if (!name.trim()) throw new Error('レポートテンプレート名は必須です');
       const url = initial ? `/api/admin/templates/${initial.id}` : '/api/admin/templates';
       const res = await fetch(url, {
         method: initial ? 'PATCH' : 'POST',
@@ -309,7 +309,7 @@ function TemplateEditor({
 
   async function remove() {
     if (!initial) return;
-    if (!confirm(`テンプレ「${initial.name}」を削除しますか？`)) return;
+    if (!confirm(`レポートテンプレート「${initial.name}」を削除しますか？`)) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/templates/${initial.id}`, { method: 'DELETE' });
@@ -324,11 +324,11 @@ function TemplateEditor({
 
   return (
     <div className="bg-white rounded-2xl border-2 border-emerald-400 shadow-md p-3 space-y-3">
-      <div className="text-sm font-bold text-emerald-700">{initial ? 'レポート文面を編集' : '新規レポート文面'}</div>
+      <div className="text-sm font-bold text-emerald-700">{initial ? 'レポートテンプレートを編集' : '新規レポートテンプレート'}</div>
 
       <div>
         <label className="text-[10px] font-bold text-stone-700 block mb-1">
-          ① 文面名 <span className="text-rose-500">*</span>
+          ① レポートテンプレート名 <span className="text-rose-500">*</span>
         </label>
         <input
           type="text"

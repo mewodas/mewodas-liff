@@ -388,6 +388,9 @@ export default function AdminMealsPage() {
                             <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                               {Math.round(m.kcal)} kcal ・ P{r1(m.P)}・F{r1(m.F)}・C{r1(m.C)}
                             </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">
+                              {new Date(m.recordedAt).toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           </div>
                         </button>
                       </li>
@@ -603,7 +606,7 @@ function MealDetailModal({
                   disabled={saving}
                   className="flex-1 bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
                 >
-                  {saving ? '保存中…' : '保存（トレーナー補正）'}
+                  {saving ? '保存中…' : '保存する'}
                 </button>
                 <button
                   type="button"
@@ -630,10 +633,6 @@ function MealDetailModal({
             </div>
           )}
 
-          <div className="text-[10px] text-stone-500">
-            記録時刻: {new Date(meal.recordedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
-          </div>
-
           {/* 削除ボタン（重複削除等） */}
           <div className="pt-2 border-t border-stone-100">
             <button
@@ -648,6 +647,10 @@ function MealDetailModal({
             <div className="text-[10px] text-stone-500 text-center mt-1">
               重複記録や誤登録の削除に使用
             </div>
+          </div>
+
+          <div className="text-[10px] text-stone-500">
+            記録時刻: {new Date(meal.recordedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
           </div>
         </div>
       </div>
