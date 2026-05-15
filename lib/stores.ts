@@ -4,6 +4,7 @@
 // レポート末尾の署名にも使用。
 
 import { getCurrentTenant } from './tenant';
+import { getCached, setCached, invalidate } from './cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2022-06-28';
@@ -61,8 +62,13 @@ function pageToStore(page: { id: string; properties: Record<string, any> }): Sto
 }
 
 /** 現在テナントの全店舗を取得（有効のみ） */
-export async function listStoresForCurrentTenant(): Promise<Store[]> {
+export async function listStoresForCurrentTenant(opts?: { noCache?: boolean }): Promise<Store[]> {
   const tenant = getCurrentTenant();
+  const key = `${tenant.id}:stores:list`;
+  if (!opts?.noCache) {
+    const hit = getCached<Store[]>(key);
+    if (hit) return hit;
+  }
   const res = await notionRequest('POST', `/databases/${FITMEAL_STORES_DB_ID}/query`, {
     page_size: 100,
     filter: {
@@ -72,7 +78,9 @@ export async function listStoresForCurrentTenant(): Promise<Store[]> {
       ],
     },
   });
-  return (res.results || []).map(pageToStore);
+  const result = (res.results || []).map(pageToStore);
+  setCached(key, result, 300_000);
+  return result;
 }
 
 /** 指定テナントの店舗を取得（マスタがテナント詳細から呼ぶ） */
@@ -134,6 +142,7 @@ export async function createStore(params: {
   signature?: string;
 }): Promise<Store> {
   const tenantId = params.tenantId || getCurrentTenant().id;
+  invalidate(`${tenantId}:stores:`);
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: FITMEAL_STORES_DB_ID },
     properties: {
@@ -164,6 +173,8 @@ export async function updateStore(
     active?: boolean;
   }
 ): Promise<void> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:stores:`);
   const properties: Record<string, unknown> = {};
   if (patch.name !== undefined) properties['店舗名'] = { title: [{ text: { content: patch.name.slice(0, 100) } }] };
   if (patch.storeId !== undefined) properties['店舗ID'] = { rich_text: [{ text: { content: patch.storeId.slice(0, 50) } }] };
@@ -178,5 +189,7 @@ export async function updateStore(
 }
 
 export async function deleteStore(pageId: string): Promise<void> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:stores:`);
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }

@@ -9,6 +9,8 @@
 //   - AIプロンプト (rich_text)  ：AI生成時の追加指示
 
 import { getTenantNotion } from '@/lib/notion';
+import { getCached, setCached, invalidate } from '@/lib/cache';
+import { getCurrentTenant } from '@/lib/tenant';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2022-06-28';
@@ -87,11 +89,19 @@ function richText(s: string) {
   return chunks.map((c) => ({ text: { content: c } }));
 }
 
-export async function listTemplates(): Promise<ReportTemplate[]> {
+export async function listTemplates(opts?: { noCache?: boolean }): Promise<ReportTemplate[]> {
   const dbId = getDbId();
   if (!dbId) return [];
+  const tenantId = getCurrentTenant().id;
+  const key = `${tenantId}:templates:list`;
+  if (!opts?.noCache) {
+    const hit = getCached<ReportTemplate[]>(key);
+    if (hit) return hit;
+  }
   const res = await notionRequest('POST', `/databases/${dbId}/query`, { page_size: 100 });
-  return (res.results || []).map(pageToTemplate);
+  const result = (res.results || []).map(pageToTemplate);
+  setCached(key, result, 300_000);
+  return result;
 }
 
 export async function getTemplate(id: string): Promise<ReportTemplate | null> {
@@ -115,6 +125,8 @@ export async function createTemplate(params: {
 }): Promise<ReportTemplate> {
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:templates:`);
   const properties: Record<string, unknown> = {
     名前: { title: [{ text: { content: params.name.slice(0, 100) } }] },
     カテゴリ: { select: { name: params.category } },
@@ -136,6 +148,8 @@ export async function updateTemplate(
   patch: Partial<{ name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType: RangeType | null }>
 ): Promise<void> {
   if (!getDbId()) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:templates:`);
   const properties: Record<string, unknown> = {};
   if (patch.name !== undefined) properties['名前'] = { title: [{ text: { content: patch.name.slice(0, 100) } }] };
   if (patch.category !== undefined) properties['カテゴリ'] = { select: { name: patch.category } };
@@ -151,6 +165,8 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:templates:`);
   await notionRequest('PATCH', `/pages/${id}`, { archived: true });
 }
 

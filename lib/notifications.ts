@@ -14,6 +14,7 @@
 
 import { getTenantNotion } from '@/lib/notion';
 import { getCurrentTenant } from '@/lib/tenant';
+import { getCached, setCached, invalidate } from '@/lib/cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2025-09-03';
@@ -84,6 +85,8 @@ export async function createNotification(params: {
   body: string;
   staffName?: string;
 }): Promise<Notification> {
+  const tenantId = (() => { try { return getCurrentTenant().id; } catch { return 'default'; } })();
+  invalidate(`${tenantId}:notifications:`);
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_NOTIFICATIONS_DB_ID 未設定');
   const richText = (s: string) => {
@@ -125,14 +128,22 @@ export async function listNotificationsByLineUser(lineUserId: string, limit: num
   return (res.results || []).map(pageToNotification);
 }
 
-export async function listAllNotifications(limit: number = 100): Promise<Notification[]> {
+export async function listAllNotifications(limit: number = 100, opts?: { noCache?: boolean }): Promise<Notification[]> {
   const dbId = getDbId();
   if (!dbId) return [];
+  const tenantId = (() => { try { return getCurrentTenant().id; } catch { return 'default'; } })();
+  const key = `${tenantId}:notifications:list:${limit}`;
+  if (!opts?.noCache) {
+    const hit = getCached<Notification[]>(key);
+    if (hit) return hit;
+  }
   const res = await notionRequest('POST', `/databases/${dbId}/query`, {
     sorts: [{ timestamp: 'created_time', direction: 'descending' }],
     page_size: Math.min(100, Math.max(1, limit)),
   });
-  return (res.results || []).map(pageToNotification);
+  const result = (res.results || []).map(pageToNotification);
+  setCached(key, result, 30_000);
+  return result;
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
