@@ -162,26 +162,50 @@ function MealDetailInner() {
   async function handleDelete(record: MealRecord) {
     if (!userId) return;
     setDeletingId(record.pageId);
-    try {
-      const res = await fetch('/api/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId: record.pageId, lineUserId: userId }),
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.error || `削除失敗（${res.status}）`);
+    // 楽観的UI更新: 即時にローカル state から削除
+    setData((prev) => {
+      if (!prev) return prev;
+      const newMealsByType: Record<string, MealRecord[]> = {};
+      for (const [k, list] of Object.entries(prev.today.mealsByType)) {
+        newMealsByType[k] = list.filter((r) => r.pageId !== record.pageId);
       }
-      invalidate('today_');
-      invalidate('weekly_');
-      invalidate('history_');
-      await fetchData();
-      setConfirmDelete(null);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '削除エラー');
-    } finally {
-      setDeletingId(null);
-    }
+      const newTotals = Object.values(newMealsByType)
+        .flat()
+        .reduce(
+          (acc, r) => ({
+            kcal: acc.kcal + r.kcal,
+            P: acc.P + r.P,
+            F: acc.F + r.F,
+            C: acc.C + r.C,
+          }),
+          { kcal: 0, P: 0, F: 0, C: 0 }
+        );
+      return {
+        ...prev,
+        today: { ...prev.today, mealsByType: newMealsByType, totals: newTotals },
+      };
+    });
+    setConfirmDelete(null);
+    setDeletingId(null);
+    // バックグラウンドで Notion archive、キャッシュ invalidate
+    fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageId: record.pageId, lineUserId: userId }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`削除失敗（${res.status}）`);
+        }
+        invalidate('today_');
+        invalidate('weekly_');
+        invalidate('history_');
+      })
+      .catch((e) => {
+        // 失敗時のみエラー表示（楽観的UIなので致命的ではない）
+        console.error('Delete failed:', e);
+        alert('削除に失敗しました。画面を再読み込みしてください。');
+      });
   }
 
   if (!ready) {

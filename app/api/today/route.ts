@@ -4,8 +4,6 @@ import {
   getFoodRecordsByDate,
   getFoodRecordsByDateRange,
   getTargetDate,
-  getDailyExtras,
-  isoToJpMd,
   type FoodRecord,
 } from '@/lib/notion';
 
@@ -126,17 +124,7 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // 個人シート（体重・運動）はNotionブロック走査で重いことがあるため、
-    // 8秒でタイムアウト → タイムアウト時は空値で返してページ表示を優先
-    const extrasEmpty = { weight: '', exercised: '', exerciseContent: '' };
-    const extras = customer.foodSheetPageId
-      ? await Promise.race([
-          getDailyExtras(customer.foodSheetPageId, isoToJpMd(today)).catch(() => extrasEmpty),
-          new Promise<typeof extrasEmpty>((resolve) =>
-            setTimeout(() => resolve(extrasEmpty), 8000)
-          ),
-        ])
-      : extrasEmpty;
+    // 体重・運動データは別 API /api/extras で取得（パフォーマンス改善のため /api/today から分離）
 
     // ストリーク計算（常に今日基点で計算、過去日選択時もバッジは消えない）
     const stats = computeStats(last30Records, todayActual, customer.goals.kcal);
@@ -154,9 +142,10 @@ export async function GET(req: NextRequest) {
         totals,
         mealsByType,
         recordCount: records.length,
-        weight: extras.weight,
-        exercised: extras.exercised,
-        exerciseContent: extras.exerciseContent,
+        // weight/exercised/exerciseContent は /api/extras から取得（クライアント側で並列fetch）
+        weight: '',
+        exercised: '',
+        exerciseContent: '',
       },
       stats,
     });

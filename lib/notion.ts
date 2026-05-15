@@ -82,7 +82,7 @@ async function notionRequest(
 // 顧客情報のインメモリキャッシュ（同じVercel関数インスタンス内）
 // 連続して画面遷移する際の顧客取得を高速化
 const customerCache = new Map<string, { customer: Customer; expiry: number }>();
-const CUSTOMER_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000; // 30分（顧客情報は頻繁に変わらない）
 
 export async function getCustomerByLineId(
   lineUserId: string

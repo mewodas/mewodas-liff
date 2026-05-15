@@ -276,15 +276,31 @@ function HomePageInner() {
     setError(null);
     (async () => {
       try {
-        const res = await fetch(
-          `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          throw new Error(errJson.error || `データ取得失敗（${res.status}）`);
+        // /api/today（食事・バッジ）と /api/extras（体重・運動）を並列fetch
+        const [todayRes, extrasRes] = await Promise.all([
+          fetch(
+            `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+            { cache: 'no-store' }
+          ),
+          fetch(
+            `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+            { cache: 'no-store' }
+          ).catch(() => null),
+        ]);
+        if (!todayRes.ok) {
+          const errJson = await todayRes.json().catch(() => ({}));
+          throw new Error(errJson.error || `データ取得失敗（${todayRes.status}）`);
         }
-        const json = await res.json();
+        const json: TodayData = await todayRes.json();
+        // extras を today に統合
+        if (extrasRes && extrasRes.ok) {
+          const extras = await extrasRes.json().catch(() => null);
+          if (extras) {
+            json.today.weight = extras.weight || '';
+            json.today.exercised = extras.exercised || '';
+            json.today.exerciseContent = extras.exerciseContent || '';
+          }
+        }
         setData(json);
         setCached(cacheKey, json);
       } catch (e) {
