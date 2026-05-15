@@ -1,9 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, Sparkles } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
+
+// レポート本文・タイトル・AI指示で使える変数一覧
+const VARIABLES = [
+  { key: '{customer}', label: '顧客名' },
+  { key: '{date}', label: '日付' },
+  { key: '{startDate}', label: '開始日' },
+  { key: '{endDate}', label: '終了日' },
+  { key: '{kcal}', label: '摂取kcal' },
+  { key: '{P}', label: '摂取P(g)' },
+  { key: '{F}', label: '摂取F(g)' },
+  { key: '{C}', label: '摂取C(g)' },
+  { key: '{targetKcal}', label: '目標kcal' },
+  { key: '{targetP}', label: '目標P' },
+  { key: '{targetF}', label: '目標F' },
+  { key: '{targetC}', label: '目標C' },
+  { key: '{kcalRatio}', label: 'kcal達成率%' },
+  { key: '{weight}', label: '体重' },
+  { key: '{targetWeight}', label: '目標体重' },
+  { key: '{storeName}', label: '店舗名' },
+  { key: '{signature}', label: '署名' },
+];
 
 type Template = {
   id: string;
@@ -178,10 +199,34 @@ function TemplateEditor({
   const [category, setCategory] = useState(initial?.category || 'カスタム');
   const [titleTemplate, setTitleTemplate] = useState(initial?.titleTemplate || '');
   const [bodyTemplate, setBodyTemplate] = useState(initial?.bodyTemplate || '');
-  const [useAi, setUseAi] = useState(initial?.useAi ?? true);
+  const [useAi, setUseAi] = useState(initial?.useAi ?? false);
   const [aiPrompt, setAiPrompt] = useState(initial?.aiPrompt || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const aiRef = useRef<HTMLTextAreaElement>(null);
+
+  function insertAtCursor(
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    current: string,
+    setter: (v: string) => void,
+    text: string
+  ) {
+    const ta = ref.current;
+    if (!ta) {
+      setter(current + text);
+      return;
+    }
+    const start = ta.selectionStart ?? current.length;
+    const end = ta.selectionEnd ?? current.length;
+    const newValue = current.slice(0, start) + text + current.slice(end);
+    setter(newValue);
+    setTimeout(() => {
+      ta.focus();
+      const pos = start + text.length;
+      ta.setSelectionRange(pos, pos);
+    }, 0);
+  }
 
   async function save() {
     setSaving(true);
@@ -273,22 +318,32 @@ function TemplateEditor({
         <div>
           <label className="text-[10px] font-bold text-stone-700 block mb-1">AI への指示</label>
           <textarea
+            ref={aiRef}
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             rows={6}
             placeholder="例：昨日の食事・運動から達成度・改善点・今日のアドバイスを5-8行で。"
             className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
           />
+          <VariableChips
+            label="変数を挿入"
+            onInsert={(v) => insertAtCursor(aiRef, aiPrompt, setAiPrompt, v)}
+          />
         </div>
       ) : (
         <div>
-          <label className="text-[10px] font-bold text-stone-700 block mb-1">固定本文</label>
+          <label className="text-[10px] font-bold text-stone-700 block mb-1">本文（変数を含めると送信時に自動置換）</label>
           <textarea
+            ref={bodyRef}
             value={bodyTemplate}
             onChange={(e) => setBodyTemplate(e.target.value)}
-            rows={6}
-            placeholder="そのまま顧客に送られる本文です"
-            className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
+            rows={10}
+            placeholder="{customer}さん、お疲れさまです！\n\n【{date} の振り返り】\n摂取カロリー: {kcal}kcal / {targetKcal}kcal"
+            className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed font-mono"
+          />
+          <VariableChips
+            label="変数を挿入"
+            onInsert={(v) => insertAtCursor(bodyRef, bodyTemplate, setBodyTemplate, v)}
           />
         </div>
       )}
@@ -321,6 +376,27 @@ function TemplateEditor({
             削除
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function VariableChips({ label, onInsert }: { label: string; onInsert: (v: string) => void }) {
+  return (
+    <div className="mt-1.5">
+      <div className="text-[10px] font-bold text-stone-500 mb-1">{label}</div>
+      <div className="flex gap-1 flex-wrap">
+        {VARIABLES.map((v) => (
+          <button
+            key={v.key}
+            type="button"
+            onClick={() => onInsert(v.key)}
+            className="text-[10px] font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+            title={`「${v.key}」を挿入`}
+          >
+            {v.label}
+          </button>
+        ))}
       </div>
     </div>
   );

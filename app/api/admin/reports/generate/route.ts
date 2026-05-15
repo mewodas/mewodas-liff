@@ -3,6 +3,7 @@ import { getCustomer } from '@/lib/repository/customers';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { getTemplate, DEFAULT_TEMPLATES, isTemplatesConfigured } from '@/lib/templates';
 import { getStaff } from '@/lib/staff';
+import { getStoreByStoreId } from '@/lib/stores';
 import { generateCoachingAnalysis } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
 
@@ -37,28 +38,7 @@ export const POST = withAdminTenant(async (req) => {
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
     if (!customer.lineUserId) return NextResponse.json({ error: 'lineUserId 未登録' }, { status: 400 });
 
-    const vars = {
-      customer: customer.name,
-      date: endDate,
-      startDate,
-      endDate,
-      staff: staff?.name || '',
-      shop: staff?.shop || '',
-    };
-
-    const title = template?.titleTemplate ? applyVars(template.titleTemplate, vars) : (template?.name || 'レポート');
-
-    // 静的本文 → そのまま返す
-    if (template && !template.useAi) {
-      return NextResponse.json({
-        title,
-        body: applyVars(template.bodyTemplate, vars),
-        usedAi: false,
-        stats: null,
-      });
-    }
-
-    // AI 生成
+    // 期間内の食事記録を先に取得（変数置換でも使うため、static body 分岐の前に実行）
     const records = await listRecordsInRange(customer.lineUserId, startDate, endDate);
 
     // 日別集計
@@ -88,6 +68,56 @@ export const POST = withAdminTenant(async (req) => {
           C: Math.round((sum.C / totalDays) * 10) / 10,
         }
       : { kcal: 0, P: 0, F: 0, C: 0 };
+
+    // 顧客の所属店舗を取得（署名・店舗名変数用）
+    const store = customer.storeId ? await getStoreByStoreId(customer.storeId).catch(() => null) : null;
+
+    // 全変数を構築（単日レポートなら sum、範囲なら avg を使用）
+    const isSingleDay = startDate === endDate;
+    const showKcal = isSingleDay ? Math.round(sum.kcal) : avg.kcal;
+    const showP = isSingleDay ? Math.round(sum.P * 10) / 10 : avg.P;
+    const showF = isSingleDay ? Math.round(sum.F * 10) / 10 : avg.F;
+    const showC = isSingleDay ? Math.round(sum.C * 10) / 10 : avg.C;
+
+    const kcalRatio = customer.goals.kcal > 0 ? Math.round((showKcal / customer.goals.kcal) * 100) : 0;
+
+    const vars: Record<string, string> = {
+      customer: customer.name,
+      date: endDate,
+      startDate,
+      endDate,
+      staff: staff?.name || '',
+      shop: staff?.shop || '',
+      // 食事データ（単日：その日の合計、範囲：日平均）
+      kcal: String(showKcal),
+      P: String(showP),
+      F: String(showF),
+      C: String(showC),
+      // 目標値
+      targetKcal: String(customer.goals.kcal),
+      targetP: String(customer.goals.P),
+      targetF: String(customer.goals.F),
+      targetC: String(customer.goals.C),
+      kcalRatio: String(kcalRatio),
+      // 体重
+      weight: customer.currentWeight !== null ? String(customer.currentWeight) : '-',
+      targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
+      // 店舗
+      storeName: store?.name || '',
+      signature: store?.signature || '',
+    };
+
+    const title = template?.titleTemplate ? applyVars(template.titleTemplate, vars) : (template?.name || 'レポート');
+
+    // 静的本文 → 変数置換のみ
+    if (template && !template.useAi) {
+      return NextResponse.json({
+        title,
+        body: applyVars(template.bodyTemplate, vars),
+        usedAi: false,
+        stats: { totalDays, avg, sum: { ...sum, kcal: Math.round(sum.kcal) } },
+      });
+    }
 
     const lines: string[] = [];
     lines.push(`記録日数: ${totalDays}/${diffDays(startDate, endDate)}日`);

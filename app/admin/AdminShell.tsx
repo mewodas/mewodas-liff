@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
@@ -25,7 +25,13 @@ const TABS: Tab[] = [
     suffix: '/reports',
     label: 'レポート送付',
     Icon: Send,
-    match: (p, base) => p.startsWith(`${base}/reports`) || p.startsWith(`${base}/templates`),
+    match: (p, base) => p.startsWith(`${base}/reports`),
+  },
+  {
+    suffix: '/templates',
+    label: 'テンプレ',
+    Icon: FileText,
+    match: (p, base) => p.startsWith(`${base}/templates`),
   },
   {
     suffix: '/analysis',

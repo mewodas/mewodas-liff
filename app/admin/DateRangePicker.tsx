@@ -135,9 +135,6 @@ export default function DateRangePicker({
             終了日
           </button>
         )}
-        <span className="text-[10px] text-stone-400 self-center ml-auto">
-          {isSingleDay ? '1日' : `${diffDays(from, to)}日間`}
-        </span>
       </div>
     </div>
   );
@@ -159,10 +156,3 @@ function Quick({ label, onClick, active = false }: { label: string; onClick: () 
   );
 }
 
-function diffDays(start: string, end: string): number {
-  const [sy, sm, sd] = start.split('-').map(Number);
-  const [ey, em, ed] = end.split('-').map(Number);
-  const s = new Date(sy, sm - 1, sd);
-  const e = new Date(ey, em - 1, ed);
-  return Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1;
-}
