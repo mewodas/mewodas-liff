@@ -25,6 +25,7 @@ export type CustomerPatch = {
   plan?: string | null;
   storeId?: string | null;
   lineUserId?: string | null;
+  onboardingCompletedAt?: string | null;
 };
 
 export async function listCustomers(): Promise<Customer[]> {

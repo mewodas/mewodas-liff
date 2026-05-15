@@ -9,6 +9,7 @@ import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
+import OnboardingFlow from '@/components/OnboardingFlow';
 import {
   Calendar as CalendarIcon,
   ClipboardList,
@@ -174,6 +175,7 @@ function HomePageInner() {
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [refetching, setRefetching] = useState(false); // 日付切替時の再fetch中フラグ
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null); // null=未確認
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -204,6 +206,26 @@ function HomePageInner() {
       }
     })();
   }, []);
+
+  // オンボーディング完了状態を確認
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/customer/me?lineUserId=${encodeURIComponent(userId)}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) {
+          setOnboardingDone(true); // エラー時はオンボーディングをスキップ
+          return;
+        }
+        const j = await res.json();
+        setOnboardingDone(!!j.customer?.onboardingCompletedAt);
+      } catch {
+        setOnboardingDone(true);
+      }
+    })();
+  }, [userId]);
 
   // 体重予測を取得（当日のみ、データ取得後、長めのキャッシュ）
   useEffect(() => {
@@ -344,6 +366,16 @@ function HomePageInner() {
   }
 
   if (!data) return null;
+
+  // オンボーディング未完了かつ状態確認済みならフローを表示
+  if (onboardingDone === false && userId && data) {
+    return (
+      <>
+        <OnboardingFlow customerName={data.customer.name} lineUserId={userId} />
+        <main className="min-h-screen bg-stone-100 pb-28" aria-hidden />
+      </>
+    );
+  }
 
   const { customer, today } = data;
   const { totals, mealsByType } = today;

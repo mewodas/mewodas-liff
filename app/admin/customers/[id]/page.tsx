@@ -96,6 +96,8 @@ export default function CustomerDetailPage({
   const [stores, setStores] = useState<Store[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [onboardingResetting, setOnboardingResetting] = useState(false);
+  const [onboardingMsg, setOnboardingMsg] = useState<string | null>(null);
 
   const today = jstToday();
 
@@ -479,6 +481,41 @@ export default function CustomerDetailPage({
               </div>
               <span className="text-stone-400">›</span>
             </Link>
+          </section>
+
+          {/* オンボーディングリセット */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <h2 className="text-sm font-bold text-stone-900 mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
+              オンボーディング
+            </h2>
+            {onboardingMsg && (
+              <div className="mb-2 text-xs bg-emerald-100 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-xl">{onboardingMsg}</div>
+            )}
+            <p className="text-xs text-stone-600 mb-3">
+              リセットすると次回顧客が /home を開いた際にオンボーディングが再表示されます。
+            </p>
+            <button
+              type="button"
+              disabled={onboardingResetting}
+              onClick={async () => {
+                setOnboardingResetting(true);
+                setOnboardingMsg(null);
+                try {
+                  const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
+                  if (!res.ok) throw new Error(`失敗（${res.status}）`);
+                  setOnboardingMsg('オンボーディングをリセットしました');
+                  setTimeout(() => setOnboardingMsg(null), 3000);
+                } catch (e) {
+                  setOnboardingMsg(e instanceof Error ? e.message : 'エラー');
+                } finally {
+                  setOnboardingResetting(false);
+                }
+              }}
+              className="bg-violet-100 text-violet-800 border border-violet-300 text-xs font-bold px-4 py-2 rounded-xl active:bg-violet-200 disabled:opacity-50"
+            >
+              {onboardingResetting ? 'リセット中…' : 'オンボーディングをリセット'}
+            </button>
           </section>
 
           {/* 送信履歴 */}

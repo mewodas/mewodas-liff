@@ -17,6 +17,7 @@ export function getTenantNotion() {
 export type Customer = {
   pageId: string;
   name: string;
+  furigana: string | null;
   lineUserId: string;
   foodStatus: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -27,9 +28,13 @@ export type Customer = {
   gender: string | null;
   heightCm: number | null;
   age: number | null;
+  birthDate: string | null;
+  email: string | null;
+  phone: string | null;
   activityLevel: string | null;
   plan: string | null;
   storeId: string | null;
+  onboardingCompletedAt: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -108,6 +113,7 @@ export async function getCustomerByLineId(
   const customer: Customer = {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId,
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
@@ -128,9 +134,13 @@ export async function getCustomerByLineId(
     gender: p['性別']?.select?.name ?? null,
     heightCm: p['身長(cm)']?.number ?? null,
     age: p['年齢']?.number ?? null,
+    birthDate: p['生年月日']?.date?.start ?? null,
+    email: p['メールアドレス']?.email ?? null,
+    phone: p['電話番号']?.phone_number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
+    onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -142,6 +152,7 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
   return {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId: p['LINEユーザーID']?.rich_text?.[0]?.plain_text || '',
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
@@ -162,9 +173,13 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
     gender: p['性別']?.select?.name ?? null,
     heightCm: p['身長(cm)']?.number ?? null,
     age: p['年齢']?.number ?? null,
+    birthDate: p['生年月日']?.date?.start ?? null,
+    email: p['メールアドレス']?.email ?? null,
+    phone: p['電話番号']?.phone_number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
+    onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
   };
 }
 
@@ -284,6 +299,7 @@ export async function updateCustomer(
     plan?: string | null;
     storeId?: string | null;
     lineUserId?: string | null;
+    onboardingCompletedAt?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -326,6 +342,11 @@ export async function updateCustomer(
     properties['LINEユーザーID'] = patch.lineUserId
       ? { rich_text: [{ type: 'text', text: { content: patch.lineUserId } }] }
       : { rich_text: [] };
+  }
+  if (patch.onboardingCompletedAt !== undefined) {
+    properties['オンボーディング完了日時'] = patch.onboardingCompletedAt === null
+      ? { date: null }
+      : { date: { start: patch.onboardingCompletedAt } };
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
