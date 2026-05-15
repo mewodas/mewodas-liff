@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Lock, LogIn, Store } from 'lucide-react';
 
@@ -91,6 +92,14 @@ function LoginInner() {
           <LogIn className="w-4 h-4" strokeWidth={2.2} />
           {submitting ? 'ログイン中…' : 'ログイン'}
         </button>
+        <div className="mt-4 text-center">
+          <Link
+            href={isStore ? '/store/account/reset' : '/admin/account/reset'}
+            className="text-xs text-stone-600 hover:text-stone-900 underline"
+          >
+            パスワードを忘れた方
+          </Link>
+        </div>
       </form>
     </main>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Rocket, RefreshCw, ExternalLink, Copy, Check, Building2 } from 'lucide-react';
+import { Rocket, RefreshCw, ExternalLink, Copy, Check, Building2, Mail } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 const PLANS = ['5-10名', '11-20名', '21名+', 'モニター', '無料'] as const;
@@ -13,6 +13,8 @@ type ProvisionResult = {
   foodDbId: string;
   customerDbUrl: string;
   foodDbUrl: string;
+  mail?: { sent: boolean; reason?: string; error?: string };
+  initialPassword?: string;
 };
 
 export default function NewTenantPage() {
@@ -171,10 +173,31 @@ export default function NewTenantPage() {
               </a>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 space-y-1">
+            {/* メール送信結果 */}
+            {result.mail?.sent && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-[11px] text-emerald-800 inline-flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" strokeWidth={2.4} />
+                <span><b>初期パスワードをメール送信済み</b>（→ {ownerEmail}）</span>
+              </div>
+            )}
+            {result.mail && !result.mail.sent && result.initialPassword && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-[11px] text-amber-900 space-y-2">
+                <div className="font-bold inline-flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5" strokeWidth={2.4} />
+                  メール自動送信に失敗（{result.mail.reason === 'no_provider' ? 'RESEND未設定' : result.mail.error}）
+                </div>
+                <div>下記情報を手動でジムオーナーに伝えてください：</div>
+                <div className="bg-white border border-amber-300 rounded-lg p-2 space-y-1 text-[11px]">
+                  <div><span className="text-stone-600">URL:</span> <code>https://app.fitmeal.jp/store/login</code></div>
+                  <div><span className="text-stone-600">メール:</span> <code>{ownerEmail}</code></div>
+                  <div><span className="text-stone-600">パスワード:</span> <code className="font-mono font-bold">{result.initialPassword}</code></div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-[11px] text-stone-700 space-y-1">
               <div className="font-bold">📋 次にやること</div>
               <ol className="list-decimal list-inside space-y-0.5">
-                <li>新しい Notion DB 2つに Integration を招待（既存と同じトークン）</li>
                 <li>ジムオーナー（{ownerEmail}）に LIFF 設定マニュアル送付</li>
                 <li>ジムから LIFF ID 受領後、テナント一覧から該当行を編集して登録</li>
               </ol>

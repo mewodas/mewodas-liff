@@ -483,36 +483,28 @@ function PasswordSection({
   ownerEmail: string;
   tenantName: string;
 }) {
-  const [mode, setMode] = useState<'idle' | 'manual' | 'result'>('idle');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'idle' | 'confirm' | 'result'>('idle');
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [mailResult, setMailResult] = useState<{ sent: boolean; reason?: string; mailtoUrl?: string; error?: string } | null>(null);
-  const [sendMail, setSendMail] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function submit(action: 'set' | 'generate') {
-    if (action === 'set' && password.length < 8) {
-      setError('パスワードは8文字以上必要');
-      return;
-    }
+  async function doReset() {
     setSaving(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/tenants/${tenantPageId}/password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          action === 'generate' ? { action: 'generate', sendMail } : { password, sendMail }
-        ),
+        body: JSON.stringify({ action: 'generate', sendMail: true }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || `保存失敗（${res.status}）`);
-      setGeneratedPassword(action === 'generate' ? j.password : null);
+      // メール送信成功時は平文パスワードを表示しない（手動コピー不要）
+      setGeneratedPassword(j.mail?.sent ? null : j.password);
       setMailResult(j.mail || null);
       setMode('result');
-      setPassword('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -548,68 +540,43 @@ function PasswordSection({
       {mode === 'idle' && ownerEmail && (
         <div className="space-y-2">
           <div className="text-[11px] text-stone-600 bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-            <div className="font-bold">ログインID（メール）: <code className="text-stone-900">{ownerEmail}</code></div>
-            <div className="mt-1">
-              ジムオーナーが <a href="https://app.fitmeal.jp/store/login" target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">/store/login</a> でログインするためのパスワードを発行します。
+            <div className="font-bold">ログインID: <code className="text-stone-900">{ownerEmail}</code></div>
+            <div className="mt-1 text-stone-600">
+              テナント作成時に初期パスワードを自動発行＆メール送信済み。<br />
+              ユーザーがパスワードを忘れた場合はリセットボタンで再発行できます（自動メール送信）。
             </div>
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-stone-700">
-            <input
-              type="checkbox"
-              checked={sendMail}
-              onChange={(e) => setSendMail(e.target.checked)}
-              className="w-4 h-4 accent-amber-500"
-            />
-            <span>新しいパスワードをオーナーにメール送信</span>
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => submit('generate')}
-              disabled={saving}
-              className="flex-1 bg-amber-500 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} strokeWidth={2.4} />
-              自動生成して発行
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('manual')}
-              disabled={saving}
-              className="flex-1 bg-white border border-stone-300 text-stone-700 font-bold text-xs py-2 rounded-xl active:bg-stone-50"
-            >
-              手動で設定
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setMode('confirm')}
+            disabled={saving}
+            className="w-full bg-amber-500 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+          >
+            <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.4} />
+            パスワードをリセット
+          </button>
         </div>
       )}
 
-      {mode === 'manual' && (
-        <div className="space-y-2">
-          <div>
-            <label className="text-[10px] font-bold text-stone-700 block mb-1">新しいパスワード（8文字以上）</label>
-            <input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="任意のパスワード"
-              autoFocus
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
+      {mode === 'confirm' && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-2">
+          <div className="text-[11px] font-bold text-amber-900">⚠️ 既存パスワードは無効になります</div>
+          <div className="text-[11px] text-amber-800">
+            新しいパスワードを自動生成し、{ownerEmail} にメール送信します。よろしいですか？
           </div>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => submit('set')}
-              disabled={saving || password.length < 8}
-              className="flex-1 bg-amber-500 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+              onClick={doReset}
+              disabled={saving}
+              className="flex-1 bg-amber-600 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
             >
-              <Save className="w-3.5 h-3.5" strokeWidth={2.4} />
-              {saving ? '保存中…' : '保存'}
+              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} strokeWidth={2.4} />
+              {saving ? 'リセット中…' : 'リセット実行'}
             </button>
             <button
               type="button"
-              onClick={() => { setMode('idle'); setPassword(''); }}
+              onClick={() => setMode('idle')}
               disabled={saving}
               className="bg-white border border-stone-300 text-stone-700 font-bold text-xs px-3 py-2 rounded-xl active:bg-stone-50"
             >
@@ -651,9 +618,9 @@ function PasswordSection({
             ) : null
           )}
 
-          {generatedPassword ? (
+          {generatedPassword && (
             <>
-              <div className="text-[10px] text-emerald-700">⚠️ このパスワードは1度しか表示されません。今すぐコピーしてください。</div>
+              <div className="text-[10px] text-emerald-700">⚠️ メール送信に失敗したため、下記を手動でジムオーナーに伝えてください。</div>
               <div className="bg-white border border-emerald-300 rounded-lg p-2 space-y-1 text-[11px]">
                 <div><span className="text-stone-600">URL:</span> <code className="text-stone-900">https://app.fitmeal.jp/store/login</code></div>
                 <div><span className="text-stone-600">メール:</span> <code className="text-stone-900">{ownerEmail}</code></div>
@@ -667,8 +634,6 @@ function PasswordSection({
                 {copied ? <><Check className="w-3.5 h-3.5" strokeWidth={2.4} /> コピーしました</> : <><Copy className="w-3.5 h-3.5" strokeWidth={2.4} /> 全部コピー</>}
               </button>
             </>
-          ) : (
-            <div className="text-[11px] text-emerald-700">手動入力したパスワードが設定されました。</div>
           )}
           <button
             type="button"

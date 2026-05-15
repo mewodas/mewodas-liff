@@ -59,6 +59,21 @@ export async function resolveTenantByLiffId(liffId: string): Promise<TenantConfi
   return liffMap.get(liffId) ?? null;
 }
 
+/** パスワード再設定用: ownerEmail でテナント検索（ハッシュ未設定でも可、解約は除外） */
+export async function findTenantByOwnerEmail(email: string): Promise<{
+  tenantId: string;
+  tenantName: string;
+  pageId: string;
+} | null> {
+  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  const normalized = email.toLowerCase();
+  const row = rows.find(
+    (r) => r.ownerEmail?.toLowerCase() === normalized && r.status !== '解約'
+  );
+  if (!row) return null;
+  return { tenantId: row.tenantId, tenantName: row.name, pageId: row.pageId };
+}
+
 /** Tenant admin ログイン用: email でテナントを検索（ハッシュも合わせて返す） */
 export async function findTenantAdminByEmail(email: string): Promise<{
   tenantId: string;

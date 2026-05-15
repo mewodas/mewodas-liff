@@ -11,11 +11,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ログインページと認証APIは素通し
+  // ログイン・パスワード再設定ページとAPIは素通し（未ログイン状態で必要）
   if (
     pathname === '/admin/login' ||
     pathname === '/store/login' ||
-    pathname === '/api/admin/auth/login'
+    pathname === '/admin/account/reset' ||
+    pathname === '/store/account/reset' ||
+    pathname === '/api/admin/auth/login' ||
+    pathname === '/api/admin/auth/reset-password'
   ) {
     return NextResponse.next();
   }

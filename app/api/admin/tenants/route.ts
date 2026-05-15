@@ -4,11 +4,15 @@ import {
   createTenantCustomerDb,
   createTenantFoodDb,
   insertTenantRow,
+  setTenantPasswordHash,
 } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID, FITMEAL_TENANTS_PARENT_PAGE_ID } from '@/lib/tenant';
 import { withMasterOnly } from '@/lib/withTenant';
 import { invalidateTenantCache } from '@/lib/tenantResolver';
 import { createStore, FITMEAL_STORES_DB_ID } from '@/lib/stores';
+import { hashPassword } from '@/lib/adminAuth';
+import { generatePassword } from '@/lib/passwordGen';
+import { sendEmail, loginInfoEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,6 +91,27 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
       // 店舗作成失敗してもテナント作成は成功扱い（後から手動作成可能）
     }
 
+    // 5. 初期パスワード自動発行＋オーナーへメール送信
+    const initialPassword = generatePassword(12);
+    let mail: { sent: boolean; reason?: string; error?: string } = { sent: false };
+    try {
+      const hash = hashPassword(initialPassword);
+      await setTenantPasswordHash(tenantPageId, hash);
+
+      const result = await sendEmail(
+        loginInfoEmail({ tenantName: name, ownerEmail, password: initialPassword })
+      );
+      if (result.sent) {
+        mail = { sent: true };
+      } else if (result.reason === 'no_provider') {
+        mail = { sent: false, reason: 'no_provider' };
+      } else {
+        mail = { sent: false, reason: 'error', error: result.error };
+      }
+    } catch (e) {
+      mail = { sent: false, reason: 'error', error: e instanceof Error ? e.message : 'unknown' };
+    }
+
     // 新規テナント追加されたのでキャッシュ無効化
     invalidateTenantCache();
 
@@ -97,6 +122,9 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
       customerDbId,
       foodDbId,
       defaultStoreId,
+      mail,
+      // パスワードは mail.sent === false の場合のみ平文で返す（マスタが手動で伝える）
+      initialPassword: mail.sent ? undefined : initialPassword,
       customerDbUrl: `https://www.notion.so/${customerDbId.replace(/-/g, '')}`,
       foodDbUrl: `https://www.notion.so/${foodDbId.replace(/-/g, '')}`,
       storesDbUrl: `https://www.notion.so/${FITMEAL_STORES_DB_ID.replace(/-/g, '')}`,
