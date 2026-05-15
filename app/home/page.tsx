@@ -352,7 +352,7 @@ function HomePageInner() {
   const goalProgress = calcGoalProgress(customer);
 
   return (
-    <main className="min-h-screen bg-stone-100 px-4 py-6 pb-28">
+    <main className="min-h-screen bg-stone-100 pb-28">
       {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
       {refetching && (
         <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
@@ -362,8 +362,9 @@ function HomePageInner() {
         </div>
       )}
       <div className="max-w-md mx-auto">
-        {/* ヘッダー：挨拶＋バッジ＋カレンダー */}
-        <div className="mb-3 flex items-center justify-between gap-2">
+        {/* sticky ヘッダー：日付ラベル＋バッジ＋ベル＋カレンダー + 日付ストリップ */}
+        <div className="sticky top-0 z-30 bg-stone-100 px-4 pt-2 pb-1">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-base font-bold text-stone-800 leading-none">{dateLabel}</p>
           </div>
@@ -425,7 +426,9 @@ function HomePageInner() {
             onSelect={(d) => navigateToDate(d)}
           />
         </div>
+        </div>
 
+        <div className="px-4 pt-2">
         {/* 栄養サマリー（カロミル風）— 日付切替中は薄くして fade */}
         <div
           data-tour="nutrition-summary"
@@ -577,6 +580,7 @@ function HomePageInner() {
               }}
             />
           ))}
+        </div>
         </div>
         </div>
 
@@ -748,7 +752,7 @@ function DateStrip({
   }, [selectedDate]);
 
   return (
-    <div className="mb-4 -mx-4 flex items-center gap-1 px-2">
+    <div className="mb-1 -mx-2 flex items-center gap-1">
       <button
         type="button"
         onClick={() => scrollByAmount(-200)}
