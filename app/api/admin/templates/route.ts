@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { listTemplates, createTemplate, isTemplatesConfigured, DEFAULT_TEMPLATES } from '@/lib/templates';
+import type { RangeType } from '@/lib/templates';
 import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,7 @@ export const POST = withAdminTenant(async (req) => {
     const body = await req.json();
     const name = String(body.name || '').trim();
     if (!name) return NextResponse.json({ error: '名前必須' }, { status: 400 });
+    const RANGE_TYPES = ['昨日', '今日', '先週', '今週', '先月', '今月', 'カスタム'];
     const template = await createTemplate({
       name,
       category: String(body.category || 'カスタム'),
@@ -40,6 +42,7 @@ export const POST = withAdminTenant(async (req) => {
       bodyTemplate: String(body.bodyTemplate || ''),
       useAi: !!body.useAi,
       aiPrompt: String(body.aiPrompt || ''),
+      rangeType: RANGE_TYPES.includes(body.rangeType) ? (body.rangeType as RangeType) : undefined,
     });
     return NextResponse.json({ ok: true, template });
   } catch (e) {

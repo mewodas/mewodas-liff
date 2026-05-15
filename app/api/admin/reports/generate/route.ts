@@ -7,6 +7,7 @@ import { getStoreByStoreId } from '@/lib/stores';
 import { generateCoachingAnalysis, generateReportComments } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
 import { buildReportVariables } from '@/lib/reports/variables';
+import { resolveDateRange } from '@/lib/reports/dateRange';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,10 +23,10 @@ export const POST = withAdminTenant(async (req) => {
     const customerId = String(body.customerId || '');
     const templateId = String(body.templateId || '');
     const staffId = body.staffId ? String(body.staffId) : '';
-    const startDate = String(body.startDate || '').trim();
-    const endDate = String(body.endDate || '').trim();
-    if (!customerId || !startDate || !endDate) {
-      return NextResponse.json({ error: 'customerId / startDate / endDate 必須' }, { status: 400 });
+    const manualStart = String(body.startDate || '').trim();
+    const manualEnd = String(body.endDate || '').trim();
+    if (!customerId) {
+      return NextResponse.json({ error: 'customerId 必須' }, { status: 400 });
     }
     const [customer, template, staff] = await Promise.all([
       getCustomer(customerId),
@@ -36,6 +37,16 @@ export const POST = withAdminTenant(async (req) => {
         : Promise.resolve(null),
       staffId ? getStaff(staffId) : Promise.resolve(null),
     ]);
+
+    // テンプレの rangeType に基づいて期間を決定（手動指定があれば手動優先）
+    const hasManualRange = manualStart && manualEnd;
+    const { startDate, endDate, rangeLabel: resolvedRangeLabel } = resolveDateRange(
+      hasManualRange ? 'カスタム' : template?.rangeType,
+      hasManualRange ? { startDate: manualStart, endDate: manualEnd } : undefined
+    );
+    if (!startDate || !endDate) {
+      return NextResponse.json({ error: 'startDate / endDate を特定できませんでした' }, { status: 400 });
+    }
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
     if (!customer.lineUserId) return NextResponse.json({ error: 'lineUserId 未登録' }, { status: 400 });
 
@@ -84,6 +95,7 @@ export const POST = withAdminTenant(async (req) => {
       ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }),
       staff: staff?.name || '',
       shop: staff?.shop || '',
+      rangeLabel: resolvedRangeLabel,
     };
 
     const title = template?.titleTemplate ? applyVars(template.titleTemplate, vars) : (template?.name || 'レポート');
@@ -137,7 +149,7 @@ export const POST = withAdminTenant(async (req) => {
       );
     }
     const recordsSummary = lines.join('\n');
-    const rangeLabel = startDate === endDate ? startDate : `${startDate} 〜 ${endDate}`;
+    const rangeLabel = resolvedRangeLabel;
 
     if (totalDays === 0) {
       return NextResponse.json({

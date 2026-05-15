@@ -18,6 +18,7 @@ import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import type { TenantConfig } from '@/lib/tenant';
 import { runInTenantContext } from '@/lib/tenantContext';
 import { buildReportVariables } from '@/lib/reports/variables';
+import { resolveDateRange } from '@/lib/reports/dateRange';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -131,14 +132,19 @@ export async function GET(req: NextRequest) {
     await runInTenantContext(tenantConfig, async () => {
       for (const customer of activeCustomers) {
         try {
-          // 昨日の食事記録を取得
-          const records = await listRecordsInRange(customer.lineUserId, yesterdayDate, yesterdayDate);
+          // テンプレの rangeType に基づいて期間を決定（未設定の場合は昨日固定）
+          const { startDate: reportStart, endDate: reportEnd } = resolveDateRange(
+            dailyTemplate.rangeType,
+            { startDate: yesterdayDate, endDate: yesterdayDate }
+          );
+          const records = await listRecordsInRange(customer.lineUserId, reportStart, reportEnd);
           const store = customer.storeId ? await getStoreByStoreId(customer.storeId).catch(() => null) : null;
 
+          const isSingleDay = reportStart === reportEnd;
           const vars = buildReportVariables(records, customer, store, {
-            startDate: yesterdayDate,
-            endDate: yesterdayDate,
-            isSingleDay: true,
+            startDate: reportStart,
+            endDate: reportEnd,
+            isSingleDay,
           });
           const sum = { kcal: Number(vars.kcal), P: Number(vars.P), F: Number(vars.F), C: Number(vars.C) };
 
@@ -148,7 +154,7 @@ export async function GET(req: NextRequest) {
             try {
               const aiComments = await generateReportComments({
                 customerName: customer.name,
-                date: yesterdayDate,
+                date: reportEnd,
                 sum: { kcal: Math.round(sum.kcal), P: Math.round(sum.P * 10) / 10, F: Math.round(sum.F * 10) / 10, C: Math.round(sum.C * 10) / 10 },
                 goals: customer.goals,
                 currentWeight: customer.currentWeight,
@@ -164,7 +170,7 @@ export async function GET(req: NextRequest) {
 
           const title = dailyTemplate.titleTemplate
             ? applyVars(dailyTemplate.titleTemplate, vars)
-            : `${yesterdayDate} の振り返り`;
+            : `${reportEnd} の振り返り`;
 
           // 通知DB に保存
           await createNotification({

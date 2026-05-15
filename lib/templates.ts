@@ -13,6 +13,8 @@ import { getTenantNotion } from '@/lib/notion';
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2022-06-28';
 
+export type RangeType = '昨日' | '今日' | '先週' | '今週' | '先月' | '今月' | 'カスタム';
+
 export type ReportTemplate = {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ export type ReportTemplate = {
   bodyTemplate: string;
   useAi: boolean;
   aiPrompt: string;
+  rangeType?: RangeType;
 };
 
 function getDbId(): string | null {
@@ -50,6 +53,13 @@ async function notionRequest(method: string, path: string, body?: object): Promi
   return res.json();
 }
 
+const RANGE_TYPES: RangeType[] = ['昨日', '今日', '先週', '今週', '先月', '今月', 'カスタム'];
+
+function toRangeType(v: string | undefined): RangeType | undefined {
+  if (!v) return undefined;
+  return RANGE_TYPES.includes(v as RangeType) ? (v as RangeType) : undefined;
+}
+
 function pageToTemplate(page: { id: string; properties: Record<string, any> }): ReportTemplate {
   const p = page.properties;
   const richJoin = (key: string) =>
@@ -62,6 +72,7 @@ function pageToTemplate(page: { id: string; properties: Record<string, any> }): 
     bodyTemplate: richJoin('本文雛形'),
     useAi: !!p['AI生成']?.checkbox,
     aiPrompt: richJoin('AIプロンプト'),
+    rangeType: toRangeType(p['対象期間']?.select?.name),
   };
 }
 
@@ -100,26 +111,29 @@ export async function createTemplate(params: {
   bodyTemplate: string;
   useAi: boolean;
   aiPrompt: string;
+  rangeType?: RangeType;
 }): Promise<ReportTemplate> {
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
+  const properties: Record<string, unknown> = {
+    名前: { title: [{ text: { content: params.name.slice(0, 100) } }] },
+    カテゴリ: { select: { name: params.category } },
+    タイトル雛形: { rich_text: richText(params.titleTemplate) },
+    本文雛形: { rich_text: richText(params.bodyTemplate) },
+    AI生成: { checkbox: !!params.useAi },
+    AIプロンプト: { rich_text: richText(params.aiPrompt) },
+  };
+  if (params.rangeType) properties['対象期間'] = { select: { name: params.rangeType } };
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: dbId },
-    properties: {
-      名前: { title: [{ text: { content: params.name.slice(0, 100) } }] },
-      カテゴリ: { select: { name: params.category } },
-      タイトル雛形: { rich_text: richText(params.titleTemplate) },
-      本文雛形: { rich_text: richText(params.bodyTemplate) },
-      AI生成: { checkbox: !!params.useAi },
-      AIプロンプト: { rich_text: richText(params.aiPrompt) },
-    },
+    properties,
   });
   return pageToTemplate(res);
 }
 
 export async function updateTemplate(
   id: string,
-  patch: Partial<{ name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string }>
+  patch: Partial<{ name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType: RangeType | null }>
 ): Promise<void> {
   if (!getDbId()) throw new Error('NOTION_TEMPLATES_DB_ID 未設定');
   const properties: Record<string, unknown> = {};
@@ -129,6 +143,9 @@ export async function updateTemplate(
   if (patch.bodyTemplate !== undefined) properties['本文雛形'] = { rich_text: richText(patch.bodyTemplate) };
   if (patch.useAi !== undefined) properties['AI生成'] = { checkbox: !!patch.useAi };
   if (patch.aiPrompt !== undefined) properties['AIプロンプト'] = { rich_text: richText(patch.aiPrompt) };
+  if (patch.rangeType !== undefined) {
+    properties['対象期間'] = patch.rangeType ? { select: { name: patch.rangeType } } : { select: null };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${id}`, { properties });
 }

@@ -5,6 +5,8 @@ import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle } from 'lucide-re
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
+type RangeType = '昨日' | '今日' | '先週' | '今週' | '先月' | '今月' | 'カスタム';
+
 type Template = {
   id: string;
   name: string;
@@ -13,7 +15,18 @@ type Template = {
   bodyTemplate: string;
   useAi: boolean;
   aiPrompt: string;
+  rangeType?: RangeType;
 };
+
+const RANGE_OPTIONS: { value: '' | RangeType; label: string }[] = [
+  { value: '', label: '未指定（手動）' },
+  { value: '昨日', label: '昨日' },
+  { value: '今日', label: '今日' },
+  { value: '先週', label: '先週' },
+  { value: '今週', label: '今週' },
+  { value: '先月', label: '先月' },
+  { value: '今月', label: '今月' },
+];
 
 // 本文・タイトルに使える変数（カテゴリ別）
 const VARIABLE_GROUPS = [
@@ -24,6 +37,7 @@ const VARIABLE_GROUPS = [
       { key: '{date}', label: '日付' },
       { key: '{storeName}', label: '店舗名' },
       { key: '{signature}', label: '署名' },
+      { key: '{rangeLabel}', label: '対象期間ラベル' },
     ],
   },
   {
@@ -189,10 +203,17 @@ export default function AdminTemplatesPage() {
                 <li key={t.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-stone-900 truncate">{t.name}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-stone-900 truncate">{t.name}</span>
+                        {t.rangeType && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                            {t.rangeType}
+                          </span>
+                        )}
+                      </div>
                       {t.titleTemplate && (
                         <div className="text-[11px] text-stone-500 mt-0.5 truncate">
-                          📨 送信タイトル: {t.titleTemplate}
+                          送信タイトル: {t.titleTemplate}
                         </div>
                       )}
                       {t.bodyTemplate && (
@@ -256,6 +277,7 @@ function TemplateEditor({
   const [name, setName] = useState(initial?.name || '');
   const [titleTemplate, setTitleTemplate] = useState(initial?.titleTemplate || '');
   const [bodyTemplate, setBodyTemplate] = useState(initial?.bodyTemplate || '');
+  const [rangeType, setRangeType] = useState<'' | RangeType>(initial?.rangeType || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -288,11 +310,12 @@ function TemplateEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          category: 'カスタム', // 後方互換のため固定値で送信
+          category: 'カスタム',
           titleTemplate,
           bodyTemplate,
           useAi: false,
           aiPrompt: '',
+          rangeType: rangeType || null,
         }),
       });
       if (!res.ok) {
@@ -341,7 +364,25 @@ function TemplateEditor({
       </div>
 
       <div>
-        <label className="text-[10px] font-bold text-stone-700 block mb-1">② 送信タイトル（任意）</label>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">② 対象期間</label>
+        <select
+          value={rangeType}
+          onChange={(e) => setRangeType(e.target.value as '' | RangeType)}
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        >
+          {RANGE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <div className="text-[10px] text-stone-500 mt-0.5">
+          テンプレ選択時に自動で集計期間を決定。「未指定」の場合はレポート送付画面で手動指定。
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">③ 送信タイトル（任意）</label>
         <input
           type="text"
           value={titleTemplate}
@@ -354,7 +395,7 @@ function TemplateEditor({
 
       <div>
         <label className="text-[10px] font-bold text-stone-700 block mb-1">
-          ③ 本文 <span className="text-rose-500">*</span>
+          ④ 本文 <span className="text-rose-500">*</span>
         </label>
         <textarea
           ref={bodyRef}
@@ -371,7 +412,7 @@ function TemplateEditor({
 
       {/* 変数挿入パネル（カテゴリ別） */}
       <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 space-y-2">
-        <div className="text-[10px] font-bold text-stone-700">📌 変数を挿入</div>
+        <div className="text-[10px] font-bold text-stone-700">変数を挿入</div>
         {VARIABLE_GROUPS.map((group) => (
           <div key={group.title}>
             <div className="text-[9px] font-bold text-stone-500 mb-1">{group.title}</div>
