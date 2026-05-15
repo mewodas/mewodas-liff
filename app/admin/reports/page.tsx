@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Check,
   FileText,
+  MessageCircle,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
@@ -59,6 +60,7 @@ function Inner() {
   const [body, setBody] = useState(initialDraft);
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingLine, setSendingLine] = useState(false);
   const [sendLinePush, setSendLinePush] = useState(true);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
@@ -217,6 +219,41 @@ function Inner() {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function sendLine() {
+    if (!customerId || !title.trim() || !body.trim()) {
+      setError('顧客・タイトル・本文すべて必要');
+      return;
+    }
+    setSendingLine(true);
+    setError(null);
+    setResultMsg(null);
+    try {
+      const sig = customerStore?.signature?.trim() || '';
+      const bodyText = sig && !body.includes(sig) ? `${body.trim()}\n\n— ${sig}` : body.trim();
+      const res = await fetch('/api/admin/reports/send-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          title: title.trim(),
+          body: bodyText,
+          staffName: customerStore?.name || '',
+          category: selectedTemplate?.category || 'アドバイス',
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `LINE 送信失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      setResultMsg(j?.push?.pushed ? 'LINE 送信しました' : `失敗: ${j?.push?.reason || '不明'}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSendingLine(false);
     }
   }
 
@@ -391,6 +428,15 @@ function Inner() {
           >
             <Send className="w-4 h-4" strokeWidth={2.2} />
             {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} に送信`}
+          </button>
+          <button
+            type="button"
+            onClick={sendLine}
+            disabled={sendingLine || !customerId || !title.trim() || !body.trim()}
+            className="w-full bg-green-500 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
+            {sendingLine ? 'LINE 送信中…' : 'LINE で送信'}
           </button>
         </section>
 

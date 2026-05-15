@@ -80,3 +80,17 @@ export function withMasterOnly(handler: RouteHandler): RouteHandler {
 export function currentSession(req: NextRequest): SessionPayload | null {
   return verifySession(req.cookies.get(SESSION_COOKIE_NAME)?.value);
 }
+
+/**
+ * テナントIDを直接指定してコンテキストを設定するラッパー（公開APIのリデーム等で使用）
+ * 認証は別途呼び出し元で処理すること。
+ */
+export async function runWithTenantById<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
+  let tenant;
+  try {
+    tenant = (await getTenantByIdAsync(tenantId)) || getDefaultTenant();
+  } catch {
+    tenant = getDefaultTenant();
+  }
+  return runInTenantContext(tenant, fn);
+}

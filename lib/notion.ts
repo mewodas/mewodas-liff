@@ -283,6 +283,7 @@ export async function updateCustomer(
     activityLevel?: string | null;
     plan?: string | null;
     storeId?: string | null;
+    lineUserId?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -321,9 +322,13 @@ export async function updateCustomer(
       ? { rich_text: [{ type: 'text', text: { content: patch.storeId } }] }
       : { rich_text: [] };
   }
+  if (patch.lineUserId !== undefined) {
+    properties['LINEユーザーID'] = patch.lineUserId
+      ? { rich_text: [{ type: 'text', text: { content: patch.lineUserId } }] }
+      : { rich_text: [] };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
-  // キャッシュは lineUserId キーなので全クリアはせず、関連エントリを除去
   customerCache.clear();
 }
 
@@ -348,6 +353,7 @@ export async function createTenantCustomerDb(
       食事管理ステータス: {
         select: {
           options: [
+            { name: '申込中', color: 'gray' },
             { name: '進行中', color: 'green' },
             { name: '設定中', color: 'purple' },
             { name: '休止中', color: 'orange' },

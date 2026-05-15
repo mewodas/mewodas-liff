@@ -106,6 +106,19 @@ export async function listAllTenants(): Promise<TenantConfig[]> {
   return Array.from(tenants.values());
 }
 
+/** 公開 API 用: ジム名または tenantId でテナントを検索 */
+export async function findTenantBySlugOrId(slugOrId: string): Promise<TenantConfig | null> {
+  if (!slugOrId) return null;
+  const { tenants } = await loadTenants();
+  const byId = tenants.get(slugOrId);
+  if (byId) return byId;
+  const lower = slugOrId.toLowerCase();
+  for (const t of tenants.values()) {
+    if (t.name.toLowerCase().includes(lower) || t.id.toLowerCase() === lower) return t;
+  }
+  return null;
+}
+
 export function invalidateTenantCache(): void {
   cache = null;
 }
