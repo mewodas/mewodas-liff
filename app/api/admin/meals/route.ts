@@ -156,9 +156,16 @@ export const GET = withAdminTenant(async (req) => {
     });
 
     // 顧客一覧（フィルタ用のセレクトボックス）も返す
+    // goals は集計サマリーで使うため含める
     const customerList = customers
       .filter((c) => !!c.foodStatus)
-      .map((c) => ({ pageId: c.pageId, name: c.name, foodStatus: c.foodStatus, storeId: c.storeId }));
+      .map((c) => ({
+        pageId: c.pageId,
+        name: c.name,
+        foodStatus: c.foodStatus,
+        storeId: c.storeId,
+        goals: c.goals,
+      }));
 
     return NextResponse.json({
       meals: enriched,

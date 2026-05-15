@@ -16,7 +16,13 @@ import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Customer = {
+  pageId: string;
+  name: string;
+  foodStatus: string | null;
+  storeId: string | null;
+  goals: { kcal: number; P: number; F: number; C: number };
+};
 type Store = { pageId: string; storeId: string; name: string };
 
 type Meal = {
@@ -164,6 +170,38 @@ export default function AdminMealsPage() {
     });
   }, [meals, storeFilter, customerStoreMap]);
 
+  // 集計サマリー：顧客フィルタが効いている時のみ表示
+  // visibleMeals の PFC 合計 + 顧客の1日目標との比較
+  const selectedCustomer = useMemo(() => customers.find((c) => c.pageId === customerId), [customers, customerId]);
+  const summary = useMemo(() => {
+    if (!selectedCustomer) return null;
+    const sum = visibleMeals.reduce(
+      (acc, m) => ({
+        kcal: acc.kcal + (m.kcal || 0),
+        P: acc.P + (m.P || 0),
+        F: acc.F + (m.F || 0),
+        C: acc.C + (m.C || 0),
+      }),
+      { kcal: 0, P: 0, F: 0, C: 0 }
+    );
+    const goals = selectedCustomer.goals;
+    return {
+      sum: {
+        kcal: Math.round(sum.kcal),
+        P: Math.round(sum.P * 10) / 10,
+        F: Math.round(sum.F * 10) / 10,
+        C: Math.round(sum.C * 10) / 10,
+      },
+      goals,
+      ratio: {
+        kcal: goals.kcal > 0 ? Math.round((sum.kcal / goals.kcal) * 100) : 0,
+        P: goals.P > 0 ? Math.round((sum.P / goals.P) * 100) : 0,
+        F: goals.F > 0 ? Math.round((sum.F / goals.F) * 100) : 0,
+        C: goals.C > 0 ? Math.round((sum.C / goals.C) * 100) : 0,
+      },
+    };
+  }, [visibleMeals, selectedCustomer]);
+
   // 日付ごとにグルーピング
   const grouped = useMemo(() => {
     const map = new Map<string, Meal[]>();
@@ -269,6 +307,25 @@ export default function AdminMealsPage() {
             })}
           </div>
         </div>
+
+        {/* 集計サマリー（顧客選択時のみ） */}
+        {summary && selectedCustomer && (
+          <section className="bg-gradient-to-br from-emerald-50 to-sky-50 rounded-2xl border border-emerald-200 shadow-sm p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-bold text-stone-900">
+                {selectedCustomer.name} ・ {visibleMeals.length}件
+                {mealTypeFilter && <span className="text-stone-500 ml-1">（{mealTypeFilter}のみ）</span>}
+              </div>
+              <div className="text-[10px] text-stone-500">合計 / 1日目標</div>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              <SummaryCell label="kcal" value={summary.sum.kcal} goal={summary.goals.kcal} ratio={summary.ratio.kcal} primary />
+              <SummaryCell label="P (g)" value={summary.sum.P} goal={summary.goals.P} ratio={summary.ratio.P} />
+              <SummaryCell label="F (g)" value={summary.sum.F} goal={summary.goals.F} ratio={summary.ratio.F} />
+              <SummaryCell label="C (g)" value={summary.sum.C} goal={summary.goals.C} ratio={summary.ratio.C} />
+            </div>
+          </section>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
@@ -539,6 +596,40 @@ function MealDetailModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+  goal,
+  ratio,
+  primary = false,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  ratio: number;
+  primary?: boolean;
+}) {
+  // 達成率による色分け
+  const tone =
+    ratio === 0 ? 'text-stone-500'
+    : ratio < 70 ? 'text-sky-700'
+    : ratio <= 110 ? 'text-emerald-700'
+    : ratio <= 130 ? 'text-amber-700'
+    : 'text-rose-700';
+  return (
+    <div className={`rounded-xl border p-2 ${primary ? 'bg-white border-emerald-300' : 'bg-white border-stone-200'}`}>
+      <div className="text-[9px] font-bold text-stone-600">{label}</div>
+      <div className={`font-bold leading-tight ${primary ? 'text-xl' : 'text-base'} ${primary ? 'text-stone-900' : 'text-stone-900'}`}>
+        {value}
+      </div>
+      <div className="text-[9px] text-stone-500 mt-0.5">
+        / {goal}
+      </div>
+      <div className={`text-[10px] font-bold ${tone} mt-0.5`}>{ratio}%</div>
     </div>
   );
 }
