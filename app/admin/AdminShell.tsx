@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Store, Building2, ChevronLeft, ChevronDown, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Store, Building2, ChevronLeft, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean };
@@ -70,7 +70,6 @@ export default function AdminShell({
   const base = useAdminBase();
   const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(null);
-  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
@@ -82,23 +81,6 @@ export default function AdminShell({
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
     router.replace(`${base}/login`);
-  }
-
-  async function switchTenant(tenantId: string) {
-    if (!me || tenantId === me.currentTenantId) return;
-    setSwitching(true);
-    try {
-      const res = await fetch('/api/admin/auth/switch-tenant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId }),
-      });
-      if (res.ok) {
-        window.location.reload();
-      }
-    } finally {
-      setSwitching(false);
-    }
   }
 
   const visibleTabs = TABS.filter((t) => {
@@ -130,24 +112,7 @@ export default function AdminShell({
             <h1 className="text-sm sm:text-base font-bold text-stone-900 truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {!isStore && me?.role === 'master' && me.availableTenants.length > 1 && (
-              <div className="relative">
-                <select
-                  value={me.currentTenantId}
-                  onChange={(e) => switchTenant(e.target.value)}
-                  disabled={switching}
-                  className="appearance-none bg-violet-50 border border-violet-200 rounded-full text-[11px] font-bold text-violet-800 pl-2 pr-6 py-1 focus:outline-none focus:ring-2 focus:ring-violet-400 max-w-[140px] truncate"
-                  aria-label="テナント切替"
-                  title="テナント切替"
-                >
-                  {me.availableTenants.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3 h-3 text-violet-700 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={2.4} />
-              </div>
-            )}
-            {!isStore && me?.role === 'master' && me.availableTenants.length <= 1 && (
+            {!isStore && me?.role === 'master' && (
               <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
                 マスタ
               </span>

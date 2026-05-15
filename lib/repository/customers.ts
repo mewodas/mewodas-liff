@@ -7,6 +7,7 @@ import {
   listAllCustomers as notionListAllCustomers,
   getCustomerByPageId as notionGetCustomerByPageId,
   updateCustomer as notionUpdateCustomer,
+  createCustomer as notionCreateCustomer,
   type Customer,
 } from '@/lib/notion';
 
@@ -35,4 +36,24 @@ export async function getCustomer(pageId: string): Promise<Customer | null> {
 
 export async function patchCustomer(pageId: string, patch: CustomerPatch): Promise<void> {
   return notionUpdateCustomer(pageId, patch);
+}
+
+export type CustomerCreateInput = {
+  name: string;
+  lineUserId?: string;
+  foodStatus?: string;
+  gender?: string;
+  heightCm?: number;
+  age?: number;
+  activityLevel?: string;
+  plan?: string;
+  currentWeight?: number;
+  targetWeight?: number;
+  targetDate?: string;
+  goals?: { kcal?: number; P?: number; F?: number; C?: number };
+  storeId?: string;
+};
+
+export async function createCustomer(input: CustomerCreateInput): Promise<Customer> {
+  return notionCreateCustomer(input);
 }

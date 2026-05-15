@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Circle, ChevronRight } from 'lucide-react';
+import { Search, Circle, ChevronRight, UserPlus } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -56,6 +56,14 @@ export default function AdminCustomersPage() {
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
       <div className="space-y-3">
+        <Link
+          href={`${base}/customers/new`}
+          className="block w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
+        >
+          <UserPlus className="w-4 h-4" strokeWidth={2.4} />
+          新規顧客追加
+        </Link>
+
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />

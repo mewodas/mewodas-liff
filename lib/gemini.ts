@@ -397,6 +397,51 @@ export type WeightPrediction = {
   recommendations: string[]; // アドバイス3つ以内
 };
 
+// 体重履歴に線形回帰を適用してトレンドを算出
+function calcWeightTrend(weightHistory: Array<{ date: string; weight: number }>): {
+  slopeKgPerDay: number;
+  monthlyChange: number;
+  rSquared: number;
+  predicted90: number;
+} {
+  const n = weightHistory.length;
+  if (n < 2) {
+    const w = n === 1 ? weightHistory[0].weight : 0;
+    return { slopeKgPerDay: 0, monthlyChange: 0, rSquared: 0, predicted90: w };
+  }
+  // 日付を最初の日からの経過日数に変換
+  const t0 = new Date(weightHistory[0].date).getTime();
+  const points = weightHistory.map((w) => ({
+    x: (new Date(w.date).getTime() - t0) / 86_400_000, // 日
+    y: w.weight,
+  }));
+  const meanX = points.reduce((s, p) => s + p.x, 0) / n;
+  const meanY = points.reduce((s, p) => s + p.y, 0) / n;
+  let numer = 0;
+  let denom = 0;
+  for (const p of points) {
+    numer += (p.x - meanX) * (p.y - meanY);
+    denom += (p.x - meanX) ** 2;
+  }
+  const slope = denom === 0 ? 0 : numer / denom; // kg/day
+  const intercept = meanY - slope * meanX;
+
+  // R二乗
+  const ssTot = points.reduce((s, p) => s + (p.y - meanY) ** 2, 0);
+  const ssRes = points.reduce((s, p) => {
+    const predY = slope * p.x + intercept;
+    return s + (p.y - predY) ** 2;
+  }, 0);
+  const rSquared = ssTot === 0 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+
+  // 最終測定日からさらに 90 日後の予測
+  const lastX = points[n - 1].x;
+  const lastWeight = points[n - 1].y;
+  const predicted90 = lastWeight + slope * 90;
+  const monthlyChange = slope * 30;
+  return { slopeKgPerDay: slope, monthlyChange, rSquared, predicted90 };
+}
+
 export async function predictWeight(params: {
   weightHistory: Array<{ date: string; weight: number }>; // 直近30日
   avgKcal: number; // 直近30日の平均カロリー
@@ -425,45 +470,81 @@ export async function predictWeight(params: {
     targetDate,
   } = params;
 
+  // 決定論的に線形回帰でトレンド計算
+  const trend = calcWeightTrend(weightHistory);
+  const predictedWeight = Math.round(trend.predicted90 * 10) / 10;
+  const monthlyChange = Math.round(trend.monthlyChange * 10) / 10;
+  // 信頼度: 点数が多く、R二乗が高いほど high
+  let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
+  if (weightHistory.length >= 15 && trend.rSquared >= 0.5) confidenceLevel = 'high';
+  else if (weightHistory.length >= 10 && trend.rSquared >= 0.3) confidenceLevel = 'medium';
+
+  // 目標達成判定（決定論的）
+  let willReachGoal: boolean | null = null;
+  if (targetWeight !== null && targetDate && currentWeight !== null) {
+    const daysToTarget = Math.max(
+      0,
+      Math.round((new Date(targetDate).getTime() - new Date(weightHistory[weightHistory.length - 1].date).getTime()) / 86_400_000)
+    );
+    const projectedAtTarget = weightHistory[weightHistory.length - 1].weight + trend.slopeKgPerDay * daysToTarget;
+    const goingDown = targetWeight < currentWeight;
+    willReachGoal = goingDown
+      ? projectedAtTarget <= targetWeight + 0.5
+      : projectedAtTarget >= targetWeight - 0.5;
+  }
+
   const weightTrendStr = weightHistory
     .map((w) => `${w.date}: ${w.weight}kg`)
     .join('\n  ');
 
   const targetInfo =
     targetWeight && targetDate
-      ? `\n【目標】\n- 目標体重: ${targetWeight}kg\n- 目標達成日: ${targetDate}`
+      ? `\n【目標】\n- 目標体重: ${targetWeight}kg\n- 目標達成日: ${targetDate}\n- 目標達成見込み: ${willReachGoal === null ? '不明' : willReachGoal ? '達成見込みあり' : '未達見込み'}`
       : '\n【目標】未設定';
 
+  // 数値は決定論的に算出済み。Gemini にはコメントとアドバイスだけ依頼
   const prompt = `あなたは管理栄養士・パーソナルトレーナーです。
-顧客の直近データから3ヶ月後の体重を科学的に予測してください。
+顧客の食事・運動データと体重推移を踏まえてコメントとアドバイスを返してください。
 
 【直近30日のデータ】
-- 平均カロリー摂取: ${avgKcal} kcal/日（目標: ${goalKcal} kcal）
+- 平均カロリー摂取: ${avgKcal} kcal/日（目標: ${goalKcal} kcal、差: ${avgKcal - goalKcal} kcal）
 - 平均PFC: P${avgP}g / F${avgF}g / C${avgC}g
 - 運動日数: ${exerciseDays}日 / 30日
-- 体重推移（${weightHistory.length}日分）:
+- 体重推移（${weightHistory.length}日分の実測値）:
   ${weightTrendStr || '（データなし）'}
 - 現在体重: ${currentWeight ?? '不明'} kg
 ${targetInfo}
 
-【予測ロジック】
-- カロリー収支から月平均の体重変化を算出（1kg脂肪 ≒ 7,200kcal）
-- 運動による消費カロリーを加味
-- 体重推移の実測値を最重視
-- データが少ない場合は信頼度を下げる
+【コード側で算出済みの値（これらを参照してコメントを書いてください。数値は変更しないでください）】
+- 月平均の体重変化（実測トレンドの線形回帰）: ${monthlyChange} kg/月
+- 3ヶ月後の予測体重: ${predictedWeight} kg
+- 信頼度: ${confidenceLevel}（データ点数 ${weightHistory.length}、R² ${trend.rSquared.toFixed(2)}）
+
+【コメントの観点】
+- 実測体重トレンドと、カロリー摂取量・PFCバランス・運動頻度の整合性
+- 食事内容や運動の改善点
+- ${monthlyChange < 0 ? '減量ペース' : monthlyChange > 0 ? '増量ペース' : '体重維持'}についての評価
 
 【出力JSON形式（必ずこの形式）】
 {
-  "predictedWeight": 3ヶ月後の予測体重(kg)数値,
-  "monthlyChange": 月平均の体重変化(kg/月)数値（減量はマイナス）,
-  "confidenceLevel": "high" | "medium" | "low",
-  "willReachGoal": 目標達成見込みtrue/false（目標未設定ならnull）,
+  "predictedWeight": ${predictedWeight},
+  "monthlyChange": ${monthlyChange},
+  "confidenceLevel": "${confidenceLevel}",
+  "willReachGoal": ${willReachGoal === null ? 'null' : willReachGoal ? 'true' : 'false'},
   "comment": "30文字以内の総評",
   "recommendations": ["アドバイス1", "アドバイス2", "アドバイス3"]
 }`;
 
   const text = await callGemini([{ text: prompt }], apiKey);
-  return parseWeightPredictionJson(text);
+  const result = parseWeightPredictionJson(text);
+  // 数値は決定論的な値で上書き（Gemini が書き換えても無視）
+  return {
+    ...result,
+    predictedWeight,
+    monthlyChange,
+    confidenceLevel,
+    willReachGoal,
+  };
 }
 
 function parseWeightPredictionJson(text: string): WeightPrediction {

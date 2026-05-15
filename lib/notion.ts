@@ -204,6 +204,72 @@ export async function getCustomerByPageId(pageId: string): Promise<Customer | nu
   }
 }
 
+// 新規顧客作成
+export async function createCustomer(input: {
+  name: string;
+  lineUserId?: string;
+  foodStatus?: string;
+  gender?: string;
+  heightCm?: number;
+  age?: number;
+  activityLevel?: string;
+  plan?: string;
+  currentWeight?: number;
+  targetWeight?: number;
+  targetDate?: string;
+  goals?: { kcal?: number; P?: number; F?: number; C?: number };
+  storeId?: string;
+}): Promise<Customer> {
+  const tenant = getTenantNotion();
+  const properties: Record<string, unknown> = {
+    氏名: { title: [{ text: { content: input.name.slice(0, 100) } }] },
+  };
+  if (input.lineUserId) {
+    properties['LINEユーザーID'] = { rich_text: [{ text: { content: input.lineUserId } }] };
+  }
+  if (input.foodStatus) {
+    properties['食事管理ステータス'] = { select: { name: input.foodStatus } };
+  }
+  if (input.gender) {
+    properties['性別'] = { select: { name: input.gender } };
+  }
+  if (typeof input.heightCm === 'number') {
+    properties['身長(cm)'] = { number: input.heightCm };
+  }
+  if (typeof input.age === 'number') {
+    properties['年齢'] = { number: input.age };
+  }
+  if (input.activityLevel) {
+    properties['活動レベル'] = { select: { name: input.activityLevel } };
+  }
+  if (input.plan) {
+    properties['プラン'] = { select: { name: input.plan } };
+  }
+  if (typeof input.currentWeight === 'number') {
+    properties['現在体重(kg)'] = { number: input.currentWeight };
+  }
+  if (typeof input.targetWeight === 'number') {
+    properties['目標体重(kg)'] = { number: input.targetWeight };
+  }
+  if (input.targetDate) {
+    properties['目標達成日'] = { date: { start: input.targetDate } };
+  }
+  if (input.goals) {
+    if (typeof input.goals.kcal === 'number') properties['目標カロリー(kcal)'] = { number: input.goals.kcal };
+    if (typeof input.goals.P === 'number') properties['目標P(g)'] = { number: input.goals.P };
+    if (typeof input.goals.F === 'number') properties['目標F(g)'] = { number: input.goals.F };
+    if (typeof input.goals.C === 'number') properties['目標C(g)'] = { number: input.goals.C };
+  }
+  if (input.storeId) {
+    properties['所属店舗'] = { rich_text: [{ text: { content: input.storeId } }] };
+  }
+  const res = await notionRequest('POST', '/pages', {
+    parent: { database_id: tenant.customerDbId },
+    properties,
+  });
+  return parseCustomerPage(res);
+}
+
 export async function updateCustomer(
   pageId: string,
   patch: {
