@@ -275,12 +275,12 @@ function Inner() {
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
-              ④ テンプレ
+              ④ レポート文面
               <Link
                 href={isStore ? '/store/templates' : '/admin/templates'}
                 className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
               >
-                ⚙ テンプレ管理
+                ⚙ レポート文面管理
               </Link>
             </div>
             {selectedTemplate && (
@@ -333,33 +333,32 @@ function Inner() {
           <div>
             <label className="text-[10px] font-bold text-stone-700 block mb-1 inline-flex items-center gap-1">
               <FileText className="w-3 h-3" strokeWidth={2.4} />
-              本文（ベーステキスト・編集可）
+              本文プレビュー（「レポート作成」で生成・編集可）
             </label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={12}
-              placeholder={selectedTemplate?.useAi ? 'AI生成ボタンを押すと本文がここに入ります' : 'テンプレを選ぶとベース本文がここに入ります'}
+              placeholder="「レポート作成」を押すと変数・AI コメントが展開された本文が入ります"
               className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
             />
           </div>
 
-          {/* AI 生成（useAi のテンプレで実データ反映） */}
           <button
             type="button"
             onClick={generate}
             disabled={generating || !customerId}
-            className="w-full bg-white border border-emerald-500 text-emerald-700 text-xs font-bold py-2 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            className="w-full bg-emerald-500 text-white text-sm font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
           >
             {generating ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={2.2} />
-                生成中…（10〜20秒）
+                <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+                レポート作成中…（10〜20秒）
               </>
             ) : (
               <>
-                <Sparkles className="w-3.5 h-3.5" strokeWidth={2.2} />
-                {selectedTemplate?.useAi ? 'AIで実データから生成' : 'AIで内容を補正'}
+                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+                レポート作成
               </>
             )}
           </button>

@@ -121,7 +121,7 @@ export default function AdminTemplatesPage() {
   }, []);
 
   return (
-    <AdminShell title="テンプレ管理" back={{ href: `${base}/reports` }}>
+    <AdminShell title="レポート文面管理" back={{ href: `${base}/reports` }}>
       <div className="space-y-3">
         {error && (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl inline-flex items-start gap-2">
@@ -133,7 +133,7 @@ export default function AdminTemplatesPage() {
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5 mb-1">
             <FileText className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-            テンプレ一覧（{templates.length}件）
+            レポート文面一覧（{templates.length}件）
           </h2>
           <p className="text-[10px] text-stone-500">
             ジムオーナーが顧客に送るレポート文章のひな形。本文に変数（例：<code>{'{customer}'}</code>）を入れると送信時に実データに自動置換されます。
@@ -147,7 +147,7 @@ export default function AdminTemplatesPage() {
             className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" strokeWidth={2.4} />
-            新規テンプレ追加
+            新規レポート文面追加
           </button>
         )}
 
@@ -165,7 +165,7 @@ export default function AdminTemplatesPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : templates.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">
-            テンプレートがありません
+            レポート文面がありません
           </div>
         ) : (
           <ul className="space-y-2">
@@ -324,11 +324,11 @@ function TemplateEditor({
 
   return (
     <div className="bg-white rounded-2xl border-2 border-emerald-400 shadow-md p-3 space-y-3">
-      <div className="text-sm font-bold text-emerald-700">{initial ? 'テンプレを編集' : '新規テンプレ'}</div>
+      <div className="text-sm font-bold text-emerald-700">{initial ? 'レポート文面を編集' : '新規レポート文面'}</div>
 
       <div>
         <label className="text-[10px] font-bold text-stone-700 block mb-1">
-          ① テンプレ名 <span className="text-rose-500">*</span>
+          ① 文面名 <span className="text-rose-500">*</span>
         </label>
         <input
           type="text"
@@ -337,7 +337,7 @@ function TemplateEditor({
           placeholder="例：前日レポート"
           className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <div className="text-[10px] text-stone-500 mt-0.5">管理画面で識別する名前（顧客には見えません）</div>
+        <div className="text-[10px] text-stone-500 mt-0.5">レポート送付画面で識別する名前（顧客には見えません）</div>
       </div>
 
       <div>
