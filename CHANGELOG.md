@@ -9,6 +9,14 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – ステータス再変更
+- chore: 食事管理ステータスの方針を再変更（「申込中」廃止 → 「設定中」一本化）
+  - 前回（同日早朝）「設定中」→「申込中」一本化したが、業務的に「設定中」が適切と判断し戻し
+  - Notion DB（staging/本番）の options から「申込中」を削除、既存「申込中」顧客 4件（組山・北脇・亀山・後藤）を「設定中」へマイグレ（notion-ops 経由）
+  - コード側: STATUS_OPTIONS / 新規追加デフォルト / /api/admin/customers POST デフォルト / /api/onboard/redeem 自動切替対象 / lib/notion.ts createTenantCustomerDb / /admin/page.tsx の StatusBadge と STATUSES と「承認する」ボタン条件 すべて「申込中」→「設定中」に置換
+  - redeem の自動切替動作: 設定中 → 進行中（LINE認証成功で発火）
+- 影響範囲: DB 共通 / 管理画面 / API
+
 ## 2026-05-17 (staging) – UI改修フォローアップ3
 - ui(admin): 顧客編集画面 /admin/customers/[id] 改修
   - 「身体プロフィール」→「身体情報」にリネーム

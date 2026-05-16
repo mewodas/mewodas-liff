@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       }
 
       const patch: { lineUserId: string; foodStatus?: string } = { lineUserId };
-      if (customer.foodStatus === '申込中') {
+      if (customer.foodStatus === '設定中') {
         patch.foodStatus = '進行中';
       }
 

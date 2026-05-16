@@ -378,7 +378,7 @@ export async function createTenantCustomerDb(
       食事管理ステータス: {
         select: {
           options: [
-            { name: '申込中', color: 'gray' },
+            { name: '設定中', color: 'purple' },
             { name: '進行中', color: 'green' },
             { name: '休止中', color: 'orange' },
             { name: '卒業', color: 'blue' },

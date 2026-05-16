@@ -24,7 +24,7 @@ export const POST = withAdminTenant(async (req) => {
     const customer = await createCustomer({
       name,
       lineUserId: body.lineUserId ? String(body.lineUserId).trim() : undefined,
-      foodStatus: body.foodStatus || '申込中',
+      foodStatus: body.foodStatus || '設定中',
       gender: body.gender || undefined,
       heightCm: typeof body.heightCm === 'number' ? body.heightCm : undefined,
       age: typeof body.age === 'number' ? body.age : undefined,
