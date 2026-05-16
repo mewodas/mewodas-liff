@@ -483,15 +483,6 @@ function Inner() {
             <Send className="w-4 h-4" strokeWidth={2.2} />
             {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} 様に送信`}
           </button>
-          <button
-            type="button"
-            onClick={sendLine}
-            disabled={sendingLine || !customerId || !title.trim() || !body.trim()}
-            className="w-full bg-green-500 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-          >
-            <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
-            {sendingLine ? 'LINE 送信中…' : `${selectedCustomer?.name || '顧客'} 様に LINE 送信`}
-          </button>
         </section>
 
       </div>
