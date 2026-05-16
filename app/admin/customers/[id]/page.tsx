@@ -30,7 +30,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import AdminShell from '../../AdminShell';
-import { ACTIVITY_LEVELS, daysUntil } from '@/lib/goalCalc';
+import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = {
@@ -71,89 +71,6 @@ const ACTIVITY_DISPLAY: Record<string, string> = {
   '激しい': '激しい運動（毎日）',
 };
 
-const ACTIVITY_FACTOR: Record<string, number> = {
-  'ほぼ運動なし': 1.2,
-  '軽い': 1.375,
-  '中等度': 1.55,
-  '激しい': 1.725,
-};
-
-type CalcInputs = {
-  gender: string;
-  age: string;
-  heightCm: string;
-  currentWeight: string;
-  activityLevel: string;
-  plan: string;
-};
-
-function calcMifflin(inputs: CalcInputs): {
-  goalKcal: number;
-  goalP: number;
-  goalF: number;
-  goalC: number;
-  tdee: number;
-  missing: string[];
-} | null {
-  const missing: string[] = [];
-  if (!inputs.gender) missing.push('性別');
-  if (!inputs.age) missing.push('年齢');
-  if (!inputs.heightCm) missing.push('身長');
-  if (!inputs.currentWeight) missing.push('現在体重');
-  if (!inputs.activityLevel) missing.push('活動レベル');
-  if (!inputs.plan) missing.push('目標プラン');
-  if (missing.length > 0) return { goalKcal: 0, goalP: 0, goalF: 0, goalC: 0, tdee: 0, missing };
-
-  const weight = parseFloat(inputs.currentWeight);
-  const height = parseFloat(inputs.heightCm);
-  const age = parseInt(inputs.age, 10);
-
-  const base = 10 * weight + 6.25 * height - 5 * age;
-  let bmr: number;
-  if (inputs.gender === '男性') bmr = Math.round(base + 5);
-  else if (inputs.gender === '女性') bmr = Math.round(base - 161);
-  else bmr = Math.round(base - 78);
-
-  const factor = ACTIVITY_FACTOR[inputs.activityLevel] ?? 1.375;
-  const tdee = Math.round(bmr * factor);
-
-  let goalKcal: number;
-  let pPerKg: number;
-  let fRatio: number;
-
-  switch (inputs.plan) {
-    case '減量':
-      goalKcal = tdee - 500;
-      pPerKg = 2.2;
-      fRatio = 0.20;
-      break;
-    case '増量':
-      goalKcal = tdee + 300;
-      pPerKg = 2.0;
-      fRatio = 0.25;
-      break;
-    case '筋肥大':
-      goalKcal = tdee + 200;
-      pPerKg = 2.5;
-      fRatio = 0.20;
-      break;
-    case '現状維持':
-    default:
-      goalKcal = tdee;
-      pPerKg = 1.6;
-      fRatio = 0.25;
-      break;
-  }
-
-  goalKcal = Math.round(Math.max(1200, Math.min(4000, goalKcal)) / 10) * 10;
-  const goalP = Math.round(weight * pPerKg * 10) / 10;
-  const goalF = Math.round((goalKcal * fRatio) / 9 * 10) / 10;
-  const remainingKcal = goalKcal - goalP * 4 - goalF * 9;
-  const goalC = Math.max(0, Math.round((remainingKcal / 4) * 10) / 10);
-
-  return { goalKcal, goalP, goalF, goalC, tdee, missing: [] };
-}
-
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -175,6 +92,7 @@ export default function CustomerDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [name, setName] = useState('');
   const [goalKcal, setGoalKcal] = useState('');
   const [goalP, setGoalP] = useState('');
   const [goalF, setGoalF] = useState('');
@@ -193,7 +111,6 @@ export default function CustomerDetailPage({
   const [stores, setStores] = useState<StoreItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [tdee, setTdee] = useState<number | null>(null);
 
   type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -239,6 +156,7 @@ export default function CustomerDetailPage({
         const j = await res.json();
         const c: Customer = j.customer;
         setCustomer(c);
+        setName(c.name);
         setGoalKcal(String(c.goals.kcal));
         setGoalP(String(c.goals.P));
         setGoalF(String(c.goals.F));
@@ -266,18 +184,27 @@ export default function CustomerDetailPage({
     return daysUntil(targetDate, today);
   }, [targetDate, today]);
 
+  const calc = useMemo(() => {
+    return calcGoals({
+      gender: gender || null,
+      heightCm: heightCm ? parseFloat(heightCm) : null,
+      age: age ? parseInt(age, 10) : null,
+      activityLevel: activityLevel || null,
+      plan: plan || null,
+      currentWeight: currentWeightEdit ? parseFloat(currentWeightEdit) : null,
+      targetWeight: targetWeight ? parseFloat(targetWeight) : null,
+      targetDate: targetDate || null,
+      today,
+    });
+  }, [gender, heightCm, age, activityLevel, plan, currentWeightEdit, targetWeight, targetDate, today]);
+
   useEffect(() => {
-    const result = calcMifflin({ gender, age, heightCm, currentWeight: currentWeightEdit, activityLevel, plan });
-    if (!result || result.missing.length > 0) {
-      setTdee(null);
-      return;
-    }
-    setTdee(result.tdee);
-    setGoalKcal(String(result.goalKcal));
-    setGoalP(String(result.goalP));
-    setGoalF(String(result.goalF));
-    setGoalC(String(result.goalC));
-  }, [gender, age, heightCm, currentWeightEdit, activityLevel, plan]);
+    if (!calc) return;
+    setGoalKcal(String(calc.goalKcal));
+    setGoalP(String(calc.goalP));
+    setGoalF(String(calc.goalF));
+    setGoalC(String(calc.goalC));
+  }, [calc]);
 
   const pRatio = useMemo(() => {
     const k = parseFloat(goalKcal);
@@ -305,6 +232,7 @@ export default function CustomerDetailPage({
     setError(null);
     try {
       const payload = {
+        name: name.trim() || undefined,
         goals: {
           kcal: parseInt(goalKcal, 10) || 0,
           P: parseFloat(goalP) || 0,
@@ -405,7 +333,15 @@ export default function CustomerDetailPage({
               <ClipboardList className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
               基本情報
             </h2>
-            <Field label="氏名" value={customer.name} />
+            <div className="mb-2">
+              <label className="text-xs font-bold text-stone-700 mb-1 block">氏名</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
             <Field label="LINEユーザーID" value={customer.lineUserId || '未設定'} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
@@ -542,31 +478,48 @@ export default function CustomerDetailPage({
               </div>
             </div>
 
-            {/* 残日数 + 計算式バナー */}
-            {((targetDate && remainingDays !== null) || plan) && (
-              <div className="mb-3 rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                {targetDate && remainingDays !== null && (
-                  <div className="flex items-center gap-2">
-                    <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                    <span className="text-sm font-bold">
-                      {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
-                       remainingDays === 0 ? '目標日は今日' :
-                       `目標日まであと ${remainingDays} 日`}
-                    </span>
-                  </div>
-                )}
-                {plan && (
-                  <span className="text-[11px] font-bold opacity-90">
-                    {plan === '減量' && '計算式: kcal -500 / タンパク質 2.2g/kg・脂質 20%'}
-                    {plan === '増量' && '計算式: kcal +300 / タンパク質 2.0g/kg・脂質 25%'}
-                    {plan === '筋肥大' && '計算式: kcal +200 / タンパク質 2.5g/kg・脂質 20%'}
-                    {plan === '現状維持' && '計算式: kcal ±0 / タンパク質 1.6g/kg・脂質 25%'}
+            {/* 残日数バナー */}
+            {targetDate && remainingDays !== null && (
+              <div className="mb-3 rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                  <span className="text-sm font-bold">
+                    {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
+                     remainingDays === 0 ? '目標日は今日' :
+                     `目標まであと ${remainingDays} 日`}
                   </span>
-                )}
-                {targetDate && currentWeightEdit && targetWeight && (
-                  <span className="ml-auto text-[11px] opacity-80">
-                    体重差 {(parseFloat(targetWeight) - parseFloat(currentWeightEdit)).toFixed(1)} kg
-                  </span>
+                </div>
+                {currentWeightEdit && targetWeight ? (() => {
+                  const cw = parseFloat(currentWeightEdit);
+                  const tw = parseFloat(targetWeight);
+                  if (isNaN(cw) || isNaN(tw)) return null;
+                  const diff = tw - cw;
+                  const weightLabel = diff < 0
+                    ? `あと ${Math.abs(diff).toFixed(1)}kg 減量`
+                    : diff > 0
+                    ? `あと ${diff.toFixed(1)}kg 増量`
+                    : '現体重キープ';
+                  const delta = calc?.clampedDelta;
+                  const absDiff = Math.abs(diff);
+                  return (
+                    <div className="space-y-0.5 pl-6">
+                      <div className="text-xs font-bold">
+                        {weightLabel}
+                        {delta !== undefined && delta !== 0 && (
+                          <span className="ml-2">
+                            {delta < 0 ? `／ 1日あたり ${delta} kcal 削減` : `／ 1日あたり +${delta} kcal 追加`}
+                          </span>
+                        )}
+                      </div>
+                      {delta !== undefined && Math.abs(delta) > 0 && remainingDays !== null && remainingDays > 0 && diff !== 0 && (
+                        <div className="text-[10px] opacity-70">
+                          ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日)
+                        </div>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  <div className="pl-6 text-[11px] opacity-70">目標体重を入力すると1日あたり kcal が計算されます</div>
                 )}
               </div>
             )}
@@ -578,7 +531,7 @@ export default function CustomerDetailPage({
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー (kcal)</label>
                   <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
-                    {tdee !== null ? tdee : '—'}
+                    {calc?.tdee ?? '—'}
                   </div>
                 </div>
                 <div>

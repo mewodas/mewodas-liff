@@ -9,6 +9,15 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 顧客編集画面 UI 改善（氏名編集・calcGoals 統一・バナー改修）
+- feat(admin/[id]): 基本情報セクションで氏名を input で編集可能に。save 時に name を PATCH payload に含め Notion の「氏名」title プロパティを更新
+- feat(lib): CustomerPatch 型・updateCustomer・PATCH ハンドラに name フィールドを追加
+- refactor(admin/[id]): ローカル calcMifflin + ACTIVITY_FACTOR を削除し lib/goalCalc の calcGoals に統一。targetWeight + targetDate がある場合は体重差×7700÷残日数で自動計算
+- fix(admin/[id], admin/new): 残日数バナーから「計算式: kcal -500 / ...」併記を削除
+- feat(admin/[id], admin/new): 体重差表示を「あと Xkg 減量」「あと Xkg 増量」「現体重キープ」形式に変更
+- feat(admin/[id], admin/new): バナーに「1日あたり -N kcal 削減 / +N kcal 追加」と計算式 (Xkg × 7,700 ÷ N日) を追加。体重・目標日未入力時はヒントを表示
+- 影響範囲: 管理画面 /admin/customers/[id]、/admin/customers/new、/store/customers/[id]、/store/customers/new（re-export）、API /api/admin/customers/[id]、lib/notion.ts、lib/repository/customers.ts
+
 ## 2026-05-17 (staging) – UI 細かい調整
 - ui(admin): LINE ユーザーID を /store/customers/new で**表示するが readOnly**（input は薄グレーで cursor-not-allowed）。/admin は引き続き編集可能
 - ui(admin): 身体情報の注釈を 1 行に短縮（<br> 削除、文言も簡潔化）

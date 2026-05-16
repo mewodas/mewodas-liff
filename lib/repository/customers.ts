@@ -16,6 +16,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 export type { Customer };
 
 export type CustomerPatch = {
+  name?: string;
   goals?: { kcal?: number; P?: number; F?: number; C?: number };
   targetWeight?: number | null;
   targetDate?: string | null;

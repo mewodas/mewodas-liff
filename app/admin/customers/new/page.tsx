@@ -332,25 +332,48 @@ export default function NewCustomerPage() {
             </div>
           </div>
 
-          {((targetDate && remainingDays !== null) || plan) && (
-            <div className="rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              {targetDate && remainingDays !== null && (
-                <div className="flex items-center gap-2">
-                  <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                  <span className="text-sm font-bold">
-                    {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過`
-                     : remainingDays === 0 ? '目標日は今日'
-                     : `目標まであと ${remainingDays} 日`}
-                  </span>
-                </div>
-              )}
-              {plan && (
-                <span className="text-[11px] font-bold opacity-90">
-                  {plan === '減量' && '計算式: kcal -500 / タンパク質 2.2g/kg・脂質 20%'}
-                  {plan === '増量' && '計算式: kcal +300 / タンパク質 2.0g/kg・脂質 25%'}
-                  {plan === '筋肥大' && '計算式: kcal +200 / タンパク質 2.5g/kg・脂質 20%'}
-                  {plan === '現状維持' && '計算式: kcal ±0 / タンパク質 1.6g/kg・脂質 25%'}
+          {targetDate && remainingDays !== null && (
+            <div className="rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                <span className="text-sm font-bold">
+                  {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過`
+                   : remainingDays === 0 ? '目標日は今日'
+                   : `目標まであと ${remainingDays} 日`}
                 </span>
+              </div>
+              {currentWeight && targetWeight && (() => {
+                const cw = parseFloat(currentWeight);
+                const tw = parseFloat(targetWeight);
+                if (isNaN(cw) || isNaN(tw)) return null;
+                const diff = tw - cw;
+                const weightLabel = diff < 0
+                  ? `あと ${Math.abs(diff).toFixed(1)}kg 減量`
+                  : diff > 0
+                  ? `あと ${diff.toFixed(1)}kg 増量`
+                  : '現体重キープ';
+                const delta = calc?.clampedDelta;
+                const absDiff = Math.abs(diff);
+                return (
+                  <div className="space-y-0.5 pl-6">
+                    <div className="text-xs font-bold">
+                      {weightLabel}
+                      {delta !== undefined && delta !== 0 && (
+                        <span className="ml-2">
+                          {delta < 0 ? `／ 1日あたり ${delta} kcal 削減` : `／ 1日あたり +${delta} kcal 追加`}
+                        </span>
+                      )}
+                    </div>
+                    {delta !== undefined && Math.abs(delta) > 0 && remainingDays > 0 && diff !== 0 && (
+                      <div className="text-[10px] opacity-70">
+                        ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日)
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              {(!currentWeight || !targetWeight) && (
+                <div className="pl-6 text-[11px] opacity-70">目標体重を入力すると1日あたり kcal が計算されます</div>
               )}
             </div>
           )}

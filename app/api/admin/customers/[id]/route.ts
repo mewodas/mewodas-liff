@@ -24,6 +24,7 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
     const { id } = await params;
     const body = (await req.json()) as CustomerPatch;
     const patch: CustomerPatch = {};
+    if (body.name && typeof body.name === 'string') patch.name = body.name.trim();
     if (body.goals && typeof body.goals === 'object') patch.goals = body.goals;
     if ('targetWeight' in body) patch.targetWeight = body.targetWeight;
     if ('targetDate' in body) patch.targetDate = body.targetDate;
