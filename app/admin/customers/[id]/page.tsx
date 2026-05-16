@@ -8,8 +8,6 @@ import {
   ClipboardList,
   Save,
   Calendar as CalendarIcon,
-  Send,
-  Sparkles,
   Calculator,
   Hourglass,
   History,
@@ -65,7 +63,6 @@ type Notification = {
 
 const STATUS_OPTIONS = ['申込中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
-const PLAN_OPTIONS = ['減量', '増量', '筋肥大', '現状維持'];
 
 const ACTIVITY_DISPLAY: Record<string, string> = {
   'ほぼ運動なし': 'ほぼ運動なし（デスクワーク中心）',
@@ -177,7 +174,6 @@ export default function CustomerDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
-  const [calcToast, setCalcToast] = useState<string | null>(null);
 
   const [goalKcal, setGoalKcal] = useState('');
   const [goalP, setGoalP] = useState('');
@@ -269,19 +265,16 @@ export default function CustomerDetailPage({
     return daysUntil(targetDate, today);
   }, [targetDate, today]);
 
-  function applyCalc() {
+  // 必須項目（性別/年齢/身長/体重/活動レベル/希望のプラン）が揃ったらリアルタイム自動計算。
+  // 既存の目標値は上書きする（運用上 9割は計算値で問題なし。手動修正は計算後に可能）
+  useEffect(() => {
     const result = calcMifflin({ gender, age, heightCm, currentWeight: currentWeightEdit, activityLevel, plan });
-    if (!result) return;
-    if (result.missing.length > 0) {
-      setCalcToast(`${result.missing[0]}を入力してください`);
-      setTimeout(() => setCalcToast(null), 3000);
-      return;
-    }
+    if (!result || result.missing.length > 0) return;
     setGoalKcal(String(result.goalKcal));
     setGoalP(String(result.goalP));
     setGoalF(String(result.goalF));
     setGoalC(String(result.goalC));
-  }
+  }, [gender, age, heightCm, currentWeightEdit, activityLevel, plan]);
 
   async function save() {
     setSaving(true);
@@ -378,11 +371,6 @@ export default function CustomerDetailPage({
 
   return (
     <AdminShell title={customer?.name || '顧客詳細'} back={{ href: base }}>
-      {calcToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold px-4 py-2 rounded-xl shadow-lg">
-          {calcToast}
-        </div>
-      )}
       {loading ? (
         <div className="text-center text-stone-500 py-10">読み込み中…</div>
       ) : !customer ? (
@@ -409,7 +397,6 @@ export default function CustomerDetailPage({
                   onChange={(e) => setFoodStatus(e.target.value)}
                   className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">未設定</option>
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -431,11 +418,11 @@ export default function CustomerDetailPage({
             </div>
           </section>
 
-          {/* 体型・代謝 */}
+          {/* 身体プロフィール */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              体型・代謝
+              身体プロフィール
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
@@ -469,6 +456,23 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
+              <div className="col-span-2 sm:col-span-3">
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">希望のプラン</label>
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value)}
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">—</option>
+                  <option value="減量">減量（kcal -500 / P 2.2g/kg・F 20%）</option>
+                  <option value="増量">増量（kcal +300 / P 2.0g/kg・F 25%）</option>
+                  <option value="筋肥大">筋肥大（kcal +200 / P 2.5g/kg・F 20%）</option>
+                  <option value="現状維持">現状維持（kcal ±0 / P 1.6g/kg・F 25%）</option>
+                </select>
+                <p className="text-[10px] text-stone-500 mt-1 leading-snug">
+                  ※ 身体プロフィールが揃うと目標カロリー・PFCが自動計算されます（保存前に手動で微調整も可）
+                </p>
+              </div>
             </div>
           </section>
 
@@ -478,29 +482,6 @@ export default function CustomerDetailPage({
               <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               目標
             </h2>
-
-            <div className="mb-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 block">目標プラン</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">—</option>
-                {PLAN_OPTIONS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={applyCalc}
-              className="w-full mb-3 bg-violet-600 text-white text-sm font-bold py-2.5 rounded-xl active:bg-violet-700 flex items-center justify-center gap-1.5"
-            >
-              <Calculator className="w-4 h-4" strokeWidth={2.2} />
-              🧮 目安を自動計算
-            </button>
 
             <div className="mb-3">
               <label className="text-xs font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
@@ -582,30 +563,6 @@ export default function CustomerDetailPage({
               <Save className="w-4 h-4" strokeWidth={2.2} />
               {saving ? '保存中…' : '変更を保存'}
             </button>
-          </section>
-
-          {/* 各種遷移 */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
-            <a
-              href={`${base}/reports?customerId=${id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">レポートを送る</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </a>
-            <a
-              href={`${base}/analysis?customerId=${id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">AI 分析を見る</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </a>
           </section>
 
           {/* 体重推移グラフ + 運動記録 */}

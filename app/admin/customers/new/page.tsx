@@ -9,12 +9,11 @@ import {
   Scale,
   ClipboardList,
   Calculator,
-  ArrowRight,
   Hourglass,
   Calendar as CalendarIcon,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
-import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
+import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Store = { pageId: string; storeId: string; name: string };
@@ -85,13 +84,14 @@ export default function NewCustomerPage() {
     return daysUntil(targetDate, today);
   }, [targetDate, today]);
 
-  function applyCalc() {
+  // 計算結果が変わったらリアルタイムで目標値に反映（必須項目が揃っているとき）
+  useEffect(() => {
     if (!calc) return;
     setGoalKcal(String(calc.goalKcal));
     setGoalP(String(calc.goalP));
     setGoalF(String(calc.goalF));
     setGoalC(String(calc.goalC));
-  }
+  }, [calc]);
 
   async function save() {
     if (!name.trim()) {
@@ -201,11 +201,11 @@ export default function NewCustomerPage() {
           </div>
         </section>
 
-        {/* 体型・代謝 */}
+        {/* 身体プロフィール */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
           <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
             <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-            体型・代謝
+            身体プロフィール
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
@@ -219,21 +219,38 @@ export default function NewCustomerPage() {
                 {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
-            <NumInput label="身長(cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
             <NumInput label="年齢" value={age} onChange={setAge} step="1" />
-            <div>
-              <label className="text-[10px] font-bold text-stone-700 mb-1 block">活動レベル</label>
-              <select
-                value={activityLevel}
-                onChange={(e) => setActivityLevel(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">—</option>
-                {ACTIVITY_LEVELS.map((a) => <option key={a.label} value={a.label}>{a.displayLabel}</option>)}
-              </select>
-            </div>
+            <NumInput label="身長(cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
+            <NumInput label="現在体重(kg)" value={currentWeight} onChange={setCurrentWeight} step="0.1" />
           </div>
-          <NumInput label="現在体重(kg)" value={currentWeight} onChange={setCurrentWeight} step="0.1" />
+          <div>
+            <label className="text-[10px] font-bold text-stone-700 mb-1 block">活動レベル</label>
+            <select
+              value={activityLevel}
+              onChange={(e) => setActivityLevel(e.target.value)}
+              className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">—</option>
+              {ACTIVITY_LEVELS.map((a) => <option key={a.label} value={a.label}>{a.displayLabel}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-stone-700 mb-1 block">希望のプラン</label>
+            <select
+              value={plan}
+              onChange={(e) => setPlan(e.target.value)}
+              className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">—</option>
+              <option value="減量">減量（kcal -500 / P 2.2g/kg・F 20%）</option>
+              <option value="増量">増量（kcal +300 / P 2.0g/kg・F 25%）</option>
+              <option value="筋肥大">筋肥大（kcal +200 / P 2.5g/kg・F 20%）</option>
+              <option value="現状維持">現状維持（kcal ±0 / P 1.6g/kg・F 25%）</option>
+            </select>
+            <p className="text-[10px] text-stone-500 mt-1 leading-snug">
+              ※ 身体プロフィールが揃うと目標カロリー・PFCが自動計算されます
+            </p>
+          </div>
         </section>
 
         {/* 目標 */}
@@ -242,7 +259,7 @@ export default function NewCustomerPage() {
             <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
             目標
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
                 <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
@@ -268,17 +285,6 @@ export default function NewCustomerPage() {
                 className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-            <div>
-              <label className="text-xs font-bold text-stone-700 mb-1 block">プラン</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">—</option>
-                {PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
           </div>
 
           {targetDate && remainingDays !== null && (
@@ -296,40 +302,8 @@ export default function NewCustomerPage() {
             </div>
           )}
 
-          {calc ? (
-            <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-bold text-violet-800 inline-flex items-center gap-1">
-                  <Calculator className="w-3 h-3" strokeWidth={2.4} />
-                  自動計算プレビュー
-                </div>
-                <div className="text-[10px] text-violet-700">
-                  BMR {calc.bmr} ・ TDEE {calc.tdee} kcal
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                <Preview label="kcal" value={calc.goalKcal} />
-                <Preview label="P (g)" value={calc.goalP} />
-                <Preview label="F (g)" value={calc.goalF} />
-                <Preview label="C (g)" value={calc.goalC} />
-              </div>
-              <button
-                type="button"
-                onClick={applyCalc}
-                className="w-full bg-violet-600 text-white text-xs font-bold py-2 rounded-xl active:bg-violet-700 inline-flex items-center justify-center gap-1"
-              >
-                目標値に反映 <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.4} />
-              </button>
-            </div>
-          ) : (
-            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-[11px] text-stone-600">
-              <Calculator className="w-3 h-3 inline mr-1" strokeWidth={2.4} />
-              身長・年齢・現在体重を入力すると自動計算します
-            </div>
-          )}
-
           <div>
-            <div className="text-[10px] font-bold text-stone-700 mb-1">目標値（編集可）</div>
+            <div className="text-[10px] font-bold text-stone-700 mb-1">目標カロリー・PFC（自動計算、手動編集可）</div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <NumInput label="kcal" value={goalKcal} onChange={setGoalKcal} />
               <NumInput label="P (g)" value={goalP} onChange={setGoalP} step="0.1" />
@@ -369,11 +343,3 @@ function NumInput({ label, value, onChange, step = '1' }: { label: string; value
   );
 }
 
-function Preview({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white border border-violet-200 rounded-lg p-1.5 text-center">
-      <div className="text-[9px] font-bold text-violet-700">{label}</div>
-      <div className="text-sm font-bold text-violet-900">{value}</div>
-    </div>
-  );
-}

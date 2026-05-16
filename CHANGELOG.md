@@ -9,6 +9,17 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – フォローアップ2
+- ui(admin): 顧客編集画面 /admin/customers/[id] 改修
+  - 「体型・代謝」セクションを「身体プロフィール」にリネーム
+  - 「目標プラン」を身体プロフィールセクションへ移動、ラベルを「希望のプラン」に変更
+  - 各プラン option に PFC 計算ロジックを併記（例: 減量 kcal -500 / P 2.2g/kg・F 20%）
+  - 「🧮 目安を自動計算」ボタンを削除、useEffect でリアルタイム自動計算（身体プロフィールが揃った瞬間に目標値へ反映）
+  - ステータス select から `<option value="">未設定</option>` を削除
+  - 「各種遷移」セクション（レポートを送る・AI分析を見る）を削除
+- ui(admin): /admin/customers/new も同等の改修（身体プロフィール再構成・希望のプラン inline option化・リアルタイム計算・自動計算プレビューブロック削除）
+- 影響範囲: 管理画面 /admin/customers/{[id]|new}（/store/customers/* も自動反映）
+
 ## 2026-05-17 (staging) – フォローアップ
 - feat(admin): 顧客編集画面 /admin/customers/[id] に「危険な操作（管理者専用）」セクションを追加。オンボーディングリセットボタンを admin URL でのみ表示（usePathname で /admin/* 判定。/store/* では非表示）
 - feat(lib): goalCalc.ts の PLANS を 4種化（減量/増量/筋肥大/現状維持）。calcGoals のプラン補正と PFC 比率を 4種対応に拡張。ACTIVITY_LEVELS に displayLabel 追加（DB保存は label のまま）
