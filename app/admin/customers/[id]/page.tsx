@@ -16,17 +16,6 @@ import {
   TrendingDown,
   Dumbbell,
   AlertTriangle,
-  User,
-  MessageCircle,
-  BadgeCheck,
-  Store,
-  PersonStanding,
-  Cake,
-  Ruler,
-  Activity,
-  Flame,
-  Droplet,
-  Wheat,
 } from 'lucide-react';
 import {
   LineChart,
@@ -103,6 +92,7 @@ function calcMifflin(inputs: CalcInputs): {
   goalP: number;
   goalF: number;
   goalC: number;
+  tdee: number;
   missing: string[];
 } | null {
   const missing: string[] = [];
@@ -112,7 +102,7 @@ function calcMifflin(inputs: CalcInputs): {
   if (!inputs.currentWeight) missing.push('現在体重');
   if (!inputs.activityLevel) missing.push('活動レベル');
   if (!inputs.plan) missing.push('目標プラン');
-  if (missing.length > 0) return { goalKcal: 0, goalP: 0, goalF: 0, goalC: 0, missing };
+  if (missing.length > 0) return { goalKcal: 0, goalP: 0, goalF: 0, goalC: 0, tdee: 0, missing };
 
   const weight = parseFloat(inputs.currentWeight);
   const height = parseFloat(inputs.heightCm);
@@ -161,7 +151,7 @@ function calcMifflin(inputs: CalcInputs): {
   const remainingKcal = goalKcal - goalP * 4 - goalF * 9;
   const goalC = Math.max(0, Math.round((remainingKcal / 4) * 10) / 10);
 
-  return { goalKcal, goalP, goalF, goalC, missing: [] };
+  return { goalKcal, goalP, goalF, goalC, tdee, missing: [] };
 }
 
 function jstToday(): string {
@@ -203,6 +193,7 @@ export default function CustomerDetailPage({
   const [stores, setStores] = useState<StoreItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [tdee, setTdee] = useState<number | null>(null);
 
   type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -277,12 +268,37 @@ export default function CustomerDetailPage({
 
   useEffect(() => {
     const result = calcMifflin({ gender, age, heightCm, currentWeight: currentWeightEdit, activityLevel, plan });
-    if (!result || result.missing.length > 0) return;
+    if (!result || result.missing.length > 0) {
+      setTdee(null);
+      return;
+    }
+    setTdee(result.tdee);
     setGoalKcal(String(result.goalKcal));
     setGoalP(String(result.goalP));
     setGoalF(String(result.goalF));
     setGoalC(String(result.goalC));
   }, [gender, age, heightCm, currentWeightEdit, activityLevel, plan]);
+
+  const pRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const p = parseFloat(goalP);
+    if (!k || k === 0) return null;
+    return Math.round((p * 4 / k) * 100);
+  }, [goalKcal, goalP]);
+
+  const fRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const f = parseFloat(goalF);
+    if (!k || k === 0) return null;
+    return Math.round((f * 9 / k) * 100);
+  }, [goalKcal, goalF]);
+
+  const cRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const c = parseFloat(goalC);
+    if (!k || k === 0) return null;
+    return Math.round((c * 4 / k) * 100);
+  }, [goalKcal, goalC]);
 
   async function save() {
     setSaving(true);
@@ -389,12 +405,11 @@ export default function CustomerDetailPage({
               <ClipboardList className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
               基本情報
             </h2>
-            <Field label="氏名" value={customer.name} icon={<User className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />} />
-            <Field label="LINE ユーザーID" value={customer.lineUserId || '未設定'} icon={<MessageCircle className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />} />
+            <Field label="氏名" value={customer.name} />
+            <Field label="LINEユーザーID" value={customer.lineUserId || '未設定'} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                  <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   ステータス
                 </label>
                 <select
@@ -409,8 +424,7 @@ export default function CustomerDetailPage({
               </div>
             </div>
             <div className="mt-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                <Store className="w-3.5 h-3.5 text-violet-600" strokeWidth={2.2} />
+              <label className="text-xs font-bold text-stone-700 mb-1 block">
                 所属店舗
               </label>
               <select
@@ -435,8 +449,7 @@ export default function CustomerDetailPage({
             {/* 1段目: 性別 / 年齢 / 身長 / 現在体重 */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                  <PersonStanding className="w-3.5 h-3.5 text-pink-500" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   性別
                 </label>
                 <select
@@ -450,15 +463,14 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
-              <NumberInput label="年齢" icon={<Cake className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />} value={age} onChange={setAge} step="1" />
-              <NumberInput label="身長 (cm)" icon={<Ruler className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />} value={heightCm} onChange={setHeightCm} step="0.1" />
-              <NumberInput label="現在体重 (kg)" icon={<Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />} value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
+              <NumberInput label="年齢" value={age} onChange={setAge} step="1" />
+              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
+              <NumberInput label="現在体重 (kg)" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
             </div>
             {/* 2段目: 活動レベル / 希望のプラン */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                  <Activity className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   活動レベル
                 </label>
                 <select
@@ -475,8 +487,7 @@ export default function CustomerDetailPage({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                  <Target className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   希望のプラン
                 </label>
                 <select
@@ -485,17 +496,24 @@ export default function CustomerDetailPage({
                   className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
-                  <option value="減量">減量（kcal -500 / P 2.2g/kg・F 20%）</option>
-                  <option value="増量">増量（kcal +300 / P 2.0g/kg・F 25%）</option>
-                  <option value="筋肥大">筋肥大（kcal +200 / P 2.5g/kg・F 20%）</option>
-                  <option value="現状維持">現状維持（kcal ±0 / P 1.6g/kg・F 25%）</option>
+                  <option value="減量">減量</option>
+                  <option value="増量">増量</option>
+                  <option value="筋肥大">筋肥大</option>
+                  <option value="現状維持">現状維持</option>
                 </select>
-                <p className="text-xs text-stone-500 mt-1 leading-snug">
-                  身長・年齢・現在体重・性別・活動レベル・希望のプランの6つを入力すると、
-                  下の目標カロリーとPFC（タンパク質・脂質・炭水化物）が自動で計算されます。
-                  計算後、必要に応じて手動で微調整も可能です。
-                </p>
+                {plan && (
+                  <p className="text-[10px] text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-2 py-1 mt-1">
+                    {plan === '減量' && 'kcal -500 / タンパク質 2.2g/kg・脂質 20%'}
+                    {plan === '増量' && 'kcal +300 / タンパク質 2.0g/kg・脂質 25%'}
+                    {plan === '筋肥大' && 'kcal +200 / タンパク質 2.5g/kg・脂質 20%'}
+                    {plan === '現状維持' && 'kcal ±0 / タンパク質 1.6g/kg・脂質 25%'}
+                  </p>
+                )}
               </div>
+            </div>
+            <div className="mt-3 text-xs text-stone-500 leading-snug">
+              ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、<br />
+              目標カロリーとPFC（タンパク質・脂質・炭水化物）が自動計算されます（手動編集可）。
             </div>
           </section>
 
@@ -506,28 +524,10 @@ export default function CustomerDetailPage({
               目標
             </h2>
 
-            <div className="mb-3">
-              <label className="text-sm font-bold text-stone-700 mb-1 flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-orange-500" strokeWidth={2.2} />
-                目標カロリー (kcal)
-              </label>
-              <NumberInput label="" value={goalKcal} onChange={setGoalKcal} />
-            </div>
-
-            <div className="mb-3">
-              <label className="text-sm font-bold text-stone-700 mb-2 block">目標 PFC (g)</label>
-              <div className="grid grid-cols-4 gap-2">
-                <NumberInput label="P (g)" icon={<span className="w-3.5 h-3.5 text-red-500 font-bold text-[10px] leading-none">P</span>} value={goalP} onChange={setGoalP} step="0.1" />
-                <NumberInput label="F (g)" icon={<Droplet className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />} value={goalF} onChange={setGoalF} step="0.1" />
-                <NumberInput label="C (g)" icon={<Wheat className="w-3.5 h-3.5 text-yellow-600" strokeWidth={2.2} />} value={goalC} onChange={setGoalC} step="0.1" />
-                <div />
-              </div>
-            </div>
-
+            {/* 目標体重・目標達成日 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-sm font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   目標体重 (kg)
                 </label>
                 <input
@@ -539,8 +539,7 @@ export default function CustomerDetailPage({
                 />
               </div>
               <div>
-                <label className="text-sm font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <CalendarIcon className="w-3.5 h-3.5 text-stone-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   目標達成日
                 </label>
                 <input
@@ -574,6 +573,90 @@ export default function CustomerDetailPage({
                 )}
               </div>
             )}
+
+            {/* 目標カロリー・PFC グリッド（2列×4行） */}
+            <div className="mb-3">
+              <div className="text-xs font-bold text-stone-700 mb-2">
+                目標カロリー・PFC（自動計算、手動編集可）
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 行1: 消費カロリー / 目標カロリー */}
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="text-[10px] text-stone-500 mb-1">現在の1日あたり消費カロリー (kcal)</div>
+                  <div className="text-base font-bold text-stone-700 text-center">
+                    {tdee !== null ? tdee : '—'}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    inputMode="decimal"
+                    value={goalKcal}
+                    onChange={(e) => setGoalKcal(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* 行2: 目標タンパク質 / タンパク質の割合 */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalP}
+                    onChange={(e) => setGoalP(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="text-[10px] text-stone-500 mb-1">タンパク質の割合</div>
+                  <div className="text-base font-bold text-stone-700 text-center">
+                    {pRatio !== null ? `${pRatio}%` : '—'}
+                  </div>
+                </div>
+
+                {/* 行3: 目標脂質 / 脂質の割合 */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalF}
+                    onChange={(e) => setGoalF(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="text-[10px] text-stone-500 mb-1">脂質の割合</div>
+                  <div className="text-base font-bold text-stone-700 text-center">
+                    {fRatio !== null ? `${fRatio}%` : '—'}
+                  </div>
+                </div>
+
+                {/* 行4: 目標炭水化物 / 炭水化物の割合 */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalC}
+                    onChange={(e) => setGoalC(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="text-[10px] text-stone-500 mb-1">炭水化物の割合</div>
+                  <div className="text-base font-bold text-stone-700 text-center">
+                    {cRatio !== null ? `${cRatio}%` : '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <button
               type="button"
@@ -899,13 +982,10 @@ export default function CustomerDetailPage({
   );
 }
 
-function Field({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[7rem,1fr] gap-2 py-1 text-sm">
-      <div className="text-stone-600 inline-flex items-center gap-1">
-        {icon}
-        {label}
-      </div>
+      <div className="text-stone-600">{label}</div>
       <div className="text-stone-900 break-all">{value}</div>
     </div>
   );
@@ -913,13 +993,11 @@ function Field({ label, value, icon }: { label: string; value: string; icon?: Re
 
 function NumberInput({
   label,
-  icon,
   value,
   onChange,
   step = '1',
 }: {
   label: string;
-  icon?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   step?: string;
@@ -927,8 +1005,7 @@ function NumberInput({
   return (
     <div>
       {label && (
-        <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-          {icon}
+        <label className="text-xs font-bold text-stone-700 mb-1 block">
           {label}
         </label>
       )}

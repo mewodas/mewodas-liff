@@ -9,6 +9,20 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 顧客フォーム UI 改修（アイコン削除・TDEE表示・PFC割合）
+- ui(admin): /admin/customers/new と /admin/customers/[id] 共通改修
+  - LINEユーザーID ラベルから「（任意）」削除
+  - 身体情報セクションの注釈を「性別・年齢・身長・現在体重・活動レベル・希望のプラン」の順に統一
+  - 入力フィールドラベルの lucide-react アイコンを全削除（セクション h2 アイコンは維持）
+  - 未使用 import（User/MessageCircle/BadgeCheck/Store/PersonStanding/Cake/Ruler/Activity/Flame/Droplet/Wheat/Scale ほか）を削除
+  - 希望のプランの選択肢から括弧表記を削除し、選択中プランのロジックをバッジで動的表示
+  - 目標セクションのレイアウトを改修: 目標体重・達成日 → 消費kcal・目標kcal・PFC×割合 の順に変更
+  - 目標カロリー/PFC を 2列×4行グリッドに再設計（左: 編集可能 input、右: 読み取り専用）
+  - 「現在の1日あたり消費カロリー（TDEE）」表示セルを追加（stone-50 背景の読み取り専用）
+  - PFC 割合（タンパク質・脂質・炭水化物）を goalKcal と goalP/F/C から自動計算して表示（goalKcal=0 時は「—」）
+  - [id] ページ: calcMifflin の返り値に tdee を追加し、身体情報変更時に TDEE を更新
+- 影響範囲: 管理画面（/admin/customers/new、/admin/customers/[id]）
+
 ## 2026-05-17 (staging) – ステータス再変更
 - chore: 食事管理ステータスの方針を再変更（「申込中」廃止 → 「設定中」一本化）
   - 前回（同日早朝）「設定中」→「申込中」一本化したが、業務的に「設定中」が適切と判断し戻し
