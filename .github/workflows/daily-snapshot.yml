@@ -1,0 +1,32 @@
+name: Daily Snapshot Tag
+
+# 毎日 JST 23:00 (UTC 14:00) に main の最新コミットへ stable-YYYY-MM-DD タグを打つ。
+# 緊急ロールバック時に「昨日の安定版に戻す」が確実にできる。
+
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create snapshot tag
+        run: |
+          DATE_JST=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          TAG="stable-${DATE_JST}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+          git tag -a "$TAG" -m "Daily snapshot $DATE_JST"
+          git push origin "$TAG"
+          echo "Created tag $TAG at $(git rev-parse HEAD)"
