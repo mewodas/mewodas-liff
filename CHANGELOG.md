@@ -9,6 +9,11 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-16 23:45 (staging)
+- 修正: app/page.tsx で liff.state クエリパラメータを保持して redirect。LIFF v2 では LIFF URL のパス・クエリが /?liff.state=... 形式で渡されるため、これを破棄せず転送先 path として使う。これにより招待リンク liff.line.me/{id}/onboard?token=xxx が正しく /onboard?token=xxx に転送される
+- 影響範囲: 顧客側 LIFF 全般（招待リンク・通知リンク・LIFFのpath付きdeep link）
+- 関連: staging テスト次郎 招待リンクが /home に着地して「顧客が見つかりません」エラーが出ていた
+
 ## 2026-05-16 23:30 (staging)
 - 診断: /api/debug/tenant を追加（一時的）。staging 招待リンク 404 の原因切り分け用に env と getCurrentTenant() を返す
 - 影響範囲: staging のみ（main 未マージ）
