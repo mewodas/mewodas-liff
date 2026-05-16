@@ -9,6 +9,20 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – UI改修フォローアップ3
+- ui(admin): 顧客編集画面 /admin/customers/[id] 改修
+  - 「身体プロフィール」→「身体情報」にリネーム
+  - 希望のプランを活動レベルの隣（grid-cols-2）に横並び配置
+  - 注釈を6項目揃うと自動計算される旨の文言に差し替え
+  - 目標 kcal/PFC を grid-cols-4 でモバイルでも常に4列表示
+  - 全ラベルに lucide-react アイコン追加（User/MessageCircle/BadgeCheck/Store/PersonStanding/Cake/Ruler/Scale/Activity/Target/Flame/Droplet/Wheat）
+  - ラベル text-[10px]→text-xs、text-xs→text-sm、input/select text-sm→text-base、h2 text-sm→text-base
+  - LINE ユーザーID の mono フォント削除、氏名と統一
+  - 保存成功時のインラインバナー（saveMsg）を削除、即 router.push(\`\${base}?saved=1\`) で顧客一覧へ遷移
+- ui(admin): /admin/customers/new も同等の改修（身体情報リネーム・2段レイアウト・4列PFC・アイコン・フォント・遷移）
+- ui(admin): /admin/page.tsx に保存完了スナックバー追加（saved=1 クエリ検知→emerald-600 固定バナー→4秒後 URL クリーンアップ）
+- 影響範囲: 管理画面 /admin/customers/{[id]|new|（一覧）}（/store/customers/* も自動反映）
+
 ## 2026-05-17 (staging) – フォローアップ2
 - ui(admin): 顧客編集画面 /admin/customers/[id] 改修
   - 「体型・代謝」セクションを「身体プロフィール」にリネーム

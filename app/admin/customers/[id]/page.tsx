@@ -16,6 +16,17 @@ import {
   TrendingDown,
   Dumbbell,
   AlertTriangle,
+  User,
+  MessageCircle,
+  BadgeCheck,
+  Store,
+  PersonStanding,
+  Cake,
+  Ruler,
+  Activity,
+  Flame,
+  Droplet,
+  Wheat,
 } from 'lucide-react';
 import {
   LineChart,
@@ -50,7 +61,7 @@ type Customer = {
   storeId: string | null;
 };
 
-type Store = { pageId: string; storeId: string; name: string };
+type StoreItem = { pageId: string; storeId: string; name: string };
 type Notification = {
   id: string;
   category: string;
@@ -61,7 +72,7 @@ type Notification = {
   createdAt: string;
 };
 
-const STATUS_OPTIONS = ['申込中', '進行中', '休止中', '卒業'];
+const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
 
 const ACTIVITY_DISPLAY: Record<string, string> = {
@@ -173,7 +184,6 @@ export default function CustomerDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   const [goalKcal, setGoalKcal] = useState('');
   const [goalP, setGoalP] = useState('');
@@ -190,7 +200,7 @@ export default function CustomerDetailPage({
   const [activityLevel, setActivityLevel] = useState('');
   const [plan, setPlan] = useState('');
   const [storeId, setStoreId] = useState('');
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<StoreItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
@@ -265,8 +275,6 @@ export default function CustomerDetailPage({
     return daysUntil(targetDate, today);
   }, [targetDate, today]);
 
-  // 必須項目（性別/年齢/身長/体重/活動レベル/希望のプラン）が揃ったらリアルタイム自動計算。
-  // 既存の目標値は上書きする（運用上 9割は計算値で問題なし。手動修正は計算後に可能）
   useEffect(() => {
     const result = calcMifflin({ gender, age, heightCm, currentWeight: currentWeightEdit, activityLevel, plan });
     if (!result || result.missing.length > 0) return;
@@ -278,7 +286,6 @@ export default function CustomerDetailPage({
 
   async function save() {
     setSaving(true);
-    setSaveMsg(null);
     setError(null);
     try {
       const payload = {
@@ -310,10 +317,7 @@ export default function CustomerDetailPage({
       }
       const j = await res.json();
       setCustomer(j.customer);
-      setSaveMsg('✅ 保存しました（顧客一覧へ）');
-      setTimeout(() => {
-        router.push(base);
-      }, 1500);
+      router.push(`${base}?saved=1`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -329,8 +333,6 @@ export default function CustomerDetailPage({
     try {
       const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
-      setSaveMsg('✅ オンボーディングをリセットしました');
-      setTimeout(() => setSaveMsg(null), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'リセット失敗');
     } finally {
@@ -381,21 +383,24 @@ export default function CustomerDetailPage({
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
           )}
 
-          {/* プロフィール */}
+          {/* 基本情報 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <ClipboardList className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
               基本情報
             </h2>
-            <Field label="氏名" value={customer.name} />
-            <Field label="LINE ユーザーID" value={customer.lineUserId || '未設定'} mono />
+            <Field label="氏名" value={customer.name} icon={<User className="w-3.5 h-3.5 text-stone-500" strokeWidth={2.2} />} />
+            <Field label="LINE ユーザーID" value={customer.lineUserId || '未設定'} icon={<MessageCircle className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">ステータス</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                  ステータス
+                </label>
                 <select
                   value={foodStatus}
                   onChange={(e) => setFoodStatus(e.target.value)}
-                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -404,11 +409,14 @@ export default function CustomerDetailPage({
               </div>
             </div>
             <div className="mt-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 block">所属店舗</label>
+              <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                <Store className="w-3.5 h-3.5 text-violet-600" strokeWidth={2.2} />
+                所属店舗
+              </label>
               <select
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">—</option>
                 {stores.map((s) => (
@@ -418,19 +426,23 @@ export default function CustomerDetailPage({
             </div>
           </section>
 
-          {/* 身体プロフィール */}
+          {/* 身体情報 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              身体プロフィール
+              身体情報
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* 1段目: 性別 / 年齢 / 身長 / 現在体重 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">性別</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <PersonStanding className="w-3.5 h-3.5 text-pink-500" strokeWidth={2.2} />
+                  性別
+                </label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
                   {GENDER_OPTIONS.map((g) => (
@@ -438,15 +450,21 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
-              <NumberInput label="年齢" value={age} onChange={setAge} step="1" />
-              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
-              <NumberInput label="現在体重 (kg)" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">活動レベル</label>
+              <NumberInput label="年齢" icon={<Cake className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />} value={age} onChange={setAge} step="1" />
+              <NumberInput label="身長 (cm)" icon={<Ruler className="w-3.5 h-3.5 text-sky-500" strokeWidth={2.2} />} value={heightCm} onChange={setHeightCm} step="0.1" />
+              <NumberInput label="現在体重 (kg)" icon={<Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />} value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
+            </div>
+            {/* 2段目: 活動レベル / 希望のプラン */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Activity className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                  活動レベル
+                </label>
                 <select
                   value={activityLevel}
                   onChange={(e) => setActivityLevel(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
                   {ACTIVITY_LEVELS.map((a) => (
@@ -456,12 +474,15 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
-              <div className="col-span-2 sm:col-span-3">
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">希望のプラン</label>
+              <div>
+                <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+                  希望のプラン
+                </label>
                 <select
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
                   <option value="減量">減量（kcal -500 / P 2.2g/kg・F 20%）</option>
@@ -469,8 +490,10 @@ export default function CustomerDetailPage({
                   <option value="筋肥大">筋肥大（kcal +200 / P 2.5g/kg・F 20%）</option>
                   <option value="現状維持">現状維持（kcal ±0 / P 1.6g/kg・F 25%）</option>
                 </select>
-                <p className="text-[10px] text-stone-500 mt-1 leading-snug">
-                  ※ 身体プロフィールが揃うと目標カロリー・PFCが自動計算されます（保存前に手動で微調整も可）
+                <p className="text-xs text-stone-500 mt-1 leading-snug">
+                  身長・年齢・現在体重・性別・活動レベル・希望のプランの6つを入力すると、
+                  下の目標カロリーとPFC（タンパク質・脂質・炭水化物）が自動で計算されます。
+                  計算後、必要に応じて手動で微調整も可能です。
                 </p>
               </div>
             </div>
@@ -478,28 +501,32 @@ export default function CustomerDetailPage({
 
           {/* 目標 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               目標
             </h2>
 
             <div className="mb-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
+              <label className="text-sm font-bold text-stone-700 mb-1 flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-orange-500" strokeWidth={2.2} />
+                目標カロリー (kcal)
+              </label>
               <NumberInput label="" value={goalKcal} onChange={setGoalKcal} />
             </div>
 
             <div className="mb-3">
-              <label className="text-xs font-bold text-stone-700 mb-2 block">目標 P / F / C (g)</label>
-              <div className="grid grid-cols-3 gap-2">
-                <NumberInput label="P (g)" value={goalP} onChange={setGoalP} step="0.1" />
-                <NumberInput label="F (g)" value={goalF} onChange={setGoalF} step="0.1" />
-                <NumberInput label="C (g)" value={goalC} onChange={setGoalC} step="0.1" />
+              <label className="text-sm font-bold text-stone-700 mb-2 block">目標 PFC (g)</label>
+              <div className="grid grid-cols-4 gap-2">
+                <NumberInput label="P (g)" icon={<span className="w-3.5 h-3.5 text-red-500 font-bold text-[10px] leading-none">P</span>} value={goalP} onChange={setGoalP} step="0.1" />
+                <NumberInput label="F (g)" icon={<Droplet className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />} value={goalF} onChange={setGoalF} step="0.1" />
+                <NumberInput label="C (g)" icon={<Wheat className="w-3.5 h-3.5 text-yellow-600" strokeWidth={2.2} />} value={goalC} onChange={setGoalC} step="0.1" />
+                <div />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
+                <label className="text-sm font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
                   <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
                   目標体重 (kg)
                 </label>
@@ -508,11 +535,11 @@ export default function CustomerDetailPage({
                   step="0.1"
                   value={targetWeight}
                   onChange={(e) => setTargetWeight(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
+                <label className="text-sm font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
                   <CalendarIcon className="w-3.5 h-3.5 text-stone-600" strokeWidth={2.2} />
                   目標達成日
                 </label>
@@ -520,7 +547,7 @@ export default function CustomerDetailPage({
                   type="date"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -545,12 +572,6 @@ export default function CustomerDetailPage({
                     体重差 {(parseFloat(targetWeight) - parseFloat(currentWeightEdit)).toFixed(1)} kg
                   </div>
                 )}
-              </div>
-            )}
-
-            {saveMsg && (
-              <div className="mb-3 bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-bold p-3 rounded-xl text-center">
-                {saveMsg}
               </div>
             )}
 
@@ -878,36 +899,46 @@ export default function CustomerDetailPage({
   );
 }
 
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function Field({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[6rem,1fr] gap-2 py-1 text-sm">
-      <div className="text-stone-600">{label}</div>
-      <div className={`text-stone-900 break-all ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</div>
+    <div className="grid grid-cols-[7rem,1fr] gap-2 py-1 text-sm">
+      <div className="text-stone-600 inline-flex items-center gap-1">
+        {icon}
+        {label}
+      </div>
+      <div className="text-stone-900 break-all">{value}</div>
     </div>
   );
 }
 
 function NumberInput({
   label,
+  icon,
   value,
   onChange,
   step = '1',
 }: {
   label: string;
+  icon?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   step?: string;
 }) {
   return (
     <div>
-      {label && <label className="text-[10px] font-bold text-stone-700 mb-1 block">{label}</label>}
+      {label && (
+        <label className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+          {icon}
+          {label}
+        </label>
+      )}
       <input
         type="number"
         step={step}
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
       />
     </div>
   );
