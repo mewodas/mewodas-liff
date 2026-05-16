@@ -24,6 +24,8 @@ CHANGELOG を書かない commit は禁止。レビュー時に差し戻し。
 
 ## 2. 顧客側 LIFF 変更はステージング必須
 
+ステージング環境: `staging.fitmeal.jp`（branch: `staging`、開発用LINE公式 + 専用 LIFF + staging テナントDB で本番と完全分離）。詳細は `docs/STAGING.md`。
+
 顧客側ファイル（以下）は **main に直接 push 禁止**:
 - `app/home/*` `app/record/*` `app/profile/*` `app/goals/*` `app/announcements/*`
 - `app/onboard/*` `app/exercise/*` `app/weight/*` `app/history/*` `app/chat/*` `app/menu/*`
@@ -34,13 +36,16 @@ CHANGELOG を書かない commit は禁止。レビュー時に差し戻し。
 - `app/layout.tsx`（顧客 LIFF 全画面のレイアウト）
 
 ワークフロー:
-1. `git checkout -b staging/<feature-name>`
-2. 実装
-3. `git push origin staging/<feature-name>`
-4. Vercel が自動で Preview URL を生成
-5. **オーナー（社長 mwds.bmc@gmail.com）に Preview URL を共有して動作確認を依頼**
-6. **オーナーから明示的に "本番へ反映 OK" の指示**を受けたら main にマージ
-7. それまでは main に絶対マージしない
+1. `git checkout staging && git pull` でステージング最新化
+2. `git checkout -b staging/<feature-name>` で機能ブランチ作成（任意・staging 直接でもOK）
+3. 実装
+4. `git push origin staging` で staging ブランチにマージ
+5. Vercel が自動で `staging.fitmeal.jp` にデプロイ
+6. **オーナー（社長 mwds.bmc@gmail.com）に staging URL を共有して動作確認を依頼**
+   - PC: `https://staging.fitmeal.jp/home`
+   - LINE: 開発用LINE公式 → staging LIFF
+7. **オーナーから明示的に "本番へ反映 OK / mainにマージして" の指示**を受けたら staging → main へ PR 作成・マージ
+8. それまでは main に絶対マージしない
 
 main = production = 顧客環境。検証なしの直push は禁止。
 
