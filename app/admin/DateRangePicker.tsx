@@ -83,18 +83,16 @@ export default function DateRangePicker({
             className="sr-only"
             tabIndex={-1}
           />
-          {!isSingleDay && (
-            <input
-              ref={toRef}
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={(e) => e.target.value && onChangeTo(e.target.value)}
-              className="sr-only"
-              tabIndex={-1}
-            />
-          )}
+          <input
+            ref={toRef}
+            type="date"
+            value={to}
+            min={from}
+            max={today}
+            onChange={(e) => e.target.value && onChangeTo(e.target.value)}
+            className="sr-only"
+            tabIndex={-1}
+          />
         </button>
 
         <button
@@ -108,18 +106,35 @@ export default function DateRangePicker({
         </button>
       </div>
 
-      {!isSingleDay && (
-        <div className="flex gap-1 flex-wrap">
+      {/* 範囲指定: 開始日/終了日を常時表示してタップで変更可能 */}
+      <div className="flex gap-1 flex-wrap items-center">
+        <button
+          type="button"
+          onClick={() => fromRef.current?.showPicker?.()}
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1"
+        >
+          <CalendarIcon className="w-3 h-3" strokeWidth={2.4} />
+          開始日: {fmtMd(from)}
+        </button>
+        <span className="text-[10px] text-stone-400">〜</span>
+        <button
+          type="button"
+          onClick={() => toRef.current?.showPicker?.()}
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1"
+        >
+          <CalendarIcon className="w-3 h-3" strokeWidth={2.4} />
+          終了日: {fmtMd(to)}
+        </button>
+        {!isSingleDay && (
           <button
             type="button"
-            onClick={() => toRef.current?.showPicker?.()}
-            className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1"
+            onClick={() => onChangeTo(from)}
+            className="text-[10px] font-bold px-2 py-1 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200"
           >
-            <CalendarIcon className="w-3 h-3" strokeWidth={2.4} />
-            終了日
+            単日に戻す
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
