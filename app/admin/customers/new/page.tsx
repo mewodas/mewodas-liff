@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   UserPlus,
   Save,
@@ -28,6 +28,8 @@ function jstToday(): string {
 export default function NewCustomerPage() {
   const router = useRouter();
   const base = useAdminBase();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
   const today = jstToday();
 
   const [stores, setStores] = useState<StoreItem[]>([]);
@@ -210,21 +212,23 @@ export default function NewCustomerPage() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-stone-700 mb-1 block">
-              LINEユーザーID
-            </label>
-            <input
-              type="text"
-              value={lineUserId}
-              onChange={(e) => setLineUserId(e.target.value)}
-              placeholder="顧客が初回LIFF起動時に自動取得（事前に分かっていれば入力）"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <div className="text-xs text-stone-500 mt-0.5">
-              通常は空のまま保存。顧客が LIFF を起動すれば自動で紐付け
+          {isAdminRoute && (
+            <div>
+              <label className="text-xs font-bold text-stone-700 mb-1 block">
+                LINEユーザーID
+              </label>
+              <input
+                type="text"
+                value={lineUserId}
+                onChange={(e) => setLineUserId(e.target.value)}
+                placeholder="顧客が初回LIFF起動時に自動取得（事前に分かっていれば入力）"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <div className="text-xs text-stone-500 mt-0.5">
+                通常は空のまま保存。顧客が LIFF を起動すれば自動で紐付け（管理者専用フィールド）
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         {/* 身体情報 */}

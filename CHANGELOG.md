@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – LINE ユーザーID 編集を admin 専用に
+- security(admin): /admin/customers/new の LINEユーザーID 入力フィールドを **admin URL でのみ表示**（usePathname で /admin/* 判定）
+- /store/customers/new からアクセスすると LINEユーザーID フィールド自体が**非表示**になり、店舗スタッフが手動で書き換えられないようにした
+- [id] 編集画面では既に Field component の読み取り専用表示のため変更不要
+- 影響範囲: 管理画面 /admin/customers/new と /store/customers/new
+
 ## 2026-05-17 (staging) – 顧客フォーム UI 改修（アイコン削除・TDEE表示・PFC割合）
 - ui(admin): /admin/customers/new と /admin/customers/[id] 共通改修
   - LINEユーザーID ラベルから「（任意）」削除
