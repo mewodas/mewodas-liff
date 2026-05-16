@@ -17,8 +17,11 @@ export function proxy(request: NextRequest) {
     pathname === '/store/login' ||
     pathname === '/admin/account/reset' ||
     pathname === '/store/account/reset' ||
+    pathname === '/admin/account/reset/confirm' ||
+    pathname === '/store/account/reset/confirm' ||
     pathname === '/api/admin/auth/login' ||
-    pathname === '/api/admin/auth/reset-password'
+    pathname === '/api/admin/auth/reset-password' ||
+    pathname === '/api/admin/auth/reset-password/confirm'
   ) {
     return NextResponse.next();
   }

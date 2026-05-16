@@ -16,6 +16,17 @@ type Notification = {
   createdAt: string;
 };
 
+const TABS = ['すべて', '前日レポート', '週次', 'お知らせ'] as const;
+type Tab = typeof TABS[number];
+
+function matchTab(tab: Tab, category: string): boolean {
+  if (tab === 'すべて') return true;
+  if (tab === '前日レポート') return category === '前日レポート';
+  if (tab === '週次') return category === '週次レポート';
+  if (tab === 'お知らせ') return category === 'お知らせ' || category === 'アドバイス';
+  return false;
+}
+
 export default function NotificationsPage() {
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -23,6 +34,7 @@ export default function NotificationsPage() {
   const [configured, setConfigured] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('すべて');
 
   useEffect(() => {
     (async () => {
@@ -65,12 +77,11 @@ export default function NotificationsPage() {
     const next = openId === n.id ? null : n.id;
     setOpenId(next);
     if (next === n.id && !n.read) {
-      // 既読化（バックグラウンド）
       try {
         await fetch(`/api/notifications/${encodeURIComponent(n.id)}/read`, { method: 'POST' });
         setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true, readAt: new Date().toISOString() } : x)));
       } catch {
-        // 既読化失敗は無視
+        // ignore
       }
     }
   }
@@ -83,12 +94,48 @@ export default function NotificationsPage() {
     );
   }
 
+  const filtered = items.filter((n) => matchTab(activeTab, n.category));
+  const unreadTotal = items.filter((n) => !n.read).length;
+
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader title="お知らせ" Icon={Bell} subtitle="トレーナーからの連絡・レポート" back />
-      <div className="max-w-md mx-auto px-4 py-4">
+      <div className="max-w-md mx-auto px-4 pt-3 pb-4 space-y-3">
         {error && (
-          <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl mb-3">{error}</div>
+          <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
+        )}
+
+        {/* カテゴリタブ */}
+        {configured && (
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+            {TABS.map((tab) => {
+              const tabUnread = tab === 'すべて'
+                ? unreadTotal
+                : items.filter((n) => !n.read && matchTab(tab, n.category)).length;
+              const active = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                    active
+                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      : 'bg-white text-stone-700 border-stone-300 active:bg-stone-50'
+                  }`}
+                >
+                  {tab}
+                  {tabUnread > 0 && (
+                    <span className={`ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold ${
+                      active ? 'bg-white text-emerald-700' : 'bg-rose-500 text-white'
+                    }`}>
+                      {tabUnread > 9 ? '9+' : tabUnread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {!configured ? (
@@ -100,17 +147,19 @@ export default function NotificationsPage() {
               ホームに戻る
             </Link>
           </div>
-        ) : items.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-6 text-center">
             <Inbox className="w-10 h-10 text-stone-400 mx-auto mb-2" strokeWidth={2} />
-            <div className="text-sm font-bold text-stone-800 mb-1">まだお知らせはありません</div>
+            <div className="text-sm font-bold text-stone-800 mb-1">
+              {activeTab === 'すべて' ? 'まだお知らせはありません' : `「${activeTab}」のお知らせはありません`}
+            </div>
             <div className="text-xs text-stone-600 leading-relaxed">
               トレーナーからレポートやお知らせが届くと、ここに表示されます
             </div>
           </div>
         ) : (
           <ul className="bg-white rounded-2xl shadow-md border border-stone-200 divide-y divide-stone-100 overflow-hidden">
-            {items.map((n) => {
+            {filtered.map((n) => {
               const open = openId === n.id;
               return (
                 <li key={n.id}>
@@ -120,16 +169,16 @@ export default function NotificationsPage() {
                     className="w-full px-4 py-3 text-left active:bg-stone-50"
                   >
                     <div className="flex items-center gap-2 mb-1">
+                      {!n.read && (
+                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-label="未読" />
+                      )}
                       <CategoryBadge category={n.category} />
                       <span className="text-[11px] text-stone-500">{formatTime(n.createdAt)}</span>
-                      {!n.read && (
-                        <span className="ml-auto inline-block w-2 h-2 rounded-full bg-rose-500" aria-label="未読" />
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <div
                         className={`flex-1 text-sm font-bold truncate ${
-                          n.read ? 'text-stone-700' : 'text-stone-900'
+                          n.read ? 'text-stone-600' : 'text-stone-900'
                         }`}
                       >
                         {n.title}

@@ -13,6 +13,8 @@
 // オプション環境変数: LINE_CHANNEL_ACCESS_TOKEN（あれば LINE push 同時実行）
 
 import { getTenantNotion } from '@/lib/notion';
+import { getCurrentTenant } from '@/lib/tenant';
+import { getCached, setCached, invalidate } from '@/lib/cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2025-09-03';
@@ -83,6 +85,8 @@ export async function createNotification(params: {
   body: string;
   staffName?: string;
 }): Promise<Notification> {
+  const tenantId = (() => { try { return getCurrentTenant().id; } catch { return 'default'; } })();
+  invalidate(`${tenantId}:notifications:`);
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_NOTIFICATIONS_DB_ID 未設定');
   const richText = (s: string) => {
@@ -124,14 +128,22 @@ export async function listNotificationsByLineUser(lineUserId: string, limit: num
   return (res.results || []).map(pageToNotification);
 }
 
-export async function listAllNotifications(limit: number = 100): Promise<Notification[]> {
+export async function listAllNotifications(limit: number = 100, opts?: { noCache?: boolean }): Promise<Notification[]> {
   const dbId = getDbId();
   if (!dbId) return [];
+  const tenantId = (() => { try { return getCurrentTenant().id; } catch { return 'default'; } })();
+  const key = `${tenantId}:notifications:list:${limit}`;
+  if (!opts?.noCache) {
+    const hit = getCached<Notification[]>(key);
+    if (hit) return hit;
+  }
   const res = await notionRequest('POST', `/databases/${dbId}/query`, {
     sorts: [{ timestamp: 'created_time', direction: 'descending' }],
     page_size: Math.min(100, Math.max(1, limit)),
   });
-  return (res.results || []).map(pageToNotification);
+  const result = (res.results || []).map(pageToNotification);
+  setCached(key, result, 30_000);
+  return result;
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
@@ -150,15 +162,26 @@ export async function deleteNotification(id: string): Promise<void> {
 }
 
 // LINE Messaging API: 顧客にpushメッセージを送る
-// LINE_CHANNEL_ACCESS_TOKEN が未設定の場合は何もしない（保存のみ）
+// トークン解決優先度:
+//   1. 現在テナント設定の lineChannelToken (テナント別運用)
+//   2. env LINE_CHANNEL_ACCESS_TOKEN (フォールバック、メヲダス互換)
+// どちらも無ければ送信スキップ
 export async function pushLineMessage(
   lineUserId: string,
   title: string,
   body: string,
-  staffName?: string
+  staffName?: string,
+  options?: { tokenOverride?: string }
 ): Promise<{ pushed: boolean; reason?: string }> {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) return { pushed: false, reason: 'LINE_CHANNEL_ACCESS_TOKEN 未設定' };
+  const tenantToken = (() => {
+    try {
+      return getCurrentTenant().lineChannelToken || undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const token = options?.tokenOverride || tenantToken || process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) return { pushed: false, reason: 'LINE Channel Token 未設定（テナント設定・env共に未設定）' };
   const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL || '';
   const fromLine = staffName ? `（${staffName}より）` : '';
   const messages: object[] = [

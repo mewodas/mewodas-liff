@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateTemplate, deleteTemplate, isTemplatesConfigured } from '@/lib/templates';
+import type { RangeType } from '@/lib/templates';
 import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
   try {
     const { id } = await params;
     const body = await req.json();
+    const RANGE_TYPES = ['昨日', '今日', '先週', '今週', '先月', '今月', 'カスタム'];
     await updateTemplate(id, {
       name: typeof body.name === 'string' ? body.name : undefined,
       category: typeof body.category === 'string' ? body.category : undefined,
@@ -18,6 +20,12 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
       bodyTemplate: typeof body.bodyTemplate === 'string' ? body.bodyTemplate : undefined,
       useAi: typeof body.useAi === 'boolean' ? body.useAi : undefined,
       aiPrompt: typeof body.aiPrompt === 'string' ? body.aiPrompt : undefined,
+      rangeType: 'rangeType' in body
+        ? (body.rangeType === null ? null : RANGE_TYPES.includes(body.rangeType) ? (body.rangeType as RangeType) : undefined)
+        : undefined,
+      sortOrder: 'sortOrder' in body
+        ? (body.sortOrder === null ? null : typeof body.sortOrder === 'number' ? body.sortOrder : undefined)
+        : undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

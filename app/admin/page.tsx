@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Circle, ChevronRight, UserPlus } from 'lucide-react';
+import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, CheckCircle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -20,7 +20,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '進行中', '設定中', '休止中', '卒業'];
+const STATUSES = ['すべて', '申込中', '進行中', '設定中', '休止中', '卒業'];
 
 export default function AdminCustomersPage() {
   const base = useAdminBase();
@@ -29,8 +29,16 @@ export default function AdminCustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('すべて');
-  const [storeFilter, setStoreFilter] = useState<string>(''); // '' = すべて
+  const [storeFilter, setStoreFilter] = useState<string>('');
   const [stores, setStores] = useState<Store[]>([]);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -42,8 +50,7 @@ export default function AdminCustomersPage() {
         if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
         const cJ = await cRes.json();
         const sJ = sRes.ok ? await sRes.json() : { stores: [] };
-        const list: Customer[] = (cJ.customers || []).filter((c: Customer) => !!c.foodStatus);
-        setCustomers(list);
+        setCustomers(cJ.customers || []);
         setStores(sJ.stores || []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
@@ -69,9 +76,62 @@ export default function AdminCustomersPage() {
     return m;
   }, [stores]);
 
+  async function copyInviteLink(e: React.MouseEvent, customerId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setCopyingId(customerId);
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
+      if (!res.ok) throw new Error('リンク生成失敗');
+      const j = await res.json();
+      await navigator.clipboard.writeText(j.url);
+      showToast('招待リンクをコピーしました');
+    } catch {
+      showToast('コピーに失敗しました');
+    } finally {
+      setCopyingId(null);
+    }
+  }
+
+  async function approveCustomer(e: React.MouseEvent, customerId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setApprovingId(customerId);
+    try {
+      const patchRes = await fetch(`/api/admin/customers/${customerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ foodStatus: '進行中' }),
+      });
+      if (!patchRes.ok) throw new Error('承認失敗');
+      setCustomers((prev) =>
+        prev.map((c) => (c.pageId === customerId ? { ...c, foodStatus: '進行中' } : c))
+      );
+      const linkRes = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
+      if (linkRes.ok) {
+        const j = await linkRes.json();
+        await navigator.clipboard.writeText(j.url);
+        showToast('承認しました 招待リンクをコピーしました');
+      } else {
+        showToast('承認しました（リンク生成失敗）');
+      }
+    } catch {
+      showToast('承認に失敗しました');
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
       <div className="space-y-3">
+        {toastMsg && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-xl inline-flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400" strokeWidth={2.4} />
+            {toastMsg}
+          </div>
+        )}
+
         <Link
           href={`${base}/customers/new`}
           className="block w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
@@ -91,7 +151,7 @@ export default function AdminCustomersPage() {
               className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-          <div className="flex gap-2 mt-3 overflow-x-auto">
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             {STATUSES.map((s) => (
               <button
                 key={s}
@@ -107,8 +167,8 @@ export default function AdminCustomersPage() {
               </button>
             ))}
           </div>
-          {stores.length > 1 && (
-            <div className="flex gap-2 mt-2 overflow-x-auto">
+          {stores.length > 0 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
               <button
                 type="button"
                 onClick={() => setStoreFilter('')}
@@ -152,7 +212,7 @@ export default function AdminCustomersPage() {
               <li key={c.pageId}>
                 <Link
                   href={`${base}/customers/${c.pageId}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -169,8 +229,37 @@ export default function AdminCustomersPage() {
                       {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
+                    <div className="mt-1.5 flex gap-2 flex-wrap">
+                      {c.foodStatus === '申込中' && (
+                        <button
+                          type="button"
+                          onClick={(e) => approveCustomer(e, c.pageId)}
+                          disabled={approvingId === c.pageId}
+                          className="text-[11px] font-bold bg-emerald-500 text-white px-2.5 py-1 rounded-lg active:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1"
+                        >
+                          <CheckCircle className="w-3 h-3" strokeWidth={2.4} />
+                          {approvingId === c.pageId ? '承認中…' : '承認する'}
+                        </button>
+                      )}
+                      {!c.lineUserId ? (
+                        <button
+                          type="button"
+                          onClick={(e) => copyInviteLink(e, c.pageId)}
+                          disabled={copyingId === c.pageId}
+                          className="text-[11px] font-bold bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg active:bg-sky-200 disabled:opacity-50 inline-flex items-center gap-1"
+                        >
+                          <ClipboardCopy className="w-3 h-3" strokeWidth={2.4} />
+                          {copyingId === c.pageId ? 'コピー中…' : '招待リンクをコピー'}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Check className="w-3 h-3" strokeWidth={2.4} />
+                          LINE 連携済み
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
+                  <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
                 </Link>
               </li>
             ))}
@@ -192,6 +281,8 @@ function StatusBadge({ status }: { status: string | null }) {
   const cls =
     status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+      : status === '申込中'
+      ? 'bg-gray-100 text-gray-700 border-gray-300'
       : status === '設定中'
       ? 'bg-violet-100 text-violet-700 border-violet-300'
       : status === '休止中'

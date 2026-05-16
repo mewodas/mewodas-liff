@@ -17,6 +17,7 @@ export function getTenantNotion() {
 export type Customer = {
   pageId: string;
   name: string;
+  furigana: string | null;
   lineUserId: string;
   foodStatus: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -27,9 +28,13 @@ export type Customer = {
   gender: string | null;
   heightCm: number | null;
   age: number | null;
+  birthDate: string | null;
+  email: string | null;
+  phone: string | null;
   activityLevel: string | null;
   plan: string | null;
   storeId: string | null;
+  onboardingCompletedAt: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -108,6 +113,7 @@ export async function getCustomerByLineId(
   const customer: Customer = {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId,
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
@@ -128,9 +134,13 @@ export async function getCustomerByLineId(
     gender: p['性別']?.select?.name ?? null,
     heightCm: p['身長(cm)']?.number ?? null,
     age: p['年齢']?.number ?? null,
+    birthDate: p['生年月日']?.date?.start ?? null,
+    email: p['メールアドレス']?.email ?? null,
+    phone: p['電話番号']?.phone_number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
+    onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -142,6 +152,7 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
   return {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId: p['LINEユーザーID']?.rich_text?.[0]?.plain_text || '',
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
@@ -162,9 +173,13 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
     gender: p['性別']?.select?.name ?? null,
     heightCm: p['身長(cm)']?.number ?? null,
     age: p['年齢']?.number ?? null,
+    birthDate: p['生年月日']?.date?.start ?? null,
+    email: p['メールアドレス']?.email ?? null,
+    phone: p['電話番号']?.phone_number ?? null,
     activityLevel: p['活動レベル']?.select?.name ?? null,
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
+    onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
   };
 }
 
@@ -283,6 +298,8 @@ export async function updateCustomer(
     activityLevel?: string | null;
     plan?: string | null;
     storeId?: string | null;
+    lineUserId?: string | null;
+    onboardingCompletedAt?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -321,9 +338,18 @@ export async function updateCustomer(
       ? { rich_text: [{ type: 'text', text: { content: patch.storeId } }] }
       : { rich_text: [] };
   }
+  if (patch.lineUserId !== undefined) {
+    properties['LINEユーザーID'] = patch.lineUserId
+      ? { rich_text: [{ type: 'text', text: { content: patch.lineUserId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.onboardingCompletedAt !== undefined) {
+    properties['オンボーディング完了日時'] = patch.onboardingCompletedAt === null
+      ? { date: null }
+      : { date: { start: patch.onboardingCompletedAt } };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
-  // キャッシュは lineUserId キーなので全クリアはせず、関連エントリを除去
   customerCache.clear();
 }
 
@@ -348,6 +374,7 @@ export async function createTenantCustomerDb(
       食事管理ステータス: {
         select: {
           options: [
+            { name: '申込中', color: 'gray' },
             { name: '進行中', color: 'green' },
             { name: '設定中', color: 'purple' },
             { name: '休止中', color: 'orange' },
@@ -481,11 +508,24 @@ export type TenantRow = {
   status: string | null;
   startDate: string | null;
   passwordHash: string | null;
+  lineChannelToken: string | null;
+  lineAutoSendEnabled: boolean;
+  /** "HH:MM" 形式の JST 送信時刻。未設定なら "06:00" 想定 */
+  autoSendTime: string | null;
 };
 
 export async function updateTenantRow(
   pageId: string,
-  patch: { liffId?: string | null; plan?: string; ownerEmail?: string; status?: string; note?: string }
+  patch: {
+    liffId?: string | null;
+    plan?: string;
+    ownerEmail?: string;
+    status?: string;
+    note?: string;
+    lineChannelToken?: string | null;
+    lineAutoSendEnabled?: boolean;
+    autoSendTime?: string | null;
+  }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
   if (patch.liffId !== undefined) {
@@ -499,6 +539,19 @@ export async function updateTenantRow(
   if (patch.note !== undefined) {
     properties['備考'] = patch.note
       ? { rich_text: [{ type: 'text', text: { content: patch.note } }] }
+      : { rich_text: [] };
+  }
+  if (patch.lineChannelToken !== undefined) {
+    properties['LINE Channel Token'] = patch.lineChannelToken
+      ? { rich_text: [{ type: 'text', text: { content: patch.lineChannelToken } }] }
+      : { rich_text: [] };
+  }
+  if (patch.lineAutoSendEnabled !== undefined) {
+    properties['LINE自動送付'] = { checkbox: patch.lineAutoSendEnabled };
+  }
+  if (patch.autoSendTime !== undefined) {
+    properties['自動送付時刻'] = patch.autoSendTime
+      ? { rich_text: [{ type: 'text', text: { content: patch.autoSendTime } }] }
       : { rich_text: [] };
   }
   if (Object.keys(properties).length === 0) return;
@@ -521,6 +574,9 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       status: p['契約状態']?.select?.name || null,
       startDate: p['契約開始日']?.date?.start || null,
       passwordHash: p['パスワードハッシュ']?.rich_text?.[0]?.plain_text || null,
+      lineChannelToken: p['LINE Channel Token']?.rich_text?.[0]?.plain_text || null,
+      lineAutoSendEnabled: !!p['LINE自動送付']?.checkbox,
+      autoSendTime: p['自動送付時刻']?.rich_text?.[0]?.plain_text || null,
     };
   });
 }

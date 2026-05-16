@@ -10,6 +10,8 @@ import {
   createCustomer as notionCreateCustomer,
   type Customer,
 } from '@/lib/notion';
+import { getCached, setCached, invalidate } from '@/lib/cache';
+import { getCurrentTenant } from '@/lib/tenant';
 
 export type { Customer };
 
@@ -24,10 +26,20 @@ export type CustomerPatch = {
   activityLevel?: string | null;
   plan?: string | null;
   storeId?: string | null;
+  lineUserId?: string | null;
+  onboardingCompletedAt?: string | null;
 };
 
-export async function listCustomers(): Promise<Customer[]> {
-  return notionListAllCustomers();
+export async function listCustomers(opts?: { noCache?: boolean }): Promise<Customer[]> {
+  const tenantId = getCurrentTenant().id;
+  const key = `${tenantId}:customers:list`;
+  if (!opts?.noCache) {
+    const hit = getCached<Customer[]>(key);
+    if (hit) return hit;
+  }
+  const result = await notionListAllCustomers();
+  setCached(key, result, 60_000);
+  return result;
 }
 
 export async function getCustomer(pageId: string): Promise<Customer | null> {
@@ -35,6 +47,8 @@ export async function getCustomer(pageId: string): Promise<Customer | null> {
 }
 
 export async function patchCustomer(pageId: string, patch: CustomerPatch): Promise<void> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:customers:`);
   return notionUpdateCustomer(pageId, patch);
 }
 
@@ -55,5 +69,7 @@ export type CustomerCreateInput = {
 };
 
 export async function createCustomer(input: CustomerCreateInput): Promise<Customer> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:customers:`);
   return notionCreateCustomer(input);
 }

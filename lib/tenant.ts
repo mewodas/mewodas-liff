@@ -31,6 +31,12 @@ export type TenantConfig = {
   gasEndpoint?: string;
   /** LIFF ID（フロントエンド用） */
   liffId?: string;
+  /** LINE Messaging API Channel Access Token（push 用） */
+  lineChannelToken?: string;
+  /** LINE自動送付ON/OFF */
+  lineAutoSendEnabled?: boolean;
+  /** 自動送付時刻 "HH:MM" JST */
+  autoSendTime?: string;
   /** ブランドカラー（HEX） */
   themeColor?: string;
   /** ジムのデフォルトPFC目標 */

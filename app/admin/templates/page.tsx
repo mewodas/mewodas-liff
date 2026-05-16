@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useAdminBase } from '@/lib/useAdminBase';
+
+type RangeType = '昨日' | '今日' | '先週' | '今週' | '先月' | '今月' | 'カスタム';
 
 type Template = {
   id: string;
@@ -12,26 +15,126 @@ type Template = {
   bodyTemplate: string;
   useAi: boolean;
   aiPrompt: string;
+  rangeType?: RangeType;
+  sortOrder?: number;
 };
 
-const CATEGORIES = ['前日レポート', '週次レポート', 'カスタム'];
+const RANGE_OPTIONS: { value: '' | RangeType; label: string }[] = [
+  { value: '', label: '未指定（手動）' },
+  { value: '昨日', label: '昨日' },
+  { value: '今日', label: '今日' },
+  { value: '先週', label: '先週' },
+  { value: '今週', label: '今週' },
+  { value: '先月', label: '先月' },
+  { value: '今月', label: '今月' },
+];
+
+// 本文・タイトルに使える変数（カテゴリ別）
+const VARIABLE_GROUPS = [
+  {
+    title: '基本',
+    vars: [
+      { key: '{customer}', label: '顧客名' },
+      { key: '{date}', label: '日付' },
+      { key: '{storeName}', label: '店舗名' },
+      { key: '{signature}', label: '署名' },
+      { key: '{rangeLabel}', label: '対象期間ラベル' },
+    ],
+  },
+  {
+    title: '食事（合計）',
+    vars: [
+      { key: '{kcal}', label: 'kcal' },
+      { key: '{P}', label: 'P(g)' },
+      { key: '{F}', label: 'F(g)' },
+      { key: '{C}', label: 'C(g)' },
+    ],
+  },
+  {
+    title: '目標値',
+    vars: [
+      { key: '{targetKcal}', label: '目標kcal' },
+      { key: '{targetP}', label: '目標P' },
+      { key: '{targetF}', label: '目標F' },
+      { key: '{targetC}', label: '目標C' },
+      { key: '{kcalRatio}', label: 'kcal達成率%' },
+    ],
+  },
+  {
+    title: '体重',
+    vars: [
+      { key: '{weight}', label: '現在体重' },
+      { key: '{targetWeight}', label: '目標体重' },
+      { key: '{daysToGoal}', label: '残り日数' },
+    ],
+  },
+  {
+    title: '食事別',
+    vars: [
+      { key: '{breakfast_kcal}', label: '朝食kcal' },
+      { key: '{breakfast_P}', label: '朝食P' },
+      { key: '{breakfast_F}', label: '朝食F' },
+      { key: '{breakfast_C}', label: '朝食C' },
+      { key: '{lunch_kcal}', label: '昼食kcal' },
+      { key: '{lunch_P}', label: '昼食P' },
+      { key: '{lunch_F}', label: '昼食F' },
+      { key: '{lunch_C}', label: '昼食C' },
+      { key: '{dinner_kcal}', label: '夕食kcal' },
+      { key: '{dinner_P}', label: '夕食P' },
+      { key: '{dinner_F}', label: '夕食F' },
+      { key: '{dinner_C}', label: '夕食C' },
+      { key: '{snack_kcal}', label: '間食kcal' },
+      { key: '{snack_P}', label: '間食P' },
+      { key: '{snack_F}', label: '間食F' },
+      { key: '{snack_C}', label: '間食C' },
+    ],
+  },
+  {
+    title: '範囲レポート',
+    vars: [
+      { key: '{startDate}', label: '開始日' },
+      { key: '{endDate}', label: '終了日' },
+    ],
+  },
+  {
+    title: '✨ AIコメント自動生成（送信時に Gemini が書く）',
+    vars: [
+      { key: '{ai_summary}', label: '全体評価' },
+      { key: '{ai_good_points}', label: '良かった点' },
+      { key: '{ai_advice}', label: 'アドバイス' },
+      { key: '{ai_one_word}', label: '応援一言' },
+      { key: '{ai_keep_doing}', label: '続けたいこと' },
+      { key: '{ai_improvement}', label: '改善ポイント' },
+    ],
+  },
+];
 
 export default function AdminTemplatesPage() {
+  const base = useAdminBase();
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [configured, setConfigured] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/admin/templates', { cache: 'no-store' });
       if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
       const j = await res.json();
-      setConfigured(!!j.configured);
-      setTemplates(j.templates || []);
+      const list: Template[] = j.templates || [];
+      list.sort((a, b) => {
+        const sa = a.sortOrder ?? 9999;
+        const sb = b.sortOrder ?? 9999;
+        if (sa !== sb) return sa - sb;
+        return a.name.localeCompare(b.name, 'ja');
+      });
+      setTemplates(list);
+      if (j.error) setError(j.hint || j.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -42,41 +145,89 @@ export default function AdminTemplatesPage() {
     load();
   }, []);
 
+  async function duplicateTemplate(id: string) {
+    setDuplicatingId(id);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/templates/duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId: id }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `複製失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      await load();
+      setEditingId(j.template.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '複製エラー');
+    } finally {
+      setDuplicatingId(null);
+    }
+  }
+
+  async function moveTemplate(idx: number, dir: -1 | 1) {
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= templates.length) return;
+    const a = templates[idx];
+    const b = templates[swapIdx];
+    if (a.id.startsWith('default-') || b.id.startsWith('default-')) return;
+    setMovingId(a.id);
+    try {
+      const aOrder = a.sortOrder ?? (idx + 1) * 10;
+      const bOrder = b.sortOrder ?? (swapIdx + 1) * 10;
+      await Promise.all([
+        fetch(`/api/admin/templates/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: bOrder }),
+        }),
+        fetch(`/api/admin/templates/${b.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: aOrder }),
+        }),
+      ]);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '並び替えエラー');
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   return (
-    <AdminShell title="テンプレート管理" back={{ href: '/admin/reports' }}>
+    <AdminShell title="レポートテンプレート管理" back={{ href: `${base}/reports` }}>
       <div className="space-y-3">
-        {!configured && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex items-start gap-2">
+        {error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl inline-flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
-            <div>
-              <div className="font-bold mb-1">テンプレDB が未設定です（デフォルトを表示中）</div>
-              <p className="leading-relaxed">
-                Notion でテンプレ用 DB を作成し、環境変数 <code className="font-mono bg-amber-100 px-1 rounded">NOTION_TEMPLATES_DB_ID</code> をセットしてください。
-              </p>
-              <p className="text-[10px] mt-1 leading-relaxed">
-                スキーマ：名前(title) / カテゴリ(select) / タイトル雛形(rich_text) / 本文雛形(rich_text) / AI生成(checkbox) / AIプロンプト(rich_text)
-              </p>
-            </div>
+            <div>{error}</div>
           </div>
         )}
 
-        {error && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>}
-
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
+          <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5 mb-1">
             <FileText className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-            テンプレ一覧（{templates.length}件）
+            レポートテンプレート一覧（{templates.length}件）
           </h2>
+          <p className="text-[10px] text-stone-500">
+            ジムオーナーが顧客に送るレポートのテンプレート。本文に変数（例：<code>{'{customer}'}</code>）を入れると送信時に実データに自動置換されます。
+          </p>
+        </div>
+
+        {!addOpen && !editingId && (
           <button
             type="button"
             onClick={() => setAddOpen(true)}
-            disabled={!configured}
-            className="inline-flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full active:bg-emerald-700 disabled:bg-stone-300"
+            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
           >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
-            新規追加
+            <Plus className="w-4 h-4" strokeWidth={2.4} />
+            新規レポートテンプレート追加
           </button>
-        </div>
+        )}
 
         {addOpen && (
           <TemplateEditor
@@ -92,11 +243,11 @@ export default function AdminTemplatesPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : templates.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">
-            テンプレートがありません
+            レポートテンプレートがありません
           </div>
         ) : (
           <ul className="space-y-2">
-            {templates.map((t) =>
+            {templates.map((t, idx) =>
               editingId === t.id ? (
                 <li key={t.id}>
                   <TemplateEditor
@@ -114,43 +265,91 @@ export default function AdminTemplatesPage() {
                 </li>
               ) : (
                 <li key={t.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-stone-100 text-stone-700 border-stone-300">
-                      {t.category}
-                    </span>
-                    {t.useAi && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-700 border-emerald-300">
-                        <Sparkles className="w-2.5 h-2.5" strokeWidth={2.4} />
-                        AI生成
-                      </span>
-                    )}
-                    <div className="flex-1 text-sm font-bold text-stone-900 truncate">{t.name}</div>
-                    {configured && !t.id.startsWith('default-') && (
+                  <div className="flex items-start gap-2">
+                    <div className="flex-col flex-shrink-0 flex gap-0.5">
                       <button
                         type="button"
-                        onClick={() => setEditingId(t.id)}
-                        className="text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 inline-flex items-center gap-1"
+                        onClick={() => moveTemplate(idx, -1)}
+                        disabled={idx === 0 || movingId === t.id || t.id.startsWith('default-')}
+                        className="text-stone-400 hover:text-stone-700 disabled:opacity-30 p-0.5"
+                        aria-label="上に移動"
                       >
-                        <Edit className="w-3 h-3" strokeWidth={2.4} />
-                        編集
+                        <ChevronUp className="w-4 h-4" strokeWidth={2.4} />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => moveTemplate(idx, 1)}
+                        disabled={idx === templates.length - 1 || movingId === t.id || t.id.startsWith('default-')}
+                        className="text-stone-400 hover:text-stone-700 disabled:opacity-30 p-0.5"
+                        aria-label="下に移動"
+                      >
+                        <ChevronDown className="w-4 h-4" strokeWidth={2.4} />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-stone-900 truncate">{t.name}</span>
+                        {t.rangeType && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                            {t.rangeType}
+                          </span>
+                        )}
+                        {t.sortOrder !== undefined && (
+                          <span className="text-[9px] text-stone-400"># {t.sortOrder}</span>
+                        )}
+                      </div>
+                      {t.titleTemplate && (
+                        <div className="text-[11px] text-stone-500 mt-0.5 truncate">
+                          送信タイトル: {t.titleTemplate}
+                        </div>
+                      )}
+                      {t.bodyTemplate && (
+                        <div className="text-[11px] text-stone-600 mt-1 line-clamp-3 whitespace-pre-wrap">
+                          {t.bodyTemplate}
+                        </div>
+                      )}
+                    </div>
+                    {!t.id.startsWith('default-') && (
+                      <div className="flex gap-1.5 flex-shrink-0 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(t.id)}
+                          className="text-[11px] font-bold text-emerald-700 border border-emerald-500 px-2.5 py-1 rounded-full active:bg-emerald-50 inline-flex items-center gap-1"
+                        >
+                          <Edit className="w-3 h-3" strokeWidth={2.4} />
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => duplicateTemplate(t.id)}
+                          disabled={duplicatingId === t.id}
+                          className="text-[11px] font-bold text-sky-700 border border-sky-300 px-2.5 py-1 rounded-full active:bg-sky-50 disabled:opacity-50 inline-flex items-center gap-1"
+                          aria-label="複製"
+                        >
+                          <Copy className="w-3 h-3" strokeWidth={2.2} />
+                          {duplicatingId === t.id ? '複製中…' : '複製'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`レポートテンプレート「${t.name}」を削除しますか？`)) return;
+                            try {
+                              const res = await fetch(`/api/admin/templates/${t.id}`, { method: 'DELETE' });
+                              if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+                              await load();
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : '削除エラー');
+                            }
+                          }}
+                          className="text-[11px] font-bold text-rose-700 border border-rose-300 px-2.5 py-1 rounded-full active:bg-rose-50 inline-flex items-center gap-1"
+                          aria-label="削除"
+                        >
+                          <Trash2 className="w-3 h-3" strokeWidth={2.2} />
+                          削除
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {t.titleTemplate && (
-                    <div className="text-[11px] text-stone-600 mt-1">
-                      <span className="font-bold">タイトル:</span> {t.titleTemplate}
-                    </div>
-                  )}
-                  {t.useAi && t.aiPrompt && (
-                    <div className="text-[11px] text-stone-600 mt-0.5 line-clamp-2">
-                      <span className="font-bold">AI指示:</span> {t.aiPrompt}
-                    </div>
-                  )}
-                  {!t.useAi && t.bodyTemplate && (
-                    <div className="text-[11px] text-stone-600 mt-0.5 line-clamp-2">
-                      <span className="font-bold">本文:</span> {t.bodyTemplate}
-                    </div>
-                  )}
                 </li>
               )
             )}
@@ -173,30 +372,47 @@ function TemplateEditor({
   onDeleted?: () => void;
 }) {
   const [name, setName] = useState(initial?.name || '');
-  const [category, setCategory] = useState(initial?.category || 'カスタム');
   const [titleTemplate, setTitleTemplate] = useState(initial?.titleTemplate || '');
   const [bodyTemplate, setBodyTemplate] = useState(initial?.bodyTemplate || '');
-  const [useAi, setUseAi] = useState(initial?.useAi ?? true);
-  const [aiPrompt, setAiPrompt] = useState(initial?.aiPrompt || '');
+  const [rangeType, setRangeType] = useState<'' | RangeType>(initial?.rangeType || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  function insertAtCursor(text: string) {
+    const ta = bodyRef.current;
+    if (!ta) {
+      setBodyTemplate(bodyTemplate + text);
+      return;
+    }
+    const start = ta.selectionStart ?? bodyTemplate.length;
+    const end = ta.selectionEnd ?? bodyTemplate.length;
+    const newValue = bodyTemplate.slice(0, start) + text + bodyTemplate.slice(end);
+    setBodyTemplate(newValue);
+    setTimeout(() => {
+      ta.focus();
+      const pos = start + text.length;
+      ta.setSelectionRange(pos, pos);
+    }, 0);
+  }
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      if (!name.trim()) throw new Error('名前は必須です');
+      if (!name.trim()) throw new Error('レポートテンプレート名は必須です');
       const url = initial ? `/api/admin/templates/${initial.id}` : '/api/admin/templates';
       const res = await fetch(url, {
         method: initial ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          category,
+          category: 'カスタム',
           titleTemplate,
           bodyTemplate,
-          useAi,
-          aiPrompt,
+          useAi: false,
+          aiPrompt: '',
+          rangeType: rangeType || null,
         }),
       });
       if (!res.ok) {
@@ -213,7 +429,7 @@ function TemplateEditor({
 
   async function remove() {
     if (!initial) return;
-    if (!confirm(`テンプレ「${initial.name}」を削除しますか？`)) return;
+    if (!confirm(`レポートテンプレート「${initial.name}」を削除しますか？`)) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/templates/${initial.id}`, { method: 'DELETE' });
@@ -227,96 +443,123 @@ function TemplateEditor({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-3 space-y-2">
+    <div className="bg-white rounded-2xl border-2 border-emerald-400 shadow-md p-3 space-y-3">
+      <div className="text-sm font-bold text-emerald-700">{initial ? 'レポートテンプレートを編集' : '新規レポートテンプレート'}</div>
+
       <div>
-        <label className="text-[10px] font-bold text-stone-700 block mb-1">名前 *</label>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">
+          ① レポートテンプレート名 <span className="text-rose-500">*</span>
+        </label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          placeholder="例：前日レポート"
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
+        <div className="text-[10px] text-stone-500 mt-0.5">レポート送付画面で識別する名前（顧客には見えません）</div>
       </div>
+
       <div>
-        <label className="text-[10px] font-bold text-stone-700 block mb-1">カテゴリ</label>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">② 対象期間</label>
         <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          value={rangeType}
+          onChange={(e) => setRangeType(e.target.value as '' | RangeType)}
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {RANGE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>
+        <div className="text-[10px] text-stone-500 mt-0.5">
+          テンプレ選択時に自動で集計期間を決定。「未指定」の場合はレポート送付画面で手動指定。
+        </div>
       </div>
+
       <div>
-        <label className="text-[10px] font-bold text-stone-700 block mb-1">
-          タイトル雛形 <span className="text-[9px] font-normal text-stone-500">変数: {'{date} {customer} {startDate} {endDate}'}</span>
-        </label>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">③ 送信タイトル（任意）</label>
         <input
           type="text"
           value={titleTemplate}
           onChange={(e) => setTitleTemplate(e.target.value)}
           placeholder="例：{date}の振り返り"
-          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
+        <div className="text-[10px] text-stone-500 mt-0.5">通知の見出しに使われる（変数 {'{date}'} {'{customer}'} 等使用可）</div>
       </div>
-      <label className="flex items-center gap-2 text-xs">
-        <input type="checkbox" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
-        <span className="text-stone-700 font-bold">AI で本文を自動生成する</span>
-      </label>
-      {useAi ? (
-        <div>
-          <label className="text-[10px] font-bold text-stone-700 block mb-1">AI への指示</label>
-          <textarea
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            rows={6}
-            placeholder="例：昨日の食事・運動から達成度・改善点・今日のアドバイスを5-8行で。"
-            className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
-          />
+
+      <div>
+        <label className="text-[10px] font-bold text-stone-700 block mb-1">
+          ④ 本文 <span className="text-rose-500">*</span>
+        </label>
+        <textarea
+          ref={bodyRef}
+          value={bodyTemplate}
+          onChange={(e) => setBodyTemplate(e.target.value)}
+          rows={12}
+          placeholder={`{customer}さん、お疲れさまです！\n\n【{date} の振り返り】\nカロリー: {kcal}kcal / {targetKcal}kcal`}
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y font-mono"
+        />
+        <div className="text-[10px] text-stone-500 mt-0.5">
+          ボタンで変数を挿入できます。送信時に実データに自動置換。
         </div>
-      ) : (
-        <div>
-          <label className="text-[10px] font-bold text-stone-700 block mb-1">固定本文</label>
-          <textarea
-            value={bodyTemplate}
-            onChange={(e) => setBodyTemplate(e.target.value)}
-            rows={6}
-            placeholder="そのまま顧客に送られる本文です"
-            className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
-          />
+        <div className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-2 mt-1">
+          {'{ai_summary}'} などの AI 変数を本文に入れると、レポート作成時に Gemini が自動でコメント文を生成して埋め込みます。
         </div>
-      )}
-      {error && <div className="text-xs text-red-700">{error}</div>}
-      <div className="flex gap-2 pt-1">
+      </div>
+
+      {/* 変数挿入パネル（カテゴリ別） */}
+      <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 space-y-2">
+        <div className="text-[10px] font-bold text-stone-700">変数を挿入</div>
+        {VARIABLE_GROUPS.map((group) => (
+          <div key={group.title}>
+            <div className="text-[9px] font-bold text-stone-500 mb-1">{group.title}</div>
+            <div className="flex gap-1 flex-wrap">
+              {group.vars.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => insertAtCursor(v.key)}
+                  className="text-[10px] font-bold text-stone-700 bg-white hover:bg-emerald-50 border border-stone-300 px-2 py-0.5 rounded-full"
+                  title={`「${v.key}」を挿入`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {error && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-lg">{error}</div>}
+
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={save}
-          disabled={saving}
-          className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
+          disabled={saving || !name.trim()}
+          className="flex-1 bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
         >
-          <Check className="w-3.5 h-3.5" strokeWidth={2.4} />
+          <Check className="w-4 h-4" strokeWidth={2.4} />
           {saving ? '保存中…' : initial ? '更新' : '追加'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center justify-center gap-1 bg-white border border-stone-300 text-stone-700 text-xs font-bold px-3 py-2 rounded-xl active:bg-stone-50"
+          className="bg-white border border-stone-300 text-stone-700 text-sm font-bold px-3 py-2.5 rounded-xl active:bg-stone-50"
         >
-          <X className="w-3.5 h-3.5" strokeWidth={2.4} />
-          キャンセル
+          <X className="w-4 h-4" strokeWidth={2.4} />
         </button>
         {initial && (
           <button
             type="button"
             onClick={remove}
-            className="inline-flex items-center justify-center gap-1 bg-white border border-rose-300 text-rose-700 text-xs font-bold px-3 py-2 rounded-xl active:bg-rose-50"
+            className="bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold px-3 py-2.5 rounded-xl active:bg-rose-100"
+            aria-label="削除"
           >
-            <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} />
-            削除
+            <Trash2 className="w-4 h-4" strokeWidth={2.2} />
           </button>
         )}
       </div>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
@@ -25,7 +25,13 @@ const TABS: Tab[] = [
     suffix: '/reports',
     label: 'レポート送付',
     Icon: Send,
-    match: (p, base) => p.startsWith(`${base}/reports`) || p.startsWith(`${base}/templates`),
+    match: (p, base) => p.startsWith(`${base}/reports`),
+  },
+  {
+    suffix: '/templates',
+    label: 'レポートテンプレート',
+    Icon: FileText,
+    match: (p, base) => p.startsWith(`${base}/templates`),
   },
   {
     suffix: '/analysis',
@@ -71,6 +77,8 @@ export default function AdminShell({
   const base = useAdminBase();
   const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
@@ -78,6 +86,21 @@ export default function AdminShell({
       .then((j) => setMe(j))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
@@ -93,15 +116,19 @@ export default function AdminShell({
 
   const headerIconColor = isStore ? 'text-violet-600' : 'text-emerald-600';
 
+  const activeTab = visibleTabs.find((t) => t.match(pathname, base));
+  const accentBorder = isStore ? 'border-violet-600' : 'border-emerald-600';
+  const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
+
   return (
     <div className="min-h-screen bg-stone-100">
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-30" ref={menuRef}>
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {back ? (
               <Link
                 href={back.href}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
                 aria-label="戻る"
               >
                 <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
@@ -111,23 +138,23 @@ export default function AdminShell({
             ) : (
               <Users className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             )}
-            <h1 className="text-sm sm:text-base font-bold text-stone-900 truncate">{title}</h1>
+            <h1 className="text-sm font-bold text-stone-900 truncate">{title}</h1>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {!isStore && me?.role === 'master' && (
-              <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+              <span className="hidden sm:inline text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
                 マスタ
               </span>
             )}
             {isStore && (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <span className="hidden sm:inline text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                 店舗
               </span>
             )}
             {me?.role === 'tenant_admin' && (
               <Link
                 href={`${base}/account/password`}
-                className="text-xs font-bold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-stone-100"
+                className="hidden sm:inline-flex text-xs font-bold text-stone-600 hover:text-stone-900 items-center gap-1 p-2 rounded-full hover:bg-stone-100"
                 title="パスワード変更"
               >
                 <Key className="w-3.5 h-3.5" strokeWidth={2.2} />
@@ -136,14 +163,25 @@ export default function AdminShell({
             <button
               type="button"
               onClick={logout}
-              className="text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1 px-2 py-1 rounded-full hover:bg-stone-100"
+              className="hidden sm:flex text-xs font-bold text-stone-600 hover:text-stone-900 items-center gap-1 px-2 py-1.5 rounded-full hover:bg-stone-100"
             >
               <LogOut className="w-3.5 h-3.5" strokeWidth={2.2} />
               ログアウト
             </button>
+            {/* ハンバーガーボタン (sm 以下のみ表示) */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="sm:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-700"
+              aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'}
+            >
+              {menuOpen ? <X className="w-5 h-5" strokeWidth={2.2} /> : <Menu className="w-5 h-5" strokeWidth={2.2} />}
+            </button>
           </div>
         </div>
-        <nav className="max-w-5xl mx-auto px-4 overflow-x-auto">
+
+        {/* デスクトップ用タブナビ */}
+        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-x-auto">
           <div className="flex gap-1 -mb-px min-w-max">
             {visibleTabs.map((t) => {
               const href = `${base}${t.suffix}`;
@@ -154,9 +192,7 @@ export default function AdminShell({
                   href={href}
                   className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
                     active
-                      ? isStore
-                        ? 'border-violet-600 text-violet-700'
-                        : 'border-emerald-600 text-emerald-700'
+                      ? `${accentBorder} ${accentText}`
                       : 'border-transparent text-stone-600 hover:text-stone-900'
                   }`}
                 >
@@ -167,8 +203,79 @@ export default function AdminShell({
             })}
           </div>
         </nav>
+
+        {/* モバイル用ドロップダウンメニュー */}
+        {menuOpen && (
+          <div className="sm:hidden border-t border-stone-100 bg-white shadow-lg">
+            <nav className="px-3 py-2 space-y-0.5">
+              {visibleTabs.map((t) => {
+                const href = `${base}${t.suffix}`;
+                const active = t.match(pathname, base);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
+                      active
+                        ? isStore
+                          ? 'bg-violet-50 text-violet-700'
+                          : 'bg-emerald-50 text-emerald-700'
+                        : 'text-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                    {t.label}
+                    {active && (
+                      <span className={`ml-auto w-1.5 h-1.5 rounded-full ${isStore ? 'bg-violet-600' : 'bg-emerald-600'}`} />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="border-t border-stone-100 px-3 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {!isStore && me?.role === 'master' && (
+                  <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+                    マスタ
+                  </span>
+                )}
+                {isStore && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    店舗
+                  </span>
+                )}
+                {me?.role === 'tenant_admin' && (
+                  <Link
+                    href={`${base}/account/password`}
+                    className="text-xs font-bold text-stone-600 inline-flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-stone-100"
+                    title="パスワード変更"
+                  >
+                    <Key className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    パスワード変更
+                  </Link>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-xs font-bold text-stone-600 flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-stone-100"
+              >
+                <LogOut className="w-3.5 h-3.5" strokeWidth={2.2} />
+                ログアウト
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* モバイル用アクティブタブ表示バー */}
+        {!menuOpen && activeTab && (
+          <div className={`sm:hidden border-t border-stone-100 px-3 py-1.5 flex items-center gap-2 ${accentText}`}>
+            <activeTab.Icon className="w-3.5 h-3.5" strokeWidth={2.2} />
+            <span className="text-xs font-bold">{activeTab.label}</span>
+          </div>
+        )}
       </header>
-      <main className="max-w-5xl mx-auto px-4 py-4">{children}</main>
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4">{children}</main>
     </div>
   );
 }

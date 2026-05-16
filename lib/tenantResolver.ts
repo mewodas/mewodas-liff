@@ -40,6 +40,9 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
       notionCustomerDbId: r.customerDbId,
       notionFoodDbId: r.foodDbId,
       liffId: r.liffId ?? undefined,
+      lineChannelToken: r.lineChannelToken ?? undefined,
+      lineAutoSendEnabled: r.lineAutoSendEnabled,
+      autoSendTime: r.autoSendTime ?? undefined,
       ...base,
     };
     tenants.set(r.tenantId, cfg);
@@ -101,6 +104,19 @@ export async function findTenantAdminByEmail(email: string): Promise<{
 export async function listAllTenants(): Promise<TenantConfig[]> {
   const { tenants } = await loadTenants();
   return Array.from(tenants.values());
+}
+
+/** 公開 API 用: ジム名または tenantId でテナントを検索 */
+export async function findTenantBySlugOrId(slugOrId: string): Promise<TenantConfig | null> {
+  if (!slugOrId) return null;
+  const { tenants } = await loadTenants();
+  const byId = tenants.get(slugOrId);
+  if (byId) return byId;
+  const lower = slugOrId.toLowerCase();
+  for (const t of tenants.values()) {
+    if (t.name.toLowerCase().includes(lower) || t.id.toLowerCase() === lower) return t;
+  }
+  return null;
 }
 
 export function invalidateTenantCache(): void {

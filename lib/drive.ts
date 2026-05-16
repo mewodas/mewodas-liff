@@ -1,8 +1,10 @@
 // Drive保存をGAS経由で非同期実行（waitUntil用）
 // Notionページ作成後にこの関数を呼び、Drive保存→Notionに画像URL追記する
+// notionPageIds に複数指定すると全ページに同じ画像URLを書き込む（AI一括登録用）
 
 export async function saveImagesToDriveAsync(params: {
   notionPageId: string;
+  notionPageIds?: string[];
   customerName: string;
   lineUserId: string;
   photos: Array<{ base64: string; mimeType: string }>;
@@ -20,6 +22,7 @@ export async function saveImagesToDriveAsync(params: {
       body: JSON.stringify({
         type: 'liff_save_images_async',
         notionPageId: params.notionPageId,
+        notionPageIds: params.notionPageIds ?? [params.notionPageId],
         customerName: params.customerName,
         lineUserId: params.lineUserId,
         photos: params.photos,

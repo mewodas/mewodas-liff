@@ -9,13 +9,22 @@ import {
   Cookie,
   X,
   ImageIcon,
+  Check,
+  Copy,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Customer = {
+  pageId: string;
+  name: string;
+  foodStatus: string | null;
+  storeId: string | null;
+  goals: { kcal: number; P: number; F: number; C: number };
+};
 type Store = { pageId: string; storeId: string; name: string };
 
 type Meal = {
@@ -163,6 +172,38 @@ export default function AdminMealsPage() {
     });
   }, [meals, storeFilter, customerStoreMap]);
 
+  // 集計サマリー：顧客フィルタが効いている時のみ表示
+  // visibleMeals の PFC 合計 + 顧客の1日目標との比較
+  const selectedCustomer = useMemo(() => customers.find((c) => c.pageId === customerId), [customers, customerId]);
+  const summary = useMemo(() => {
+    if (!selectedCustomer) return null;
+    const sum = visibleMeals.reduce(
+      (acc, m) => ({
+        kcal: acc.kcal + (m.kcal || 0),
+        P: acc.P + (m.P || 0),
+        F: acc.F + (m.F || 0),
+        C: acc.C + (m.C || 0),
+      }),
+      { kcal: 0, P: 0, F: 0, C: 0 }
+    );
+    const goals = selectedCustomer.goals;
+    return {
+      sum: {
+        kcal: Math.round(sum.kcal),
+        P: Math.round(sum.P * 10) / 10,
+        F: Math.round(sum.F * 10) / 10,
+        C: Math.round(sum.C * 10) / 10,
+      },
+      goals,
+      ratio: {
+        kcal: goals.kcal > 0 ? Math.round((sum.kcal / goals.kcal) * 100) : 0,
+        P: goals.P > 0 ? Math.round((sum.P / goals.P) * 100) : 0,
+        F: goals.F > 0 ? Math.round((sum.F / goals.F) * 100) : 0,
+        C: goals.C > 0 ? Math.round((sum.C / goals.C) * 100) : 0,
+      },
+    };
+  }, [visibleMeals, selectedCustomer]);
+
   // 日付ごとにグルーピング
   const grouped = useMemo(() => {
     const map = new Map<string, Meal[]>();
@@ -191,7 +232,7 @@ export default function AdminMealsPage() {
             isSingleDay={isSingleDay}
           />
           {/* フィルタ：店舗・顧客・食事区分 */}
-          {stores.length > 1 && (
+          {stores.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               <button
                 type="button"
@@ -269,6 +310,37 @@ export default function AdminMealsPage() {
           </div>
         </div>
 
+        {/* 集計サマリー（顧客選択時のみ） */}
+        {summary && selectedCustomer && (
+          <>
+            <section className="bg-gradient-to-br from-emerald-50 to-sky-50 rounded-2xl border border-emerald-200 shadow-sm p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold text-stone-900">
+                  {selectedCustomer.name} ・ {visibleMeals.length}件
+                  {mealTypeFilter && <span className="text-stone-500 ml-1">（{mealTypeFilter}のみ）</span>}
+                </div>
+                <div className="text-[10px] text-stone-500">合計 / 1日目標</div>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                <SummaryCell label="kcal" value={summary.sum.kcal} goal={summary.goals.kcal} ratio={summary.ratio.kcal} primary />
+                <SummaryCell label="P (g)" value={summary.sum.P} goal={summary.goals.P} ratio={summary.ratio.P} />
+                <SummaryCell label="F (g)" value={summary.sum.F} goal={summary.goals.F} ratio={summary.ratio.F} />
+                <SummaryCell label="C (g)" value={summary.sum.C} goal={summary.goals.C} ratio={summary.ratio.C} />
+              </div>
+            </section>
+            <TextDigest
+              customerName={selectedCustomer.name}
+              fromDate={effectiveFrom}
+              toDate={effectiveTo}
+              mealTypeFilter={mealTypeFilter}
+              meals={visibleMeals}
+              sum={summary.sum}
+              ratio={summary.ratio}
+              goals={summary.goals}
+            />
+          </>
+        )}
+
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
@@ -316,6 +388,9 @@ export default function AdminMealsPage() {
                             <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                               {Math.round(m.kcal)} kcal ・ P{r1(m.P)}・F{r1(m.F)}・C{r1(m.C)}
                             </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">
+                              {new Date(m.recordedAt).toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           </div>
                         </button>
                       </li>
@@ -332,11 +407,14 @@ export default function AdminMealsPage() {
             meal={detail}
             onClose={() => setDetail(null)}
             onSaved={(updated) => {
-              // 一覧をローカルで更新（再フェッチを避けて即時反映）
               setMeals((prev) =>
                 prev.map((m) => (m.pageId === updated.pageId ? { ...m, ...updated } : m))
               );
               setDetail({ ...detail, ...updated });
+            }}
+            onDeleted={(pageId) => {
+              setMeals((prev) => prev.filter((m) => m.pageId !== pageId));
+              setDetail(null);
             }}
           />
         )}
@@ -371,10 +449,12 @@ function MealDetailModal({
   meal,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   meal: Meal;
   onClose: () => void;
   onSaved: (updated: Pick<Meal, 'pageId' | 'kcal' | 'P' | 'F' | 'C'>) => void;
+  onDeleted: (pageId: string) => void;
 }) {
   const Icon = MEAL_ICON[meal.mealType] || UtensilsCrossed;
   const color = MEAL_COLOR[meal.mealType] || 'text-stone-500';
@@ -384,6 +464,7 @@ function MealDetailModal({
   const [c, setC] = useState(r1(meal.C));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedToast, setSavedToast] = useState(false);
 
   const calcKcal = Math.round(p * 4 + f * 9 + c * 4);
 
@@ -403,6 +484,8 @@ function MealDetailModal({
       }
       onSaved({ pageId: meal.pageId, kcal: calcKcal, P: p, F: f, C: c });
       setEditing(false);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 2000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -418,8 +501,34 @@ function MealDetailModal({
     setSaveError(null);
   }
 
+  const [deleting, setDeleting] = useState(false);
+
+  async function doDelete() {
+    if (!confirm(`この食事記録を削除します。\n\n「${extractFoodLine(meal)}」\n${Math.round(meal.kcal)}kcal / P${r1(meal.P)} F${r1(meal.F)} C${r1(meal.C)}\n\n削除すると元に戻せません。よろしいですか？`)) return;
+    setDeleting(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/admin/records/${meal.pageId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `削除失敗（${res.status}）`);
+      }
+      onDeleted(meal.pageId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center px-4 py-6" onClick={onClose}>
+      {savedToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[90] bg-emerald-600 text-white text-sm font-bold px-5 py-3 rounded-full shadow-2xl inline-flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+          <Check className="w-5 h-5" strokeWidth={2.6} />
+          完了しました
+        </div>
+      )}
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -497,7 +606,7 @@ function MealDetailModal({
                   disabled={saving}
                   className="flex-1 bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
                 >
-                  {saving ? '保存中…' : '保存（トレーナー補正）'}
+                  {saving ? '保存中…' : '保存する'}
                 </button>
                 <button
                   type="button"
@@ -524,11 +633,163 @@ function MealDetailModal({
             </div>
           )}
 
+          {/* 削除ボタン（重複削除等） */}
+          <div className="pt-2 border-t border-stone-100">
+            <button
+              type="button"
+              onClick={doDelete}
+              disabled={deleting || editing}
+              className="w-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs py-2 rounded-xl active:bg-rose-100 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} />
+              {deleting ? '削除中…' : 'この食事記録を削除'}
+            </button>
+            <div className="text-[10px] text-stone-500 text-center mt-1">
+              重複記録や誤登録の削除に使用
+            </div>
+          </div>
+
           <div className="text-[10px] text-stone-500">
             記録時刻: {new Date(meal.recordedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TextDigest({
+  customerName,
+  fromDate,
+  toDate,
+  mealTypeFilter,
+  meals,
+  sum,
+  ratio,
+  goals,
+}: {
+  customerName: string;
+  fromDate: string;
+  toDate: string;
+  mealTypeFilter: string;
+  meals: Meal[];
+  sum: { kcal: number; P: number; F: number; C: number };
+  ratio: { kcal: number; P: number; F: number; C: number };
+  goals: { kcal: number; P: number; F: number; C: number };
+}) {
+  const [copied, setCopied] = useState(false);
+
+  // 日付＆食事区分の順で並べ替え
+  const sortedMeals = useMemo(() => {
+    const order = ['朝食', '昼食', '夕食', '間食'];
+    return [...meals].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      const ai = order.indexOf(a.mealType);
+      const bi = order.indexOf(b.mealType);
+      const av = ai < 0 ? 99 : ai;
+      const bv = bi < 0 ? 99 : bi;
+      if (av !== bv) return av - bv;
+      return a.recordedAt.localeCompare(b.recordedAt);
+    });
+  }, [meals]);
+
+  // テキストを構築
+  const text = useMemo(() => {
+    const lines: string[] = [];
+    const period = fromDate === toDate
+      ? `${parseInt(fromDate.split('-')[1], 10)}/${parseInt(fromDate.split('-')[2], 10)}`
+      : `${parseInt(fromDate.split('-')[1], 10)}/${parseInt(fromDate.split('-')[2], 10)} 〜 ${parseInt(toDate.split('-')[1], 10)}/${parseInt(toDate.split('-')[2], 10)}`;
+    lines.push(`【${customerName} ・ ${period}${mealTypeFilter ? ` ・ ${mealTypeFilter}` : ''}】`);
+    lines.push('');
+
+    let currentSection = '';
+    for (const m of sortedMeals) {
+      const sectionKey = fromDate === toDate ? m.mealType : `${m.date} ${m.mealType}`;
+      if (sectionKey !== currentSection) {
+        if (currentSection !== '') lines.push('');
+        lines.push(`■ ${sectionKey}`);
+        currentSection = sectionKey;
+      }
+      const food = (m.memo || m.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim() || '食事';
+      lines.push(`・${food}`);
+      lines.push(`  ${Math.round(m.kcal)}kcal / P${r1(m.P)} F${r1(m.F)} C${r1(m.C)}`);
+    }
+
+    lines.push('');
+    lines.push('━━━━━━━━━━━━');
+    lines.push(`合計: ${sum.kcal}kcal / P${sum.P}g / F${sum.F}g / C${sum.C}g`);
+    lines.push(`目標: ${goals.kcal}kcal / P${goals.P}g / F${goals.F}g / C${goals.C}g`);
+    lines.push(`達成率: kcal ${ratio.kcal}% / P ${ratio.P}% / F ${ratio.F}% / C ${ratio.C}%`);
+    return lines.join('\n');
+  }, [customerName, fromDate, toDate, mealTypeFilter, sortedMeals, sum, ratio, goals]);
+
+  function copy() {
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (meals.length === 0) return null;
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-bold text-stone-700">テキスト一覧</div>
+        <button
+          type="button"
+          onClick={copy}
+          className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full hover:bg-emerald-100 inline-flex items-center gap-1"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3" strokeWidth={2.4} />
+              コピー済み
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" strokeWidth={2.4} />
+              コピー
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-[11px] text-stone-800 leading-relaxed whitespace-pre-wrap break-words font-sans max-h-80 overflow-y-auto">
+        {text}
+      </pre>
+    </section>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+  goal,
+  ratio,
+  primary = false,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  ratio: number;
+  primary?: boolean;
+}) {
+  // 達成率による色分け
+  const tone =
+    ratio === 0 ? 'text-stone-500'
+    : ratio < 70 ? 'text-sky-700'
+    : ratio <= 110 ? 'text-emerald-700'
+    : ratio <= 130 ? 'text-amber-700'
+    : 'text-rose-700';
+  return (
+    <div className={`rounded-xl border p-2 ${primary ? 'bg-white border-emerald-300' : 'bg-white border-stone-200'}`}>
+      <div className="text-[9px] font-bold text-stone-600">{label}</div>
+      <div className={`font-bold leading-tight ${primary ? 'text-xl' : 'text-base'} ${primary ? 'text-stone-900' : 'text-stone-900'}`}>
+        {value}
+      </div>
+      <div className="text-[9px] text-stone-500 mt-0.5">
+        / {goal}
+      </div>
+      <div className={`text-[10px] font-bold ${tone} mt-0.5`}>{ratio}%</div>
     </div>
   );
 }

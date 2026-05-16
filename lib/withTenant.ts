@@ -30,7 +30,17 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     } catch {
       tenant = getDefaultTenant();
     }
-    return runInTenantContext(tenant, () => handler(req, ctx));
+    // ハンドラ実行を try/catch でラップ：例外時も必ず JSON レスポンスを返す
+    // フロント側 res.json() の「Unexpected end of JSON input」を防止
+    try {
+      return await runInTenantContext(tenant, () => handler(req, ctx));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'unknown error';
+      return NextResponse.json(
+        { error: message.slice(0, 500), errorType: 'handler_exception' },
+        { status: 500 }
+      );
+    }
   };
 }
 
@@ -69,4 +79,18 @@ export function withMasterOnly(handler: RouteHandler): RouteHandler {
 
 export function currentSession(req: NextRequest): SessionPayload | null {
   return verifySession(req.cookies.get(SESSION_COOKIE_NAME)?.value);
+}
+
+/**
+ * テナントIDを直接指定してコンテキストを設定するラッパー（公開APIのリデーム等で使用）
+ * 認証は別途呼び出し元で処理すること。
+ */
+export async function runWithTenantById<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
+  let tenant;
+  try {
+    tenant = (await getTenantByIdAsync(tenantId)) || getDefaultTenant();
+  } catch {
+    tenant = getDefaultTenant();
+  }
+  return runInTenantContext(tenant, fn);
 }

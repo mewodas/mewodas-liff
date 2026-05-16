@@ -64,6 +64,63 @@ export function buildMailtoUrl(payload: EmailPayload): string {
   return `mailto:${encodeURIComponent(payload.to)}?${params.toString()}`;
 }
 
+/** パスワード再設定リンクメール */
+export function resetLinkEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  resetUrl: string;
+}): EmailPayload {
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    'FitMeal のパスワード再設定リクエストを受け付けました。',
+    '',
+    '下記URLから1時間以内に新しいパスワードを設定してください。',
+    '',
+    params.resetUrl,
+    '',
+    '※リンクの有効期限は1時間です。期限を過ぎた場合は再度パスワード再設定をリクエストしてください。',
+    '※心当たりがない場合はこのメールを無視してください。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】パスワード再設定のご案内`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
+
+/** パスワード変更完了通知 */
+export function resetCompletedEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  loginUrl?: string;
+}): EmailPayload {
+  const loginUrl = params.loginUrl || 'https://app.fitmeal.jp/store/login';
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    'FitMeal のパスワードが正常に変更されました。',
+    '',
+    '【ログインURL】',
+    loginUrl,
+    '',
+    '※もし心当たりがない場合は、すぐにこちらのメールに返信してご連絡ください。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】パスワード変更完了のお知らせ`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
+
 /** ログイン情報案内メールのテンプレート */
 export function loginInfoEmail(params: {
   tenantName: string;

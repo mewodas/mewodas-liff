@@ -17,7 +17,21 @@ import {
   History,
   ChevronDown,
   ChevronUp,
+  TrendingDown,
+  Dumbbell,
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+} from 'recharts';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
@@ -96,6 +110,31 @@ export default function CustomerDetailPage({
   const [stores, setStores] = useState<Store[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [onboardingResetting, setOnboardingResetting] = useState(false);
+  const [onboardingMsg, setOnboardingMsg] = useState<string | null>(null);
+
+  type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [weightTargetWeight, setWeightTargetWeight] = useState<number | null>(null);
+  const [weightLoading, setWeightLoading] = useState(false);
+  const [weightWarning, setWeightWarning] = useState<string | null>(null);
+  const [weightDays, setWeightDays] = useState(30);
+  const [weightOpen, setWeightOpen] = useState(false);
+
+  type ExerciseLog = {
+    id: string;
+    date: string;
+    exercise: string;
+    category: string;
+    durationMin: number;
+    intensity: string;
+    estimatedKcal: number;
+    memo: string;
+  };
+  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
+  const [exerciseLoading, setExerciseLoading] = useState(false);
+  const [exerciseDays, setExerciseDays] = useState(30);
+  const [exerciseOpen, setExerciseOpen] = useState(false);
 
   const today = jstToday();
 
@@ -207,6 +246,37 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function loadWeightHistory(days: number) {
+    setWeightLoading(true);
+    setWeightWarning(null);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/weight-history?days=${days}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
+      const j = await res.json();
+      setWeightHistory(j.weights || []);
+      setWeightTargetWeight(j.targetWeight ?? null);
+      if (j.warning) setWeightWarning(j.warning);
+    } catch (e) {
+      setWeightWarning(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setWeightLoading(false);
+    }
+  }
+
+  async function loadExerciseLogs(days: number) {
+    setExerciseLoading(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/exercise-logs?days=${days}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
+      const j = await res.json();
+      setExerciseLogs(j.logs || []);
+    } catch {
+      setExerciseLogs([]);
+    } finally {
+      setExerciseLoading(false);
     }
   }
 
@@ -481,6 +551,286 @@ export default function CustomerDetailPage({
             </Link>
           </section>
 
+          {/* オンボーディングリセット */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <h2 className="text-sm font-bold text-stone-900 mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
+              オンボーディング
+            </h2>
+            {onboardingMsg && (
+              <div className="mb-2 text-xs bg-emerald-100 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-xl">{onboardingMsg}</div>
+            )}
+            <p className="text-xs text-stone-600 mb-3">
+              リセットすると次回顧客が /home を開いた際にオンボーディングが再表示されます。
+            </p>
+            <button
+              type="button"
+              disabled={onboardingResetting}
+              onClick={async () => {
+                setOnboardingResetting(true);
+                setOnboardingMsg(null);
+                try {
+                  const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
+                  if (!res.ok) throw new Error(`失敗（${res.status}）`);
+                  setOnboardingMsg('オンボーディングをリセットしました');
+                  setTimeout(() => setOnboardingMsg(null), 3000);
+                } catch (e) {
+                  setOnboardingMsg(e instanceof Error ? e.message : 'エラー');
+                } finally {
+                  setOnboardingResetting(false);
+                }
+              }}
+              className="bg-violet-100 text-violet-800 border border-violet-300 text-xs font-bold px-4 py-2 rounded-xl active:bg-violet-200 disabled:opacity-50"
+            >
+              {onboardingResetting ? 'リセット中…' : 'オンボーディングをリセット'}
+            </button>
+          </section>
+
+          {/* 体重推移グラフ + 運動記録 */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !weightOpen;
+                setWeightOpen(next);
+                if (next && weightHistory.length === 0) {
+                  loadWeightHistory(weightDays);
+                }
+              }}
+              className="w-full flex items-center justify-between p-3 active:bg-stone-50"
+            >
+              <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                <TrendingDown className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+                体重推移 / 運動記録
+              </span>
+              {weightOpen ? (
+                <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+              )}
+            </button>
+            {weightOpen && (
+              <div className="px-3 pb-3 space-y-3">
+                {/* 期間セレクタ */}
+                <div className="flex gap-2 flex-wrap">
+                  {[14, 30, 60, 90].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setWeightDays(d);
+                        setWeightHistory([]);
+                        loadWeightHistory(d);
+                      }}
+                      className={`px-3 py-1 text-xs rounded-lg font-bold border transition-colors ${
+                        weightDays === d
+                          ? 'bg-sky-500 text-white border-sky-500'
+                          : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
+                      }`}
+                    >
+                      {d}日
+                    </button>
+                  ))}
+                  {weightLoading && <span className="text-xs text-stone-500 py-1">読み込み中…</span>}
+                </div>
+
+                {weightWarning && (
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{weightWarning}</div>
+                )}
+
+                {/* 体重推移グラフ */}
+                {weightHistory.some((w) => w.weight !== null) ? (
+                  <div>
+                    <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
+                      <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
+                      体重推移
+                    </div>
+                    <WeightLineChart entries={weightHistory} targetWeight={weightTargetWeight} />
+
+                    {/* 一覧表 */}
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-stone-500 border-b border-stone-100">
+                            <th className="text-left py-1 pr-3 font-bold">日付</th>
+                            <th className="text-right py-1 pr-3 font-bold">体重 (kg)</th>
+                            <th className="text-right py-1 font-bold">前日差</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {weightHistory
+                            .filter((w) => w.weight !== null)
+                            .slice()
+                            .reverse()
+                            .slice(0, 20)
+                            .map((w, idx, arr) => {
+                              const prev = arr[idx + 1];
+                              const diff =
+                                prev?.weight !== null && prev?.weight !== undefined && w.weight !== null
+                                  ? Math.round((w.weight - prev.weight) * 10) / 10
+                                  : null;
+                              const [, m, d] = w.date.split('-').map(Number);
+                              return (
+                                <tr key={w.date} className="border-b border-stone-50">
+                                  <td className="py-1 pr-3 text-stone-700">{m}/{d}</td>
+                                  <td className="py-1 pr-3 text-right font-bold text-stone-900">{w.weight}</td>
+                                  <td className={`py-1 text-right font-bold ${
+                                    diff === null ? 'text-stone-400' :
+                                    diff < 0 ? 'text-sky-600' :
+                                    diff > 0 ? 'text-rose-500' : 'text-stone-600'
+                                  }`}>
+                                    {diff === null ? '—' : diff > 0 ? `+${diff}` : String(diff)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : !weightLoading ? (
+                  <div className="text-xs text-stone-500 py-2">この期間に体重記録がありません</div>
+                ) : null}
+
+                {/* 運動記録一覧 */}
+                {weightHistory.some((w) => w.exercised || w.exerciseContent) && (
+                  <div>
+                    <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
+                      <Dumbbell className="w-3.5 h-3.5 text-violet-600" strokeWidth={2.2} />
+                      運動記録
+                    </div>
+                    <div className="space-y-1">
+                      {weightHistory
+                        .filter((w) => w.exercised || w.exerciseContent)
+                        .slice()
+                        .reverse()
+                        .slice(0, 15)
+                        .map((w) => {
+                          const [, m, d] = w.date.split('-').map(Number);
+                          return (
+                            <div key={w.date} className="flex gap-2 text-xs py-1 border-b border-stone-50">
+                              <span className="text-stone-500 flex-shrink-0 w-10">{m}/{d}</span>
+                              <span className="text-emerald-700 font-bold flex-shrink-0">✅</span>
+                              <span className="text-stone-800 break-all">{w.exerciseContent || '運動あり'}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* 運動記録（新DB） */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !exerciseOpen;
+                setExerciseOpen(next);
+                if (next && exerciseLogs.length === 0) {
+                  loadExerciseLogs(exerciseDays);
+                }
+              }}
+              className="w-full flex items-center justify-between p-3 active:bg-stone-50"
+            >
+              <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                <Dumbbell className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
+                運動記録
+              </span>
+              {exerciseOpen ? (
+                <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+              )}
+            </button>
+            {exerciseOpen && (
+              <div className="px-3 pb-3 space-y-3">
+                <div className="flex gap-2 flex-wrap">
+                  {[14, 30, 60].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setExerciseDays(d);
+                        setExerciseLogs([]);
+                        loadExerciseLogs(d);
+                      }}
+                      className={`px-3 py-1 text-xs rounded-lg font-bold border transition-colors ${
+                        exerciseDays === d
+                          ? 'bg-violet-500 text-white border-violet-500'
+                          : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
+                      }`}
+                    >
+                      {d}日
+                    </button>
+                  ))}
+                  {exerciseLoading && <span className="text-xs text-stone-500 py-1">読み込み中…</span>}
+                </div>
+
+                {exerciseLogs.length === 0 && !exerciseLoading && (
+                  <div className="text-xs text-stone-500 py-2">この期間に運動記録がありません</div>
+                )}
+
+                {exerciseLogs.length > 0 && (
+                  <>
+                    {/* 日別運動時間グラフ */}
+                    <ExerciseBarChart logs={exerciseLogs} days={exerciseDays} />
+
+                    {/* 集計 */}
+                    <div className="flex gap-3 text-xs">
+                      <div className="bg-violet-50 rounded-lg px-3 py-1.5 text-center">
+                        <div className="font-bold text-violet-700">{exerciseLogs.length}回</div>
+                        <div className="text-stone-500">運動</div>
+                      </div>
+                      <div className="bg-sky-50 rounded-lg px-3 py-1.5 text-center">
+                        <div className="font-bold text-sky-700">{exerciseLogs.reduce((a, l) => a + l.durationMin, 0)}分</div>
+                        <div className="text-stone-500">合計時間</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg px-3 py-1.5 text-center">
+                        <div className="font-bold text-amber-600">{exerciseLogs.reduce((a, l) => a + l.estimatedKcal, 0)} kcal</div>
+                        <div className="text-stone-500">消費</div>
+                      </div>
+                    </div>
+
+                    {/* 一覧表 */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-stone-500 border-b border-stone-100">
+                            <th className="text-left py-1 pr-2 font-bold">日付</th>
+                            <th className="text-left py-1 pr-2 font-bold">種目</th>
+                            <th className="text-right py-1 pr-2 font-bold">時間</th>
+                            <th className="text-right py-1 pr-2 font-bold">kcal</th>
+                            <th className="text-left py-1 font-bold">強度</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exerciseLogs.slice(0, 20).map((log) => {
+                            const [, m, d] = log.date.split('-').map(Number);
+                            return (
+                              <tr key={log.id} className="border-b border-stone-50">
+                                <td className="py-1 pr-2 text-stone-600">{m}/{d}</td>
+                                <td className="py-1 pr-2 text-stone-900 font-bold">{log.exercise}</td>
+                                <td className="py-1 pr-2 text-right text-stone-700">{log.durationMin}分</td>
+                                <td className="py-1 pr-2 text-right font-bold text-amber-600">{log.estimatedKcal}</td>
+                                <td className={`py-1 text-[10px] font-bold ${
+                                  log.intensity === '激しい' ? 'text-rose-600' :
+                                  log.intensity === '中等度' ? 'text-amber-600' : 'text-emerald-600'
+                                }`}>{log.intensity}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+
           {/* 送信履歴 */}
           {notifications.length > 0 && (
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
@@ -575,6 +925,117 @@ function PreviewStat({ label, value }: { label: string; value: number }) {
     <div className="bg-white border border-violet-200 rounded-lg p-1.5 text-center">
       <div className="text-[9px] font-bold text-violet-700">{label}</div>
       <div className="text-sm font-bold text-violet-900">{value}</div>
+    </div>
+  );
+}
+
+function WeightLineChart({
+  entries,
+  targetWeight,
+}: {
+  entries: Array<{ date: string; weight: number | null }>;
+  targetWeight: number | null;
+}) {
+  const data = entries.map((e) => {
+    const [, m, d] = e.date.split('-').map(Number);
+    return { label: `${m}/${d}`, weight: e.weight };
+  });
+
+  const weights = entries.map((e) => e.weight).filter((w): w is number => w !== null);
+  const minW = weights.length > 0 ? Math.floor(Math.min(...weights, targetWeight ?? Infinity) - 1) : undefined;
+  const maxW = weights.length > 0 ? Math.ceil(Math.max(...weights, targetWeight ?? -Infinity) + 1) : undefined;
+
+  return (
+    <div className="w-full h-48">
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+          <XAxis
+            dataKey="label"
+            interval="preserveStartEnd"
+            tick={{ fontSize: 10, fill: '#78716c' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 10, fill: '#78716c' }}
+            axisLine={false}
+            tickLine={false}
+            domain={[minW ?? 'auto', maxW ?? 'auto']}
+            tickFormatter={(v) => `${v}kg`}
+          />
+          <Tooltip
+            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+            formatter={(v) => [`${v} kg`, '体重']}
+          />
+          {targetWeight !== null && (
+            <ReferenceLine
+              y={targetWeight}
+              stroke="#10b981"
+              strokeDasharray="4 4"
+              label={{ value: `目標 ${targetWeight}kg`, fontSize: 9, fill: '#10b981', position: 'insideTopRight' }}
+            />
+          )}
+          <Line
+            type="monotone"
+            dataKey="weight"
+            stroke="#0ea5e9"
+            strokeWidth={2}
+            dot={{ r: 3, fill: '#0ea5e9', strokeWidth: 0 }}
+            connectNulls={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ExerciseBarChart({
+  logs,
+  days,
+}: {
+  logs: Array<{ date: string; durationMin: number; estimatedKcal: number }>;
+  days: number;
+}) {
+  const byDate: Record<string, number> = {};
+  for (const log of logs) {
+    byDate[log.date] = (byDate[log.date] || 0) + log.durationMin;
+  }
+  const data = Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-Math.min(days, 30))
+    .map(([date, min]) => {
+      const [, m, d] = date.split('-').map(Number);
+      return { label: `${m}/${d}`, min };
+    });
+
+  if (data.length === 0) return null;
+
+  return (
+    <div className="w-full h-32">
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+          <XAxis
+            dataKey="label"
+            interval="preserveStartEnd"
+            tick={{ fontSize: 9, fill: '#78716c' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 9, fill: '#78716c' }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) => `${v}分`}
+          />
+          <Tooltip
+            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+            formatter={(v) => [`${v}分`, '運動時間']}
+          />
+          <Bar dataKey="min" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

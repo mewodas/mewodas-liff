@@ -1,22 +1,32 @@
 // パスワード再設定（公開エンドポイント、認証不要）
 //
+// フロー:
+//   1. このエンドポイントでメール受領
+//   2. テナント検索 → 1時間有効のリセットトークン生成
+//   3. https://app.fitmeal.jp/store/account/reset/confirm?token=xxx をメール送信
+//   4. ユーザーがリンクから新パスワードを設定（別エンドポイント /confirm）
+//
 // セキュリティ:
 // - メール列挙攻撃を防ぐため、テナント未発見でも 200 を返す
 // - 同一メール宛は60秒に1回までのレート制限
-// - パスワードは自動生成のみ（攻撃者が任意の値を設定できない）
+// - トークンは HMAC 署名で改ざん検知、期限切れで自動無効化
 
 import { NextRequest, NextResponse } from 'next/server';
-import { hashPassword } from '@/lib/adminAuth';
-import { setTenantPasswordHash } from '@/lib/notion';
-import { findTenantByOwnerEmail, invalidateTenantCache } from '@/lib/tenantResolver';
-import { sendEmail, buildMailtoUrl, loginInfoEmail } from '@/lib/email';
-import { generatePassword } from '@/lib/passwordGen';
+import { findTenantByOwnerEmail } from '@/lib/tenantResolver';
+import { sendEmail, resetLinkEmail } from '@/lib/email';
+import { signResetToken } from '@/lib/passwordReset';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // 簡易レート制限（プロセス内メモリ、サーバ再起動で消える）
 const recentResets = new Map<string, number>();
+
+function originFromRequest(req: NextRequest): string {
+  const proto = req.headers.get('x-forwarded-proto') || 'https';
+  const host = req.headers.get('host') || 'app.fitmeal.jp';
+  return `${proto}://${host}`;
+}
 
 export async function POST(req: NextRequest) {
   let email = '';
@@ -48,23 +58,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const password = generatePassword(12);
-    const hash = hashPassword(password);
-    await setTenantPasswordHash(tenant.pageId, hash);
-    invalidateTenantCache();
+    const token = signResetToken({ email, tenantId: tenant.tenantId });
+    // /store 由来か /admin 由来かを区別したいが、メール経由なのでデフォルトで /store にする
+    // （ジム経営者向けのほうが大多数）
+    const origin = originFromRequest(req);
+    const resetUrl = `${origin}/store/account/reset/confirm?token=${encodeURIComponent(token)}`;
 
-    const payload = loginInfoEmail({
+    const payload = resetLinkEmail({
       tenantName: tenant.tenantName,
       ownerEmail: email,
-      password,
+      resetUrl,
     });
     const result = await sendEmail(payload);
 
     if (result.sent) {
       return NextResponse.json({ ok: true, mailSent: true });
     }
-    // RESEND 未設定 → mailto: では公開エンドポイントなので開けない
-    // ただしマスタが復旧する手段は残しておく
     return NextResponse.json({
       ok: true,
       mailSent: false,

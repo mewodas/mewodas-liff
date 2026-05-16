@@ -1,20 +1,22 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useSearchParams, usePathname } from 'next/navigation';
 import {
   Send,
   Sparkles,
   RefreshCw,
   Check,
   FileText,
+  MessageCircle,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 type Store = { pageId: string; storeId: string; name: string; signature: string };
-type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string };
+type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType?: string; sortOrder?: number };
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -27,6 +29,49 @@ function addDaysStr(s: string, n: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
+function rangeTypeToFromTo(rangeType: string | undefined, today: string): { from: string; to: string } | null {
+  if (!rangeType || rangeType === 'カスタム') return null;
+  const [y, m, d] = today.split('-').map(Number);
+  const todayDt = new Date(y, m - 1, d);
+  if (rangeType === '今日') return { from: today, to: today };
+  if (rangeType === '昨日') {
+    const dt = new Date(todayDt);
+    dt.setDate(dt.getDate() - 1);
+    const s = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { from: s, to: s };
+  }
+  if (rangeType === '今週') {
+    const dow = todayDt.getDay();
+    const monday = new Date(todayDt);
+    monday.setDate(todayDt.getDate() - ((dow === 0 ? 7 : dow) - 1));
+    const s = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+    return { from: s, to: today };
+  }
+  if (rangeType === '先週') {
+    const dow = todayDt.getDay();
+    const lastMonday = new Date(todayDt);
+    lastMonday.setDate(todayDt.getDate() - ((dow === 0 ? 7 : dow) - 1) - 7);
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    const s = `${lastMonday.getFullYear()}-${String(lastMonday.getMonth() + 1).padStart(2, '0')}-${String(lastMonday.getDate()).padStart(2, '0')}`;
+    const e = `${lastSunday.getFullYear()}-${String(lastSunday.getMonth() + 1).padStart(2, '0')}-${String(lastSunday.getDate()).padStart(2, '0')}`;
+    return { from: s, to: e };
+  }
+  if (rangeType === '今月') {
+    const firstDay = new Date(todayDt.getFullYear(), todayDt.getMonth(), 1);
+    const s = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
+    return { from: s, to: today };
+  }
+  if (rangeType === '先月') {
+    const firstDay = new Date(todayDt.getFullYear(), todayDt.getMonth() - 1, 1);
+    const lastDay = new Date(todayDt.getFullYear(), todayDt.getMonth(), 0);
+    const s = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
+    const e = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+    return { from: s, to: e };
+  }
+  return null;
+}
+
 export default function AdminReportsPage() {
   return (
     <Suspense fallback={<div className="p-6 text-center text-stone-500">読み込み中…</div>}>
@@ -37,6 +82,8 @@ export default function AdminReportsPage() {
 
 function Inner() {
   const sp = useSearchParams();
+  const pathname = usePathname() || '';
+  const isStore = pathname.startsWith('/store');
   const initialCustomerId = sp.get('customerId') || '';
   const initialDraft = sp.get('draft') || '';
   const today = jstToday();
@@ -44,6 +91,7 @@ function Inner() {
   const [stores, setStores] = useState<Store[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [templateError, setTemplateError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
@@ -55,6 +103,7 @@ function Inner() {
   const [body, setBody] = useState(initialDraft);
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingLine, setSendingLine] = useState(false);
   const [sendLinePush, setSendLinePush] = useState(true);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
@@ -72,23 +121,47 @@ function Inner() {
 
   useEffect(() => {
     (async () => {
+      // 各 API を独立して try/catch。1つ失敗しても他は動かす。
+      async function safeFetch<T>(url: string, fallback: T): Promise<T> {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) return fallback;
+          const text = await res.text();
+          if (!text) return fallback;
+          try {
+            return JSON.parse(text) as T;
+          } catch {
+            return fallback;
+          }
+        } catch {
+          return fallback;
+        }
+      }
       try {
-        const [cRes, sRes, tRes] = await Promise.all([
-          fetch('/api/admin/customers', { cache: 'no-store' }),
-          fetch('/api/admin/stores', { cache: 'no-store' }),
-          fetch('/api/admin/templates', { cache: 'no-store' }),
+        const [cJ, sJ, tJ] = await Promise.all([
+          safeFetch<{ customers?: Customer[] }>('/api/admin/customers', {}),
+          safeFetch<{ stores?: Store[] }>('/api/admin/stores', {}),
+          fetch('/api/admin/templates', { cache: 'no-store' })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(`テンプレ取得失敗（${res.status}）`);
+              const j = await res.json();
+              return j as { templates?: Template[]; error?: string; hint?: string };
+            })
+            .catch((e: unknown) => {
+              setTemplateError(e instanceof Error ? e.message : 'テンプレ取得エラー');
+              return {} as { templates?: Template[] };
+            }),
         ]);
-        const [cJ, sJ, tJ] = await Promise.all([cRes.json(), sRes.json(), tRes.json()]);
         setCustomers((cJ.customers || []).filter((c: Customer) => !!c.foodStatus));
         setStores(sJ.stores || []);
         const tList: Template[] = tJ.templates || [];
         setTemplates(tList);
-        // 初期テンプレ選択（URL draft が無いとき最初のテンプレを採用）
+        if (tJ && 'error' in tJ && tJ.error) {
+          setTemplateError((tJ as { hint?: string; error?: string }).hint || (tJ as { error?: string }).error || null);
+        }
         if (!initialDraft && tList.length > 0) {
           setTemplateId(tList[0].id);
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'エラー');
       } finally {
         setLoading(false);
       }
@@ -104,17 +177,21 @@ function Inner() {
 
   // テンプレ切替時：タイトル・本文をテンプレのベーステキストで上書き
   // ただしユーザーが編集済みなら上書きしない
+  // rangeType がある場合は from/to も自動更新（バグ1修正）
   useEffect(() => {
     if (!selectedTemplate) return;
     const baseTitle = selectedTemplate.titleTemplate || '';
-    const baseBody = selectedTemplate.useAi
-      ? (selectedTemplate.bodyTemplate || '')
-      : (selectedTemplate.bodyTemplate || '');
+    const baseBody = selectedTemplate.bodyTemplate || '';
     const userEditedTitle = title !== templateBaselineRef.current.title && title !== '';
     const userEditedBody = body !== templateBaselineRef.current.body && body !== '';
     if (!userEditedTitle) setTitle(baseTitle);
     if (!userEditedBody) setBody(baseBody);
     templateBaselineRef.current = { title: baseTitle, body: baseBody };
+    const range = rangeTypeToFromTo(selectedTemplate.rangeType, today);
+    if (range) {
+      setFrom(range.from);
+      setTo(range.to);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, templates]);
 
@@ -192,6 +269,41 @@ function Inner() {
     }
   }
 
+  async function sendLine() {
+    if (!customerId || !title.trim() || !body.trim()) {
+      setError('顧客・タイトル・本文すべて必要');
+      return;
+    }
+    setSendingLine(true);
+    setError(null);
+    setResultMsg(null);
+    try {
+      const sig = customerStore?.signature?.trim() || '';
+      const bodyText = sig && !body.includes(sig) ? `${body.trim()}\n\n— ${sig}` : body.trim();
+      const res = await fetch('/api/admin/reports/send-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          title: title.trim(),
+          body: bodyText,
+          staffName: customerStore?.name || '',
+          category: selectedTemplate?.category || 'アドバイス',
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `LINE 送信失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      setResultMsg(j?.push?.pushed ? 'LINE 送信しました' : `失敗: ${j?.push?.reason || '不明'}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSendingLine(false);
+    }
+  }
+
   return (
     <AdminShell title="レポート送付">
       <div className="space-y-3">
@@ -246,7 +358,15 @@ function Inner() {
         {/* ④ テンプレ（チップ形式で並べる・切替で本文が変わる） */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-bold text-stone-700">④ テンプレ</div>
+            <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
+              ④ レポートテンプレート
+              <Link
+                href={isStore ? '/store/templates' : '/admin/templates'}
+                className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
+              >
+                ⚙ レポートテンプレート管理
+              </Link>
+            </div>
             {selectedTemplate && (
               <span className="text-[10px] text-stone-500">
                 {selectedTemplate.category}
@@ -255,22 +375,38 @@ function Inner() {
             )}
           </div>
 
-          <div className="flex gap-1.5 flex-wrap">
-            <TemplateChip
-              label="テンプレなし"
-              active={templateId === ''}
-              onClick={() => setTemplateId('')}
-            />
-            {templates.map((t) => (
+          {templateError && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] p-2 rounded-lg">
+              {templateError}
+            </div>
+          )}
+          {loading ? (
+            <div className="text-[11px] text-stone-400 py-1">読み込み中…</div>
+          ) : (
+            <div className="flex gap-1.5 flex-wrap">
+              {[...templates]
+                .sort((a, b) => {
+                  const sa = a.sortOrder ?? 9999;
+                  const sb = b.sortOrder ?? 9999;
+                  if (sa !== sb) return sa - sb;
+                  return a.name.localeCompare(b.name, 'ja');
+                })
+                .map((t) => (
+                  <TemplateChip
+                    key={t.id}
+                    label={t.name}
+                    useAi={t.useAi}
+                    active={templateId === t.id}
+                    onClick={() => setTemplateId(t.id)}
+                  />
+                ))}
               <TemplateChip
-                key={t.id}
-                label={t.name}
-                useAi={t.useAi}
-                active={templateId === t.id}
-                onClick={() => setTemplateId(t.id)}
+                label="テンプレなし"
+                active={templateId === ''}
+                onClick={() => setTemplateId('')}
               />
-            ))}
-          </div>
+            </div>
+          )}
 
           {/* タイトル */}
           <div className="pt-1">
@@ -288,33 +424,32 @@ function Inner() {
           <div>
             <label className="text-[10px] font-bold text-stone-700 block mb-1 inline-flex items-center gap-1">
               <FileText className="w-3 h-3" strokeWidth={2.4} />
-              本文（ベーステキスト・編集可）
+              本文プレビュー（「レポート作成」で生成・編集可）
             </label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={12}
-              placeholder={selectedTemplate?.useAi ? 'AI生成ボタンを押すと本文がここに入ります' : 'テンプレを選ぶとベース本文がここに入ります'}
+              placeholder="「レポート作成」を押すと変数・AI コメントが展開された本文が入ります"
               className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed"
             />
           </div>
 
-          {/* AI 生成（useAi のテンプレで実データ反映） */}
           <button
             type="button"
             onClick={generate}
             disabled={generating || !customerId}
-            className="w-full bg-white border border-emerald-500 text-emerald-700 text-xs font-bold py-2 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            className="w-full bg-emerald-500 text-white text-sm font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
           >
             {generating ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={2.2} />
-                生成中…（10〜20秒）
+                <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+                文章を生成中…
               </>
             ) : (
               <>
-                <Sparkles className="w-3.5 h-3.5" strokeWidth={2.2} />
-                {selectedTemplate?.useAi ? 'AIで実データから生成' : 'AIで内容を補正'}
+                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+                文章を生成する
               </>
             )}
           </button>
@@ -346,11 +481,19 @@ function Inner() {
             className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" strokeWidth={2.2} />
-            {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} に送信`}
+            {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} 様に送信`}
+          </button>
+          <button
+            type="button"
+            onClick={sendLine}
+            disabled={sendingLine || !customerId || !title.trim() || !body.trim()}
+            className="w-full bg-green-500 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
+            {sendingLine ? 'LINE 送信中…' : `${selectedCustomer?.name || '顧客'} 様に LINE 送信`}
           </button>
         </section>
 
-        {loading && <div className="text-center text-stone-500 py-6">読み込み中…</div>}
       </div>
     </AdminShell>
   );

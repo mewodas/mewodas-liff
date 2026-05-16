@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Key, Save, Check } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
+import PasswordInput from '@/components/PasswordInput';
 
 type Me = { email: string; role: 'master' | 'tenant_admin' };
 
@@ -97,32 +98,31 @@ export default function ChangePasswordPage() {
 
               <div>
                 <label className="text-xs font-bold text-stone-700 mb-1 block">現在のパスワード</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
+                  onChange={setCurrent}
                   autoComplete="current-password"
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  accent="amber"
                 />
               </div>
               <div>
                 <label className="text-xs font-bold text-stone-700 mb-1 block">新しいパスワード（8文字以上）</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={next}
-                  onChange={(e) => setNext(e.target.value)}
+                  onChange={setNext}
                   autoComplete="new-password"
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  minLength={8}
+                  accent="amber"
                 />
               </div>
               <div>
                 <label className="text-xs font-bold text-stone-700 mb-1 block">新しいパスワード（確認）</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
+                  onChange={setConfirm}
                   autoComplete="new-password"
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  minLength={8}
+                  accent="amber"
                 />
               </div>
 
