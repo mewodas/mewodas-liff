@@ -3,13 +3,13 @@
 // 1日あたりカロリー差分を引いて目標kcal を算出。
 
 export const ACTIVITY_LEVELS = [
-  { label: 'ほぼ運動なし', factor: 1.2 },
-  { label: '軽い', factor: 1.375 },
-  { label: '中等度', factor: 1.55 },
-  { label: '激しい', factor: 1.725 },
+  { label: 'ほぼ運動なし', displayLabel: 'ほぼ運動なし（デスクワーク中心）', factor: 1.2 },
+  { label: '軽い', displayLabel: '軽い運動（週1-2回）', factor: 1.375 },
+  { label: '中等度', displayLabel: '中程度の運動（週3-4回）', factor: 1.55 },
+  { label: '激しい', displayLabel: '激しい運動（毎日）', factor: 1.725 },
 ] as const;
 
-export const PLANS = ['減量', '維持', '増量'] as const;
+export const PLANS = ['減量', '増量', '筋肥大', '現状維持'] as const;
 
 export type ActivityLabel = typeof ACTIVITY_LEVELS[number]['label'];
 export type Plan = typeof PLANS[number];
@@ -95,16 +95,24 @@ export function calcGoals(inp: GoalInputs): CalcResult | null {
   // プラン別 PFC g/kg 現在体重
   const planNorm = plan || (
     targetWeight !== null && currentWeight !== null
-      ? (targetWeight < currentWeight ? '減量' : targetWeight > currentWeight ? '増量' : '維持')
-      : '維持'
+      ? (targetWeight < currentWeight ? '減量' : targetWeight > currentWeight ? '増量' : '現状維持')
+      : '現状維持'
   );
   const macroRatio =
-    planNorm === '減量' ? { P: 2.0, F: 0.8 }
-    : planNorm === '増量' ? { P: 1.8, F: 1.0 }
-    : { P: 1.6, F: 1.0 };
+    planNorm === '減量' ? { P: 2.2, F: 0.8 }
+    : planNorm === '増量' ? { P: 2.0, F: 1.0 }
+    : planNorm === '筋肥大' ? { P: 2.5, F: 0.8 }
+    : { P: 1.6, F: 1.0 }; // 現状維持
 
-  // 目標kcal: 維持なら TDEE のみ、それ以外は差分込み
-  const goalKcalRaw = planNorm === '維持' ? tdee : tdee + clampedDelta;
+  // プラン補正: 減量=-500 / 増量=+300 / 筋肥大=+200 / 現状維持=0（targetWeight ある場合のみ達成日逆算で上書き）
+  const planDelta =
+    planNorm === '減量' ? -500
+    : planNorm === '増量' ? 300
+    : planNorm === '筋肥大' ? 200
+    : 0;
+  // 達成日逆算が有意な場合はそちらを優先、なければプラン補正
+  const usedDelta = (targetWeight !== null && remainingDays > 0) ? clampedDelta : planDelta;
+  const goalKcalRaw = tdee + usedDelta;
   // 最低 1200kcal を下回らない（女性最低）/ 最大 4000kcal
   const goalKcal = Math.round(Math.max(1200, Math.min(4000, goalKcalRaw)) / 10) * 10;
   if (goalKcalRaw !== goalKcal) {

@@ -19,7 +19,7 @@ import { useAdminBase } from '@/lib/useAdminBase';
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUS_OPTIONS = ['進行中', '設定中', '休止中', '卒業'];
+const STATUS_OPTIONS = ['申込中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
 
 function jstToday(): string {
@@ -35,7 +35,7 @@ export default function NewCustomerPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [name, setName] = useState('');
   const [lineUserId, setLineUserId] = useState('');
-  const [foodStatus, setFoodStatus] = useState('設定中');
+  const [foodStatus, setFoodStatus] = useState('申込中');
   const [gender, setGender] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [age, setAge] = useState('');
@@ -229,7 +229,7 @@ export default function NewCustomerPage() {
                 className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">—</option>
-                {ACTIVITY_LEVELS.map((a) => <option key={a.label} value={a.label}>{a.label}</option>)}
+                {ACTIVITY_LEVELS.map((a) => <option key={a.label} value={a.label}>{a.displayLabel}</option>)}
               </select>
             </div>
           </div>

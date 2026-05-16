@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Target,
   Scale,
@@ -17,6 +17,7 @@ import {
   ChevronUp,
   TrendingDown,
   Dumbbell,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -168,6 +169,9 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const router = useRouter();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
+  const [resettingOnboard, setResettingOnboard] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -321,6 +325,23 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function resetOnboarding() {
+    if (!confirm('この顧客のオンボーディング完了状態をリセットします。\n顧客は次回 LIFF を開いたときに、再度オンボーディング画面が表示されます。\n本当にリセットしますか？')) {
+      return;
+    }
+    setResettingOnboard(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+      setSaveMsg('✅ オンボーディングをリセットしました');
+      setTimeout(() => setSaveMsg(null), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'リセット失敗');
+    } finally {
+      setResettingOnboard(false);
     }
   }
 
@@ -871,6 +892,27 @@ export default function CustomerDetailPage({
                   })}
                 </ul>
               )}
+            </section>
+          )}
+
+          {isAdminRoute && (
+            <section className="bg-white rounded-2xl border-2 border-red-200 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-red-600" strokeWidth={2.2} />
+                <h3 className="text-sm font-bold text-red-700">危険な操作（管理者専用）</h3>
+              </div>
+              <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
+                オンボーディングをリセットすると、顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
+                顧客の入力した目標値・体重・性別などの基本情報は保持されます。
+              </p>
+              <button
+                type="button"
+                onClick={resetOnboarding}
+                disabled={resettingOnboard}
+                className="w-full bg-white border-2 border-red-500 text-red-600 font-bold py-2.5 rounded-xl text-sm active:bg-red-50 disabled:opacity-50"
+              >
+                {resettingOnboard ? 'リセット中…' : '🔄 オンボーディングをリセット'}
+              </button>
             </section>
           )}
         </div>

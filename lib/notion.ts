@@ -380,7 +380,6 @@ export async function createTenantCustomerDb(
           options: [
             { name: '申込中', color: 'gray' },
             { name: '進行中', color: 'green' },
-            { name: '設定中', color: 'purple' },
             { name: '休止中', color: 'orange' },
             { name: '卒業', color: 'blue' },
           ],
@@ -410,8 +409,9 @@ export async function createTenantCustomerDb(
         select: {
           options: [
             { name: '減量', color: 'red' },
-            { name: '維持', color: 'gray' },
             { name: '増量', color: 'green' },
+            { name: '筋肥大', color: 'purple' },
+            { name: '現状維持', color: 'gray' },
           ],
         },
       },

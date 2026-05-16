@@ -9,6 +9,17 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – フォローアップ
+- feat(admin): 顧客編集画面 /admin/customers/[id] に「危険な操作（管理者専用）」セクションを追加。オンボーディングリセットボタンを admin URL でのみ表示（usePathname で /admin/* 判定。/store/* では非表示）
+- feat(lib): goalCalc.ts の PLANS を 4種化（減量/増量/筋肥大/現状維持）。calcGoals のプラン補正と PFC 比率を 4種対応に拡張。ACTIVITY_LEVELS に displayLabel 追加（DB保存は label のまま）
+- fix(admin): /admin/customers/new デフォルト foodStatus を「申込中」に。STATUS_OPTIONS から「設定中」削除
+- fix(api): /api/admin/customers POST のデフォルト「設定中」→「申込中」
+- fix(api): /api/public/apply の plan「維持」→「現状維持」
+- fix(lib): createTenantCustomerDb で食事管理ステータスから「設定中」除去、プラン options を 4種に変更
+- chore: 診断 /api/debug/tenant 削除
+- 影響範囲: 管理画面 /admin/customers/* + 新規テナント自動プロビジョニング先のスキーマ
+- 関連: notion-ops で本番＋staging の顧客DBスキーマも更新済み（設定中 option 削除・プラン options 差し替え）
+
 ## 2026-05-17 (staging)
 - feat(admin): 顧客編集画面リファクタ（セクション再構成・自動計算ボタン・保存通知）
   - STATUS_OPTIONS から「設定中」を削除 → ['申込中', '進行中', '休止中', '卒業']
