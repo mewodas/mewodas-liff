@@ -9,6 +9,10 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-16 23:30 (staging)
+- 診断: /api/debug/tenant を追加（一時的）。staging 招待リンク 404 の原因切り分け用に env と getCurrentTenant() を返す
+- 影響範囲: staging のみ（main 未マージ）
+
 ---
 
 ## 2026-05-16 10:00 a102dc7 (現在の本番)
