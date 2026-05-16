@@ -71,17 +71,15 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     };
   }, [step]);
 
-  async function complete() {
+  function complete() {
     if (completing) return;
     setCompleting(true);
-    try {
-      await fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
-        method: 'POST',
-      });
-    } catch {
-      // fail-safe
-    }
-    window.location.href = '/home';
+    fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
+      method: 'POST',
+    }).catch(() => {});
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 100);
   }
 
   function next() {

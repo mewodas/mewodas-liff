@@ -65,6 +65,10 @@ export default function GoalsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.location.href = '/home';
+  }, []);
+
+  useEffect(() => {
     (async () => {
       try {
         await initLiff();

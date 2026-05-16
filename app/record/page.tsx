@@ -247,6 +247,9 @@ export default function RecordPage() {
       setStage('saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存エラー');
+      setTimeout(() => {
+        window.location.href = '/home';
+      }, 2000);
     } finally {
       setLabelBusy(false);
     }
@@ -329,6 +332,9 @@ export default function RecordPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存エラー');
       setStage('review');
+      setTimeout(() => {
+        window.location.href = '/home';
+      }, 2000);
     }
   }
 
@@ -706,7 +712,7 @@ export default function RecordPage() {
   // ===== ハブ画面（メイン） =====
   return (
     <main className="min-h-screen bg-stone-50 pb-32">
-      <PageHeader title="食事を記録" Icon={UtensilsCrossed} subtitle="写真・テキスト・成分表でPFC自動計算" onBack={() => router.push('/home')} />
+      <PageHeader title="食事を記録" Icon={UtensilsCrossed} subtitle="写真・テキスト・成分表でPFC自動計算" onBack={() => { window.location.href = '/home'; }} />
 
       <div className="px-4 py-5">
         {error && (

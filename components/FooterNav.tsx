@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Home, UtensilsCrossed, Bell, User, Target } from 'lucide-react';
+import { Home, UtensilsCrossed, Bell, User } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 
 type NavItem = {
@@ -42,12 +42,6 @@ const items: NavItem[] = [
     icon: <User className={ICON_CLASS} strokeWidth={2.2} />,
     match: (p) => p.startsWith('/profile'),
   },
-  {
-    href: '/goals',
-    label: '目標',
-    icon: <Target className={ICON_CLASS} strokeWidth={2.2} />,
-    match: (p) => p.startsWith('/goals'),
-  },
 ];
 
 export default function FooterNav() {
@@ -83,7 +77,7 @@ export default function FooterNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-50">
-      <div className="max-w-md mx-auto grid grid-cols-5">
+      <div className="max-w-md mx-auto grid grid-cols-4">
         {items.map((it) => {
           const active = it.match(pathname);
           const className = `flex flex-col items-center py-1.5 ${
