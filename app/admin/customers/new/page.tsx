@@ -353,6 +353,11 @@ export default function NewCustomerPage() {
                   ? `あと ${diff.toFixed(1)}kg 増量`
                   : '現体重キープ';
                 const delta = calc?.clampedDelta;
+                const rawDelta = calc?.dailyDeltaKcal;
+                const isClamped =
+                  rawDelta !== undefined &&
+                  delta !== undefined &&
+                  Math.abs(rawDelta - delta) > 1;
                 const absDiff = Math.abs(diff);
                 return (
                   <div className="space-y-0.5 pl-6">
@@ -366,7 +371,13 @@ export default function NewCustomerPage() {
                     </div>
                     {delta !== undefined && Math.abs(delta) > 0 && remainingDays > 0 && diff !== 0 && (
                       <div className="text-[10px] opacity-70">
-                        ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日)
+                        ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日 = {Math.round(rawDelta ?? 0)} kcal/日)
+                      </div>
+                    )}
+                    {isClamped && (
+                      <div className="mt-1 text-[11px] text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug">
+                        ⚠️ 計算上 {Math.round(rawDelta ?? 0)} kcal/日 必要ですが、健康上の安全上限（1日 ±1,000 kcal）でクランプしています。<br />
+                        → 目標達成日を後ろにずらすか、目標体重を見直してください。このままでは目標日に体重が到達しません。
                       </div>
                     )}
                   </div>

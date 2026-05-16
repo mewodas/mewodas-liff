@@ -18,6 +18,14 @@
 - feat(admin/[id], admin/new): バナーに「1日あたり -N kcal 削減 / +N kcal 追加」と計算式 (Xkg × 7,700 ÷ N日) を追加。体重・目標日未入力時はヒントを表示
 - 影響範囲: 管理画面 /admin/customers/[id]、/admin/customers/new、/store/customers/[id]、/store/customers/new（re-export）、API /api/admin/customers/[id]、lib/notion.ts、lib/repository/customers.ts
 
+## 2026-05-17 (staging) – クランプ警告追加
+- ui(admin): 残日数バナーに「1日あたり調整 kcal がクランプされた場合の警告」を追加（両ページ）
+  - 計算上 -2,566 kcal/日 等になる極端な目標体重差では、安全上限 -1,000 kcal/日 で自動クランプされる
+  - 従来は警告無しで「目標体重を変えても結果が動かない」と見えていたため、黄色バナーで明示
+  - 文言: 「計算上 N kcal/日 必要ですが、健康上の安全上限（1日±1,000kcal）でクランプしています。目標達成日を後ろにずらすか、目標体重を見直してください」
+  - 計算式表示も `(Xkg × 7,700 ÷ N日 = M kcal/日)` の形に拡張（生の計算値を明示）
+- 影響範囲: /admin/customers/{[id]|new}
+
 ## 2026-05-17 (staging) – UI 細かい調整
 - ui(admin): LINE ユーザーID を /store/customers/new で**表示するが readOnly**（input は薄グレーで cursor-not-allowed）。/admin は引き続き編集可能
 - ui(admin): 身体情報の注釈を 1 行に短縮（<br> 削除、文言も簡潔化）
