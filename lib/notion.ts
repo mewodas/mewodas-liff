@@ -512,6 +512,14 @@ export type TenantRow = {
   lineAutoSendEnabled: boolean;
   /** "HH:MM" 形式の JST 送信時刻。未設定なら "06:00" 想定 */
   autoSendTime: string | null;
+  /** Stripe 連携用 */
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  paymentStatus: string | null;
+  nextBillingDate: string | null;
+  customerCount: number | null;
+  monthlyPrice: number | null;
+  billingCycle: string | null;
 };
 
 export async function updateTenantRow(
@@ -525,6 +533,13 @@ export async function updateTenantRow(
     lineChannelToken?: string | null;
     lineAutoSendEnabled?: boolean;
     autoSendTime?: string | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    paymentStatus?: string;
+    nextBillingDate?: string | null;
+    customerCount?: number;
+    monthlyPrice?: number;
+    billingCycle?: string;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -554,6 +569,33 @@ export async function updateTenantRow(
       ? { rich_text: [{ type: 'text', text: { content: patch.autoSendTime } }] }
       : { rich_text: [] };
   }
+  if (patch.stripeCustomerId !== undefined) {
+    properties['Stripe Customer ID'] = patch.stripeCustomerId
+      ? { rich_text: [{ type: 'text', text: { content: patch.stripeCustomerId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.stripeSubscriptionId !== undefined) {
+    properties['Stripe Subscription ID'] = patch.stripeSubscriptionId
+      ? { rich_text: [{ type: 'text', text: { content: patch.stripeSubscriptionId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.paymentStatus !== undefined) {
+    properties['支払いステータス'] = { select: { name: patch.paymentStatus } };
+  }
+  if (patch.nextBillingDate !== undefined) {
+    properties['次回請求日'] = patch.nextBillingDate
+      ? { date: { start: patch.nextBillingDate } }
+      : { date: null };
+  }
+  if (patch.customerCount !== undefined) {
+    properties['顧客数'] = { number: patch.customerCount };
+  }
+  if (patch.monthlyPrice !== undefined) {
+    properties['月額料金'] = { number: patch.monthlyPrice };
+  }
+  if (patch.billingCycle !== undefined) {
+    properties['請求サイクル'] = { select: { name: patch.billingCycle } };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -577,6 +619,13 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       lineChannelToken: p['LINE Channel Token']?.rich_text?.[0]?.plain_text || null,
       lineAutoSendEnabled: !!p['LINE自動送付']?.checkbox,
       autoSendTime: p['自動送付時刻']?.rich_text?.[0]?.plain_text || null,
+      stripeCustomerId: p['Stripe Customer ID']?.rich_text?.[0]?.plain_text || null,
+      stripeSubscriptionId: p['Stripe Subscription ID']?.rich_text?.[0]?.plain_text || null,
+      paymentStatus: p['支払いステータス']?.select?.name || null,
+      nextBillingDate: p['次回請求日']?.date?.start || null,
+      customerCount: p['顧客数']?.number ?? null,
+      monthlyPrice: p['月額料金']?.number ?? null,
+      billingCycle: p['請求サイクル']?.select?.name || null,
     };
   });
 }
