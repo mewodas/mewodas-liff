@@ -2,16 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Home, UtensilsCrossed, Bell, User } from 'lucide-react';
-import { initLiff, getLineProfile } from '@/lib/liff';
+import { type ReactNode } from 'react';
+import { Home, UtensilsCrossed, MessageCircle, LayoutGrid } from 'lucide-react';
 
 type NavItem = {
   label: string;
   icon: ReactNode;
   match: (path: string) => boolean;
   href: string;
-  badgeKey?: string;
 };
 
 const ICON_CLASS = 'w-5 h-5';
@@ -30,46 +28,24 @@ const items: NavItem[] = [
     match: (p) => p.startsWith('/record'),
   },
   {
-    href: '/notifications',
-    label: 'お知らせ',
-    icon: <Bell className={ICON_CLASS} strokeWidth={2.2} />,
-    match: (p) => p.startsWith('/notifications') || p.startsWith('/announcements'),
-    badgeKey: 'unread',
+    href: '/chat',
+    label: 'AI相談',
+    icon: <MessageCircle className={ICON_CLASS} strokeWidth={2.2} />,
+    match: (p) => p.startsWith('/chat'),
   },
   {
-    href: '/profile',
-    label: 'プロフィール',
-    icon: <User className={ICON_CLASS} strokeWidth={2.2} />,
-    match: (p) => p.startsWith('/profile'),
+    href: '/menu',
+    label: 'メニュー',
+    icon: <LayoutGrid className={ICON_CLASS} strokeWidth={2.2} />,
+    match: (p) =>
+      p.startsWith('/menu') ||
+      p.startsWith('/weekly') ||
+      p.startsWith('/history'),
   },
 ];
 
 export default function FooterNav() {
   const pathname = usePathname() || '/';
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await initLiff();
-        const profile = await getLineProfile();
-        if (!profile) return;
-        const res = await fetch(
-          `/api/notifications?lineUserId=${encodeURIComponent(profile.userId)}&t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) return;
-        const j = await res.json();
-        if (!cancelled) setUnreadCount(j.unreadCount || 0);
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // 管理者画面・店舗側画面ではフッターナビを非表示
   if (pathname.startsWith('/admin')) return null;
@@ -83,7 +59,6 @@ export default function FooterNav() {
           const className = `flex flex-col items-center py-1.5 ${
             active ? 'text-emerald-700' : 'text-stone-500'
           } active:bg-stone-50`;
-          const showBadge = it.badgeKey === 'unread' && unreadCount > 0;
           return (
             <Link
               key={it.href}
@@ -97,13 +72,8 @@ export default function FooterNav() {
                   : undefined
               }
             >
-              <span className="relative leading-none flex items-center justify-center h-6">
+              <span className="leading-none flex items-center justify-center h-6">
                 {it.icon}
-                {showBadge && (
-                  <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] px-0.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
               </span>
               <span
                 className={`mt-0.5 font-bold text-[9px] leading-tight ${

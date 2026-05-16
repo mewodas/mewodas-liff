@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { invalidate } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -48,6 +49,10 @@ export async function POST(req: NextRequest) {
 
     // GAS書き込み完了を待ってからレスポンス（上書き反映を確実にする）
     await callGasSaveWeight({ lineUserId, date, weight });
+
+    // GAS が顧客DBの「現在体重」を更新したので、Vercel側の顧客キャッシュを
+    // 全テナント横断でクリア（次回 /api/today などで fresh な値を取得）
+    invalidate('');
 
     return NextResponse.json({ ok: true });
   } catch (e) {
