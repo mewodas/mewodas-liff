@@ -132,8 +132,7 @@ export default function NewCustomerPage() {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `作成失敗（${res.status}）`);
       }
-      const j = await res.json();
-      router.push(`${base}/customers/${j.customer.pageId}`);
+      router.push(base);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
