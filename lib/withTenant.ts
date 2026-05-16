@@ -5,6 +5,7 @@
 //   export const POST = withLiffTenant(async (req) => { ... });
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { runInTenantContext } from './tenantContext';
 import { getTenantByIdAsync, resolveTenantByLiffId } from './tenantResolver';
 import { verifySession, SESSION_COOKIE_NAME, type SessionPayload } from './adminAuth';
@@ -36,6 +37,14 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     try {
       return await runInTenantContext(tenant, () => handler(req, ctx));
     } catch (e) {
+      if (process.env.SENTRY_DSN) {
+        Sentry.withScope((scope) => {
+          scope.setTag('tenant_id', tenant.id);
+          scope.setTag('tenant_name', tenant.name);
+          scope.setTag('error_source', 'withAdminTenant');
+          Sentry.captureException(e);
+        });
+      }
       const message = e instanceof Error ? e.message : 'unknown error';
       return NextResponse.json(
         { error: message.slice(0, 500), errorType: 'handler_exception' },
@@ -69,7 +78,19 @@ export function withLiffTenant(handler: RouteHandler): RouteHandler {
     }
     // LIFF ID 未提供 or 未登録ならフォールバック（移行期）
     if (!tenant) tenant = getDefaultTenant();
-    return runInTenantContext(tenant, () => handler(req, ctx));
+    try {
+      return await runInTenantContext(tenant, () => handler(req, ctx));
+    } catch (e) {
+      if (process.env.SENTRY_DSN) {
+        Sentry.withScope((scope) => {
+          scope.setTag('tenant_id', tenant!.id);
+          scope.setTag('tenant_name', tenant!.name);
+          scope.setTag('error_source', 'withLiffTenant');
+          Sentry.captureException(e);
+        });
+      }
+      throw e;
+    }
   };
 }
 
