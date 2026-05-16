@@ -9,6 +9,17 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – UI 細かい調整
+- ui(admin): LINE ユーザーID を /store/customers/new で**表示するが readOnly**（input は薄グレーで cursor-not-allowed）。/admin は引き続き編集可能
+- ui(admin): 身体情報の注釈を 1 行に短縮（<br> 削除、文言も簡潔化）
+- ui(admin): 氏名 input の背景を bg-stone-50 → bg-white に統一
+- ui(admin): TDEE と PFC 割合（自動計算カラム）の背景を bg-stone-50 → bg-white に統一、枠線も他と統一
+- ui(admin): 「目標カロリー・PFC（自動計算、手動編集可）」見出しテキストを削除（grid 内のラベルで意味が伝わるため）
+- ui(admin): PFC 割合のラベルを「タンパク質の割合」→「目標タンパク質 (%)」形式に変更（左隣の input ラベル「目標タンパク質 (g)」と統一）
+- ui(admin): 希望のプラン下の計算式バッジを削除
+- ui(admin): 残日数バナーに「計算式: kcal ±N / タンパク質 X g/kg・脂質 Y%」を併記（プラン選択時のみ表示）。目標達成日無しでもプラン選択時にバナーが表示される
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
 ## 2026-05-17 (staging) – LINE ユーザーID 編集を admin 専用に
 - security(admin): /admin/customers/new の LINEユーザーID 入力フィールドを **admin URL でのみ表示**（usePathname で /admin/* 判定）
 - /store/customers/new からアクセスすると LINEユーザーID フィールド自体が**非表示**になり、店舗スタッフが手動で書き換えられないようにした

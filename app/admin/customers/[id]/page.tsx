@@ -501,19 +501,10 @@ export default function CustomerDetailPage({
                   <option value="筋肥大">筋肥大</option>
                   <option value="現状維持">現状維持</option>
                 </select>
-                {plan && (
-                  <p className="text-[10px] text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-2 py-1 mt-1">
-                    {plan === '減量' && 'kcal -500 / タンパク質 2.2g/kg・脂質 20%'}
-                    {plan === '増量' && 'kcal +300 / タンパク質 2.0g/kg・脂質 25%'}
-                    {plan === '筋肥大' && 'kcal +200 / タンパク質 2.5g/kg・脂質 20%'}
-                    {plan === '現状維持' && 'kcal ±0 / タンパク質 1.6g/kg・脂質 25%'}
-                  </p>
-                )}
               </div>
             </div>
             <div className="mt-3 text-xs text-stone-500 leading-snug">
-              ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、<br />
-              目標カロリーとPFC（タンパク質・脂質・炭水化物）が自動計算されます（手動編集可）。
+              ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
             </div>
           </section>
 
@@ -551,39 +542,42 @@ export default function CustomerDetailPage({
               </div>
             </div>
 
-            {/* 残日数バナー */}
-            {targetDate && remainingDays !== null && (
-              <div className={`mb-3 rounded-xl border p-3 flex items-center gap-2 ${
-                remainingDays < 0
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : remainingDays === 0
-                  ? 'bg-amber-50 border-amber-200 text-amber-800'
-                  : 'bg-sky-50 border-sky-200 text-sky-800'
-              }`}>
-                <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                <div className="text-sm font-bold">
-                  {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
-                   remainingDays === 0 ? '目標日は今日' :
-                   `目標日まであと ${remainingDays} 日`}
-                </div>
-                {currentWeightEdit && targetWeight && (
-                  <div className="ml-auto text-[11px] opacity-80">
-                    体重差 {(parseFloat(targetWeight) - parseFloat(currentWeightEdit)).toFixed(1)} kg
+            {/* 残日数 + 計算式バナー */}
+            {((targetDate && remainingDays !== null) || plan) && (
+              <div className="mb-3 rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                {targetDate && remainingDays !== null && (
+                  <div className="flex items-center gap-2">
+                    <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                    <span className="text-sm font-bold">
+                      {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
+                       remainingDays === 0 ? '目標日は今日' :
+                       `目標日まであと ${remainingDays} 日`}
+                    </span>
                   </div>
+                )}
+                {plan && (
+                  <span className="text-[11px] font-bold opacity-90">
+                    {plan === '減量' && '計算式: kcal -500 / タンパク質 2.2g/kg・脂質 20%'}
+                    {plan === '増量' && '計算式: kcal +300 / タンパク質 2.0g/kg・脂質 25%'}
+                    {plan === '筋肥大' && '計算式: kcal +200 / タンパク質 2.5g/kg・脂質 20%'}
+                    {plan === '現状維持' && '計算式: kcal ±0 / タンパク質 1.6g/kg・脂質 25%'}
+                  </span>
+                )}
+                {targetDate && currentWeightEdit && targetWeight && (
+                  <span className="ml-auto text-[11px] opacity-80">
+                    体重差 {(parseFloat(targetWeight) - parseFloat(currentWeightEdit)).toFixed(1)} kg
+                  </span>
                 )}
               </div>
             )}
 
             {/* 目標カロリー・PFC グリッド（2列×4行） */}
             <div className="mb-3">
-              <div className="text-xs font-bold text-stone-700 mb-2">
-                目標カロリー・PFC（自動計算、手動編集可）
-              </div>
               <div className="grid grid-cols-2 gap-2">
-                {/* 行1: 消費カロリー / 目標カロリー */}
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-                  <div className="text-[10px] text-stone-500 mb-1">現在の1日あたり消費カロリー (kcal)</div>
-                  <div className="text-base font-bold text-stone-700 text-center">
+                {/* 行1: 現在の消費カロリー / 目標カロリー */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー (kcal)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
                     {tdee !== null ? tdee : '—'}
                   </div>
                 </div>
@@ -599,7 +593,7 @@ export default function CustomerDetailPage({
                   />
                 </div>
 
-                {/* 行2: 目標タンパク質 / タンパク質の割合 */}
+                {/* 行2: 目標タンパク質(g) / 目標タンパク質(%) */}
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (g)</label>
                   <input
@@ -611,14 +605,14 @@ export default function CustomerDetailPage({
                     className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-                  <div className="text-[10px] text-stone-500 mb-1">タンパク質の割合</div>
-                  <div className="text-base font-bold text-stone-700 text-center">
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
                     {pRatio !== null ? `${pRatio}%` : '—'}
                   </div>
                 </div>
 
-                {/* 行3: 目標脂質 / 脂質の割合 */}
+                {/* 行3: 目標脂質(g) / 目標脂質(%) */}
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (g)</label>
                   <input
@@ -630,14 +624,14 @@ export default function CustomerDetailPage({
                     className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-                  <div className="text-[10px] text-stone-500 mb-1">脂質の割合</div>
-                  <div className="text-base font-bold text-stone-700 text-center">
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
                     {fRatio !== null ? `${fRatio}%` : '—'}
                   </div>
                 </div>
 
-                {/* 行4: 目標炭水化物 / 炭水化物の割合 */}
+                {/* 行4: 目標炭水化物(g) / 目標炭水化物(%) */}
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (g)</label>
                   <input
@@ -649,9 +643,9 @@ export default function CustomerDetailPage({
                     className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-                  <div className="text-[10px] text-stone-500 mb-1">炭水化物の割合</div>
-                  <div className="text-base font-bold text-stone-700 text-center">
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
                     {cRatio !== null ? `${cRatio}%` : '—'}
                   </div>
                 </div>
