@@ -551,12 +551,23 @@ function HomePageInner() {
               invalidate('weekly_');
               invalidate('history_');
               if (userId) {
-                fetch(
-                  `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-                  { cache: 'no-store' }
-                )
-                  .then((r) => r.json())
-                  .then((json) => {
+                // today + extras を並列再 fetch して体重・運動の最新値を反映
+                Promise.all([
+                  fetch(
+                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                    { cache: 'no-store' }
+                  ).then((r) => r.json()),
+                  fetch(
+                    `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                    { cache: 'no-store' }
+                  ).then((r) => r.json()).catch(() => null),
+                ])
+                  .then(([json, extras]) => {
+                    if (extras) {
+                      json.today.weight = extras.weight || '';
+                      json.today.exercised = extras.exercised || '';
+                      json.today.exerciseContent = extras.exerciseContent || '';
+                    }
                     setData(json);
                     setCached(`today_v2_${userId}_${selectedDate}`, json);
                   })
