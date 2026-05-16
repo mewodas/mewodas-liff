@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Target,
   Scale,
@@ -11,9 +11,7 @@ import {
   Send,
   Sparkles,
   Calculator,
-  ArrowRight,
   Hourglass,
-  UtensilsCrossed,
   History,
   ChevronDown,
   ChevronUp,
@@ -33,7 +31,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import AdminShell from '../../AdminShell';
-import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
+import { ACTIVITY_LEVELS, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = {
@@ -64,19 +62,102 @@ type Notification = {
   createdAt: string;
 };
 
-const STATUS_OPTIONS = ['進行中', '設定中', '休止中', '卒業'];
+const STATUS_OPTIONS = ['申込中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
+const PLAN_OPTIONS = ['減量', '増量', '筋肥大', '現状維持'];
+
+const ACTIVITY_DISPLAY: Record<string, string> = {
+  'ほぼ運動なし': 'ほぼ運動なし（デスクワーク中心）',
+  '軽い': '軽い運動（週1-2回）',
+  '中等度': '中程度の運動（週3-4回）',
+  '激しい': '激しい運動（毎日）',
+};
+
+const ACTIVITY_FACTOR: Record<string, number> = {
+  'ほぼ運動なし': 1.2,
+  '軽い': 1.375,
+  '中等度': 1.55,
+  '激しい': 1.725,
+};
+
+type CalcInputs = {
+  gender: string;
+  age: string;
+  heightCm: string;
+  currentWeight: string;
+  activityLevel: string;
+  plan: string;
+};
+
+function calcMifflin(inputs: CalcInputs): {
+  goalKcal: number;
+  goalP: number;
+  goalF: number;
+  goalC: number;
+  missing: string[];
+} | null {
+  const missing: string[] = [];
+  if (!inputs.gender) missing.push('性別');
+  if (!inputs.age) missing.push('年齢');
+  if (!inputs.heightCm) missing.push('身長');
+  if (!inputs.currentWeight) missing.push('現在体重');
+  if (!inputs.activityLevel) missing.push('活動レベル');
+  if (!inputs.plan) missing.push('目標プラン');
+  if (missing.length > 0) return { goalKcal: 0, goalP: 0, goalF: 0, goalC: 0, missing };
+
+  const weight = parseFloat(inputs.currentWeight);
+  const height = parseFloat(inputs.heightCm);
+  const age = parseInt(inputs.age, 10);
+
+  const base = 10 * weight + 6.25 * height - 5 * age;
+  let bmr: number;
+  if (inputs.gender === '男性') bmr = Math.round(base + 5);
+  else if (inputs.gender === '女性') bmr = Math.round(base - 161);
+  else bmr = Math.round(base - 78);
+
+  const factor = ACTIVITY_FACTOR[inputs.activityLevel] ?? 1.375;
+  const tdee = Math.round(bmr * factor);
+
+  let goalKcal: number;
+  let pPerKg: number;
+  let fRatio: number;
+
+  switch (inputs.plan) {
+    case '減量':
+      goalKcal = tdee - 500;
+      pPerKg = 2.2;
+      fRatio = 0.20;
+      break;
+    case '増量':
+      goalKcal = tdee + 300;
+      pPerKg = 2.0;
+      fRatio = 0.25;
+      break;
+    case '筋肥大':
+      goalKcal = tdee + 200;
+      pPerKg = 2.5;
+      fRatio = 0.20;
+      break;
+    case '現状維持':
+    default:
+      goalKcal = tdee;
+      pPerKg = 1.6;
+      fRatio = 0.25;
+      break;
+  }
+
+  goalKcal = Math.round(Math.max(1200, Math.min(4000, goalKcal)) / 10) * 10;
+  const goalP = Math.round(weight * pPerKg * 10) / 10;
+  const goalF = Math.round((goalKcal * fRatio) / 9 * 10) / 10;
+  const remainingKcal = goalKcal - goalP * 4 - goalF * 9;
+  const goalC = Math.max(0, Math.round((remainingKcal / 4) * 10) / 10);
+
+  return { goalKcal, goalP, goalF, goalC, missing: [] };
+}
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-function addDaysStr(s: string, n: number): string {
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
 export default function CustomerDetailPage({
@@ -86,11 +167,13 @@ export default function CustomerDetailPage({
 }) {
   const { id } = use(params);
   const base = useAdminBase();
+  const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [calcToast, setCalcToast] = useState<string | null>(null);
 
   const [goalKcal, setGoalKcal] = useState('');
   const [goalP, setGoalP] = useState('');
@@ -100,18 +183,16 @@ export default function CustomerDetailPage({
   const [targetDate, setTargetDate] = useState('');
   const [foodStatus, setFoodStatus] = useState('');
 
-  // 計算機用基礎情報
   const [gender, setGender] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [age, setAge] = useState('');
+  const [currentWeightEdit, setCurrentWeightEdit] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
   const [plan, setPlan] = useState('');
   const [storeId, setStoreId] = useState('');
   const [stores, setStores] = useState<Store[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [onboardingResetting, setOnboardingResetting] = useState(false);
-  const [onboardingMsg, setOnboardingMsg] = useState<string | null>(null);
 
   type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -167,6 +248,7 @@ export default function CustomerDetailPage({
         setGender(c.gender || '');
         setHeightCm(c.heightCm !== null ? String(c.heightCm) : '');
         setAge(c.age !== null ? String(c.age) : '');
+        setCurrentWeightEdit(c.currentWeight !== null ? String(c.currentWeight) : '');
         setActivityLevel(c.activityLevel || '');
         setPlan(c.plan || '');
         setStoreId(c.storeId || '');
@@ -178,33 +260,23 @@ export default function CustomerDetailPage({
     })();
   }, [id]);
 
-  // ライブ計算
-  const calc = useMemo(() => {
-    if (!customer) return null;
-    return calcGoals({
-      gender: gender || null,
-      heightCm: heightCm ? parseFloat(heightCm) : null,
-      age: age ? parseInt(age, 10) : null,
-      activityLevel: activityLevel || null,
-      plan: plan || null,
-      currentWeight: customer.currentWeight,
-      targetWeight: targetWeight ? parseFloat(targetWeight) : null,
-      targetDate: targetDate || null,
-      today,
-    });
-  }, [customer, gender, heightCm, age, activityLevel, plan, targetWeight, targetDate, today]);
-
   const remainingDays = useMemo(() => {
     if (!targetDate) return null;
     return daysUntil(targetDate, today);
   }, [targetDate, today]);
 
   function applyCalc() {
-    if (!calc) return;
-    setGoalKcal(String(calc.goalKcal));
-    setGoalP(String(calc.goalP));
-    setGoalF(String(calc.goalF));
-    setGoalC(String(calc.goalC));
+    const result = calcMifflin({ gender, age, heightCm, currentWeight: currentWeightEdit, activityLevel, plan });
+    if (!result) return;
+    if (result.missing.length > 0) {
+      setCalcToast(`${result.missing[0]}を入力してください`);
+      setTimeout(() => setCalcToast(null), 3000);
+      return;
+    }
+    setGoalKcal(String(result.goalKcal));
+    setGoalP(String(result.goalP));
+    setGoalF(String(result.goalF));
+    setGoalC(String(result.goalC));
   }
 
   async function save() {
@@ -225,6 +297,7 @@ export default function CustomerDetailPage({
         gender: gender || null,
         heightCm: heightCm ? parseFloat(heightCm) : null,
         age: age ? parseInt(age, 10) : null,
+        currentWeight: currentWeightEdit ? parseFloat(currentWeightEdit) : null,
         activityLevel: activityLevel || null,
         plan: plan || null,
         storeId: storeId || null,
@@ -240,8 +313,10 @@ export default function CustomerDetailPage({
       }
       const j = await res.json();
       setCustomer(j.customer);
-      setSaveMsg('保存しました');
-      setTimeout(() => setSaveMsg(null), 2500);
+      setSaveMsg('✅ 保存しました（顧客一覧へ）');
+      setTimeout(() => {
+        router.push(base);
+      }, 1500);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -282,6 +357,11 @@ export default function CustomerDetailPage({
 
   return (
     <AdminShell title={customer?.name || '顧客詳細'} back={{ href: base }}>
+      {calcToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold px-4 py-2 rounded-xl shadow-lg">
+          {calcToast}
+        </div>
+      )}
       {loading ? (
         <div className="text-center text-stone-500 py-10">読み込み中…</div>
       ) : !customer ? (
@@ -290,9 +370,6 @@ export default function CustomerDetailPage({
         <div className="space-y-4">
           {error && (
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
-          )}
-          {saveMsg && (
-            <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs p-3 rounded-xl">{saveMsg}</div>
           )}
 
           {/* プロフィール */}
@@ -313,17 +390,9 @@ export default function CustomerDetailPage({
                 >
                   <option value="">未設定</option>
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">現在体重</label>
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm text-stone-900">
-                  {customer.currentWeight !== null ? `${customer.currentWeight} kg` : '未登録'}
-                </div>
               </div>
             </div>
             <div className="mt-3">
@@ -341,13 +410,13 @@ export default function CustomerDetailPage({
             </div>
           </section>
 
-          {/* 体型・代謝の基礎情報（計算機の入力） */}
+          {/* 体型・代謝 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
               体型・代謝
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">性別</label>
                 <select
@@ -361,9 +430,10 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
-              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
               <NumberInput label="年齢" value={age} onChange={setAge} step="1" />
-              <div>
+              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
+              <NumberInput label="現在体重 (kg)" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
+              <div className="sm:col-span-2">
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">活動レベル</label>
                 <select
                   value={activityLevel}
@@ -372,7 +442,9 @@ export default function CustomerDetailPage({
                 >
                   <option value="">—</option>
                   {ACTIVITY_LEVELS.map((a) => (
-                    <option key={a.label} value={a.label}>{a.label}</option>
+                    <option key={a.label} value={a.label}>
+                      {ACTIVITY_DISPLAY[a.label] ?? a.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -386,7 +458,44 @@ export default function CustomerDetailPage({
               目標
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="mb-3">
+              <label className="text-xs font-bold text-stone-700 mb-1 block">目標プラン</label>
+              <select
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">—</option>
+                {PLAN_OPTIONS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={applyCalc}
+              className="w-full mb-3 bg-violet-600 text-white text-sm font-bold py-2.5 rounded-xl active:bg-violet-700 flex items-center justify-center gap-1.5"
+            >
+              <Calculator className="w-4 h-4" strokeWidth={2.2} />
+              🧮 目安を自動計算
+            </button>
+
+            <div className="mb-3">
+              <label className="text-xs font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
+              <NumberInput label="" value={goalKcal} onChange={setGoalKcal} />
+            </div>
+
+            <div className="mb-3">
+              <label className="text-xs font-bold text-stone-700 mb-2 block">目標 P / F / C (g)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <NumberInput label="P (g)" value={goalP} onChange={setGoalP} step="0.1" />
+                <NumberInput label="F (g)" value={goalF} onChange={setGoalF} step="0.1" />
+                <NumberInput label="C (g)" value={goalC} onChange={setGoalC} step="0.1" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
                   <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
@@ -412,24 +521,11 @@ export default function CustomerDetailPage({
                   className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">プラン</label>
-                <select
-                  value={plan}
-                  onChange={(e) => setPlan(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">—</option>
-                  {PLANS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {/* 残日数バナー */}
             {targetDate && remainingDays !== null && (
-              <div className={`mt-3 rounded-xl border p-3 flex items-center gap-2 ${
+              <div className={`mb-3 rounded-xl border p-3 flex items-center gap-2 ${
                 remainingDays < 0
                   ? 'bg-rose-50 border-rose-200 text-rose-800'
                   : remainingDays === 0
@@ -442,75 +538,25 @@ export default function CustomerDetailPage({
                    remainingDays === 0 ? '目標日は今日' :
                    `目標日まであと ${remainingDays} 日`}
                 </div>
-                {customer.currentWeight !== null && targetWeight && (
+                {currentWeightEdit && targetWeight && (
                   <div className="ml-auto text-[11px] opacity-80">
-                    体重差 {(parseFloat(targetWeight) - customer.currentWeight).toFixed(1)} kg
+                    体重差 {(parseFloat(targetWeight) - parseFloat(currentWeightEdit)).toFixed(1)} kg
                   </div>
                 )}
               </div>
             )}
 
-            {/* 計算機プレビュー */}
-            {calc ? (
-              <div className="mt-3 bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-violet-800 inline-flex items-center gap-1">
-                    <Calculator className="w-3 h-3" strokeWidth={2.4} />
-                    自動計算プレビュー
-                  </div>
-                  <div className="text-[10px] text-violet-700">
-                    BMR {calc.bmr} ・ TDEE {calc.tdee} kcal
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <PreviewStat label="kcal" value={calc.goalKcal} />
-                  <PreviewStat label="P (g)" value={calc.goalP} />
-                  <PreviewStat label="F (g)" value={calc.goalF} />
-                  <PreviewStat label="C (g)" value={calc.goalC} />
-                </div>
-                {calc.dailyDeltaKcal !== 0 && (
-                  <div className="text-[10px] text-violet-700">
-                    {calc.clampedDelta < 0 ? '減量' : '増量'}: 1日 {Math.abs(calc.clampedDelta)} kcal {calc.clampedDelta < 0 ? '不足' : '余剰'}
-                  </div>
-                )}
-                {calc.notes.length > 0 && (
-                  <ul className="text-[10px] text-amber-700 space-y-0.5">
-                    {calc.notes.map((n, i) => (
-                      <li key={i}>※ {n}</li>
-                    ))}
-                  </ul>
-                )}
-                <button
-                  type="button"
-                  onClick={applyCalc}
-                  className="w-full bg-violet-600 text-white text-xs font-bold py-2 rounded-xl active:bg-violet-700 inline-flex items-center justify-center gap-1"
-                >
-                  目標値に反映 <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.4} />
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-xl p-3 text-[11px] text-stone-600">
-                <Calculator className="w-3 h-3 inline mr-1" strokeWidth={2.4} />
-                身長・年齢・現在体重を入力すると自動計算します
+            {saveMsg && (
+              <div className="mb-3 bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-bold p-3 rounded-xl text-center">
+                {saveMsg}
               </div>
             )}
-
-            {/* 目標値（編集可・最終的に保存される値） */}
-            <div className="mt-3">
-              <div className="text-[10px] font-bold text-stone-700 mb-1">目標値（編集可）</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <NumberInput label="kcal" value={goalKcal} onChange={setGoalKcal} />
-                <NumberInput label="P (g)" value={goalP} onChange={setGoalP} step="0.1" />
-                <NumberInput label="F (g)" value={goalF} onChange={setGoalF} step="0.1" />
-                <NumberInput label="C (g)" value={goalC} onChange={setGoalC} step="0.1" />
-              </div>
-            </div>
 
             <button
               type="button"
               onClick={save}
               disabled={saving}
-              className="w-full mt-4 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" strokeWidth={2.2} />
               {saving ? '保存中…' : '変更を保存'}
@@ -519,17 +565,7 @@ export default function CustomerDetailPage({
 
           {/* 各種遷移 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
-            <Link
-              href={`${base}/meals?customerId=${id}&from=${addDaysStr(today, -6)}&to=${today}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">食事記録を見る（直近7日）</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </Link>
-            <Link
+            <a
               href={`${base}/reports?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
@@ -538,8 +574,8 @@ export default function CustomerDetailPage({
                 <span className="text-sm font-bold text-stone-900">レポートを送る</span>
               </div>
               <span className="text-stone-400">›</span>
-            </Link>
-            <Link
+            </a>
+            <a
               href={`${base}/analysis?customerId=${id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
             >
@@ -548,42 +584,7 @@ export default function CustomerDetailPage({
                 <span className="text-sm font-bold text-stone-900">AI 分析を見る</span>
               </div>
               <span className="text-stone-400">›</span>
-            </Link>
-          </section>
-
-          {/* オンボーディングリセット */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              オンボーディング
-            </h2>
-            {onboardingMsg && (
-              <div className="mb-2 text-xs bg-emerald-100 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-xl">{onboardingMsg}</div>
-            )}
-            <p className="text-xs text-stone-600 mb-3">
-              リセットすると次回顧客が /home を開いた際にオンボーディングが再表示されます。
-            </p>
-            <button
-              type="button"
-              disabled={onboardingResetting}
-              onClick={async () => {
-                setOnboardingResetting(true);
-                setOnboardingMsg(null);
-                try {
-                  const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
-                  if (!res.ok) throw new Error(`失敗（${res.status}）`);
-                  setOnboardingMsg('オンボーディングをリセットしました');
-                  setTimeout(() => setOnboardingMsg(null), 3000);
-                } catch (e) {
-                  setOnboardingMsg(e instanceof Error ? e.message : 'エラー');
-                } finally {
-                  setOnboardingResetting(false);
-                }
-              }}
-              className="bg-violet-100 text-violet-800 border border-violet-300 text-xs font-bold px-4 py-2 rounded-xl active:bg-violet-200 disabled:opacity-50"
-            >
-              {onboardingResetting ? 'リセット中…' : 'オンボーディングをリセット'}
-            </button>
+            </a>
           </section>
 
           {/* 体重推移グラフ + 運動記録 */}
@@ -611,7 +612,6 @@ export default function CustomerDetailPage({
             </button>
             {weightOpen && (
               <div className="px-3 pb-3 space-y-3">
-                {/* 期間セレクタ */}
                 <div className="flex gap-2 flex-wrap">
                   {[14, 30, 60, 90].map((d) => (
                     <button
@@ -638,7 +638,6 @@ export default function CustomerDetailPage({
                   <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{weightWarning}</div>
                 )}
 
-                {/* 体重推移グラフ */}
                 {weightHistory.some((w) => w.weight !== null) ? (
                   <div>
                     <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
@@ -647,7 +646,6 @@ export default function CustomerDetailPage({
                     </div>
                     <WeightLineChart entries={weightHistory} targetWeight={weightTargetWeight} />
 
-                    {/* 一覧表 */}
                     <div className="mt-2 overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -692,7 +690,6 @@ export default function CustomerDetailPage({
                   <div className="text-xs text-stone-500 py-2">この期間に体重記録がありません</div>
                 ) : null}
 
-                {/* 運動記録一覧 */}
                 {weightHistory.some((w) => w.exercised || w.exerciseContent) && (
                   <div>
                     <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
@@ -775,10 +772,8 @@ export default function CustomerDetailPage({
 
                 {exerciseLogs.length > 0 && (
                   <>
-                    {/* 日別運動時間グラフ */}
                     <ExerciseBarChart logs={exerciseLogs} days={exerciseDays} />
 
-                    {/* 集計 */}
                     <div className="flex gap-3 text-xs">
                       <div className="bg-violet-50 rounded-lg px-3 py-1.5 text-center">
                         <div className="font-bold text-violet-700">{exerciseLogs.length}回</div>
@@ -794,7 +789,6 @@ export default function CustomerDetailPage({
                       </div>
                     </div>
 
-                    {/* 一覧表 */}
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -907,7 +901,7 @@ function NumberInput({
 }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-stone-700 mb-1 block">{label}</label>
+      {label && <label className="text-[10px] font-bold text-stone-700 mb-1 block">{label}</label>}
       <input
         type="number"
         step={step}
@@ -916,15 +910,6 @@ function NumberInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
       />
-    </div>
-  );
-}
-
-function PreviewStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white border border-violet-200 rounded-lg p-1.5 text-center">
-      <div className="text-[9px] font-bold text-violet-700">{label}</div>
-      <div className="text-sm font-bold text-violet-900">{value}</div>
     </div>
   );
 }

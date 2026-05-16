@@ -25,6 +25,7 @@ export type CustomerPatch = {
   age?: number | null;
   activityLevel?: string | null;
   plan?: string | null;
+  currentWeight?: number | null;
   storeId?: string | null;
   lineUserId?: string | null;
   onboardingCompletedAt?: string | null;

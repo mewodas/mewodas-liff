@@ -9,6 +9,20 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging)
+- feat(admin): 顧客編集画面リファクタ（セクション再構成・自動計算ボタン・保存通知）
+  - STATUS_OPTIONS から「設定中」を削除 → ['申込中', '進行中', '休止中', '卒業']
+  - 「体型・代謝」セクションに現在体重フィールドを追加（性別/年齢/身長/現在体重/活動レベルの順）
+  - 「目標」セクションを目標プラン/kcal/PFC/目標体重/目標達成日に再編
+  - 目標プランを 減量/増量/筋肥大/現状維持 の4種に変更
+  - 活動レベルの表示ラベルを拡張（DB値はそのまま）
+  - 「🧮 目安を自動計算」ボタン追加（Mifflin-St Jeor + プラン別補正で goalKcal/PFC を流し込む）
+  - 保存成功時にインラインバナー表示 + 1.5秒後に顧客一覧へ遷移
+  - 食事記録リンク・運動記録リンク・オンボーディングリセットボタンを画面から削除
+  - 全 required 撤廃（未記入でも保存可）
+  - currentWeight を PATCH 可能に（lib/notion.ts・lib/repository/customers.ts・API route 追加）
+- 影響範囲: 管理画面 /admin/customers/[id]（/store/customers/[id] は re-export のため自動反映）
+
 ## 2026-05-16 23:45 (staging)
 - 修正: app/page.tsx で liff.state クエリパラメータを保持して redirect。LIFF v2 では LIFF URL のパス・クエリが /?liff.state=... 形式で渡されるため、これを破棄せず転送先 path として使う。これにより招待リンク liff.line.me/{id}/onboard?token=xxx が正しく /onboard?token=xxx に転送される
 - 影響範囲: 顧客側 LIFF 全般（招待リンク・通知リンク・LIFFのpath付きdeep link）

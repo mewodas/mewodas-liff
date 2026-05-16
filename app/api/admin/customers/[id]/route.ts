@@ -33,6 +33,7 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
     if ('age' in body) patch.age = body.age;
     if ('activityLevel' in body) patch.activityLevel = body.activityLevel;
     if ('plan' in body) patch.plan = body.plan;
+    if ('currentWeight' in body) patch.currentWeight = body.currentWeight;
     if ('storeId' in body) patch.storeId = body.storeId;
     if ('lineUserId' in body) patch.lineUserId = body.lineUserId;
     await patchCustomer(id, patch);

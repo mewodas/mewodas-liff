@@ -297,6 +297,7 @@ export async function updateCustomer(
     age?: number | null;
     activityLevel?: string | null;
     plan?: string | null;
+    currentWeight?: number | null;
     storeId?: string | null;
     lineUserId?: string | null;
     onboardingCompletedAt?: string | null;
@@ -342,6 +343,9 @@ export async function updateCustomer(
     properties['LINEユーザーID'] = patch.lineUserId
       ? { rich_text: [{ type: 'text', text: { content: patch.lineUserId } }] }
       : { rich_text: [] };
+  }
+  if (patch.currentWeight !== undefined) {
+    properties['現在体重(kg)'] = patch.currentWeight === null ? { number: null } : { number: patch.currentWeight };
   }
   if (patch.onboardingCompletedAt !== undefined) {
     properties['オンボーディング完了日時'] = patch.onboardingCompletedAt === null
