@@ -22,7 +22,8 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     if (!session) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    const tenantId = session.currentTenantId || 'mewodas';
+    // staging 等の環境分離のため、env override があれば最優先
+    const tenantId = process.env.FITMEAL_TENANT_ID_OVERRIDE || session.currentTenantId || 'mewodas';
     // Notion テナント DB アクセス失敗時はデフォルト（MEWODAS）にフォールバック
     let tenant;
     try {
@@ -47,6 +48,16 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
 /** LIFF（顧客）ルート用ラッパー。X-Liff-Id ヘッダーからテナント解決→context.run */
 export function withLiffTenant(handler: RouteHandler): RouteHandler {
   return async (req, ctx) => {
+    // staging 等の環境分離のため、env override があれば最優先
+    const overrideId = process.env.FITMEAL_TENANT_ID_OVERRIDE;
+    if (overrideId) {
+      try {
+        const tenant = (await getTenantByIdAsync(overrideId)) || getDefaultTenant();
+        return runInTenantContext(tenant, () => handler(req, ctx));
+      } catch {
+        // override 解決失敗時は通常フローへフォールバック
+      }
+    }
     const liffId = req.headers.get('x-liff-id') || '';
     let tenant = null;
     if (liffId) {
