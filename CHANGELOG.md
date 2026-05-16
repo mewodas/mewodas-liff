@@ -18,6 +18,15 @@
 - feat(admin/[id], admin/new): バナーに「1日あたり -N kcal 削減 / +N kcal 追加」と計算式 (Xkg × 7,700 ÷ N日) を追加。体重・目標日未入力時はヒントを表示
 - 影響範囲: 管理画面 /admin/customers/[id]、/admin/customers/new、/store/customers/[id]、/store/customers/new（re-export）、API /api/admin/customers/[id]、lib/notion.ts、lib/repository/customers.ts
 
+## 2026-05-17 (staging) – クランプ撤去・警告強化
+- feat(lib): calcGoals の **clamp ロジックを撤去**。1日あたり調整 kcal も目標 kcal も計算値そのまま使う
+  - 旧仕様: 1日 ±1,000kcal / 目標 1,200〜4,000kcal で自動クランプ → 極端な目標体重では値が動かない
+  - 新仕様: 計算値そのまま使用 + 警告フラグ（isUnsafeDeficit / isUnsafeSurplus / isUnsafeGoalKcal）を返す
+- ui(admin): 警告バナーを「クランプ」表現から「健康上の安全範囲を超えています」に文言変更
+  - 該当条件を箇条書きで明示（1日±1,000kcal 超 / 目標 1,200〜4,000kcal 外）
+  - 「トレーナー判断で進める場合はこのまま保存可能です」と明記
+- 影響範囲: lib/goalCalc.ts / /admin/customers/{[id]|new}
+
 ## 2026-05-17 (staging) – クランプ警告追加
 - ui(admin): 残日数バナーに「1日あたり調整 kcal がクランプされた場合の警告」を追加（両ページ）
   - 計算上 -2,566 kcal/日 等になる極端な目標体重差では、安全上限 -1,000 kcal/日 で自動クランプされる

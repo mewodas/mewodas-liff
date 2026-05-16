@@ -58,7 +58,10 @@ export type CalcResult = {
   tdee: number;
   remainingDays: number;
   dailyDeltaKcal: number; // 体重差/残日から算出した1日差分（減量なら負）
-  clampedDelta: number; // 安全レンジ内にクランプ後
+  clampedDelta: number; // 後方互換のため残置（実装は dailyDeltaKcal と同値、クランプは撤去済み）
+  isUnsafeDeficit: boolean; // 1日 -1000kcal 超の減量
+  isUnsafeSurplus: boolean; // 1日 +1000kcal 超の増量
+  isUnsafeGoalKcal: boolean; // 目標 kcal が 1200 未満 or 4000 超
   goalKcal: number;
   goalP: number;
   goalF: number;
@@ -86,10 +89,11 @@ export function calcGoals(inp: GoalInputs): CalcResult | null {
     dailyDeltaKcal = ((targetWeight - currentWeight) * 7700) / remainingDays;
   }
 
-  // 安全レンジ ±1000kcal/日 にクランプ。極端な体重差は警告
-  const clampedDelta = Math.max(-1000, Math.min(1000, dailyDeltaKcal));
-  if (Math.abs(dailyDeltaKcal - clampedDelta) > 1) {
-    notes.push(`目標差が大きいため1日±1000kcalに調整（実際の差分 ${Math.round(dailyDeltaKcal)}kcal/日）`);
+  // 安全上限 ±1000kcal/日 を超えた場合は警告のみ（値はクランプせずそのまま使う）
+  const isUnsafeDeficit = dailyDeltaKcal < -1000;
+  const isUnsafeSurplus = dailyDeltaKcal > 1000;
+  if (Math.abs(dailyDeltaKcal) > 1000) {
+    notes.push(`1日±1000kcal の安全上限を超えています（実際の差分 ${Math.round(dailyDeltaKcal)}kcal/日）`);
   }
 
   // プラン別 PFC g/kg 現在体重
@@ -111,12 +115,13 @@ export function calcGoals(inp: GoalInputs): CalcResult | null {
     : planNorm === '筋肥大' ? 200
     : 0;
   // 達成日逆算が有意な場合はそちらを優先、なければプラン補正
-  const usedDelta = (targetWeight !== null && remainingDays > 0) ? clampedDelta : planDelta;
+  const usedDelta = (targetWeight !== null && remainingDays > 0) ? dailyDeltaKcal : planDelta;
   const goalKcalRaw = tdee + usedDelta;
-  // 最低 1200kcal を下回らない（女性最低）/ 最大 4000kcal
-  const goalKcal = Math.round(Math.max(1200, Math.min(4000, goalKcalRaw)) / 10) * 10;
-  if (goalKcalRaw !== goalKcal) {
-    notes.push(`安全レンジ (1200〜4000kcal) でクランプ`);
+  // 10刻みに丸めるだけ（クランプはしない、極端値は警告で対応）
+  const goalKcal = Math.round(goalKcalRaw / 10) * 10;
+  const isUnsafeGoalKcal = goalKcal < 1200 || goalKcal > 4000;
+  if (isUnsafeGoalKcal) {
+    notes.push(`目標カロリーが安全レンジ (1200〜4000kcal) 外です`);
   }
 
   const goalP = Math.round(currentWeight * macroRatio.P * 10) / 10;
@@ -129,7 +134,10 @@ export function calcGoals(inp: GoalInputs): CalcResult | null {
     tdee,
     remainingDays,
     dailyDeltaKcal: Math.round(dailyDeltaKcal),
-    clampedDelta: Math.round(clampedDelta),
+    clampedDelta: Math.round(dailyDeltaKcal), // 後方互換: clamp 撤去のため raw と同じ値
+    isUnsafeDeficit,
+    isUnsafeSurplus,
+    isUnsafeGoalKcal,
     goalKcal,
     goalP,
     goalF,
