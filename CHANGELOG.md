@@ -23,6 +23,18 @@
 - ui(admin): /admin/page.tsx に保存完了スナックバー追加（saved=1 クエリ検知→emerald-600 固定バナー→4秒後 URL クリーンアップ）
 - 影響範囲: 管理画面 /admin/customers/{[id]|new|（一覧）}（/store/customers/* も自動反映）
 
+## 2026-05-17 (staging) – Basic Auth 保護
+- security: staging.fitmeal.jp および *.vercel.app (Preview URL) を HTTP Basic Auth で保護
+  - `proxy.ts` に `isStagingHost` / `checkBasicAuth` を追加
+  - 環境変数 `STAGING_BASIC_AUTH_USER` / `STAGING_BASIC_AUTH_PASSWORD` が未設定の場合は素通し（フォールバック）
+  - 例外パス: `/api/cron/*`（Vercel Cron）、`/_next/static/*`、`/favicon.ico`
+  - 素通しホスト: `app.fitmeal.jp`、`fitmeal.jp`、`www.fitmeal.jp`、`localhost`
+  - matcher を `/(.*)`（全パス）に拡張（既存の admin/store セッション認証と共存）
+- feat: `app/robots.ts` を動的生成に変更
+  - staging / preview ホストでは `Disallow: /`、本番 `app.fitmeal.jp` では `Allow: /`
+- 影響範囲: staging 環境のみ（main / 本番への影響なし）
+- 関連: `STAGING_BASIC_AUTH_USER`, `STAGING_BASIC_AUTH_PASSWORD` を Vercel に追加要（下記参照）
+
 ## 2026-05-17 (staging) – フォローアップ2
 - ui(admin): 顧客編集画面 /admin/customers/[id] 改修
   - 「体型・代謝」セクションを「身体プロフィール」にリネーム

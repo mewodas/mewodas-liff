@@ -2,8 +2,78 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
 
+const STAGING_HOSTS = [
+  'staging.fitmeal.jp',
+];
+
+const PASSTHROUGH_HOSTS = [
+  'app.fitmeal.jp',
+  'fitmeal.jp',
+  'www.fitmeal.jp',
+  'localhost',
+];
+
+function isStagingHost(host: string): boolean {
+  if (PASSTHROUGH_HOSTS.some((h) => host === h || host.startsWith(h + ':'))) {
+    return false;
+  }
+  if (STAGING_HOSTS.some((h) => host === h || host.startsWith(h + ':'))) {
+    return true;
+  }
+  // *.vercel.app および *-mewodas-projects.vercel.app
+  if (host.endsWith('.vercel.app') || host.includes('.vercel.app:')) {
+    return true;
+  }
+  return false;
+}
+
+function basicAuthResponse(): Response {
+  return new Response('Unauthorized', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Basic realm="FitMeal Staging"',
+    },
+  });
+}
+
+function checkBasicAuth(request: NextRequest): boolean {
+  const user = process.env.STAGING_BASIC_AUTH_USER;
+  const pass = process.env.STAGING_BASIC_AUTH_PASSWORD;
+  if (!user || !pass) return true;
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Basic ')) return false;
+
+  const encoded = authHeader.slice(6);
+  let decoded: string;
+  try {
+    decoded = atob(encoded);
+  } catch {
+    return false;
+  }
+  const colon = decoded.indexOf(':');
+  if (colon === -1) return false;
+  const reqUser = decoded.slice(0, colon);
+  const reqPass = decoded.slice(colon + 1);
+  return reqUser === user && reqPass === pass;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') ?? '';
+
+  // Basic Auth ガード（staging / preview のみ）
+  if (isStagingHost(host)) {
+    const isCronPath = pathname.startsWith('/api/cron/');
+    const isStaticAsset =
+      pathname.startsWith('/_next/static/') || pathname === '/favicon.ico';
+
+    if (!isCronPath && !isStaticAsset) {
+      if (!checkBasicAuth(request)) {
+        return basicAuthResponse();
+      }
+    }
+  }
 
   const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
   const isStore = pathname.startsWith('/store') || pathname.startsWith('/api/store');
@@ -45,5 +115,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/store/:path*'],
+  matcher: [
+    /*
+     * 全パスにマッチ（ただし Next.js 内部の _next/data は除外しない — セキュリティ上意図的）
+     * - _next/static と favicon.ico は proxy 内で素通しするが matcher には含める
+     */
+    '/(.*)',
+  ],
 };
