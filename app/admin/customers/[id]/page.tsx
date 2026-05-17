@@ -1,24 +1,21 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Target,
   Scale,
   ClipboardList,
   Save,
   Calendar as CalendarIcon,
-  Send,
-  Sparkles,
   Calculator,
-  ArrowRight,
   Hourglass,
-  UtensilsCrossed,
   History,
   ChevronDown,
   ChevronUp,
   TrendingDown,
   Dumbbell,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -33,7 +30,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import AdminShell from '../../AdminShell';
-import { ACTIVITY_LEVELS, PLANS, calcGoals, daysUntil } from '@/lib/goalCalc';
+import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Customer = {
@@ -53,7 +50,7 @@ type Customer = {
   storeId: string | null;
 };
 
-type Store = { pageId: string; storeId: string; name: string };
+type StoreItem = { pageId: string; storeId: string; name: string };
 type Notification = {
   id: string;
   category: string;
@@ -64,19 +61,19 @@ type Notification = {
   createdAt: string;
 };
 
-const STATUS_OPTIONS = ['進行中', '設定中', '休止中', '卒業'];
+const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
+
+const ACTIVITY_DISPLAY: Record<string, string> = {
+  'ほぼ運動なし': 'ほぼ運動なし（デスクワーク中心）',
+  '軽い': '軽い運動（週1-2回）',
+  '中等度': '中程度の運動（週3-4回）',
+  '激しい': '激しい運動（毎日）',
+};
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-function addDaysStr(s: string, n: number): string {
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
 export default function CustomerDetailPage({
@@ -86,12 +83,16 @@ export default function CustomerDetailPage({
 }) {
   const { id } = use(params);
   const base = useAdminBase();
+  const router = useRouter();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
+  const [resettingOnboard, setResettingOnboard] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
+  const [name, setName] = useState('');
   const [goalKcal, setGoalKcal] = useState('');
   const [goalP, setGoalP] = useState('');
   const [goalF, setGoalF] = useState('');
@@ -100,18 +101,16 @@ export default function CustomerDetailPage({
   const [targetDate, setTargetDate] = useState('');
   const [foodStatus, setFoodStatus] = useState('');
 
-  // 計算機用基礎情報
   const [gender, setGender] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [age, setAge] = useState('');
+  const [currentWeightEdit, setCurrentWeightEdit] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
   const [plan, setPlan] = useState('');
   const [storeId, setStoreId] = useState('');
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<StoreItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [onboardingResetting, setOnboardingResetting] = useState(false);
-  const [onboardingMsg, setOnboardingMsg] = useState<string | null>(null);
 
   type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -157,6 +156,7 @@ export default function CustomerDetailPage({
         const j = await res.json();
         const c: Customer = j.customer;
         setCustomer(c);
+        setName(c.name);
         setGoalKcal(String(c.goals.kcal));
         setGoalP(String(c.goals.P));
         setGoalF(String(c.goals.F));
@@ -167,6 +167,7 @@ export default function CustomerDetailPage({
         setGender(c.gender || '');
         setHeightCm(c.heightCm !== null ? String(c.heightCm) : '');
         setAge(c.age !== null ? String(c.age) : '');
+        setCurrentWeightEdit(c.currentWeight !== null ? String(c.currentWeight) : '');
         setActivityLevel(c.activityLevel || '');
         setPlan(c.plan || '');
         setStoreId(c.storeId || '');
@@ -178,41 +179,60 @@ export default function CustomerDetailPage({
     })();
   }, [id]);
 
-  // ライブ計算
+  const remainingDays = useMemo(() => {
+    if (!targetDate) return null;
+    return daysUntil(targetDate, today);
+  }, [targetDate, today]);
+
   const calc = useMemo(() => {
-    if (!customer) return null;
     return calcGoals({
       gender: gender || null,
       heightCm: heightCm ? parseFloat(heightCm) : null,
       age: age ? parseInt(age, 10) : null,
       activityLevel: activityLevel || null,
       plan: plan || null,
-      currentWeight: customer.currentWeight,
+      currentWeight: currentWeightEdit ? parseFloat(currentWeightEdit) : null,
       targetWeight: targetWeight ? parseFloat(targetWeight) : null,
       targetDate: targetDate || null,
       today,
     });
-  }, [customer, gender, heightCm, age, activityLevel, plan, targetWeight, targetDate, today]);
+  }, [gender, heightCm, age, activityLevel, plan, currentWeightEdit, targetWeight, targetDate, today]);
 
-  const remainingDays = useMemo(() => {
-    if (!targetDate) return null;
-    return daysUntil(targetDate, today);
-  }, [targetDate, today]);
-
-  function applyCalc() {
+  useEffect(() => {
     if (!calc) return;
     setGoalKcal(String(calc.goalKcal));
     setGoalP(String(calc.goalP));
     setGoalF(String(calc.goalF));
     setGoalC(String(calc.goalC));
-  }
+  }, [calc]);
+
+  const pRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const p = parseFloat(goalP);
+    if (!k || k === 0) return null;
+    return Math.round((p * 4 / k) * 100);
+  }, [goalKcal, goalP]);
+
+  const fRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const f = parseFloat(goalF);
+    if (!k || k === 0) return null;
+    return Math.round((f * 9 / k) * 100);
+  }, [goalKcal, goalF]);
+
+  const cRatio = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    const c = parseFloat(goalC);
+    if (!k || k === 0) return null;
+    return Math.round((c * 4 / k) * 100);
+  }, [goalKcal, goalC]);
 
   async function save() {
     setSaving(true);
-    setSaveMsg(null);
     setError(null);
     try {
       const payload = {
+        name: name.trim() || undefined,
         goals: {
           kcal: parseInt(goalKcal, 10) || 0,
           P: parseFloat(goalP) || 0,
@@ -225,6 +245,7 @@ export default function CustomerDetailPage({
         gender: gender || null,
         heightCm: heightCm ? parseFloat(heightCm) : null,
         age: age ? parseInt(age, 10) : null,
+        currentWeight: currentWeightEdit ? parseFloat(currentWeightEdit) : null,
         activityLevel: activityLevel || null,
         plan: plan || null,
         storeId: storeId || null,
@@ -240,12 +261,26 @@ export default function CustomerDetailPage({
       }
       const j = await res.json();
       setCustomer(j.customer);
-      setSaveMsg('保存しました');
-      setTimeout(() => setSaveMsg(null), 2500);
+      router.push(`${base}?saved=1`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function resetOnboarding() {
+    if (!confirm('この顧客のオンボーディング完了状態をリセットします。\n顧客は次回 LIFF を開いたときに、再度オンボーディング画面が表示されます。\n本当にリセットしますか？')) {
+      return;
+    }
+    setResettingOnboard(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'リセット失敗');
+    } finally {
+      setResettingOnboard(false);
     }
   }
 
@@ -291,47 +326,47 @@ export default function CustomerDetailPage({
           {error && (
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
           )}
-          {saveMsg && (
-            <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs p-3 rounded-xl">{saveMsg}</div>
-          )}
 
-          {/* プロフィール */}
+          {/* 基本情報 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <ClipboardList className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
               基本情報
             </h2>
-            <Field label="氏名" value={customer.name} />
-            <Field label="LINE ユーザーID" value={customer.lineUserId || '未設定'} mono />
+            <div className="mb-2">
+              <label className="text-xs font-bold text-stone-700 mb-1 block">氏名</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <Field label="LINEユーザーID" value={customer.lineUserId || '未設定'} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">ステータス</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
+                  ステータス
+                </label>
                 <select
                   value={foodStatus}
                   onChange={(e) => setFoodStatus(e.target.value)}
-                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white text-stone-900 border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="">未設定</option>
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">現在体重</label>
-                <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm text-stone-900">
-                  {customer.currentWeight !== null ? `${customer.currentWeight} kg` : '未登録'}
-                </div>
-              </div>
             </div>
             <div className="mt-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 block">所属店舗</label>
+              <label className="text-xs font-bold text-stone-700 mb-1 block">
+                所属店舗
+              </label>
               <select
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">—</option>
                 {stores.map((s) => (
@@ -341,19 +376,22 @@ export default function CustomerDetailPage({
             </div>
           </section>
 
-          {/* 体型・代謝の基礎情報（計算機の入力） */}
+          {/* 身体情報 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              体型・代謝
+              身体情報
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* 1段目: 性別 / 年齢 / 身長 / 現在体重 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">性別</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
+                  性別
+                </label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
                   {GENDER_OPTIONS.map((g) => (
@@ -361,35 +399,62 @@ export default function CustomerDetailPage({
                   ))}
                 </select>
               </div>
-              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
               <NumberInput label="年齢" value={age} onChange={setAge} step="1" />
+              <NumberInput label="身長 (cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
+              <NumberInput label="現在体重 (kg)" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" />
+            </div>
+            {/* 2段目: 活動レベル / 希望のプラン */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">活動レベル</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
+                  活動レベル
+                </label>
                 <select
                   value={activityLevel}
                   onChange={(e) => setActivityLevel(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">—</option>
                   {ACTIVITY_LEVELS.map((a) => (
-                    <option key={a.label} value={a.label}>{a.label}</option>
+                    <option key={a.label} value={a.label}>
+                      {ACTIVITY_DISPLAY[a.label] ?? a.label}
+                    </option>
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
+                  希望のプラン
+                </label>
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value)}
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">—</option>
+                  <option value="減量">減量</option>
+                  <option value="増量">増量</option>
+                  <option value="筋肥大">筋肥大</option>
+                  <option value="現状維持">現状維持</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-stone-500 leading-snug">
+              ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
             </div>
           </section>
 
           {/* 目標 */}
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-stone-900 mb-3 flex items-center gap-1.5">
               <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               目標
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 目標体重・目標達成日 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   目標体重 (kg)
                 </label>
                 <input
@@ -397,112 +462,164 @@ export default function CustomerDetailPage({
                   step="0.1"
                   value={targetWeight}
                   onChange={(e) => setTargetWeight(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <CalendarIcon className="w-3.5 h-3.5 text-stone-600" strokeWidth={2.2} />
+                <label className="text-xs font-bold text-stone-700 mb-1 block">
                   目標達成日
                 </label>
                 <input
                   type="date"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">プラン</label>
-                <select
-                  value={plan}
-                  onChange={(e) => setPlan(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">—</option>
-                  {PLANS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
               </div>
             </div>
 
             {/* 残日数バナー */}
             {targetDate && remainingDays !== null && (
-              <div className={`mt-3 rounded-xl border p-3 flex items-center gap-2 ${
-                remainingDays < 0
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : remainingDays === 0
-                  ? 'bg-amber-50 border-amber-200 text-amber-800'
-                  : 'bg-sky-50 border-sky-200 text-sky-800'
-              }`}>
-                <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                <div className="text-sm font-bold">
-                  {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
-                   remainingDays === 0 ? '目標日は今日' :
-                   `目標日まであと ${remainingDays} 日`}
+              <div className="mb-3 rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                  <span className="text-sm font-bold">
+                    {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過` :
+                     remainingDays === 0 ? '目標日は今日' :
+                     `目標まであと ${remainingDays} 日`}
+                  </span>
                 </div>
-                {customer.currentWeight !== null && targetWeight && (
-                  <div className="ml-auto text-[11px] opacity-80">
-                    体重差 {(parseFloat(targetWeight) - customer.currentWeight).toFixed(1)} kg
-                  </div>
+                {currentWeightEdit && targetWeight ? (() => {
+                  const cw = parseFloat(currentWeightEdit);
+                  const tw = parseFloat(targetWeight);
+                  if (isNaN(cw) || isNaN(tw)) return null;
+                  const diff = tw - cw;
+                  const weightLabel = diff < 0
+                    ? `あと ${Math.abs(diff).toFixed(1)}kg 減量`
+                    : diff > 0
+                    ? `あと ${diff.toFixed(1)}kg 増量`
+                    : '現体重キープ';
+                  const rawDelta = calc?.dailyDeltaKcal;
+                  const isUnsafeDeficit = calc?.isUnsafeDeficit ?? false;
+                  const isUnsafeSurplus = calc?.isUnsafeSurplus ?? false;
+                  const isUnsafeGoalKcal = calc?.isUnsafeGoalKcal ?? false;
+                  const absDiff = Math.abs(diff);
+                  return (
+                    <div className="space-y-0.5 pl-6">
+                      <div className="text-xs font-bold">
+                        {weightLabel}
+                        {rawDelta !== undefined && rawDelta !== 0 && (
+                          <span className="ml-2">
+                            {rawDelta < 0 ? `／ 1日あたり ${rawDelta} kcal 削減` : `／ 1日あたり +${rawDelta} kcal 追加`}
+                          </span>
+                        )}
+                      </div>
+                      {rawDelta !== undefined && Math.abs(rawDelta) > 0 && remainingDays !== null && remainingDays > 0 && diff !== 0 && (
+                        <div className="text-[10px] opacity-70">
+                          ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日 = {Math.round(rawDelta)} kcal/日)
+                        </div>
+                      )}
+                      {(isUnsafeDeficit || isUnsafeSurplus || isUnsafeGoalKcal) && (
+                        <div className="mt-1 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-0.5">
+                          <div className="font-bold">⚠️ 健康上の安全範囲を超えています</div>
+                          {isUnsafeDeficit && (
+                            <div>・1日あたり {Math.round(rawDelta ?? 0)} kcal の{rawDelta && rawDelta < 0 ? '削減' : '追加'}は、安全上限（±1,000 kcal/日）を超えています</div>
+                          )}
+                          {isUnsafeSurplus && (
+                            <div>・1日あたり +{Math.round(rawDelta ?? 0)} kcal の追加は、安全上限（+1,000 kcal/日）を超えています</div>
+                          )}
+                          {isUnsafeGoalKcal && (
+                            <div>・目標カロリーが安全レンジ（1,200〜4,000 kcal）外です</div>
+                          )}
+                          <div className="opacity-80">過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか、目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  <div className="pl-6 text-[11px] opacity-70">目標体重を入力すると1日あたり kcal が計算されます</div>
                 )}
               </div>
             )}
 
-            {/* 計算機プレビュー */}
-            {calc ? (
-              <div className="mt-3 bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-violet-800 inline-flex items-center gap-1">
-                    <Calculator className="w-3 h-3" strokeWidth={2.4} />
-                    自動計算プレビュー
-                  </div>
-                  <div className="text-[10px] text-violet-700">
-                    BMR {calc.bmr} ・ TDEE {calc.tdee} kcal
+            {/* 目標カロリー・PFC グリッド（2列×4行） */}
+            <div className="mb-3">
+              <div className="grid grid-cols-2 gap-2">
+                {/* 行1: 現在の消費カロリー / 目標カロリー */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー (kcal)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                    {calc?.tdee ?? '—'}
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <PreviewStat label="kcal" value={calc.goalKcal} />
-                  <PreviewStat label="P (g)" value={calc.goalP} />
-                  <PreviewStat label="F (g)" value={calc.goalF} />
-                  <PreviewStat label="C (g)" value={calc.goalC} />
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    inputMode="decimal"
+                    value={goalKcal}
+                    onChange={(e) => setGoalKcal(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
-                {calc.dailyDeltaKcal !== 0 && (
-                  <div className="text-[10px] text-violet-700">
-                    {calc.clampedDelta < 0 ? '減量' : '増量'}: 1日 {Math.abs(calc.clampedDelta)} kcal {calc.clampedDelta < 0 ? '不足' : '余剰'}
-                  </div>
-                )}
-                {calc.notes.length > 0 && (
-                  <ul className="text-[10px] text-amber-700 space-y-0.5">
-                    {calc.notes.map((n, i) => (
-                      <li key={i}>※ {n}</li>
-                    ))}
-                  </ul>
-                )}
-                <button
-                  type="button"
-                  onClick={applyCalc}
-                  className="w-full bg-violet-600 text-white text-xs font-bold py-2 rounded-xl active:bg-violet-700 inline-flex items-center justify-center gap-1"
-                >
-                  目標値に反映 <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.4} />
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-xl p-3 text-[11px] text-stone-600">
-                <Calculator className="w-3 h-3 inline mr-1" strokeWidth={2.4} />
-                身長・年齢・現在体重を入力すると自動計算します
-              </div>
-            )}
 
-            {/* 目標値（編集可・最終的に保存される値） */}
-            <div className="mt-3">
-              <div className="text-[10px] font-bold text-stone-700 mb-1">目標値（編集可）</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <NumberInput label="kcal" value={goalKcal} onChange={setGoalKcal} />
-                <NumberInput label="P (g)" value={goalP} onChange={setGoalP} step="0.1" />
-                <NumberInput label="F (g)" value={goalF} onChange={setGoalF} step="0.1" />
-                <NumberInput label="C (g)" value={goalC} onChange={setGoalC} step="0.1" />
+                {/* 行2: 目標タンパク質(g) / 目標タンパク質(%) */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalP}
+                    onChange={(e) => setGoalP(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                    {pRatio !== null ? `${pRatio}%` : '—'}
+                  </div>
+                </div>
+
+                {/* 行3: 目標脂質(g) / 目標脂質(%) */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalF}
+                    onChange={(e) => setGoalF(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                    {fRatio !== null ? `${fRatio}%` : '—'}
+                  </div>
+                </div>
+
+                {/* 行4: 目標炭水化物(g) / 目標炭水化物(%) */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalC}
+                    onChange={(e) => setGoalC(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (%)</label>
+                  <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                    {cRatio !== null ? `${cRatio}%` : '—'}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -510,79 +627,10 @@ export default function CustomerDetailPage({
               type="button"
               onClick={save}
               disabled={saving}
-              className="w-full mt-4 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" strokeWidth={2.2} />
               {saving ? '保存中…' : '変更を保存'}
-            </button>
-          </section>
-
-          {/* 各種遷移 */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
-            <Link
-              href={`${base}/meals?customerId=${id}&from=${addDaysStr(today, -6)}&to=${today}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="w-4 h-4 text-amber-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">食事記録を見る（直近7日）</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </Link>
-            <Link
-              href={`${base}/reports?customerId=${id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">レポートを送る</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </Link>
-            <Link
-              href={`${base}/analysis?customerId=${id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                <span className="text-sm font-bold text-stone-900">AI 分析を見る</span>
-              </div>
-              <span className="text-stone-400">›</span>
-            </Link>
-          </section>
-
-          {/* オンボーディングリセット */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-              オンボーディング
-            </h2>
-            {onboardingMsg && (
-              <div className="mb-2 text-xs bg-emerald-100 border border-emerald-300 text-emerald-800 px-3 py-2 rounded-xl">{onboardingMsg}</div>
-            )}
-            <p className="text-xs text-stone-600 mb-3">
-              リセットすると次回顧客が /home を開いた際にオンボーディングが再表示されます。
-            </p>
-            <button
-              type="button"
-              disabled={onboardingResetting}
-              onClick={async () => {
-                setOnboardingResetting(true);
-                setOnboardingMsg(null);
-                try {
-                  const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
-                  if (!res.ok) throw new Error(`失敗（${res.status}）`);
-                  setOnboardingMsg('オンボーディングをリセットしました');
-                  setTimeout(() => setOnboardingMsg(null), 3000);
-                } catch (e) {
-                  setOnboardingMsg(e instanceof Error ? e.message : 'エラー');
-                } finally {
-                  setOnboardingResetting(false);
-                }
-              }}
-              className="bg-violet-100 text-violet-800 border border-violet-300 text-xs font-bold px-4 py-2 rounded-xl active:bg-violet-200 disabled:opacity-50"
-            >
-              {onboardingResetting ? 'リセット中…' : 'オンボーディングをリセット'}
             </button>
           </section>
 
@@ -611,7 +659,6 @@ export default function CustomerDetailPage({
             </button>
             {weightOpen && (
               <div className="px-3 pb-3 space-y-3">
-                {/* 期間セレクタ */}
                 <div className="flex gap-2 flex-wrap">
                   {[14, 30, 60, 90].map((d) => (
                     <button
@@ -638,7 +685,6 @@ export default function CustomerDetailPage({
                   <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{weightWarning}</div>
                 )}
 
-                {/* 体重推移グラフ */}
                 {weightHistory.some((w) => w.weight !== null) ? (
                   <div>
                     <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
@@ -647,7 +693,6 @@ export default function CustomerDetailPage({
                     </div>
                     <WeightLineChart entries={weightHistory} targetWeight={weightTargetWeight} />
 
-                    {/* 一覧表 */}
                     <div className="mt-2 overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -692,7 +737,6 @@ export default function CustomerDetailPage({
                   <div className="text-xs text-stone-500 py-2">この期間に体重記録がありません</div>
                 ) : null}
 
-                {/* 運動記録一覧 */}
                 {weightHistory.some((w) => w.exercised || w.exerciseContent) && (
                   <div>
                     <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
@@ -775,10 +819,8 @@ export default function CustomerDetailPage({
 
                 {exerciseLogs.length > 0 && (
                   <>
-                    {/* 日別運動時間グラフ */}
                     <ExerciseBarChart logs={exerciseLogs} days={exerciseDays} />
 
-                    {/* 集計 */}
                     <div className="flex gap-3 text-xs">
                       <div className="bg-violet-50 rounded-lg px-3 py-1.5 text-center">
                         <div className="font-bold text-violet-700">{exerciseLogs.length}回</div>
@@ -794,7 +836,6 @@ export default function CustomerDetailPage({
                       </div>
                     </div>
 
-                    {/* 一覧表 */}
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -879,17 +920,38 @@ export default function CustomerDetailPage({
               )}
             </section>
           )}
+
+          {isAdminRoute && (
+            <section className="bg-white rounded-2xl border-2 border-red-200 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-red-600" strokeWidth={2.2} />
+                <h3 className="text-sm font-bold text-red-700">危険な操作（管理者専用）</h3>
+              </div>
+              <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
+                オンボーディングをリセットすると、顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
+                顧客の入力した目標値・体重・性別などの基本情報は保持されます。
+              </p>
+              <button
+                type="button"
+                onClick={resetOnboarding}
+                disabled={resettingOnboard}
+                className="w-full bg-white border-2 border-red-500 text-red-600 font-bold py-2.5 rounded-xl text-sm active:bg-red-50 disabled:opacity-50"
+              >
+                {resettingOnboard ? 'リセット中…' : '🔄 オンボーディングをリセット'}
+              </button>
+            </section>
+          )}
         </div>
       )}
     </AdminShell>
   );
 }
 
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[6rem,1fr] gap-2 py-1 text-sm">
+    <div className="grid grid-cols-[7rem,1fr] gap-2 py-1 text-sm">
       <div className="text-stone-600">{label}</div>
-      <div className={`text-stone-900 break-all ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</div>
+      <div className="text-stone-900 break-all">{value}</div>
     </div>
   );
 }
@@ -907,24 +969,19 @@ function NumberInput({
 }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-stone-700 mb-1 block">{label}</label>
+      {label && (
+        <label className="text-xs font-bold text-stone-700 mb-1 block">
+          {label}
+        </label>
+      )}
       <input
         type="number"
         step={step}
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
       />
-    </div>
-  );
-}
-
-function PreviewStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white border border-violet-200 rounded-lg p-1.5 text-center">
-      <div className="text-[9px] font-bold text-violet-700">{label}</div>
-      <div className="text-sm font-bold text-violet-900">{value}</div>
     </div>
   );
 }

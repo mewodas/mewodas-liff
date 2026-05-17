@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, getDailyExtras, isoToJpMd } from '@/lib/notion';
+import { getWeightOnDate } from '@/lib/repository/weightLogs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// 個人シートの体重・運動データを取得（Notionブロック走査で重いので /api/today から分離）
-// 注意: customer.currentWeight を「今日の体重」として fallback で返さないこと。
-//   過去の最終体重が「今日入力済み」のように見えるバグになる（2026-05-17 営業中に発生）。
+// 体重は新体重DBから取得。運動データは引き続き個人シートから。
 export async function GET(req: NextRequest) {
   try {
     const lineUserId = req.nextUrl.searchParams.get('lineUserId');
@@ -20,23 +19,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
     const customer = await getCustomerByLineId(lineUserId);
-    if (!customer || !customer.foodSheetPageId) {
-      const res = NextResponse.json({ weight: '', exercised: '', exerciseContent: '' });
-      res.headers.set('Cache-Control', 'no-store, must-revalidate');
-      return res;
+
+    // 体重は新DBから取得（個人シート走査不要）
+    const weightLog = await getWeightOnDate(lineUserId, date).catch(() => null);
+    const weightStr = weightLog ? String(weightLog.weightKg) : '';
+
+    // 運動データは引き続き個人シートから
+    let exercised = '';
+    let exerciseContent = '';
+    if (customer?.foodSheetPageId) {
+      const extras = await Promise.race([
+        getDailyExtras(customer.foodSheetPageId, isoToJpMd(date)).catch(() => ({
+          weight: '',
+          exercised: '',
+          exerciseContent: '',
+        })),
+        new Promise<{ weight: string; exercised: string; exerciseContent: string }>(
+          (resolve) => setTimeout(() => resolve({ weight: '', exercised: '', exerciseContent: '' }), 10_000)
+        ),
+      ]);
+      exercised = extras.exercised;
+      exerciseContent = extras.exerciseContent;
     }
-    const extras = await Promise.race([
-      getDailyExtras(customer.foodSheetPageId, isoToJpMd(date)).catch(() => ({
-        weight: '',
-        exercised: '',
-        exerciseContent: '',
-      })),
-      new Promise<{ weight: string; exercised: string; exerciseContent: string }>(
-        (resolve) => setTimeout(() => resolve({ weight: '', exercised: '', exerciseContent: '' }), 10_000)
-      ),
-    ]);
-    const res = NextResponse.json(extras);
-    // 体重保存直後にホームを開いた時に古い値を返さないよう、HTTPキャッシュは無効化
+
+    const res = NextResponse.json({ weight: weightStr, exercised, exerciseContent });
     res.headers.set('Cache-Control', 'no-store, must-revalidate');
     return res;
   } catch (e) {

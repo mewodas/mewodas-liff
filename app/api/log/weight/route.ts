@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invalidate } from '@/lib/cache';
+import { getCustomerByLineId } from '@/lib/notion';
+import { createWeightLog } from '@/lib/repository/weightLogs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -47,8 +49,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'weight が不正です（0〜300kg）' }, { status: 400 });
     }
 
-    // GAS書き込み完了を待ってからレスポンス（上書き反映を確実にする）
-    await callGasSaveWeight({ lineUserId, date, weight });
+    const customer = await getCustomerByLineId(lineUserId).catch(() => null);
+    const customerName = customer?.name ?? '';
+
+    // GAS（個人シート書き込み）と 新体重DB への書き込みを並列実行
+    // GAS 失敗時も新DB には書き込む（フェイルセーフ）
+    const [gasResult] = await Promise.allSettled([
+      callGasSaveWeight({ lineUserId, date, weight }),
+      createWeightLog({
+        lineUserId,
+        customerName,
+        date,
+        weightKg: weight,
+        source: 'LIFF',
+      }).catch((e) => {
+        console.error('体重DB書き込み失敗（フェイルセーフ継続）:', e);
+      }),
+    ]);
+
+    if (gasResult.status === 'rejected') {
+      throw gasResult.reason;
+    }
 
     // GAS が顧客DBの「現在体重」を更新したので、Vercel側の顧客キャッシュを
     // 全テナント横断でクリア（次回 /api/today などで fresh な値を取得）

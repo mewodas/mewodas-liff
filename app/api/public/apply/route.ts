@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       heightCm,
       age: age ?? null,
       activityLevel: activityLevelNormalized || null,
-      plan: targetWeight < currentWeight ? '減量' : targetWeight > currentWeight ? '増量' : '維持',
+      plan: targetWeight < currentWeight ? '減量' : targetWeight > currentWeight ? '増量' : '現状維持',
       currentWeight,
       targetWeight,
       targetDate: null,
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     return await runInTenantContext(tenant, async () => {
       const customer = await createCustomer({
         name,
-        foodStatus: '申込中',
+        foodStatus: '設定中',
         gender: gender || undefined,
         heightCm,
         age,

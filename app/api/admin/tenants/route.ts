@@ -3,6 +3,7 @@ import {
   listTenantRows,
   createTenantCustomerDb,
   createTenantFoodDb,
+  createTenantWeightDb,
   insertTenantRow,
   setTenantPasswordHash,
 } from '@/lib/notion';
@@ -58,19 +59,21 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
 
     const tenantId = genTenantId(name);
 
-    // 1. 顧客DB自動作成
-    const customerDbId = await createTenantCustomerDb(name, FITMEAL_TENANTS_PARENT_PAGE_ID);
+    // 1. 顧客DB・食事DB・体重DBを並列作成
+    const [customerDbId, foodDbId, weightDbId] = await Promise.all([
+      createTenantCustomerDb(name, FITMEAL_TENANTS_PARENT_PAGE_ID),
+      createTenantFoodDb(name, FITMEAL_TENANTS_PARENT_PAGE_ID),
+      createTenantWeightDb(name, FITMEAL_TENANTS_PARENT_PAGE_ID),
+    ]);
 
-    // 2. 食事記録DB自動作成
-    const foodDbId = await createTenantFoodDb(name, FITMEAL_TENANTS_PARENT_PAGE_ID);
-
-    // 3. テナントDBに登録
+    // 2. テナントDBに登録
     const tenantPageId = await insertTenantRow(FITMEAL_TENANTS_DB_ID, {
       name,
       tenantId,
       plan,
       customerDbId,
       foodDbId,
+      weightDbId,
       ownerEmail,
       startDate: jstToday(),
       note,
@@ -127,6 +130,7 @@ export const POST = withMasterOnly(async (req: NextRequest) => {
       initialPassword: mail.sent ? undefined : initialPassword,
       customerDbUrl: `https://www.notion.so/${customerDbId.replace(/-/g, '')}`,
       foodDbUrl: `https://www.notion.so/${foodDbId.replace(/-/g, '')}`,
+      weightDbUrl: `https://www.notion.so/${weightDbId.replace(/-/g, '')}`,
       storesDbUrl: `https://www.notion.so/${FITMEAL_STORES_DB_ID.replace(/-/g, '')}`,
     });
   } catch (e) {

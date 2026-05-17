@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/repository/customers';
-import { getRangeExtras } from '@/lib/notion';
+import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
 import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -19,11 +19,6 @@ function jstToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-function isoToJpLabel(iso: string): string {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${m}月${d}日`;
-}
-
 export const GET = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
@@ -34,35 +29,21 @@ export const GET = withAdminTenant(async (req, { params }: { params: Promise<{ i
     const customer = await getCustomer(id);
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
 
-    if (!customer.foodSheetPageId) {
-      return NextResponse.json({
-        weights: [],
-        targetWeight: customer.targetWeight,
-        currentWeight: customer.currentWeight,
-        warning: '個人シート未設定のため体重データを取得できません',
-      });
-    }
+    const logs = await listWeightLogsByLineUser(customer.lineUserId, from, today);
+    const logMap = new Map(logs.map((l) => [l.date, l]));
 
-    // 日付ラベル生成（getRangeExtras は「M月D日」形式を受け取る）
-    const dateLabels: string[] = [];
     const isoList: string[] = [];
     for (let i = 0; i < days; i++) {
-      const iso = addDays(from, i);
-      isoList.push(iso);
-      dateLabels.push(isoToJpLabel(iso));
+      isoList.push(addDays(from, i));
     }
 
-    const extras = await getRangeExtras(customer.foodSheetPageId, dateLabels);
-
-    const weights = isoList.map((iso, i) => {
-      const label = dateLabels[i];
-      const ex = extras[label];
-      const w = ex?.weight ? parseFloat(ex.weight) : null;
+    const weights = isoList.map((iso) => {
+      const log = logMap.get(iso);
       return {
         date: iso,
-        weight: Number.isFinite(w) ? w : null,
-        exercised: ex?.exercised || false,
-        exerciseContent: ex?.exerciseContent || '',
+        weight: log ? log.weightKg : null,
+        exercised: false,
+        exerciseContent: '',
       };
     });
 

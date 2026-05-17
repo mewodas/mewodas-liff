@@ -9,6 +9,167 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 体重ログを独立 Notion DB から読み書き（Phase 2/3）
+- feat(lib/repository/weightLogs.ts): 新規作成。createWeightLog（upsert）/ listWeightLogsByLineUser / getLatestWeight / getWeightOnDate / deleteWeightLog
+- feat(lib/notion.ts): TenantRow に weightDbId 追加、parseTenantPage で「Notion 体重DB ID」プロパティ読み取り。createTenantWeightDb 追加（body スキーマ: 日付 title / 体重(kg) number / LINEユーザーID / 顧客名 / メモ / 入力経路 select）。insertTenantRow に weightDbId 追加
+- feat(lib/tenant.ts): TenantConfig に notionWeightDbId 追加。MEWODAS_TENANT に NOTION_WEIGHT_DB_ID env 読み込み
+- feat(lib/tenantResolver.ts): loadTenants で notionWeightDbId を TenantConfig に詰める
+- feat(app/api/log/weight): GAS + createWeightLog を Promise.allSettled で並列実行（GAS 失敗時も新DBに書き込むフェイルセーフ）
+- feat(app/api/extras): 体重を getWeightOnDate（新DB）から取得。運動データは引き続き個人シートから
+- feat(app/api/today): getLatestWeight で新DBの最新体重を取得し currentWeight を上書き
+- feat(app/api/admin/customers/[id]/weight-history): getRangeExtras（個人シート走査）から listWeightLogsByLineUser（新DB）に切替
+- feat(app/api/admin/tenants): テナント新規作成時に createTenantWeightDb も並列実行し weightDbId を登録
+- 影響範囲: 顧客側 LIFF /home 体重表示・/api/extras・/api/today、管理画面 /admin 体重グラフ、テナント自動プロビジョニング
+- DB ID: staging 5792ca16741248d7af1d31d2e5f935a8 / 本番 9caa86778586437eb39336623df9e65f
+
+## 2026-05-17 (staging) – 体重目標進捗の「現在」を最新ログ優先表示に
+- fix: app/home/page.tsx で goalProgress 計算時、`today.weight` (今日の体重ログ) があればそれを優先して currentWeight に使う
+- 旧挙動: 顧客DBの「現在体重」プロパティのみを参照。日々の体重ログでは自動更新されないため値が固定（小川由佳子様で発覚: DB値 63.6kg のまま、最新ログは 62.7kg）
+- 新挙動: 今日の体重を入力すれば即座に「現在」表示が反映される
+- 影響範囲: 顧客側 LIFF /home の「体重目標進捗」セクション
+- 残課題: 「今日未入力で過去日に最新ログがある」ケース → 直近 N 日の最新ログ取得 API を追加するか、GAS/API で顧客DBの「現在体重」を自動更新する仕組みが必要
+
+## 2026-05-17 (staging) – 本番hotfix同期: extras 体重 fallback 削除
+- hotfix: /api/extras から `customer.currentWeight` フォールバックを削除（本番の hotfix と同内容を staging にも反映）
+- 関連: main c058220 / 本番で「今日の体重未入力なのに過去値が表示される」バグの修正
+- 影響範囲: 顧客側 LIFF /home の体重入力欄
+
+## 2026-05-17 (staging) – 顧客編集画面 UI 改善（氏名編集・calcGoals 統一・バナー改修）
+- feat(admin/[id]): 基本情報セクションで氏名を input で編集可能に。save 時に name を PATCH payload に含め Notion の「氏名」title プロパティを更新
+- feat(lib): CustomerPatch 型・updateCustomer・PATCH ハンドラに name フィールドを追加
+- refactor(admin/[id]): ローカル calcMifflin + ACTIVITY_FACTOR を削除し lib/goalCalc の calcGoals に統一。targetWeight + targetDate がある場合は体重差×7700÷残日数で自動計算
+- fix(admin/[id], admin/new): 残日数バナーから「計算式: kcal -500 / ...」併記を削除
+- feat(admin/[id], admin/new): 体重差表示を「あと Xkg 減量」「あと Xkg 増量」「現体重キープ」形式に変更
+- feat(admin/[id], admin/new): バナーに「1日あたり -N kcal 削減 / +N kcal 追加」と計算式 (Xkg × 7,700 ÷ N日) を追加。体重・目標日未入力時はヒントを表示
+- 影響範囲: 管理画面 /admin/customers/[id]、/admin/customers/new、/store/customers/[id]、/store/customers/new（re-export）、API /api/admin/customers/[id]、lib/notion.ts、lib/repository/customers.ts
+
+## 2026-05-17 (staging) – クランプ撤去・警告強化
+- feat(lib): calcGoals の **clamp ロジックを撤去**。1日あたり調整 kcal も目標 kcal も計算値そのまま使う
+  - 旧仕様: 1日 ±1,000kcal / 目標 1,200〜4,000kcal で自動クランプ → 極端な目標体重では値が動かない
+  - 新仕様: 計算値そのまま使用 + 警告フラグ（isUnsafeDeficit / isUnsafeSurplus / isUnsafeGoalKcal）を返す
+- ui(admin): 警告バナーを「クランプ」表現から「健康上の安全範囲を超えています」に文言変更
+  - 該当条件を箇条書きで明示（1日±1,000kcal 超 / 目標 1,200〜4,000kcal 外）
+  - 「トレーナー判断で進める場合はこのまま保存可能です」と明記
+- 影響範囲: lib/goalCalc.ts / /admin/customers/{[id]|new}
+
+## 2026-05-17 (staging) – クランプ警告追加
+- ui(admin): 残日数バナーに「1日あたり調整 kcal がクランプされた場合の警告」を追加（両ページ）
+  - 計算上 -2,566 kcal/日 等になる極端な目標体重差では、安全上限 -1,000 kcal/日 で自動クランプされる
+  - 従来は警告無しで「目標体重を変えても結果が動かない」と見えていたため、黄色バナーで明示
+  - 文言: 「計算上 N kcal/日 必要ですが、健康上の安全上限（1日±1,000kcal）でクランプしています。目標達成日を後ろにずらすか、目標体重を見直してください」
+  - 計算式表示も `(Xkg × 7,700 ÷ N日 = M kcal/日)` の形に拡張（生の計算値を明示）
+- 影響範囲: /admin/customers/{[id]|new}
+
+## 2026-05-17 (staging) – UI 細かい調整
+- ui(admin): LINE ユーザーID を /store/customers/new で**表示するが readOnly**（input は薄グレーで cursor-not-allowed）。/admin は引き続き編集可能
+- ui(admin): 身体情報の注釈を 1 行に短縮（<br> 削除、文言も簡潔化）
+- ui(admin): 氏名 input の背景を bg-stone-50 → bg-white に統一
+- ui(admin): TDEE と PFC 割合（自動計算カラム）の背景を bg-stone-50 → bg-white に統一、枠線も他と統一
+- ui(admin): 「目標カロリー・PFC（自動計算、手動編集可）」見出しテキストを削除（grid 内のラベルで意味が伝わるため）
+- ui(admin): PFC 割合のラベルを「タンパク質の割合」→「目標タンパク質 (%)」形式に変更（左隣の input ラベル「目標タンパク質 (g)」と統一）
+- ui(admin): 希望のプラン下の計算式バッジを削除
+- ui(admin): 残日数バナーに「計算式: kcal ±N / タンパク質 X g/kg・脂質 Y%」を併記（プラン選択時のみ表示）。目標達成日無しでもプラン選択時にバナーが表示される
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
+## 2026-05-17 (staging) – LINE ユーザーID 編集を admin 専用に
+- security(admin): /admin/customers/new の LINEユーザーID 入力フィールドを **admin URL でのみ表示**（usePathname で /admin/* 判定）
+- /store/customers/new からアクセスすると LINEユーザーID フィールド自体が**非表示**になり、店舗スタッフが手動で書き換えられないようにした
+- [id] 編集画面では既に Field component の読み取り専用表示のため変更不要
+- 影響範囲: 管理画面 /admin/customers/new と /store/customers/new
+
+## 2026-05-17 (staging) – 顧客フォーム UI 改修（アイコン削除・TDEE表示・PFC割合）
+- ui(admin): /admin/customers/new と /admin/customers/[id] 共通改修
+  - LINEユーザーID ラベルから「（任意）」削除
+  - 身体情報セクションの注釈を「性別・年齢・身長・現在体重・活動レベル・希望のプラン」の順に統一
+  - 入力フィールドラベルの lucide-react アイコンを全削除（セクション h2 アイコンは維持）
+  - 未使用 import（User/MessageCircle/BadgeCheck/Store/PersonStanding/Cake/Ruler/Activity/Flame/Droplet/Wheat/Scale ほか）を削除
+  - 希望のプランの選択肢から括弧表記を削除し、選択中プランのロジックをバッジで動的表示
+  - 目標セクションのレイアウトを改修: 目標体重・達成日 → 消費kcal・目標kcal・PFC×割合 の順に変更
+  - 目標カロリー/PFC を 2列×4行グリッドに再設計（左: 編集可能 input、右: 読み取り専用）
+  - 「現在の1日あたり消費カロリー（TDEE）」表示セルを追加（stone-50 背景の読み取り専用）
+  - PFC 割合（タンパク質・脂質・炭水化物）を goalKcal と goalP/F/C から自動計算して表示（goalKcal=0 時は「—」）
+  - [id] ページ: calcMifflin の返り値に tdee を追加し、身体情報変更時に TDEE を更新
+- 影響範囲: 管理画面（/admin/customers/new、/admin/customers/[id]）
+
+## 2026-05-17 (staging) – ステータス再変更
+- chore: 食事管理ステータスの方針を再変更（「申込中」廃止 → 「設定中」一本化）
+  - 前回（同日早朝）「設定中」→「申込中」一本化したが、業務的に「設定中」が適切と判断し戻し
+  - Notion DB（staging/本番）の options から「申込中」を削除、既存「申込中」顧客 4件（組山・北脇・亀山・後藤）を「設定中」へマイグレ（notion-ops 経由）
+  - コード側: STATUS_OPTIONS / 新規追加デフォルト / /api/admin/customers POST デフォルト / /api/onboard/redeem 自動切替対象 / lib/notion.ts createTenantCustomerDb / /admin/page.tsx の StatusBadge と STATUSES と「承認する」ボタン条件 すべて「申込中」→「設定中」に置換
+  - redeem の自動切替動作: 設定中 → 進行中（LINE認証成功で発火）
+- 影響範囲: DB 共通 / 管理画面 / API
+
+## 2026-05-17 (staging) – UI改修フォローアップ3
+- ui(admin): 顧客編集画面 /admin/customers/[id] 改修
+  - 「身体プロフィール」→「身体情報」にリネーム
+  - 希望のプランを活動レベルの隣（grid-cols-2）に横並び配置
+  - 注釈を6項目揃うと自動計算される旨の文言に差し替え
+  - 目標 kcal/PFC を grid-cols-4 でモバイルでも常に4列表示
+  - 全ラベルに lucide-react アイコン追加（User/MessageCircle/BadgeCheck/Store/PersonStanding/Cake/Ruler/Scale/Activity/Target/Flame/Droplet/Wheat）
+  - ラベル text-[10px]→text-xs、text-xs→text-sm、input/select text-sm→text-base、h2 text-sm→text-base
+  - LINE ユーザーID の mono フォント削除、氏名と統一
+  - 保存成功時のインラインバナー（saveMsg）を削除、即 router.push(\`\${base}?saved=1\`) で顧客一覧へ遷移
+- ui(admin): /admin/customers/new も同等の改修（身体情報リネーム・2段レイアウト・4列PFC・アイコン・フォント・遷移）
+- ui(admin): /admin/page.tsx に保存完了スナックバー追加（saved=1 クエリ検知→emerald-600 固定バナー→4秒後 URL クリーンアップ）
+- 影響範囲: 管理画面 /admin/customers/{[id]|new|（一覧）}（/store/customers/* も自動反映）
+
+## 2026-05-17 (staging) – Basic Auth 保護
+- security: staging.fitmeal.jp および *.vercel.app (Preview URL) を HTTP Basic Auth で保護
+  - `proxy.ts` に `isStagingHost` / `checkBasicAuth` を追加
+  - 環境変数 `STAGING_BASIC_AUTH_USER` / `STAGING_BASIC_AUTH_PASSWORD` が未設定の場合は素通し（フォールバック）
+  - 例外パス: `/api/cron/*`（Vercel Cron）、`/_next/static/*`、`/favicon.ico`
+  - 素通しホスト: `app.fitmeal.jp`、`fitmeal.jp`、`www.fitmeal.jp`、`localhost`
+  - matcher を `/(.*)`（全パス）に拡張（既存の admin/store セッション認証と共存）
+- feat: `app/robots.ts` を動的生成に変更
+  - staging / preview ホストでは `Disallow: /`、本番 `app.fitmeal.jp` では `Allow: /`
+- 影響範囲: staging 環境のみ（main / 本番への影響なし）
+- 関連: `STAGING_BASIC_AUTH_USER`, `STAGING_BASIC_AUTH_PASSWORD` を Vercel に追加要（下記参照）
+
+## 2026-05-17 (staging) – フォローアップ2
+- ui(admin): 顧客編集画面 /admin/customers/[id] 改修
+  - 「体型・代謝」セクションを「身体プロフィール」にリネーム
+  - 「目標プラン」を身体プロフィールセクションへ移動、ラベルを「希望のプラン」に変更
+  - 各プラン option に PFC 計算ロジックを併記（例: 減量 kcal -500 / P 2.2g/kg・F 20%）
+  - 「🧮 目安を自動計算」ボタンを削除、useEffect でリアルタイム自動計算（身体プロフィールが揃った瞬間に目標値へ反映）
+  - ステータス select から `<option value="">未設定</option>` を削除
+  - 「各種遷移」セクション（レポートを送る・AI分析を見る）を削除
+- ui(admin): /admin/customers/new も同等の改修（身体プロフィール再構成・希望のプラン inline option化・リアルタイム計算・自動計算プレビューブロック削除）
+- 影響範囲: 管理画面 /admin/customers/{[id]|new}（/store/customers/* も自動反映）
+
+## 2026-05-17 (staging) – フォローアップ
+- feat(admin): 顧客編集画面 /admin/customers/[id] に「危険な操作（管理者専用）」セクションを追加。オンボーディングリセットボタンを admin URL でのみ表示（usePathname で /admin/* 判定。/store/* では非表示）
+- feat(lib): goalCalc.ts の PLANS を 4種化（減量/増量/筋肥大/現状維持）。calcGoals のプラン補正と PFC 比率を 4種対応に拡張。ACTIVITY_LEVELS に displayLabel 追加（DB保存は label のまま）
+- fix(admin): /admin/customers/new デフォルト foodStatus を「申込中」に。STATUS_OPTIONS から「設定中」削除
+- fix(api): /api/admin/customers POST のデフォルト「設定中」→「申込中」
+- fix(api): /api/public/apply の plan「維持」→「現状維持」
+- fix(lib): createTenantCustomerDb で食事管理ステータスから「設定中」除去、プラン options を 4種に変更
+- chore: 診断 /api/debug/tenant 削除
+- 影響範囲: 管理画面 /admin/customers/* + 新規テナント自動プロビジョニング先のスキーマ
+- 関連: notion-ops で本番＋staging の顧客DBスキーマも更新済み（設定中 option 削除・プラン options 差し替え）
+
+## 2026-05-17 (staging)
+- feat(admin): 顧客編集画面リファクタ（セクション再構成・自動計算ボタン・保存通知）
+  - STATUS_OPTIONS から「設定中」を削除 → ['申込中', '進行中', '休止中', '卒業']
+  - 「体型・代謝」セクションに現在体重フィールドを追加（性別/年齢/身長/現在体重/活動レベルの順）
+  - 「目標」セクションを目標プラン/kcal/PFC/目標体重/目標達成日に再編
+  - 目標プランを 減量/増量/筋肥大/現状維持 の4種に変更
+  - 活動レベルの表示ラベルを拡張（DB値はそのまま）
+  - 「🧮 目安を自動計算」ボタン追加（Mifflin-St Jeor + プラン別補正で goalKcal/PFC を流し込む）
+  - 保存成功時にインラインバナー表示 + 1.5秒後に顧客一覧へ遷移
+  - 食事記録リンク・運動記録リンク・オンボーディングリセットボタンを画面から削除
+  - 全 required 撤廃（未記入でも保存可）
+  - currentWeight を PATCH 可能に（lib/notion.ts・lib/repository/customers.ts・API route 追加）
+- 影響範囲: 管理画面 /admin/customers/[id]（/store/customers/[id] は re-export のため自動反映）
+
+## 2026-05-16 23:45 (staging)
+- 修正: app/page.tsx で liff.state クエリパラメータを保持して redirect。LIFF v2 では LIFF URL のパス・クエリが /?liff.state=... 形式で渡されるため、これを破棄せず転送先 path として使う。これにより招待リンク liff.line.me/{id}/onboard?token=xxx が正しく /onboard?token=xxx に転送される
+- 影響範囲: 顧客側 LIFF 全般（招待リンク・通知リンク・LIFFのpath付きdeep link）
+- 関連: staging テスト次郎 招待リンクが /home に着地して「顧客が見つかりません」エラーが出ていた
+
+## 2026-05-16 23:30 (staging)
+- 診断: /api/debug/tenant を追加（一時的）。staging 招待リンク 404 の原因切り分け用に env と getCurrentTenant() を返す
+- 影響範囲: staging のみ（main 未マージ）
+
 ---
 
 ## 2026-05-17 緊急修正（営業中バグ・main直push）

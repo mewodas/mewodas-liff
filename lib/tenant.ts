@@ -23,6 +23,8 @@ export type TenantConfig = {
   notionCustomerDbId: string;
   /** Notion 食事DB ID */
   notionFoodDbId: string;
+  /** Notion 体重ログDB ID */
+  notionWeightDbId?: string;
   /** Google Drive 親フォルダID（食事画像保存先） */
   driveFolderId?: string;
   /** Gemini APIキー（テナント共有可、テナント別も可） */
@@ -52,6 +54,7 @@ const MEWODAS_TENANT: TenantConfig = {
     process.env.NOTION_CUSTOMER_DB_ID || '2d6ec0c0531b4ef6a4c396baa6807546',
   notionFoodDbId:
     process.env.NOTION_FOOD_DB_ID || '8719d5ab23074ea5bf6e77fde352db86',
+  notionWeightDbId: process.env.NOTION_WEIGHT_DB_ID,
   driveFolderId: process.env.DRIVE_PARENT_FOLDER_ID,
   geminiApiKey: process.env.GEMINI_API_KEY,
   gasEndpoint: process.env.GAS_RECORD_ENDPOINT,

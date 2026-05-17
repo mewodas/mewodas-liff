@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, CheckCircle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
@@ -20,7 +21,42 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '申込中', '進行中', '設定中', '休止中', '卒業'];
+const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
+
+function SavedSnackbar() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('saved') === '1') {
+      setVisible(true);
+      const t = setTimeout(() => {
+        setVisible(false);
+        router.replace(window.location.pathname);
+      }, 4000);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, router]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg inline-flex items-center gap-3">
+      <span>✅ 保存しました</span>
+      <button
+        type="button"
+        onClick={() => {
+          setVisible(false);
+          router.replace(window.location.pathname);
+        }}
+        className="text-white/80 hover:text-white text-xs font-bold leading-none"
+      >
+        閉じる
+      </button>
+    </div>
+  );
+}
 
 export default function AdminCustomersPage() {
   const base = useAdminBase();
@@ -124,6 +160,10 @@ export default function AdminCustomersPage() {
 
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
+      <Suspense>
+        <SavedSnackbar />
+      </Suspense>
+
       <div className="space-y-3">
         {toastMsg && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-xl inline-flex items-center gap-2">
@@ -230,7 +270,7 @@ export default function AdminCustomersPage() {
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
                     <div className="mt-1.5 flex gap-2 flex-wrap">
-                      {c.foodStatus === '申込中' && (
+                      {c.foodStatus === '設定中' && (
                         <button
                           type="button"
                           onClick={(e) => approveCustomer(e, c.pageId)}
@@ -281,8 +321,6 @@ function StatusBadge({ status }: { status: string | null }) {
   const cls =
     status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
-      : status === '申込中'
-      ? 'bg-gray-100 text-gray-700 border-gray-300'
       : status === '設定中'
       ? 'bg-violet-100 text-violet-700 border-violet-300'
       : status === '休止中'
