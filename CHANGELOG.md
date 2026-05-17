@@ -9,6 +9,55 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – input レイアウトを relative+absolute に戻しネイティブスピナー復活
+- fix(globals.css): input[type="number"] のスピナー非表示 CSS を削除し、ネイティブスピナーを復活
+- fix(admin/customers/[id]): NumberInput・目標体重・目標カロリー・PFC(g)・TDEE・PFC(%) の flex レイアウトを relative+absolute に戻す。suffix は right-8/top-1/2 で absolute 配置、input は pr-12+text-center
+- fix(admin/customers/new): 同上（NumInput コンポーネント + 各フィールド）
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
+## 2026-05-17 (staging) – 警告文言微修正
+- ui(admin): 警告 2段落目末尾を「目標日や体重の見直しを推奨します（トレーナー判断で保存も可）。」に修正（〜推奨 → 〜推奨します）
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
+## 2026-05-17 (staging) – input サフィックスレイアウトを absolute → flex に変更
+- ui(admin/customers/[id]): NumberInput・目標体重・目標カロリー・PFC(g)・TDEE・PFC(%) の relative+absolute 配置を flex レイアウトに変更。数値右寄せ + サフィックスが数値直右に固定される一貫した見た目に
+- ui(admin/customers/new): 同上（NumInput コンポーネント + 目標カロリー・PFC・TDEE 各フィールド）
+- focus リングは外枠 div の focus-within:ring-2 で再現。input 自体の ring は削除
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
+## 2026-05-17 (staging) – 顧客詳細・新規作成フォームUI改善（単位サフィックス・バナー1行化・警告1段落化）
+- ui(admin/customers/[id]): 年齢/身長/現在体重/目標体重/TDEE/目標カロリー/PFC(g)/PFC(%) の各 input・読み取り専用 div にラベル内単位を廃止しサフィックスとして input 右側に表示。NumberInput コンポーネントに suffix prop 追加
+- ui(admin/customers/new): 同上。NumInput コンポーネントに suffix prop 追加
+- ui(admin/customers/[id]): 残日数バナーを flex 1行に変更（日数／減量kg／kcal削減を inline 表示）、計算式行（× 7,700 ÷ X日）を削除
+- ui(admin/customers/new): 同上
+- ui(admin/customers/[id]): 安全警告を箇条書き廃止・1段落テキストに統合（isUnsafeDeficit/isUnsafeSurplus/isUnsafeGoalKcal を動的に文中に埋め込み）
+- ui(admin/customers/new): 同上
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
+## 2026-05-17 (staging) – number input ネイティブスピナー非表示
+- ui(globals.css): `<input type="number">` のネイティブスピナー（上下矢印）を全画面で非表示に
+  - ネイティブスピナーは CSS で位置を変えられず、サフィックス（kg/kcal/g/% 等）と重なる問題があった
+  - モバイルでは inputMode="decimal" で数値キーボードが出るため、スピナー無くても入力しやすい
+  - PC ではユーザーが直接タイプ入力
+- 影響範囲: 全画面の `<input type="number">`（管理画面・顧客側）
+
+## 2026-05-17 (staging) – サフィックス位置を更に左へ + 警告文短縮
+- ui(admin): input サフィックス位置を更に左へ。pr-10/right-8 → **pr-14/right-12**（スピナーの左側に確実に表示）
+- ui(admin): 警告文 2段落目を短縮して 2 行に収まるように。「過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨（トレーナー判断で保存も可）。」
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
+## 2026-05-17 (staging) – サフィックス位置調整 + 警告 2段落化
+- ui(admin): 単位サフィックス位置を input 内（スピナーの左）に移動。pr-8 → pr-10、right-3 → right-8
+- ui(admin): 警告バナーを 2 段落に分離（条件説明 → リスクと推奨）
+  - 1段落目: 「⚠️ 健康上の安全範囲を超えています：（該当条件）です。」
+  - 2段落目: 「過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。」
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
+## 2026-05-17 (staging) – PFC を目標体重ベースに / 表示太字解除
+- fix(lib/goalCalc): PFC (P/F/g) 計算の基準を currentWeight → targetWeight（目標体重）に変更。targetWeight 未設定なら currentWeight にフォールバック。これにより目標体重の増減で P/F (g) も連動する
+- ui(admin): TDEE 表示・PFC% 表示の読み取り専用カラムから `font-bold` を削除。input カラムと文字ウェイトを統一
+- 影響範囲: lib/goalCalc.ts / /admin/customers/{[id]|new}
+
 ## 2026-05-17 (staging) – 体重ログを独立 Notion DB から読み書き（Phase 2/3）
 - feat(lib/repository/weightLogs.ts): 新規作成。createWeightLog（upsert）/ listWeightLogsByLineUser / getLatestWeight / getWeightOnDate / deleteWeightLog
 - feat(lib/notion.ts): TenantRow に weightDbId 追加、parseTenantPage で「Notion 体重DB ID」プロパティ読み取り。createTenantWeightDb 追加（body スキーマ: 日付 title / 体重(kg) number / LINEユーザーID / 顧客名 / メモ / 入力経路 select）。insertTenantRow に weightDbId 追加

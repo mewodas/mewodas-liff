@@ -257,9 +257,9 @@ export default function NewCustomerPage() {
                 {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
-            <NumInput label="年齢" value={age} onChange={setAge} step="1" />
-            <NumInput label="身長(cm)" value={heightCm} onChange={setHeightCm} step="0.1" />
-            <NumInput label="現在体重(kg)" value={currentWeight} onChange={setCurrentWeight} step="0.1" />
+            <NumInput label="年齢" value={age} onChange={setAge} step="1" suffix="歳" />
+            <NumInput label="身長" value={heightCm} onChange={setHeightCm} step="0.1" suffix="cm" />
+            <NumInput label="現在体重" value={currentWeight} onChange={setCurrentWeight} step="0.1" suffix="kg" />
           </div>
           {/* 2段目: 活動レベル / 希望のプラン */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -309,15 +309,19 @@ export default function NewCustomerPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block">
-                目標体重 (kg)
+                目標体重
               </label>
-              <input
-                type="number"
-                step="0.1"
-                value={targetWeight}
-                onChange={(e) => setTargetWeight(e.target.value)}
-                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  inputMode="decimal"
+                  value={targetWeight}
+                  onChange={(e) => setTargetWeight(e.target.value)}
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
+              </div>
             </div>
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block">
@@ -333,66 +337,55 @@ export default function NewCustomerPage() {
           </div>
 
           {targetDate && remainingDays !== null && (
-            <div className="rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3 space-y-1">
-              <div className="flex items-center gap-2">
+            <div className="rounded-xl border bg-sky-50 border-sky-200 text-sky-800 p-3">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <Hourglass className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                <span className="text-sm font-bold">
+                <span className="text-xs font-bold whitespace-nowrap">
                   {remainingDays < 0 ? `目標日を ${Math.abs(remainingDays)} 日超過`
                    : remainingDays === 0 ? '目標日は今日'
                    : `目標まであと ${remainingDays} 日`}
                 </span>
-              </div>
-              {currentWeight && targetWeight && (() => {
-                const cw = parseFloat(currentWeight);
-                const tw = parseFloat(targetWeight);
-                if (isNaN(cw) || isNaN(tw)) return null;
-                const diff = tw - cw;
-                const weightLabel = diff < 0
-                  ? `あと ${Math.abs(diff).toFixed(1)}kg 減量`
-                  : diff > 0
-                  ? `あと ${diff.toFixed(1)}kg 増量`
-                  : '現体重キープ';
-                const rawDelta = calc?.dailyDeltaKcal;
-                const isUnsafeDeficit = calc?.isUnsafeDeficit ?? false;
-                const isUnsafeSurplus = calc?.isUnsafeSurplus ?? false;
-                const isUnsafeGoalKcal = calc?.isUnsafeGoalKcal ?? false;
-                const absDiff = Math.abs(diff);
-                return (
-                  <div className="space-y-0.5 pl-6">
-                    <div className="text-xs font-bold">
-                      {weightLabel}
+                {currentWeight && targetWeight && (() => {
+                  const cw = parseFloat(currentWeight);
+                  const tw = parseFloat(targetWeight);
+                  if (isNaN(cw) || isNaN(tw)) return null;
+                  const diff = tw - cw;
+                  const weightLabel = diff < 0
+                    ? `あと ${Math.abs(diff).toFixed(1)}kg 減量`
+                    : diff > 0
+                    ? `あと ${diff.toFixed(1)}kg 増量`
+                    : '現体重キープ';
+                  const rawDelta = calc?.dailyDeltaKcal;
+                  const isUnsafeDeficit = calc?.isUnsafeDeficit ?? false;
+                  const isUnsafeSurplus = calc?.isUnsafeSurplus ?? false;
+                  const isUnsafeGoalKcal = calc?.isUnsafeGoalKcal ?? false;
+                  return (
+                    <>
+                      <span className="text-xs font-bold whitespace-nowrap">／ {weightLabel}</span>
                       {rawDelta !== undefined && rawDelta !== 0 && (
-                        <span className="ml-2">
+                        <span className="text-xs font-bold whitespace-nowrap">
                           {rawDelta < 0 ? `／ 1日あたり ${rawDelta} kcal 削減` : `／ 1日あたり +${rawDelta} kcal 追加`}
                         </span>
                       )}
-                    </div>
-                    {rawDelta !== undefined && Math.abs(rawDelta) > 0 && remainingDays > 0 && diff !== 0 && (
-                      <div className="text-[10px] opacity-70">
-                        ({absDiff.toFixed(1)}kg × 7,700 ÷ {remainingDays}日 = {Math.round(rawDelta)} kcal/日)
-                      </div>
-                    )}
-                    {(isUnsafeDeficit || isUnsafeSurplus || isUnsafeGoalKcal) && (
-                      <div className="mt-1 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-0.5">
-                        <div className="font-bold">⚠️ 健康上の安全範囲を超えています</div>
-                        {isUnsafeDeficit && (
-                          <div>・1日あたり {Math.round(rawDelta ?? 0)} kcal の{rawDelta && rawDelta < 0 ? '削減' : '追加'}は、安全上限（±1,000 kcal/日）を超えています</div>
-                        )}
-                        {isUnsafeSurplus && (
-                          <div>・1日あたり +{Math.round(rawDelta ?? 0)} kcal の追加は、安全上限（+1,000 kcal/日）を超えています</div>
-                        )}
-                        {isUnsafeGoalKcal && (
-                          <div>・目標カロリーが安全レンジ（1,200〜4,000 kcal）外です</div>
-                        )}
-                        <div className="opacity-80">過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか、目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。</div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-              {(!currentWeight || !targetWeight) && (
-                <div className="pl-6 text-[11px] opacity-70">目標体重を入力すると1日あたり kcal が計算されます</div>
-              )}
+                      {(isUnsafeDeficit || isUnsafeSurplus || isUnsafeGoalKcal) && (() => {
+                        const parts: string[] = [];
+                        if (isUnsafeDeficit) parts.push(`1日あたり ${Math.round(rawDelta ?? 0)} kcal の${rawDelta && rawDelta < 0 ? '削減' : '追加'}は安全上限（±1,000 kcal/日）を超えています`);
+                        if (isUnsafeSurplus && !isUnsafeDeficit) parts.push(`1日あたり +${Math.round(rawDelta ?? 0)} kcal の追加は安全上限（+1,000 kcal/日）を超えています`);
+                        if (isUnsafeGoalKcal) parts.push('目標カロリーが安全レンジ（1,200〜4,000 kcal）外です');
+                        return (
+                          <div className="w-full mt-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-1">
+                            <p>⚠️ 健康上の安全範囲を超えています：{parts.join('、')}。</p>
+                            <p>過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨します（トレーナー判断で保存も可）。</p>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  );
+                })()}
+                {(!currentWeight || !targetWeight) && (
+                  <span className="text-[11px] opacity-70">目標体重を入力すると1日あたり kcal が計算されます</span>
+                )}
+              </div>
             </div>
           )}
 
@@ -401,77 +394,93 @@ export default function NewCustomerPage() {
             <div className="grid grid-cols-2 gap-2">
               {/* 行1: 現在の消費カロリー / 目標カロリー */}
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー (kcal)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー</label>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
                   {calc?.tdee ?? '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標カロリー (kcal)</label>
-                <input
-                  type="number"
-                  step="1"
-                  inputMode="decimal"
-                  value={goalKcal}
-                  onChange={(e) => setGoalKcal(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標カロリー</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="1"
+                    inputMode="decimal"
+                    value={goalKcal}
+                    onChange={(e) => setGoalKcal(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
+                </div>
               </div>
 
               {/* 行2: 目標タンパク質(g) / 目標タンパク質(%) */}
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={goalP}
-                  onChange={(e) => setGoalP(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（g）</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalP}
+                    onChange={(e) => setGoalP(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
-                  {pRatio !== null ? `${pRatio}%` : '—'}
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（％）</label>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {pRatio !== null ? pRatio : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
 
               {/* 行3: 目標脂質(g) / 目標脂質(%) */}
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={goalF}
-                  onChange={(e) => setGoalF(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（g）</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalF}
+                    onChange={(e) => setGoalF(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
-                  {fRatioCalc !== null ? `${fRatioCalc}%` : '—'}
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（％）</label>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {fRatioCalc !== null ? fRatioCalc : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
 
               {/* 行4: 目標炭水化物(g) / 目標炭水化物(%) */}
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={goalC}
-                  onChange={(e) => setGoalC(e.target.value)}
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（g）</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={goalC}
+                    onChange={(e) => setGoalC(e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
-                  {cRatio !== null ? `${cRatio}%` : '—'}
+                <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（％）</label>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {cRatio !== null ? cRatio : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
             </div>
@@ -497,25 +506,32 @@ function NumInput({
   value,
   onChange,
   step = '1',
+  suffix,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   step?: string;
+  suffix?: string;
 }) {
   return (
     <div>
       <label className="text-xs font-bold text-stone-700 mb-1 block">
         {label}
       </label>
-      <input
-        type="number"
-        step={step}
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-      />
+      <div className="relative">
+        <input
+          type="number"
+          step={step}
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        {suffix && (
+          <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
+        )}
+      </div>
     </div>
   );
 }
