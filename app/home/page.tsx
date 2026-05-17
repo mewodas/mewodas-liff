@@ -492,6 +492,51 @@ function HomePageInner() {
           />
         </div>
 
+        {/* 体重・運動カード（未来日以外で表示。過去日もタップで入力/編集可能） */}
+        {userId && selectedDate <= todayStr && (
+          <div
+            data-tour="today-record-card"
+            className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}
+          >
+          <WeightExerciseCard
+            selectedDate={selectedDate}
+            isToday={isToday}
+            lineUserId={userId}
+            initialWeight={today.weight}
+            initialExercised={today.exercised}
+            initialExerciseContent={today.exerciseContent}
+            onUpdated={() => {
+              invalidate('today_');
+              invalidate('weekly_');
+              invalidate('history_');
+              if (userId) {
+                // today + extras を並列再 fetch して体重・運動の最新値を反映
+                Promise.all([
+                  fetch(
+                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                    { cache: 'no-store' }
+                  ).then((r) => r.json()),
+                  fetch(
+                    `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                    { cache: 'no-store' }
+                  ).then((r) => r.json()).catch(() => null),
+                ])
+                  .then(([json, extras]) => {
+                    if (extras) {
+                      json.today.weight = extras.weight || '';
+                      json.today.exercised = extras.exercised || '';
+                      json.today.exerciseContent = extras.exerciseContent || '';
+                    }
+                    setData(json);
+                    setCached(`today_v2_${userId}_${selectedDate}`, json);
+                  })
+                  .catch(() => {});
+              }
+            }}
+          />
+          </div>
+        )}
+
         {/* 体重目標 */}
         {goalProgress && (
           <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-stone-200">
@@ -541,51 +586,6 @@ function HomePageInner() {
                 targetWeight={customer.targetWeight}
               />
             )}
-          </div>
-        )}
-
-        {/* 体重・運動カード（未来日以外で表示。過去日もタップで入力/編集可能） */}
-        {userId && selectedDate <= todayStr && (
-          <div
-            data-tour="today-record-card"
-            className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}
-          >
-          <WeightExerciseCard
-            selectedDate={selectedDate}
-            isToday={isToday}
-            lineUserId={userId}
-            initialWeight={today.weight}
-            initialExercised={today.exercised}
-            initialExerciseContent={today.exerciseContent}
-            onUpdated={() => {
-              invalidate('today_');
-              invalidate('weekly_');
-              invalidate('history_');
-              if (userId) {
-                // today + extras を並列再 fetch して体重・運動の最新値を反映
-                Promise.all([
-                  fetch(
-                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-                    { cache: 'no-store' }
-                  ).then((r) => r.json()),
-                  fetch(
-                    `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
-                    { cache: 'no-store' }
-                  ).then((r) => r.json()).catch(() => null),
-                ])
-                  .then(([json, extras]) => {
-                    if (extras) {
-                      json.today.weight = extras.weight || '';
-                      json.today.exercised = extras.exercised || '';
-                      json.today.exerciseContent = extras.exerciseContent || '';
-                    }
-                    setData(json);
-                    setCached(`today_v2_${userId}_${selectedDate}`, json);
-                  })
-                  .catch(() => {});
-              }
-            }}
-          />
           </div>
         )}
 
