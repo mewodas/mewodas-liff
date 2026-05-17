@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – ホームの体重目標進捗に +/- 符号表示
+- ui(home): 「残り」「必要ペース」の数値に方向符号を付与（減量なら -、増量なら +）
+  - 旧: 「残り 10.5 kg」「必要ペース 0.8 kg/週」← 増減方向が不明
+  - 新: 「残り -10.5 kg」「必要ペース -0.8 kg/週」（現在 > 目標の場合）
+- 影響範囲: 顧客側 LIFF /home の「体重目標進捗」セクション
+
 ## 2026-05-18 (staging) – input レイアウトを relative+absolute に戻しネイティブスピナー復活
 - fix(globals.css): input[type="number"] のスピナー非表示 CSS を削除し、ネイティブスピナーを復活
 - fix(admin/customers/[id]): NumberInput・目標体重・目標カロリー・PFC(g)・TDEE・PFC(%) の flex レイアウトを relative+absolute に戻す。suffix は right-8/top-1/2 で absolute 配置、input は pr-12+text-center

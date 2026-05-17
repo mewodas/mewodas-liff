@@ -508,22 +508,29 @@ function HomePageInner() {
                 <span className="text-stone-600">目標</span>
                 <span className="font-bold">{goalProgress.targetW} kg</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-600">残り</span>
-                <span className="font-bold text-emerald-700">{goalProgress.remainingKg} kg</span>
-              </div>
-              {goalProgress.remainingWeeks !== null && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-stone-600">期限</span>
-                    <span className="font-bold">あと {goalProgress.remainingWeeks} 週</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-stone-100">
-                    <span className="text-stone-600">必要ペース</span>
-                    <span className="font-bold text-emerald-700">{goalProgress.requiredPace} kg/週</span>
-                  </div>
-                </>
-              )}
+              {(() => {
+                const sign = goalProgress.targetW < goalProgress.currentW ? '-' : goalProgress.targetW > goalProgress.currentW ? '+' : '';
+                return (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-stone-600">残り</span>
+                      <span className="font-bold text-emerald-700">{sign}{goalProgress.remainingKg} kg</span>
+                    </div>
+                    {goalProgress.remainingWeeks !== null && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-stone-600">期限</span>
+                          <span className="font-bold">あと {goalProgress.remainingWeeks} 週</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-stone-100">
+                          <span className="text-stone-600">必要ペース</span>
+                          <span className="font-bold text-emerald-700">{sign}{goalProgress.requiredPace} kg/週</span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* AI体重予測 */}
