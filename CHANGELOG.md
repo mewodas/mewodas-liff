@@ -9,6 +9,9 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – 文言微修正「食事管理のURLにアクセス可能です」
+- ui(onboard, invite-link): 「FitMeal にアクセスできるようになります」→「食事管理のURLにアクセス可能です」に統一
+
 ## 2026-05-18 – 「承認する」ボタン削除 + 招待文言をリッチメニュー導線に合わせる
 - ui(admin): 顧客一覧の「承認する」ボタン削除（招待リンク経由で自動的に進行中になるため不要）。`approveCustomer` 関数・`approvingId` state・`CheckCircle` import も削除
 - ui(api/invite-link): shareText を `/onboard` 完了画面の文言と合わせて修正

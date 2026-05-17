@@ -91,7 +91,7 @@ function OnboardInner() {
             <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-sm space-y-2">
               <p className="text-sm font-bold text-stone-900">📱 公式LINEを友だち追加してください</p>
               <p className="text-xs text-stone-600 leading-relaxed">
-                下のボタンから公式LINEを友だち追加していただくと、リッチメニューから FitMeal にアクセスできるようになります。
+                下のボタンから公式LINEを友だち追加していただくと、リッチメニューから食事管理のURLにアクセス可能です。
               </p>
               <p className="text-xs text-stone-600 leading-relaxed">
                 食事の写真送信・体重記録・前日レポート受信もすべて公式LINEから行います。
