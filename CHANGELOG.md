@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – input サフィックスレイアウトを absolute → flex に変更
+- ui(admin/customers/[id]): NumberInput・目標体重・目標カロリー・PFC(g)・TDEE・PFC(%) の relative+absolute 配置を flex レイアウトに変更。数値右寄せ + サフィックスが数値直右に固定される一貫した見た目に
+- ui(admin/customers/new): 同上（NumInput コンポーネント + 目標カロリー・PFC・TDEE 各フィールド）
+- focus リングは外枠 div の focus-within:ring-2 で再現。input 自体の ring は削除
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
 ## 2026-05-17 (staging) – 顧客詳細・新規作成フォームUI改善（単位サフィックス・バナー1行化・警告1段落化）
 - ui(admin/customers/[id]): 年齢/身長/現在体重/目標体重/TDEE/目標カロリー/PFC(g)/PFC(%) の各 input・読み取り専用 div にラベル内単位を廃止しサフィックスとして input 右側に表示。NumberInput コンポーネントに suffix prop 追加
 - ui(admin/customers/new): 同上。NumInput コンポーネントに suffix prop 追加
