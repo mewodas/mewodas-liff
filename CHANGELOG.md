@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – onboard 完了画面の文言と CTA を見直し
+- ui(onboard): 「あとで → 食事管理を始める」ボタンを削除（公式LINE追加が必須導線のため）
+- ui(onboard): 説明文を「友達追加 → 公式LINEのリッチメニューから FitMeal にアクセス」フローに合わせて修正
+- ui(onboard): 未使用の useRouter import を削除
+- 影響範囲: 顧客側 LIFF /onboard
+
 ## 2026-05-18 (staging) – パターンB: LIFF認証→完了画面で公式LINE 友達追加へ誘導
 - ui(onboard): redeem 完了画面に「✅ 公式LINEを友だち追加する」ボタンを追加（緑、目立つ）
   - サブで「あとで → 食事管理を始める」ボタン（白）

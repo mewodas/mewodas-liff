@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 export default function OnboardPage() {
@@ -16,7 +16,6 @@ type Phase = 'loading' | 'success' | 'error';
 
 function OnboardInner() {
   const sp = useSearchParams();
-  const router = useRouter();
   const token = sp.get('token') || '';
   const [phase, setPhase] = useState<Phase>('loading');
   const [customerName, setCustomerName] = useState('');
@@ -69,7 +68,7 @@ function OnboardInner() {
         setPhase('error');
       }
     })();
-  }, [token, router]);
+  }, [token]);
 
   if (phase === 'loading') return <LoadingState label="アプリに登録中…" />;
   if (phase === 'success') {
@@ -89,38 +88,26 @@ function OnboardInner() {
 
         {officialLineUrl ? (
           <div className="w-full max-w-sm space-y-3">
-            <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-sm">
-              <p className="text-sm font-bold text-stone-900 mb-2">📱 公式LINEを友だち追加</p>
+            <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-sm space-y-2">
+              <p className="text-sm font-bold text-stone-900">📱 公式LINEを友だち追加してください</p>
               <p className="text-xs text-stone-600 leading-relaxed">
-                前日の食事レポート・体重記録・自動通知を受け取るために、
-                <strong>公式LINEの友だち追加</strong>をお願いします。
-                未追加だと通知が届きません。
+                下のボタンから公式LINEを友だち追加していただくと、リッチメニューから FitMeal にアクセスできるようになります。
+              </p>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                食事の写真送信・体重記録・前日レポート受信もすべて公式LINEから行います。
               </p>
             </div>
             <a
               href={officialLineUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="block w-full bg-emerald-500 text-white text-center font-bold py-3 rounded-xl active:bg-emerald-700 text-sm"
             >
               ✅ 公式LINEを友だち追加する
             </a>
-            <button
-              type="button"
-              onClick={() => router.replace('/home')}
-              className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-xl text-sm active:bg-stone-50"
-            >
-              あとで → 食事管理を始める
-            </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => router.replace('/home')}
-            className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl text-sm active:bg-emerald-700"
-          >
-            食事管理を始める
-          </button>
+          <div className="text-center text-xs text-stone-500 max-w-sm">
+            公式LINEの友だち追加URLが未設定です。トレーナーへお問い合わせください。
+          </div>
         )}
       </div>
     );
