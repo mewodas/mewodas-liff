@@ -374,7 +374,7 @@ export default function NewCustomerPage() {
                         return (
                           <div className="w-full mt-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-1">
                             <p>⚠️ 健康上の安全範囲を超えています：{parts.join('、')}。</p>
-                            <p>過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨（トレーナー判断で保存も可）。</p>
+                            <p>過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨します（トレーナー判断で保存も可）。</p>
                           </div>
                         );
                       })()}
