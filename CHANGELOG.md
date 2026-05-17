@@ -9,6 +9,15 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 顧客詳細・新規作成フォームUI改善（単位サフィックス・バナー1行化・警告1段落化）
+- ui(admin/customers/[id]): 年齢/身長/現在体重/目標体重/TDEE/目標カロリー/PFC(g)/PFC(%) の各 input・読み取り専用 div にラベル内単位を廃止しサフィックスとして input 右側に表示。NumberInput コンポーネントに suffix prop 追加
+- ui(admin/customers/new): 同上。NumInput コンポーネントに suffix prop 追加
+- ui(admin/customers/[id]): 残日数バナーを flex 1行に変更（日数／減量kg／kcal削減を inline 表示）、計算式行（× 7,700 ÷ X日）を削除
+- ui(admin/customers/new): 同上
+- ui(admin/customers/[id]): 安全警告を箇条書き廃止・1段落テキストに統合（isUnsafeDeficit/isUnsafeSurplus/isUnsafeGoalKcal を動的に文中に埋め込み）
+- ui(admin/customers/new): 同上
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
 ## 2026-05-17 (staging) – PFC を目標体重ベースに / 表示太字解除
 - fix(lib/goalCalc): PFC (P/F/g) 計算の基準を currentWeight → targetWeight（目標体重）に変更。targetWeight 未設定なら currentWeight にフォールバック。これにより目標体重の増減で P/F (g) も連動する
 - ui(admin): TDEE 表示・PFC% 表示の読み取り専用カラムから `font-bold` を削除。input カラムと文字ウェイトを統一
