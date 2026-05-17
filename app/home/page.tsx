@@ -381,7 +381,11 @@ function HomePageInner() {
   const { totals, mealsByType } = today;
   const { goals } = customer;
   const dateLabel = formatJpDate(today.date);
-  const goalProgress = calcGoalProgress(customer);
+  // 「現在体重」は今日の体重ログがあればそれを優先（顧客DBの値は手動更新されないと固まるため）
+  const effectiveCurrentWeight = today.weight
+    ? parseFloat(today.weight)
+    : customer.currentWeight;
+  const goalProgress = calcGoalProgress({ ...customer, currentWeight: effectiveCurrentWeight });
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
