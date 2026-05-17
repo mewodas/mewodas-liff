@@ -311,15 +311,16 @@ export default function NewCustomerPage() {
               <label className="text-xs font-bold text-stone-700 mb-1 block">
                 目標体重
               </label>
-              <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-emerald-500">
+              <div className="relative">
                 <input
                   type="number"
                   step="0.1"
+                  inputMode="decimal"
                   value={targetWeight}
                   onChange={(e) => setTargetWeight(e.target.value)}
-                  className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <span className="text-xs text-stone-400 shrink-0">kg</span>
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
               </div>
             </div>
             <div>
@@ -394,92 +395,92 @@ export default function NewCustomerPage() {
               {/* 行1: 現在の消費カロリー / 目標カロリー */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2">
-                  <span className="flex-1 text-base text-right text-stone-700 truncate">{calc?.tdee ?? '—'}</span>
-                  <span className="text-xs text-stone-400 shrink-0">kcal</span>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {calc?.tdee ?? '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標カロリー</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500">
+                <div className="relative">
                   <input
                     type="number"
                     step="1"
                     inputMode="decimal"
                     value={goalKcal}
                     onChange={(e) => setGoalKcal(e.target.value)}
-                    className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="text-xs text-stone-400 shrink-0">kcal</span>
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
                 </div>
               </div>
 
               {/* 行2: 目標タンパク質(g) / 目標タンパク質(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（g）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500">
+                <div className="relative">
                   <input
                     type="number"
                     step="0.1"
                     inputMode="decimal"
                     value={goalP}
                     onChange={(e) => setGoalP(e.target.value)}
-                    className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="text-xs text-stone-400 shrink-0">g</span>
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（％）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2">
-                  <span className="flex-1 text-base text-right text-stone-700 truncate">{pRatio !== null ? pRatio : '—'}</span>
-                  <span className="text-xs text-stone-400 shrink-0">%</span>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {pRatio !== null ? pRatio : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
 
               {/* 行3: 目標脂質(g) / 目標脂質(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（g）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500">
+                <div className="relative">
                   <input
                     type="number"
                     step="0.1"
                     inputMode="decimal"
                     value={goalF}
                     onChange={(e) => setGoalF(e.target.value)}
-                    className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="text-xs text-stone-400 shrink-0">g</span>
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（％）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2">
-                  <span className="flex-1 text-base text-right text-stone-700 truncate">{fRatioCalc !== null ? fRatioCalc : '—'}</span>
-                  <span className="text-xs text-stone-400 shrink-0">%</span>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {fRatioCalc !== null ? fRatioCalc : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
 
               {/* 行4: 目標炭水化物(g) / 目標炭水化物(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（g）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500">
+                <div className="relative">
                   <input
                     type="number"
                     step="0.1"
                     inputMode="decimal"
                     value={goalC}
                     onChange={(e) => setGoalC(e.target.value)}
-                    className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="text-xs text-stone-400 shrink-0">g</span>
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（％）</label>
-                <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2">
-                  <span className="flex-1 text-base text-right text-stone-700 truncate">{cRatio !== null ? cRatio : '—'}</span>
-                  <span className="text-xs text-stone-400 shrink-0">%</span>
+                <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
+                  {cRatio !== null ? cRatio : '—'}
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                 </div>
               </div>
             </div>
@@ -518,17 +519,17 @@ function NumInput({
       <label className="text-xs font-bold text-stone-700 mb-1 block">
         {label}
       </label>
-      <div className="w-full flex items-center gap-1 bg-white border border-stone-300 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500">
+      <div className="relative">
         <input
           type="number"
           step={step}
           inputMode="decimal"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-transparent text-base text-right focus:outline-none w-full min-w-0"
+          className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         {suffix && (
-          <span className="text-xs text-stone-400 shrink-0">{suffix}</span>
+          <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
         )}
       </div>
     </div>

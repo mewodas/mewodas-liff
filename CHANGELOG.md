@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – input レイアウトを relative+absolute に戻しネイティブスピナー復活
+- fix(globals.css): input[type="number"] のスピナー非表示 CSS を削除し、ネイティブスピナーを復活
+- fix(admin/customers/[id]): NumberInput・目標体重・目標カロリー・PFC(g)・TDEE・PFC(%) の flex レイアウトを relative+absolute に戻す。suffix は right-8/top-1/2 で absolute 配置、input は pr-12+text-center
+- fix(admin/customers/new): 同上（NumInput コンポーネント + 各フィールド）
+- 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
+
 ## 2026-05-17 (staging) – 警告文言微修正
 - ui(admin): 警告 2段落目末尾を「目標日や体重の見直しを推奨します（トレーナー判断で保存も可）。」に修正（〜推奨 → 〜推奨します）
 - 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）

@@ -36,15 +36,3 @@ html {
   display: none;
 }
 
-/* 数値 input のネイティブスピナーを非表示
-   CSSでスピナー位置を調整できないため、サフィックス（kg/g/% 等）が右端に綺麗に並ぶよう削除。
-   ユーザーは直接タイプで入力。モバイルでは inputMode="decimal" で数値キーボードが出る。 */
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
