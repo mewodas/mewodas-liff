@@ -18,6 +18,13 @@
 - ui(admin/customers/new): 同上
 - 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
 
+## 2026-05-17 (staging) – サフィックス位置調整 + 警告 2段落化
+- ui(admin): 単位サフィックス位置を input 内（スピナーの左）に移動。pr-8 → pr-10、right-3 → right-8
+- ui(admin): 警告バナーを 2 段落に分離（条件説明 → リスクと推奨）
+  - 1段落目: 「⚠️ 健康上の安全範囲を超えています：（該当条件）です。」
+  - 2段落目: 「過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。」
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
 ## 2026-05-17 (staging) – PFC を目標体重ベースに / 表示太字解除
 - fix(lib/goalCalc): PFC (P/F/g) 計算の基準を currentWeight → targetWeight（目標体重）に変更。targetWeight 未設定なら currentWeight にフォールバック。これにより目標体重の増減で P/F (g) も連動する
 - ui(admin): TDEE 表示・PFC% 表示の読み取り専用カラムから `font-bold` を削除。input カラムと文字ウェイトを統一

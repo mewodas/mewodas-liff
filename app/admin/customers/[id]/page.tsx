@@ -463,9 +463,9 @@ export default function CustomerDetailPage({
                     step="0.1"
                     value={targetWeight}
                     onChange={(e) => setTargetWeight(e.target.value)}
-                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 pr-8 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
                 </div>
               </div>
               <div>
@@ -513,11 +513,18 @@ export default function CustomerDetailPage({
                             {rawDelta < 0 ? `／ 1日あたり ${rawDelta} kcal 削減` : `／ 1日あたり +${rawDelta} kcal 追加`}
                           </span>
                         )}
-                        {(isUnsafeDeficit || isUnsafeSurplus || isUnsafeGoalKcal) && (
-                          <div className="w-full mt-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug">
-                            ⚠️ 健康上の安全範囲を超えています：{isUnsafeDeficit && `1日あたり ${Math.round(rawDelta ?? 0)} kcal の${rawDelta && rawDelta < 0 ? '削減' : '追加'}は安全上限（±1,000 kcal/日）を超え、`}{isUnsafeSurplus && !isUnsafeDeficit && `1日あたり +${Math.round(rawDelta ?? 0)} kcal の追加は安全上限（+1,000 kcal/日）を超え、`}{isUnsafeGoalKcal && '目標カロリーが安全レンジ（1,200〜4,000 kcal）外です。'}過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。
-                          </div>
-                        )}
+                        {(isUnsafeDeficit || isUnsafeSurplus || isUnsafeGoalKcal) && (() => {
+                          const parts: string[] = [];
+                          if (isUnsafeDeficit) parts.push(`1日あたり ${Math.round(rawDelta ?? 0)} kcal の${rawDelta && rawDelta < 0 ? '削減' : '追加'}は安全上限（±1,000 kcal/日）を超えています`);
+                          if (isUnsafeSurplus && !isUnsafeDeficit) parts.push(`1日あたり +${Math.round(rawDelta ?? 0)} kcal の追加は安全上限（+1,000 kcal/日）を超えています`);
+                          if (isUnsafeGoalKcal) parts.push('目標カロリーが安全レンジ（1,200〜4,000 kcal）外です');
+                          return (
+                            <div className="w-full mt-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-1">
+                              <p>⚠️ 健康上の安全範囲を超えています：{parts.join('、')}。</p>
+                              <p>過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。</p>
+                            </div>
+                          );
+                        })()}
                       </>
                     );
                   })()}
@@ -536,7 +543,7 @@ export default function CustomerDetailPage({
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー</label>
                   <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
                     {calc?.tdee ?? '—'}
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
                   </div>
                 </div>
                 <div>
@@ -550,7 +557,7 @@ export default function CustomerDetailPage({
                       onChange={(e) => setGoalKcal(e.target.value)}
                       className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
                   </div>
                 </div>
 
@@ -564,16 +571,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalP}
                       onChange={(e) => setGoalP(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
                     {pRatio !== null ? pRatio : '—'}
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
 
@@ -587,16 +594,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalF}
                       onChange={(e) => setGoalF(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
                     {fRatio !== null ? fRatio : '—'}
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
 
@@ -610,16 +617,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalC}
                       onChange={(e) => setGoalC(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-8 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
                     {cRatio !== null ? cRatio : '—'}
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
               </div>
@@ -988,7 +995,7 @@ function NumberInput({
           className={`w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500${suffix ? ' pr-8' : ''}`}
         />
         {suffix && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
+          <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
         )}
       </div>
     </div>
