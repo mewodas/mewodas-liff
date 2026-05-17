@@ -402,7 +402,7 @@ export default function NewCustomerPage() {
               {/* 行1: 現在の消費カロリー / 目標カロリー */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー (kcal)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center text-stone-700">
                   {calc?.tdee ?? '—'}
                 </div>
               </div>
@@ -432,7 +432,7 @@ export default function NewCustomerPage() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center text-stone-700">
                   {pRatio !== null ? `${pRatio}%` : '—'}
                 </div>
               </div>
@@ -451,7 +451,7 @@ export default function NewCustomerPage() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center text-stone-700">
                   {fRatioCalc !== null ? `${fRatioCalc}%` : '—'}
                 </div>
               </div>
@@ -470,7 +470,7 @@ export default function NewCustomerPage() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物 (%)</label>
-                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center font-bold text-stone-700">
+                <div className="w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center text-stone-700">
                   {cRatio !== null ? `${cRatio}%` : '—'}
                 </div>
               </div>

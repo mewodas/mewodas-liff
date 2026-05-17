@@ -124,8 +124,11 @@ export function calcGoals(inp: GoalInputs): CalcResult | null {
     notes.push(`目標カロリーが安全レンジ (1200〜4000kcal) 外です`);
   }
 
-  const goalP = Math.round(currentWeight * macroRatio.P * 10) / 10;
-  const goalF = Math.round(currentWeight * macroRatio.F * 10) / 10;
+  // PFC は「目標体重」ベースで計算（減量目的なら未来の自分の体重を基準にする）
+  // targetWeight 未設定なら currentWeight にフォールバック
+  const macroBaseWeight = targetWeight ?? currentWeight;
+  const goalP = Math.round(macroBaseWeight * macroRatio.P * 10) / 10;
+  const goalF = Math.round(macroBaseWeight * macroRatio.F * 10) / 10;
   const remainingKcal = goalKcal - goalP * 4 - goalF * 9;
   const goalC = Math.max(0, Math.round((remainingKcal / 4) * 10) / 10);
 
