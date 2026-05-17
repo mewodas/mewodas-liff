@@ -25,9 +25,7 @@ export const POST = withAdminTenant(async (_req: NextRequest, { params }: { para
 
   // 顧客に送るための定型文（招待リンクのみ・パターンB）
   // 公式LINE 追加は /onboard 完了画面で誘導するため、ここでは含めない
-  const shareText = `【FitMeal 食事管理プログラム】
-
-${customer.name ? customer.name + ' 様\n\n' : ''}下記をタップしてアカウント連携を完了してください 👇
+  const shareText = `${customer.name ? customer.name + ' 様\n\n' : ''}下記をタップして食事管理プログラムへのアカウント認証を完了してください 👇
 
 ${url}
 
