@@ -472,6 +472,35 @@ export async function createTenantFoodDb(
   return res.id as string;
 }
 
+// 新規ジム用の「{ジム名} 体重ログ」DB を作成。
+export async function createTenantWeightDb(
+  tenantName: string,
+  parentPageId: string
+): Promise<string> {
+  const res = await notionRequest('POST', '/databases', {
+    parent: { type: 'page_id', page_id: parentPageId },
+    title: [{ type: 'text', text: { content: `${tenantName} 体重ログ` } }],
+    properties: {
+      日付: { title: {} },
+      '体重(kg)': { number: {} },
+      LINEユーザーID: { rich_text: {} },
+      顧客名: { rich_text: {} },
+      メモ: { rich_text: {} },
+      入力経路: {
+        select: {
+          options: [
+            { name: 'LIFF', color: 'green' },
+            { name: '管理画面', color: 'blue' },
+            { name: 'GAS', color: 'orange' },
+            { name: '移行', color: 'gray' },
+          ],
+        },
+      },
+    },
+  });
+  return res.id as string;
+}
+
 // テナントDBに新規行を追加
 export async function insertTenantRow(
   tenantsDbId: string,
@@ -481,24 +510,29 @@ export async function insertTenantRow(
     plan: string;
     customerDbId: string;
     foodDbId: string;
+    weightDbId?: string;
     ownerEmail: string;
     startDate: string;
     note?: string;
   }
 ): Promise<string> {
+  const properties: Record<string, unknown> = {
+    ジム名: { title: [{ type: 'text', text: { content: row.name } }] },
+    tenant_id: { rich_text: [{ type: 'text', text: { content: row.tenantId } }] },
+    プラン: { select: { name: row.plan } },
+    'Notion 顧客DB ID': { rich_text: [{ type: 'text', text: { content: row.customerDbId } }] },
+    'Notion 食事DB ID': { rich_text: [{ type: 'text', text: { content: row.foodDbId } }] },
+    オーナーメール: { email: row.ownerEmail },
+    契約状態: { select: { name: 'アクティブ' } },
+    契約開始日: { date: { start: row.startDate } },
+    備考: row.note ? { rich_text: [{ type: 'text', text: { content: row.note } }] } : { rich_text: [] },
+  };
+  if (row.weightDbId) {
+    properties['Notion 体重DB ID'] = { rich_text: [{ type: 'text', text: { content: row.weightDbId } }] };
+  }
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: tenantsDbId },
-    properties: {
-      ジム名: { title: [{ type: 'text', text: { content: row.name } }] },
-      tenant_id: { rich_text: [{ type: 'text', text: { content: row.tenantId } }] },
-      プラン: { select: { name: row.plan } },
-      'Notion 顧客DB ID': { rich_text: [{ type: 'text', text: { content: row.customerDbId } }] },
-      'Notion 食事DB ID': { rich_text: [{ type: 'text', text: { content: row.foodDbId } }] },
-      オーナーメール: { email: row.ownerEmail },
-      契約状態: { select: { name: 'アクティブ' } },
-      契約開始日: { date: { start: row.startDate } },
-      備考: row.note ? { rich_text: [{ type: 'text', text: { content: row.note } }] } : { rich_text: [] },
-    },
+    properties,
   });
   return res.id as string;
 }
@@ -511,6 +545,7 @@ export type TenantRow = {
   plan: string | null;
   customerDbId: string | null;
   foodDbId: string | null;
+  weightDbId: string | null;
   liffId: string | null;
   ownerEmail: string | null;
   status: string | null;
@@ -619,6 +654,7 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       plan: p['プラン']?.select?.name || null,
       customerDbId: p['Notion 顧客DB ID']?.rich_text?.[0]?.plain_text || null,
       foodDbId: p['Notion 食事DB ID']?.rich_text?.[0]?.plain_text || null,
+      weightDbId: p['Notion 体重DB ID']?.rich_text?.[0]?.plain_text || null,
       liffId: p['LIFF ID']?.rich_text?.[0]?.plain_text || null,
       ownerEmail: p['オーナーメール']?.email || null,
       status: p['契約状態']?.select?.name || null,

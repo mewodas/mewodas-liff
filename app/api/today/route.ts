@@ -6,6 +6,7 @@ import {
   getTargetDate,
   type FoodRecord,
 } from '@/lib/notion';
+import { getLatestWeight } from '@/lib/repository/weightLogs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest) {
     // すべての主要Notion取得を最大限並列化
     // 30日分の取得はバッジ計算用なので、遅い場合は空配列で返してホーム表示を優先（12秒）
     const last30TimeoutMs = 12_000;
-    const [customer, records, last30Records] = await Promise.all([
+    const [customer, records, last30Records, latestWeightLog] = await Promise.all([
       getCustomerByLineId(lineUserId),
       getFoodRecordsByDate(lineUserId, today),
       Promise.race([
@@ -94,6 +95,7 @@ export async function GET(req: NextRequest) {
           setTimeout(() => resolve([]), last30TimeoutMs)
         ),
       ]),
+      getLatestWeight(lineUserId).catch(() => null),
     ]);
 
     if (!customer) {
@@ -129,11 +131,14 @@ export async function GET(req: NextRequest) {
     // ストリーク計算（常に今日基点で計算、過去日選択時もバッジは消えない）
     const stats = computeStats(last30Records, todayActual, customer.goals.kcal);
 
+    // 新DBの最新体重で currentWeight を上書き（顧客DBの値はキャッシュ用途として残す）
+    const currentWeight = latestWeightLog?.weightKg ?? customer.currentWeight;
+
     const response = NextResponse.json({
       customer: {
         name: customer.name,
         goals: customer.goals,
-        currentWeight: customer.currentWeight,
+        currentWeight,
         targetWeight: customer.targetWeight,
         targetDate: customer.targetDate,
       },

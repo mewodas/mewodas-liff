@@ -9,6 +9,19 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 体重ログを独立 Notion DB から読み書き（Phase 2/3）
+- feat(lib/repository/weightLogs.ts): 新規作成。createWeightLog（upsert）/ listWeightLogsByLineUser / getLatestWeight / getWeightOnDate / deleteWeightLog
+- feat(lib/notion.ts): TenantRow に weightDbId 追加、parseTenantPage で「Notion 体重DB ID」プロパティ読み取り。createTenantWeightDb 追加（body スキーマ: 日付 title / 体重(kg) number / LINEユーザーID / 顧客名 / メモ / 入力経路 select）。insertTenantRow に weightDbId 追加
+- feat(lib/tenant.ts): TenantConfig に notionWeightDbId 追加。MEWODAS_TENANT に NOTION_WEIGHT_DB_ID env 読み込み
+- feat(lib/tenantResolver.ts): loadTenants で notionWeightDbId を TenantConfig に詰める
+- feat(app/api/log/weight): GAS + createWeightLog を Promise.allSettled で並列実行（GAS 失敗時も新DBに書き込むフェイルセーフ）
+- feat(app/api/extras): 体重を getWeightOnDate（新DB）から取得。運動データは引き続き個人シートから
+- feat(app/api/today): getLatestWeight で新DBの最新体重を取得し currentWeight を上書き
+- feat(app/api/admin/customers/[id]/weight-history): getRangeExtras（個人シート走査）から listWeightLogsByLineUser（新DB）に切替
+- feat(app/api/admin/tenants): テナント新規作成時に createTenantWeightDb も並列実行し weightDbId を登録
+- 影響範囲: 顧客側 LIFF /home 体重表示・/api/extras・/api/today、管理画面 /admin 体重グラフ、テナント自動プロビジョニング
+- DB ID: staging 5792ca16741248d7af1d31d2e5f935a8 / 本番 9caa86778586437eb39336623df9e65f
+
 ## 2026-05-17 (staging) – 体重目標進捗の「現在」を最新ログ優先表示に
 - fix: app/home/page.tsx で goalProgress 計算時、`today.weight` (今日の体重ログ) があればそれを優先して currentWeight に使う
 - 旧挙動: 顧客DBの「現在体重」プロパティのみを参照。日々の体重ログでは自動更新されないため値が固定（小川由佳子様で発覚: DB値 63.6kg のまま、最新ログは 62.7kg）
