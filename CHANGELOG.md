@@ -9,6 +9,11 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-17 (staging) – 本番hotfix同期: extras 体重 fallback 削除
+- hotfix: /api/extras から `customer.currentWeight` フォールバックを削除（本番の hotfix と同内容を staging にも反映）
+- 関連: main c058220 / 本番で「今日の体重未入力なのに過去値が表示される」バグの修正
+- 影響範囲: 顧客側 LIFF /home の体重入力欄
+
 ## 2026-05-17 (staging) – 顧客編集画面 UI 改善（氏名編集・calcGoals 統一・バナー改修）
 - feat(admin/[id]): 基本情報セクションで氏名を input で編集可能に。save 時に name を PATCH payload に含め Notion の「氏名」title プロパティを更新
 - feat(lib): CustomerPatch 型・updateCustomer・PATCH ハンドラに name フィールドを追加
