@@ -9,6 +9,15 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – 公式LINE URL を LINE Bot API から自動取得
+- feat(lib/lineBot.ts): 新規。`fetchOfficialLineUrl(channelToken)` を追加。`GET /v2/bot/info` から basicId/premiumId を取得して `https://line.me/R/ti/p/{id}` を組み立てる。6時間キャッシュ
+- feat(api/admin/customers/[id]/invite-link): 招待リンク生成時の公式LINE URL 取得を3段階優先に
+  1. テナントDB「公式LINE URL」プロパティ（手動設定）
+  2. LINE Bot API から自動取得（Channel Token 経由）
+  3. env OFFICIAL_LINE_URL（最終フォールバック）
+- 効果: テナント DB の「公式LINE URL」を空にしても、Channel Token があれば自動で友だち追加URL が shareText に含まれる
+- 影響範囲: API / lib
+
 ## 2026-05-18 (staging) – 招待リンクコピーで案内文+公式LINE URL も同時コピー
 - feat(api/admin/customers/[id]/invite-link): レスポンスに `shareText` を追加。「【FitMeal 食事管理プログラム】… STEP 1 公式LINE / STEP 2 招待リンク …」の定型文に顧客名・公式LINE URL・招待リンクを埋め込んで返す
 - feat(admin/page.tsx): 「招待リンクをコピー」「承認する」両方の clipboard 書き込みを `j.shareText || j.url` に変更。トースト文言を「招待リンク（案内文付き）をコピーしました」に

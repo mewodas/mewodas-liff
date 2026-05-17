@@ -3,6 +3,7 @@ import { withAdminTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
 import { createInviteToken } from '@/lib/inviteToken';
 import { getCustomer } from '@/lib/repository/customers';
+import { fetchOfficialLineUrl } from '@/lib/lineBot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,8 +24,17 @@ export const POST = withAdminTenant(async (_req: NextRequest, { params }: { para
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // 顧客に送るための定型文（公式LINE友達追加 + 招待リンクをまとめてコピー）
-  // テナントDBの「公式LINE URL」を優先、未設定なら env フォールバック
-  const officialLineUrl = tenant.officialLineUrl || process.env.OFFICIAL_LINE_URL || '';
+  // 優先順:
+  //   1. テナントDBの「公式LINE URL」プロパティ（手動設定値）
+  //   2. LINE Bot API から自動取得（basicId/premiumId → 友だち追加URL）
+  //   3. env OFFICIAL_LINE_URL（最終フォールバック）
+  let officialLineUrl = tenant.officialLineUrl || '';
+  if (!officialLineUrl && tenant.lineChannelToken) {
+    officialLineUrl = (await fetchOfficialLineUrl(tenant.lineChannelToken)) || '';
+  }
+  if (!officialLineUrl) {
+    officialLineUrl = process.env.OFFICIAL_LINE_URL || '';
+  }
   const step1Line = officialLineUrl
     ? `▼ STEP 1: 公式LINEを友だち追加\n${officialLineUrl}\n\n`
     : '';
