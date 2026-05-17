@@ -9,6 +9,16 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – パターンB: LIFF認証→完了画面で公式LINE 友達追加へ誘導
+- ui(onboard): redeem 完了画面に「✅ 公式LINEを友だち追加する」ボタンを追加（緑、目立つ）
+  - サブで「あとで → 食事管理を始める」ボタン（白）
+  - 自動 /home 遷移（2秒タイマー）を削除、ユーザーが選択
+- feat(api/onboard/redeem): レスポンスに officialLineUrl を含める（テナントDB > Bot API 自動取得 > env の3段階）
+- feat(api/admin/customers/[id]/invite-link): shareText を「招待リンクのみ」に簡素化。STEP 1 ブロックを削除
+  - 店舗の送付テキストは1リンクだけ（顧客は1クリックで開始 → 完了画面で公式LINE追加へ）
+- feat(lib/tenant.ts): MEWODAS_TENANT に lineChannelToken: env LINE_CHANNEL_ACCESS_TOKEN を追加（自動取得用）
+- 影響範囲: 顧客側 LIFF /onboard / API / lib
+
 ## 2026-05-18 – 公式LINE URL を LINE Bot API から自動取得
 - feat(lib/lineBot.ts): 新規。`fetchOfficialLineUrl(channelToken)` を追加。`GET /v2/bot/info` から basicId/premiumId を取得して `https://line.me/R/ti/p/{id}` を組み立てる。6時間キャッシュ
 - feat(api/admin/customers/[id]/invite-link): 招待リンク生成時の公式LINE URL 取得を3段階優先に

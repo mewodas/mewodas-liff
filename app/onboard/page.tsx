@@ -20,6 +20,7 @@ function OnboardInner() {
   const token = sp.get('token') || '';
   const [phase, setPhase] = useState<Phase>('loading');
   const [customerName, setCustomerName] = useState('');
+  const [officialLineUrl, setOfficialLineUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const ran = useRef(false);
 
@@ -60,8 +61,9 @@ function OnboardInner() {
           return;
         }
         setCustomerName(j.customerName || '');
+        setOfficialLineUrl(j.officialLineUrl || '');
         setPhase('success');
-        setTimeout(() => router.replace('/home'), 2000);
+        // 自動遷移はやめて、ユーザーが「友達追加」or「ホームへ」を選ぶ
       } catch (e) {
         setErrorMsg(e instanceof Error ? e.message : '予期しないエラーが発生しました');
         setPhase('error');
@@ -82,9 +84,44 @@ function OnboardInner() {
           <p className="text-lg font-bold text-stone-900">
             {customerName ? `${customerName}様` : ''}　登録が完了しました
           </p>
-          <p className="text-sm text-stone-600 mt-1">食事管理を始めましょう</p>
+          <p className="text-sm text-stone-600 mt-1">最後にあと1ステップだけお願いします</p>
         </div>
-        <p className="text-xs text-stone-400">まもなくホーム画面に移動します…</p>
+
+        {officialLineUrl ? (
+          <div className="w-full max-w-sm space-y-3">
+            <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-sm">
+              <p className="text-sm font-bold text-stone-900 mb-2">📱 公式LINEを友だち追加</p>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                前日の食事レポート・体重記録・自動通知を受け取るために、
+                <strong>公式LINEの友だち追加</strong>をお願いします。
+                未追加だと通知が届きません。
+              </p>
+            </div>
+            <a
+              href={officialLineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-emerald-500 text-white text-center font-bold py-3 rounded-xl active:bg-emerald-700 text-sm"
+            >
+              ✅ 公式LINEを友だち追加する
+            </a>
+            <button
+              type="button"
+              onClick={() => router.replace('/home')}
+              className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-xl text-sm active:bg-stone-50"
+            >
+              あとで → 食事管理を始める
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.replace('/home')}
+            className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl text-sm active:bg-emerald-700"
+          >
+            食事管理を始める
+          </button>
+        )}
       </div>
     );
   }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyInviteToken } from '@/lib/inviteToken';
 import { runWithTenantById } from '@/lib/withTenant';
 import { getCustomer, patchCustomer } from '@/lib/repository/customers';
+import { getCurrentTenant } from '@/lib/tenant';
+import { fetchOfficialLineUrl } from '@/lib/lineBot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,10 +46,22 @@ export async function POST(req: NextRequest) {
 
       await patchCustomer(customerId, patch);
 
+      // 完了画面で「公式LINE 友だち追加」ボタンを出すための URL を返す
+      // 優先順: テナントDB「公式LINE URL」 > LINE Bot API 自動取得 > env
+      const tenant = getCurrentTenant();
+      let officialLineUrl = tenant.officialLineUrl || '';
+      if (!officialLineUrl && tenant.lineChannelToken) {
+        officialLineUrl = (await fetchOfficialLineUrl(tenant.lineChannelToken)) || '';
+      }
+      if (!officialLineUrl) {
+        officialLineUrl = process.env.OFFICIAL_LINE_URL || '';
+      }
+
       return NextResponse.json({
         ok: true,
         customerId,
         customerName: displayName || customer.name,
+        officialLineUrl,
       });
     });
   } catch (e) {

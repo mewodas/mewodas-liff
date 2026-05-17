@@ -23,29 +23,16 @@ export const POST = withAdminTenant(async (_req: NextRequest, { params }: { para
     : `${base}/onboard?token=${token}`;
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 顧客に送るための定型文（公式LINE友達追加 + 招待リンクをまとめてコピー）
-  // 優先順:
-  //   1. テナントDBの「公式LINE URL」プロパティ（手動設定値）
-  //   2. LINE Bot API から自動取得（basicId/premiumId → 友だち追加URL）
-  //   3. env OFFICIAL_LINE_URL（最終フォールバック）
-  let officialLineUrl = tenant.officialLineUrl || '';
-  if (!officialLineUrl && tenant.lineChannelToken) {
-    officialLineUrl = (await fetchOfficialLineUrl(tenant.lineChannelToken)) || '';
-  }
-  if (!officialLineUrl) {
-    officialLineUrl = process.env.OFFICIAL_LINE_URL || '';
-  }
-  const step1Line = officialLineUrl
-    ? `▼ STEP 1: 公式LINEを友だち追加\n${officialLineUrl}\n\n`
-    : '';
+  // 顧客に送るための定型文（招待リンクのみ・パターンB）
+  // 公式LINE 追加は /onboard 完了画面で誘導するため、ここでは含めない
   const shareText = `【FitMeal 食事管理プログラム】
 
-${customer.name ? customer.name + ' 様\n\n' : ''}下記を順番にタップしてください 👇
+${customer.name ? customer.name + ' 様\n\n' : ''}下記をタップしてアカウント連携を完了してください 👇
 
-${step1Line}▼ ${step1Line ? 'STEP 2' : 'STEP 1'}: 食事管理アプリを開始
 ${url}
 
-タップしてアカウント連携が完了すると、すぐにご利用いただけます。
+連携完了後、画面の案内に従って公式LINEの友だち追加もお願いします（前日レポートや自動通知のため必須）。
+
 ご不明な点はお気軽にお問い合わせください 🙌`;
 
   return NextResponse.json({ url, token, expiresAt, shareText });
