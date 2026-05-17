@@ -463,9 +463,9 @@ export default function CustomerDetailPage({
                     step="0.1"
                     value={targetWeight}
                     onChange={(e) => setTargetWeight(e.target.value)}
-                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 pr-14 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
+                  <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kg</span>
                 </div>
               </div>
               <div>
@@ -521,7 +521,7 @@ export default function CustomerDetailPage({
                           return (
                             <div className="w-full mt-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 leading-snug space-y-1">
                               <p>⚠️ 健康上の安全範囲を超えています：{parts.join('、')}。</p>
-                              <p>過度な減量／増量は筋肉量低下・代謝低下・リバウンドのリスクがあります。可能であれば目標達成日を後ろにずらすか目標体重を見直してください。トレーナー判断で進める場合はこのまま保存可能です。</p>
+                              <p>過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨（トレーナー判断で保存も可）。</p>
                             </div>
                           );
                         })()}
@@ -541,9 +541,9 @@ export default function CustomerDetailPage({
                 {/* 行1: 現在の消費カロリー / 目標カロリー */}
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center text-stone-700">
                     {calc?.tdee ?? '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400">kcal</span>
                   </div>
                 </div>
                 <div>
@@ -555,9 +555,9 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalKcal}
                       onChange={(e) => setGoalKcal(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
                   </div>
                 </div>
 
@@ -571,16 +571,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalP}
                       onChange={(e) => setGoalP(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center text-stone-700">
                     {pRatio !== null ? pRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
 
@@ -594,16 +594,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalF}
                       onChange={(e) => setGoalF(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center text-stone-700">
                     {fRatio !== null ? fRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
 
@@ -617,16 +617,16 @@ export default function CustomerDetailPage({
                       inputMode="decimal"
                       value={goalC}
                       onChange={(e) => setGoalC(e.target.value)}
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-10 text-base text-center text-stone-700">
+                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-14 text-base text-center text-stone-700">
                     {cRatio !== null ? cRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                    <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
                   </div>
                 </div>
               </div>
@@ -995,7 +995,7 @@ function NumberInput({
           className={`w-full bg-white border border-stone-300 rounded-xl p-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500${suffix ? ' pr-8' : ''}`}
         />
         {suffix && (
-          <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
+          <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
         )}
       </div>
     </div>

@@ -18,6 +18,11 @@
 - ui(admin/customers/new): 同上
 - 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
 
+## 2026-05-17 (staging) – サフィックス位置を更に左へ + 警告文短縮
+- ui(admin): input サフィックス位置を更に左へ。pr-10/right-8 → **pr-14/right-12**（スピナーの左側に確実に表示）
+- ui(admin): 警告文 2段落目を短縮して 2 行に収まるように。「過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨（トレーナー判断で保存も可）。」
+- 影響範囲: /admin/customers/{[id]|new}（/store も自動反映）
+
 ## 2026-05-17 (staging) – サフィックス位置調整 + 警告 2段落化
 - ui(admin): 単位サフィックス位置を input 内（スピナーの左）に移動。pr-8 → pr-10、right-3 → right-8
 - ui(admin): 警告バナーを 2 段落に分離（条件説明 → リスクと推奨）
