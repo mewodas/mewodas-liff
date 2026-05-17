@@ -18,6 +18,13 @@
 - ui(admin/customers/new): 同上
 - 影響範囲: /admin/customers/[id] / /admin/customers/new / /store/customers/[id] / /store/customers/new（re-export 自動反映）
 
+## 2026-05-17 (staging) – number input ネイティブスピナー非表示
+- ui(globals.css): `<input type="number">` のネイティブスピナー（上下矢印）を全画面で非表示に
+  - ネイティブスピナーは CSS で位置を変えられず、サフィックス（kg/kcal/g/% 等）と重なる問題があった
+  - モバイルでは inputMode="decimal" で数値キーボードが出るため、スピナー無くても入力しやすい
+  - PC ではユーザーが直接タイプ入力
+- 影響範囲: 全画面の `<input type="number">`（管理画面・顧客側）
+
 ## 2026-05-17 (staging) – サフィックス位置を更に左へ + 警告文短縮
 - ui(admin): input サフィックス位置を更に左へ。pr-10/right-8 → **pr-14/right-12**（スピナーの左側に確実に表示）
 - ui(admin): 警告文 2段落目を短縮して 2 行に収まるように。「過度な減量／増量は健康リスクあり。目標日や体重の見直しを推奨（トレーナー判断で保存も可）。」
