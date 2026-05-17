@@ -9,6 +9,13 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – 「承認する」ボタン削除 + 招待文言をリッチメニュー導線に合わせる
+- ui(admin): 顧客一覧の「承認する」ボタン削除（招待リンク経由で自動的に進行中になるため不要）。`approveCustomer` 関数・`approvingId` state・`CheckCircle` import も削除
+- ui(api/invite-link): shareText を `/onboard` 完了画面の文言と合わせて修正
+  - 旧: 「公式LINEの友だち追加もお願いします（前日レポートや自動通知のため必須）」
+  - 新: 「公式LINEを友だち追加していただくと、リッチメニューから FitMeal にアクセスできるようになります」
+- 影響範囲: 管理画面 /admin / API
+
 ## 2026-05-18 (staging) – onboard 完了画面の文言と CTA を見直し
 - ui(onboard): 「あとで → 食事管理を始める」ボタンを削除（公式LINE追加が必須導線のため）
 - ui(onboard): 説明文を「友達追加 → 公式LINEのリッチメニューから FitMeal にアクセス」フローに合わせて修正
