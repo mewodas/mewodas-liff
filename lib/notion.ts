@@ -546,6 +546,7 @@ export type TenantRow = {
   customerDbId: string | null;
   foodDbId: string | null;
   weightDbId: string | null;
+  officialLineUrl: string | null;
   liffId: string | null;
   ownerEmail: string | null;
   status: string | null;
@@ -655,6 +656,7 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       customerDbId: p['Notion 顧客DB ID']?.rich_text?.[0]?.plain_text || null,
       foodDbId: p['Notion 食事DB ID']?.rich_text?.[0]?.plain_text || null,
       weightDbId: p['Notion 体重DB ID']?.rich_text?.[0]?.plain_text || null,
+      officialLineUrl: p['公式LINE URL']?.url || null,
       liffId: p['LIFF ID']?.rich_text?.[0]?.plain_text || null,
       ownerEmail: p['オーナーメール']?.email || null,
       status: p['契約状態']?.select?.name || null,

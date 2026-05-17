@@ -9,6 +9,14 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – 招待リンクコピーで案内文+公式LINE URL も同時コピー
+- feat(api/admin/customers/[id]/invite-link): レスポンスに `shareText` を追加。「【FitMeal 食事管理プログラム】… STEP 1 公式LINE / STEP 2 招待リンク …」の定型文に顧客名・公式LINE URL・招待リンクを埋め込んで返す
+- feat(admin/page.tsx): 「招待リンクをコピー」「承認する」両方の clipboard 書き込みを `j.shareText || j.url` に変更。トースト文言を「招待リンク（案内文付き）をコピーしました」に
+- feat(lib/notion.ts, lib/tenant.ts, lib/tenantResolver.ts): TenantRow / TenantConfig に `officialLineUrl` を追加。Notion テナントDBの「公式LINE URL」(URL型) プロパティを読み込む
+- env: `OFFICIAL_LINE_URL` を後方互換フォールバックとして残置（テナントDB値が優先）
+- 関連: テナントDB「公式LINE URL」プロパティは notion-ops 経由で追加済み。各テナントは Notion で値設定
+- 影響範囲: 管理画面 /admin（招待リンクコピー）/ API / lib
+
 ## 2026-05-18 (staging) – ホーム順序入れ替え（今日の記録を上に）
 - ui(home): 「体重・運動カード（今日の記録）」と「体重目標進捗」の順序を入れ替え。今日の記録が上、体重目標進捗が下
 - 影響範囲: 顧客側 LIFF /home

@@ -120,8 +120,8 @@ export default function AdminCustomersPage() {
       const res = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
       if (!res.ok) throw new Error('リンク生成失敗');
       const j = await res.json();
-      await navigator.clipboard.writeText(j.url);
-      showToast('招待リンクをコピーしました');
+      await navigator.clipboard.writeText(j.shareText || j.url);
+      showToast('招待リンク（案内文付き）をコピーしました');
     } catch {
       showToast('コピーに失敗しました');
     } finally {
@@ -146,8 +146,8 @@ export default function AdminCustomersPage() {
       const linkRes = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
       if (linkRes.ok) {
         const j = await linkRes.json();
-        await navigator.clipboard.writeText(j.url);
-        showToast('承認しました 招待リンクをコピーしました');
+        await navigator.clipboard.writeText(j.shareText || j.url);
+        showToast('承認しました 招待リンク（案内文付き）をコピーしました');
       } else {
         showToast('承認しました（リンク生成失敗）');
       }

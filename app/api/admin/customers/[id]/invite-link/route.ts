@@ -21,5 +21,22 @@ export const POST = withAdminTenant(async (_req: NextRequest, { params }: { para
     ? `https://liff.line.me/${liffId}/onboard?token=${token}`
     : `${base}/onboard?token=${token}`;
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  return NextResponse.json({ url, token, expiresAt });
+
+  // 顧客に送るための定型文（公式LINE友達追加 + 招待リンクをまとめてコピー）
+  // テナントDBの「公式LINE URL」を優先、未設定なら env フォールバック
+  const officialLineUrl = tenant.officialLineUrl || process.env.OFFICIAL_LINE_URL || '';
+  const step1Line = officialLineUrl
+    ? `▼ STEP 1: 公式LINEを友だち追加\n${officialLineUrl}\n\n`
+    : '';
+  const shareText = `【FitMeal 食事管理プログラム】
+
+${customer.name ? customer.name + ' 様\n\n' : ''}下記を順番にタップしてください 👇
+
+${step1Line}▼ ${step1Line ? 'STEP 2' : 'STEP 1'}: 食事管理アプリを開始
+${url}
+
+タップしてアカウント連携が完了すると、すぐにご利用いただけます。
+ご不明な点はお気軽にお問い合わせください 🙌`;
+
+  return NextResponse.json({ url, token, expiresAt, shareText });
 });
