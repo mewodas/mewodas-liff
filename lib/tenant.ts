@@ -58,6 +58,7 @@ const MEWODAS_TENANT: TenantConfig = {
     process.env.NOTION_FOOD_DB_ID || '8719d5ab23074ea5bf6e77fde352db86',
   notionWeightDbId: process.env.NOTION_WEIGHT_DB_ID,
   officialLineUrl: process.env.OFFICIAL_LINE_URL,
+  lineChannelToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   driveFolderId: process.env.DRIVE_PARENT_FOLDER_ID,
   geminiApiKey: process.env.GEMINI_API_KEY,
   gasEndpoint: process.env.GAS_RECORD_ENDPOINT,

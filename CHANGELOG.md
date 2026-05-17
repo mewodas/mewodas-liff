@@ -9,6 +9,48 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – /onboard 完了画面の説明短縮
+- ui(onboard): 「食事の写真送信・体重記録・前日レポート受信もすべて公式LINEから行います。」段落を削除
+
+## 2026-05-18 (staging) – 招待リンク shareText の冒頭文言を修正
+- ui(invite-link): タイトル行「【FitMeal 食事管理プログラム】」を削除
+- ui(invite-link): 「下記をタップしてアカウント連携を完了してください」→「下記をタップして食事管理プログラムへのアカウント認証を完了してください」
+
+## 2026-05-18 (staging) – 文言微修正「食事管理のURLにアクセス可能です」
+- ui(onboard, invite-link): 「FitMeal にアクセスできるようになります」→「食事管理のURLにアクセス可能です」に統一
+
+## 2026-05-18 – 「承認する」ボタン削除 + 招待文言をリッチメニュー導線に合わせる
+- ui(admin): 顧客一覧の「承認する」ボタン削除（招待リンク経由で自動的に進行中になるため不要）。`approveCustomer` 関数・`approvingId` state・`CheckCircle` import も削除
+- ui(api/invite-link): shareText を `/onboard` 完了画面の文言と合わせて修正
+  - 旧: 「公式LINEの友だち追加もお願いします（前日レポートや自動通知のため必須）」
+  - 新: 「公式LINEを友だち追加していただくと、リッチメニューから FitMeal にアクセスできるようになります」
+- 影響範囲: 管理画面 /admin / API
+
+## 2026-05-18 (staging) – onboard 完了画面の文言と CTA を見直し
+- ui(onboard): 「あとで → 食事管理を始める」ボタンを削除（公式LINE追加が必須導線のため）
+- ui(onboard): 説明文を「友達追加 → 公式LINEのリッチメニューから FitMeal にアクセス」フローに合わせて修正
+- ui(onboard): 未使用の useRouter import を削除
+- 影響範囲: 顧客側 LIFF /onboard
+
+## 2026-05-18 (staging) – パターンB: LIFF認証→完了画面で公式LINE 友達追加へ誘導
+- ui(onboard): redeem 完了画面に「✅ 公式LINEを友だち追加する」ボタンを追加（緑、目立つ）
+  - サブで「あとで → 食事管理を始める」ボタン（白）
+  - 自動 /home 遷移（2秒タイマー）を削除、ユーザーが選択
+- feat(api/onboard/redeem): レスポンスに officialLineUrl を含める（テナントDB > Bot API 自動取得 > env の3段階）
+- feat(api/admin/customers/[id]/invite-link): shareText を「招待リンクのみ」に簡素化。STEP 1 ブロックを削除
+  - 店舗の送付テキストは1リンクだけ（顧客は1クリックで開始 → 完了画面で公式LINE追加へ）
+- feat(lib/tenant.ts): MEWODAS_TENANT に lineChannelToken: env LINE_CHANNEL_ACCESS_TOKEN を追加（自動取得用）
+- 影響範囲: 顧客側 LIFF /onboard / API / lib
+
+## 2026-05-18 – 公式LINE URL を LINE Bot API から自動取得
+- feat(lib/lineBot.ts): 新規。`fetchOfficialLineUrl(channelToken)` を追加。`GET /v2/bot/info` から basicId/premiumId を取得して `https://line.me/R/ti/p/{id}` を組み立てる。6時間キャッシュ
+- feat(api/admin/customers/[id]/invite-link): 招待リンク生成時の公式LINE URL 取得を3段階優先に
+  1. テナントDB「公式LINE URL」プロパティ（手動設定）
+  2. LINE Bot API から自動取得（Channel Token 経由）
+  3. env OFFICIAL_LINE_URL（最終フォールバック）
+- 効果: テナント DB の「公式LINE URL」を空にしても、Channel Token があれば自動で友だち追加URL が shareText に含まれる
+- 影響範囲: API / lib
+
 ## 2026-05-18 (staging) – 招待リンクコピーで案内文+公式LINE URL も同時コピー
 - feat(api/admin/customers/[id]/invite-link): レスポンスに `shareText` を追加。「【FitMeal 食事管理プログラム】… STEP 1 公式LINE / STEP 2 招待リンク …」の定型文に顧客名・公式LINE URL・招待リンクを埋め込んで返す
 - feat(admin/page.tsx): 「招待リンクをコピー」「承認する」両方の clipboard 書き込みを `j.shareText || j.url` に変更。トースト文言を「招待リンク（案内文付き）をコピーしました」に

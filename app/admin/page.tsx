@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, CheckCircle } from 'lucide-react';
+import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -69,7 +69,6 @@ export default function AdminCustomersPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -126,35 +125,6 @@ export default function AdminCustomersPage() {
       showToast('コピーに失敗しました');
     } finally {
       setCopyingId(null);
-    }
-  }
-
-  async function approveCustomer(e: React.MouseEvent, customerId: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    setApprovingId(customerId);
-    try {
-      const patchRes = await fetch(`/api/admin/customers/${customerId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ foodStatus: '進行中' }),
-      });
-      if (!patchRes.ok) throw new Error('承認失敗');
-      setCustomers((prev) =>
-        prev.map((c) => (c.pageId === customerId ? { ...c, foodStatus: '進行中' } : c))
-      );
-      const linkRes = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
-      if (linkRes.ok) {
-        const j = await linkRes.json();
-        await navigator.clipboard.writeText(j.shareText || j.url);
-        showToast('承認しました 招待リンク（案内文付き）をコピーしました');
-      } else {
-        showToast('承認しました（リンク生成失敗）');
-      }
-    } catch {
-      showToast('承認に失敗しました');
-    } finally {
-      setApprovingId(null);
     }
   }
 
@@ -270,17 +240,6 @@ export default function AdminCustomersPage() {
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
                     <div className="mt-1.5 flex gap-2 flex-wrap">
-                      {c.foodStatus === '設定中' && (
-                        <button
-                          type="button"
-                          onClick={(e) => approveCustomer(e, c.pageId)}
-                          disabled={approvingId === c.pageId}
-                          className="text-[11px] font-bold bg-emerald-500 text-white px-2.5 py-1 rounded-lg active:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1"
-                        >
-                          <CheckCircle className="w-3 h-3" strokeWidth={2.4} />
-                          {approvingId === c.pageId ? '承認中…' : '承認する'}
-                        </button>
-                      )}
                       {!c.lineUserId ? (
                         <button
                           type="button"
