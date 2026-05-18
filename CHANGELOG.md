@@ -39,6 +39,15 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 – 食事記録テキスト入力 PFC 推定プロンプト改善（staging cherry-pick）
+
+- 食事記録: テキスト入力の PFC 推定プロンプト（analyzeTextPfc）を和食定番向けに改善
+- 影響範囲: 顧客側（テキスト記録時の PFC 値）
+- 背景: 玄米C・味噌汁全数値が約2倍になる症状の修正（「あすけんより高い」クレーム根本原因の一つ）
+- 修正内容: 穀類重量=炊飯後解釈・味噌汁デフォルト構成明示・納豆1パック=40g・卵料理油量デフォルト・「控えめに見積もる必要はない」を削除し「過大な大盛り想定は避ける」に置換
+- 検証: 顧客入力例（玄米80g・納豆1パック・オムレツ・味噌汁豆腐50g）で P23→20/F19→18.7/C40→38/kcal425→403 に正常化
+- 経緯: staging a512ff7 から cherry-pick（他の staging commit—契約管理機能等—は別途マージ予定のため除外）
+
 ## 2026-05-18 – 招待認証ページを /home/onboard に移管（LIFF OAuth 400 修正・第2弾）
 
 - 不具合: 本日 5ab0537 で invite link を `https://app.fitmeal.jp/onboard?token=...` の直URL形式に変えたところ、`liff.login()` の redirect_uri が `/onboard`（LIFF Endpoint URL `/home` の配下でない）になり LINE 側 access.line.me で 400 Bad Request を返すように。顧客「中西さん」が踏んで詰まった
