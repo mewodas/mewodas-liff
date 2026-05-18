@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Target,
   Scale,
@@ -101,8 +101,6 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const router = useRouter();
-  const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
   const [resettingOnboard, setResettingOnboard] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -956,8 +954,7 @@ export default function CustomerDetailPage({
             </section>
           )}
 
-          {isAdminRoute && (
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
                 オンボーディングリセット
@@ -975,7 +972,6 @@ export default function CustomerDetailPage({
                 {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
               </button>
             </section>
-          )}
         </div>
       )}
     </AdminShell>

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-19 オンボーディングリセットを /store でも表示
+- UI改善: 顧客詳細ページのオンボーディングリセットセクションから `isAdminRoute` ガードを撤去。/admin と /store の両方で表示・実行可能に
+- API側は `/api/admin/customers/[id]/onboarding` DELETE を共通利用（withAdminTenant が同一の Cookie セッションで /store 利用者も認証可）
+- 副次: 未使用となった `usePathname` import を削除
+- 影響範囲: 管理画面 /admin/customers/[id] および /store/customers/[id]
+
 ## 2026-05-19 オンボーディング再リセットが反映されないバグ修正（customerCache バイパス）
 - バグ修正: 管理画面でオンボーディングを2回目以降リセットしても顧客側 LIFF に反映されない問題
 - 根本原因: `lib/notion.ts` の `customerCache`（30分TTLのインメモリキャッシュ）が Vercel serverless インスタンスごとに別物のため、admin DELETE のキャッシュ無効化は当該インスタンスにしか効かず、顧客側 `/api/customer/me` が別インスタンスにヒットすると古い「オンボ完了」状態を返していた
