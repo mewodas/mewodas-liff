@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
 import { getCustomerByLineId } from '@/lib/notion';
 import { getCurrentTenant } from '@/lib/tenant';
-import { getTenantByIdAsync, getApplicableCalibration } from '@/lib/tenantResolver';
+import { getApplicableCalibration } from '@/lib/tenantResolver';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -17,7 +18,7 @@ export type AnalyzedItem = {
   C: number;
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest) => {
   try {
     const contentType = req.headers.get('content-type') || '';
     let lineUserId = '';
@@ -65,9 +66,9 @@ export async function POST(req: NextRequest) {
     }
 
     // テナント別 PFC キャリブレーション係数を解決
-    const ctxTenant = getCurrentTenant();
-    const fullTenant = await getTenantByIdAsync(ctxTenant.id).catch(() => null);
-    const calibration = getApplicableCalibration(fullTenant ?? ctxTenant);
+    // withLiffTenant により AsyncLocalStorage に Notion 由来の TenantConfig が設定済み
+    const tenant = getCurrentTenant();
+    const calibration = getApplicableCalibration(tenant);
 
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
@@ -123,4 +124,4 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

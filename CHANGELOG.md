@@ -15,6 +15,12 @@
 - fix(admin/customers/[id]): StatusInfoPopover の onBlur でモバイルタップ直後にポップオーバーが閉じる問題を修正。useEffect + document.addEventListener('pointerdown') による外側クリック検知に変更、Esc キーでも閉じるよう対応
 - 影響範囲: API /api/cron/update-calibrations・/api/cron/daily-reports（認証強化）、管理画面 /admin/customers/[id]
 
+## 2026-05-18 – PFC キャリブレーション: items 配列にも係数を適用
+
+- fix(lib/gemini): `parsePfcJson` で合計 P/F/C のみに calibration を掛けていたが、items 配列の各品目には掛かっていなかった。`/record/analyze` の画面表示は items を表示するため、補正が UI 上反映されなかった
+- 修正: items 配列の各 P/F/C にも calibration を乗算し、合計と表示値の整合性を維持
+- 影響範囲: 顧客側 LIFF /record（画面表示の P/F/C 値）
+
 ## 2026-05-18 – ステータスドロップダウンにⓘツールチップ追加
 - feat(store/admin): 顧客詳細「基本情報」ステータスラベル横にInfoアイコンを追加
 - feat(store/admin): クリックで各ステータス（設定中・進行中・休止中・卒業）の説明ポップオーバーを表示

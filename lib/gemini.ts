@@ -1358,12 +1358,13 @@ function parsePfcJson(
   const P = f1((parsed.P || 0) * calibration.P);
   const F = f1((parsed.F || 0) * calibration.F);
   const C = f1((parsed.C || 0) * calibration.C);
+  // items の各 PFC にも calibration を適用（合計と表示値の整合性を維持）
   const items = Array.isArray(parsed.items)
     ? (parsed.items as Array<Record<string, unknown>>).map((it) => ({
         name: String(it.name ?? ''),
-        P: Number(it.P ?? 0),
-        F: Number(it.F ?? 0),
-        C: Number(it.C ?? 0),
+        P: f1(Number(it.P ?? 0) * calibration.P),
+        F: f1(Number(it.F ?? 0) * calibration.F),
+        C: f1(Number(it.C ?? 0) * calibration.C),
       }))
     : [];
   // 詳細栄養素のパース（オプショナル）

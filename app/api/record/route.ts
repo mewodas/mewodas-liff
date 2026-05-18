@@ -4,12 +4,13 @@ import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
 import { saveImagesToDriveAsync } from '@/lib/drive';
 import { getCurrentTenant } from '@/lib/tenant';
-import { getTenantByIdAsync, getApplicableCalibration } from '@/lib/tenantResolver';
+import { getApplicableCalibration } from '@/lib/tenantResolver';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest) => {
   try {
     const contentType = req.headers.get('content-type') || '';
 
@@ -64,10 +65,10 @@ export async function POST(req: NextRequest) {
     }
 
     // テナント別 PFC キャリブレーション係数を解決
-    // テナントコンテキストが無い場合は静的フォールバック（MEWODAS）。Notion から最新版を取得して係数を反映
-    const ctxTenant = getCurrentTenant();
-    const fullTenant = await getTenantByIdAsync(ctxTenant.id).catch(() => null);
-    const calibration = getApplicableCalibration(fullTenant ?? ctxTenant);
+    // withLiffTenant により、staging では FITMEAL_TENANT_ID_OVERRIDE が、本番では x-liff-id が、
+    // それぞれ runInTenantContext で AsyncLocalStorage に設定済み。Notion から読み込まれた係数を含む
+    const tenant = getCurrentTenant();
+    const calibration = getApplicableCalibration(tenant);
 
     // 顧客情報取得とPFC解析を並列実行
     const [customer, pfc] = await Promise.all([
@@ -119,4 +120,4 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
