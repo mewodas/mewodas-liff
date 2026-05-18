@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 00:40 – staging Basic Auth: Next.js metadata files (/icon.svg 等) を除外
+
+- 修正: `proxy.ts` で staging Basic Auth ガードから `/icon.svg` `/apple-icon.*` `/opengraph-image.*` `/twitter-image.*` `/robots.txt` `/sitemap.xml` を除外
+- 原因: `app/icon.svg` が `/icon.svg` でルート直下に配信され、Basic Auth で 401+WWW-Authenticate を返していた。ブラウザはこの subresource の 401 でログイン画面表示中も Basic Auth ダイアログを再表示していた
+- 影響範囲: staging / preview のみ（本番には影響なし）
+
 ## 2026-05-18 23:55 – staging Basic Auth から /admin /store を除外（ログイン後 RSC fetch で 401 ダイアログ再表示する不具合修正）
 
 - 修正: `proxy.ts` で staging Basic Auth ガードから `/admin/*` `/store/*` `/api/admin/*` `/api/store/*` を除外
