@@ -9,6 +9,33 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 23:55 – staging Basic Auth から /admin /store を除外（ログイン後 RSC fetch で 401 ダイアログ再表示する不具合修正）
+
+- 修正: `proxy.ts` で staging Basic Auth ガードから `/admin/*` `/store/*` `/api/admin/*` `/api/store/*` を除外
+- 原因: ログイン成功後の `router.replace('/admin')` で走る RSC fetch に Basic Auth ヘッダーが付与されず 401+WWW-Authenticate が返り、ブラウザがダイアログを再表示していた
+- 影響範囲: staging / preview のみ（本番には影響なし）。admin/store は元々 scrypt+Cookie 認証で守られているため Basic Auth 除外は問題なし
+
+## 2026-05-18 – 契約管理機能（席数管理・新プラン構造・招待上限ブロック・増減枠UI）
+
+- 機能: 新プラン構造（Starter/Growth/Scale）+ サポート費¥5,000固定 + per-user 2段階Subscriptionに移行
+- 機能: `lib/seats.ts` 新規作成（60秒キャッシュ付きの席数ステータス集約）
+- 機能: `lib/stripe.ts` 全面書き換え（旧 unitPriceFor 等を削除し、新プラン関数に置換）
+- 機能: `lib/notion.ts` の TenantRow 型 + listTenantRows + updateTenantRow に `seatLimit`/`planTier` 追加
+- 機能: `/api/stripe/checkout` を 2 line_item 構造（サポート費 + per-user）に改修
+- 機能: `/api/stripe/webhook` を per-user item の quantity → seatLimit 同期に改修（旧契約スキップ）
+- 機能: `/api/stripe/preview-seats` 新規作成（日割り差額プレビュー）
+- 機能: `/api/stripe/update-seats` 新規作成（席数変更確定・減枠ガード付き）
+- 機能: `/api/admin/billing/info` に seatLimit/currentSeats/isOverLimit/isNearLimit 等を追加
+- 機能: `/api/admin/customers/[id]/invite-link` に席数上限チェック（isOverLimit → 403）追加
+- 機能: `/api/admin/customers` POST に席数上限チェック追加・作成後 seatCache invalidate
+- UI: `/admin/billing/page.tsx` を契約状況メイン（進捗バー・増減枠ボタン）に大幅改修
+- UI: `/admin/billing/SeatChangeModal.tsx` 新規作成（席数変更モーダル・日割り差額表示）
+- UI: `/admin/page.tsx` に席数上限バナー + 招待リンクボタン disabled 対応
+- UI: `/admin/customers/new/page.tsx` に席数上限ブロック + バナー表示
+- 影響範囲: 管理画面 / API（admin・stripe） / Notion DB（テナント管理）
+- ブランチ: feat/seat-management-and-new-pricing
+- 関連計画: /home/mwds/.claude/plans/curious-brewing-salamander.md
+
 ## 2026-05-18 (staging) – staging の /admin/login で「ログイン中…」のままになるバグ修正
 
 - 不具合: staging.fitmeal.jp/admin/login でメール/パスワードを入力してログインボタンを押すと、ブラウザが `https://staging.fitmeal.jp` へ再度 Basic Auth ダイアログを表示し「ログイン中…」のまま進まない
