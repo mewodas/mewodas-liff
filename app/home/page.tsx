@@ -367,15 +367,7 @@ function HomePageInner() {
 
   if (!data) return null;
 
-  // オンボーディング未完了かつ状態確認済みならフローを表示
-  if (onboardingDone === false && userId && data) {
-    return (
-      <>
-        <OnboardingFlow customerName={data.customer.name} lineUserId={userId} />
-        <main className="min-h-screen bg-stone-100 pb-28" aria-hidden />
-      </>
-    );
-  }
+  const showOnboarding = onboardingDone === false && !!userId;
 
   const { customer, today } = data;
   const { totals, mealsByType } = today;
@@ -388,6 +380,10 @@ function HomePageInner() {
   const goalProgress = calcGoalProgress({ ...customer, currentWeight: effectiveCurrentWeight });
 
   return (
+    <>
+    {showOnboarding && userId && (
+      <OnboardingFlow customerName={data.customer.name} lineUserId={userId} />
+    )}
     <main className="min-h-screen bg-stone-100 pb-28">
       {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
       {refetching && (
@@ -650,6 +646,7 @@ function HomePageInner() {
         <HomeOnboarding hasRecords={today.recordCount > 0} />
       )}
     </main>
+    </>
   );
 }
 function HomeOnboarding({ hasRecords }: { hasRecords: boolean }) {

@@ -82,6 +82,17 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     }, 100);
   }
 
+  function completeAndRecord() {
+    if (completing) return;
+    setCompleting(true);
+    fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
+      method: 'POST',
+    }).catch(() => {});
+    setTimeout(() => {
+      window.location.href = '/record';
+    }, 100);
+  }
+
   function next() {
     if (step < TOTAL - 1) {
       setStep((s) => (s + 1) as Step);
@@ -105,7 +116,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
 
   return (
     <div className="fixed inset-0 z-[200]" aria-modal="true">
-      {/* オーバーレイ: スポットライト使用時は透明背景、それ以外は半透明 */}
+      {/* オーバーレイ: スポットライト使用時は透明、step1 は背景パススルー、それ以外は半透明 */}
       {showSpotlight ? (
         <>
           {/* スポットライト矩形（周囲を暗く、要素をくり抜く） */}
@@ -123,13 +134,15 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
             スキップ
           </button>
         </>
+      ) : step === 1 ? (
+        <div className="absolute inset-0 bg-black/20" />
       ) : (
         <div className="absolute inset-0 bg-black/50" />
       )}
 
       {/* ステップ別コンテンツ */}
       {step === 1 && (
-        <StepWelcome name={customerName} onNext={next} onSkip={complete} />
+        <StepWelcome name={customerName} onRecord={completeAndRecord} onNext={next} onSkip={complete} />
       )}
       {step === 2 && (
         <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
@@ -161,7 +174,17 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   );
 }
 
-function StepWelcome({ name, onNext, onSkip }: { name: string; onNext: () => void; onSkip: () => void }) {
+function StepWelcome({
+  name,
+  onRecord,
+  onNext,
+  onSkip,
+}: {
+  name: string;
+  onRecord: () => void;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
   return (
     <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 max-w-sm mx-auto">
       <div className="bg-white rounded-3xl shadow-2xl px-6 py-8 flex flex-col items-center text-center gap-5">
@@ -173,15 +196,21 @@ function StepWelcome({ name, onNext, onSkip }: { name: string; onNext: () => voi
           <div className="text-sm text-stone-600 leading-relaxed space-y-1">
             <p>食事を写真で記録するだけで、</p>
             <p>AIが栄養バランスを自動計算します。</p>
-            <p>まずは使い方をご案内します。</p>
           </div>
         </div>
         <button
           type="button"
-          onClick={onNext}
+          onClick={onRecord}
           className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 flex items-center justify-center gap-2 text-sm"
         >
-          使い方を見る <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+          食事を記録 <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          className="text-xs text-stone-500 underline"
+        >
+          使い方を見る
         </button>
         <button type="button" onClick={onSkip} className="text-xs text-stone-400 underline">
           スキップ

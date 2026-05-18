@@ -9,6 +9,14 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 (staging) – オンボーディング ようこそ画面に背景＋食事記録への直接導線
+
+- ui(OnboardingFlow): step1（ようこそ画面）のオーバーレイを `bg-black/50` → `bg-black/20` に薄くし、裏のホーム画面が透けて見えるように
+- ui(OnboardingFlow): CTAを「使い方を見る」→「食事を記録」に変更。タップでオンボ完了 + `/record` へ遷移（新規 `completeAndRecord` 関数）。「使い方を見る」はサブリンクとして残置
+- ui(OnboardingFlow): 「まずは使い方をご案内します。」の一文を削除（CTA変更に合わせて文言整理）
+- refactor(app/home): `onboardingDone === false` 時の空 main プレースホルダー return を廃止。ホーム本体を常に描画し、OnboardingFlow を上にオーバーレイ表示するよう変更。これにより既存のスポットライト要素（`data-onboarding="meal-cards"` 等）が機能するようになる副次効果あり
+- 影響範囲: 顧客側 LIFF /home（初回オンボーディングフロー）
+
 ## 2026-05-19 00:50 – staging Basic Auth を全面撤廃
 
 - 変更: `proxy.ts` から staging Basic Auth ガード（`isStagingHost` / `checkBasicAuth` / `basicAuthResponse`）を全削除
