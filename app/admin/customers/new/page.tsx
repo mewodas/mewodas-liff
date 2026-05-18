@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   UserPlus,
-  Save,
   Target,
   ClipboardList,
   Calculator,
   Hourglass,
   Calendar as CalendarIcon,
+  AlertTriangle,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
@@ -53,6 +54,7 @@ export default function NewCustomerPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seatBlocked, setSeatBlocked] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/stores', { cache: 'no-store' })
@@ -61,6 +63,13 @@ export default function NewCustomerPage() {
         const list: StoreItem[] = j?.stores || [];
         setStores(list);
         if (list.length === 1) setStoreId(list[0].storeId);
+      })
+      .catch(() => {});
+    // 席数上限チェック
+    fetch('/api/admin/billing/info', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && !j.error && j.isOverLimit) setSeatBlocked(true);
       })
       .catch(() => {});
   }, []);
@@ -163,6 +172,17 @@ export default function NewCustomerPage() {
   return (
     <AdminShell title="新規顧客追加" back={{ href: base }}>
       <div className="space-y-3">
+        {seatBlocked && (
+          <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
+            <div>
+              <div className="font-bold">席数上限に達しているため新規顧客を追加できません</div>
+              <Link href={`${base}/billing`} className="text-rose-700 font-bold underline mt-1 inline-block">
+                増枠する →
+              </Link>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
@@ -490,11 +510,11 @@ export default function NewCustomerPage() {
         <button
           type="button"
           onClick={save}
-          disabled={saving || !name.trim()}
+          disabled={saving || !name.trim() || seatBlocked}
           className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <UserPlus className="w-4 h-4" strokeWidth={2.2} />
-          {saving ? '作成中…' : '顧客を作成'}
+          {saving ? '作成中…' : seatBlocked ? '席数上限のため追加不可' : '顧客を作成'}
         </button>
       </div>
     </AdminShell>

@@ -1,4 +1,5 @@
 import { getCurrentTenant } from './tenant';
+import type { PlanTier } from './stripe';
 
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
@@ -572,6 +573,10 @@ export type TenantRow = {
   pfcOverrideP: number | null;
   pfcOverrideF: number | null;
   pfcOverrideC: number | null;
+  /** 契約席数（Stripe per-user item の quantity と同期） */
+  seatLimit: number | null;
+  /** プラン種別（Starter / Growth / Scale） */
+  planTier: PlanTier | null;
 };
 
 export async function updateTenantRow(
@@ -598,6 +603,8 @@ export async function updateTenantRow(
     pfcOverrideP?: number | null;
     pfcOverrideF?: number | null;
     pfcOverrideC?: number | null;
+    seatLimit?: number | null;
+    planTier?: PlanTier | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -667,6 +674,12 @@ export async function updateTenantRow(
       properties[colName] = { number: value };
     }
   }
+  if (patch.seatLimit !== undefined) {
+    properties['契約席数'] = patch.seatLimit !== null ? { number: patch.seatLimit } : { number: null };
+  }
+  if (patch.planTier !== undefined) {
+    properties['プラン種別'] = patch.planTier !== null ? { select: { name: patch.planTier } } : { select: null };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -705,6 +718,8 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       pfcOverrideP: p['PFC適用_P']?.number ?? null,
       pfcOverrideF: p['PFC適用_F']?.number ?? null,
       pfcOverrideC: p['PFC適用_C']?.number ?? null,
+      seatLimit: p['契約席数']?.number ?? null,
+      planTier: (p['プラン種別']?.select?.name as PlanTier | undefined) ?? null,
     };
   });
 }
