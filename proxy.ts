@@ -68,7 +68,13 @@ export function proxy(request: NextRequest) {
   if (isStagingHost(host)) {
     const isCronPath = pathname.startsWith('/api/cron/');
     const isStaticAsset =
-      pathname.startsWith('/_next/static/') || pathname === '/favicon.ico';
+      pathname.startsWith('/_next/static/') ||
+      pathname === '/favicon.ico' ||
+      // Next.js metadata files（app/icon.svg, app/apple-icon.png, app/opengraph-image.* など）は
+      // ブラウザがページ読み込み時に自動取得する。Basic Auth 401 を返すと WWW-Authenticate に応じてダイアログが再表示されるため除外
+      /^\/(icon|apple-icon|opengraph-image|twitter-image)(-\w+)?\.(svg|png|jpg|jpeg|ico)$/.test(pathname) ||
+      pathname === '/robots.txt' ||
+      pathname === '/sitemap.xml';
     const isAdminOrStore =
       pathname.startsWith('/admin') ||
       pathname.startsWith('/store') ||
