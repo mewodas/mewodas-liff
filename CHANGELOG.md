@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – PFC キャリブレーション: withLiffTenant ラッパー追加でテナント解決を修正
+
+- fix(api/record, api/record/analyze): `withLiffTenant` でラップ。これまでテナントコンテキスト未設定のため `getCurrentTenant()` が静的 MEWODAS にフォールバックし、staging で `FITMEAL_TENANT_ID_OVERRIDE=mewodas-staging` を見ていなかった
+- 影響範囲: 顧客側 LIFF（食事推定値の補正、staging で動作確認可能になる）
+- 関連: 直前のキャリブレーション PR #1 の動作確認で発覚
+
 ## 2026-05-18 – ステータスドロップダウンにⓘツールチップ追加
 - feat(store/admin): 顧客詳細「基本情報」ステータスラベル横にInfoアイコンを追加
 - feat(store/admin): クリックで各ステータス（設定中・進行中・休止中・卒業）の説明ポップオーバーを表示
