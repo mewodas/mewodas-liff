@@ -17,6 +17,7 @@ import {
   Dumbbell,
   Info,
   Circle,
+  RotateCcw,
 } from 'lucide-react';
 import {
   LineChart,
@@ -299,6 +300,7 @@ export default function CustomerDetailPage({
     try {
       const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+      alert('オンボーディングをリセットしました。');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'リセット失敗');
     } finally {
@@ -956,7 +958,10 @@ export default function CustomerDetailPage({
 
           {isAdminRoute && (
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-              <h3 className="text-sm font-bold text-stone-800 mb-3">オンボーディングリセット</h3>
+              <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                オンボーディングリセット
+              </h3>
               <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
                 顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
                 目標値・体重・性別などの基本情報は保持されます。
