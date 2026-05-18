@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-18 顧客詳細の店舗取得エラーをサイレント失敗からエラー表示に変更
+- バグ修正: `/store/customers/[id]` の所属店舗ドロップダウンが候補ゼロになる問題を調査
+- 根本原因: Notion Integration「メヲダス_GAS連携」が FitMeal 店舗 DB（b74788a7...）に未接続 → Notion API が object_not_found を返すが catch でサイレント失敗していた
+- 修正: 店舗取得 fetch のエラーを setError に渡すよう変更（エラーが画面に表示されるようになった）
+- 影響範囲: 管理画面 /admin/customers/[id]（= /store/customers/[id]）
+- 社長対応必須: Notion「FitMeal 店舗」DB に「メヲダス_GAS連携」インテグレーションを接続する必要あり
+
 機能追加・バグ修正・ロールバックなどの履歴を記録する。
 
 形式:
@@ -8,6 +15,13 @@
 - カテゴリ: 内容
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
+
+## 2026-05-18 – 招待リンク 404 修正（顧客認証URLが開けない致命バグ）
+
+- fix(api/admin/customers/[id]/invite-link): 招待リンクを `https://liff.line.me/<LIFF_ID>/onboard?token=...` で生成していたが、LIFF Endpoint URL が `https://app.fitmeal.jp/home` を指している運用のため、LIFF が `https://app.fitmeal.jp/home/onboard?token=...` に解決して 404 になっていた。`${NEXT_PUBLIC_APP_URL}/onboard?token=...` の直接URL形式に変更（/onboard ページ自体が `liff.init()` + `liff.login()` を内包しているため、LIFF 経由でなくとも認証可）
+- chore: 未使用の `fetchOfficialLineUrl` import を削除
+- 影響範囲: 管理画面から発行される顧客招待リンク全般（本番）。発行済みの旧 LIFF 形式リンクは引き続き 404 のため、対象顧客には再発行が必要
+- 緊急修正のため main 直push（AGENTS.md ルール4: `app/api/admin/*` 配下）
 
 ## 2026-05-18 – ホーム一覧の食事サムネイル重複排除
 

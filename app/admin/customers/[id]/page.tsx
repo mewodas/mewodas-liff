@@ -156,9 +156,15 @@ export default function CustomerDetailPage({
 
   useEffect(() => {
     fetch('/api/admin/stores', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setStores(j?.stores || []))
-      .catch(() => {});
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) {
+          setError(j?.error ? `店舗取得エラー: ${j.error}` : `店舗取得失敗（${r.status}）`);
+          return;
+        }
+        setStores(j?.stores || []);
+      })
+      .catch((e) => setError(`店舗取得エラー: ${e.message}`));
     fetch(`/api/admin/customers/${id}/notifications`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setNotifications(j?.notifications || []))
