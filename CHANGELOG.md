@@ -9,6 +9,14 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 00:50 – staging Basic Auth を全面撤廃
+
+- 変更: `proxy.ts` から staging Basic Auth ガード（`isStagingHost` / `checkBasicAuth` / `basicAuthResponse`）を全削除
+- 理由: LIFF顧客側は LINE OAuth (`liff.login`)、/admin /store は scrypt+Cookie で既に二重に守られている。Basic Auth は除外ルールの取りこぼし（icon.svg / manifest.webmanifest / RSC fetch 等）でログインダイアログが繰り返し表示される不具合の温床になっていた
+- 検索エンジン対策: `app/robots.ts` が staging.fitmeal.jp で `Disallow: /` を返す設定済み（既存）
+- 影響範囲: staging / preview のみ。本番は元から PASSTHROUGH_HOSTS で除外されていたため変化なし
+- TODO: 社長対応 — Vercel から `STAGING_BASIC_AUTH_USER` / `STAGING_BASIC_AUTH_PASSWORD` 環境変数を削除（残しても無害だが整理のため）
+
 ## 2026-05-19 00:45 – staging Basic Auth: /manifest.webmanifest も除外（前回の除外漏れ）
 
 - 修正: `proxy.ts` で `/manifest.webmanifest` `/manifest.json` を Basic Auth 除外に追加
