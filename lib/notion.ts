@@ -90,11 +90,14 @@ const customerCache = new Map<string, { customer: Customer; expiry: number }>();
 const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000; // 30分（顧客情報は頻繁に変わらない）
 
 export async function getCustomerByLineId(
-  lineUserId: string
+  lineUserId: string,
+  opts?: { force?: boolean }
 ): Promise<Customer | null> {
-  const cached = customerCache.get(lineUserId);
-  if (cached && Date.now() < cached.expiry) {
-    return cached.customer;
+  if (!opts?.force) {
+    const cached = customerCache.get(lineUserId);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.customer;
+    }
   }
   const tenant = getTenantNotion();
   const res = await notionRequest(

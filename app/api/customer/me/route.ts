@@ -9,7 +9,7 @@ export const maxDuration = 30;
 export const GET = withLiffTenant(async (req: NextRequest) => {
   const lineUserId = req.nextUrl.searchParams.get('lineUserId');
   if (!lineUserId) return NextResponse.json({ error: 'lineUserId required' }, { status: 400 });
-  const customer = await getCustomerByLineId(lineUserId);
+  const customer = await getCustomerByLineId(lineUserId, { force: true });
   if (!customer) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ customer });
 });

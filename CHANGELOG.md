@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-19 オンボーディング再リセットが反映されないバグ修正（customerCache バイパス）
+- バグ修正: 管理画面でオンボーディングを2回目以降リセットしても顧客側 LIFF に反映されない問題
+- 根本原因: `lib/notion.ts` の `customerCache`（30分TTLのインメモリキャッシュ）が Vercel serverless インスタンスごとに別物のため、admin DELETE のキャッシュ無効化は当該インスタンスにしか効かず、顧客側 `/api/customer/me` が別インスタンスにヒットすると古い「オンボ完了」状態を返していた
+- 修正: `getCustomerByLineId` に `force?: boolean` オプションを追加。`/api/customer/me` GET ではキャッシュをバイパス（force: true）して常に Notion から最新値を取得
+- 影響範囲: 顧客側 LIFF /home（オンボーディング状態判定） / lib バックエンド
+- パフォーマンス影響: `/api/customer/me` は LIFF ホーム読込時に1回呼ばれるのみで Notion レート制限的に問題なし
+
 ## 2026-05-19 オンボーディングリセットにアイコン追加・完了通知ポップアップ追加
 - UI改善: /admin/customers/[id] のオンボーディングリセット見出しに RotateCcw アイコンを追加し、他セクションと統一
 - UI改善: リセット成功時に「オンボーディングをリセットしました。」を alert で表示
