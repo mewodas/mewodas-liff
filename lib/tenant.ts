@@ -45,6 +45,14 @@ export type TenantConfig = {
   themeColor?: string;
   /** ジムのデフォルトPFC目標 */
   defaultGoals: { kcal: number; P: number; F: number; C: number };
+  /** PFC キャリブレーション係数（自動算出。日次 cron が更新） */
+  pfcRecommendedP?: number | null;
+  pfcRecommendedF?: number | null;
+  pfcRecommendedC?: number | null;
+  /** PFC キャリブレーション係数（手動オーバーライド。空なら推奨値、それも空なら 1.0） */
+  pfcOverrideP?: number | null;
+  pfcOverrideF?: number | null;
+  pfcOverrideC?: number | null;
 };
 
 // メヲダス（現状の単一テナント）

@@ -1,7 +1,8 @@
-// PFC補正係数：AIの推定精度向上により補正なし運用に変更（全て1.0）
-// 必要に応じて将来再調整可能
-const PFC_CALIBRATION_IMAGE = { P: 1.0, F: 1.0, C: 1.0 };
-const PFC_CALIBRATION_TEXT  = { P: 1.0, F: 1.0, C: 1.0 };
+// PFC 補正係数のデフォルト値（テナント別の係数が指定されない場合のフォールバック）
+// テナント別の係数は lib/tenantResolver.getApplicableCalibration() で解決され、
+// analyzeImagesPfc / analyzeTextPfc の calibration 引数で渡される。
+export const DEFAULT_PFC_CALIBRATION = { P: 1.0, F: 1.0, C: 1.0 };
+export type PfcCalibration = { P: number; F: number; C: number };
 
 const NUTRITION_SYSTEM =
   '回答はJSON形式のみで返してください。説明・挨拶は不要です。';
@@ -155,7 +156,8 @@ export async function analyzeNutritionLabel(
 export async function analyzeImagesPfc(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null,
-  previousItems?: Array<{ name: string; P: number; F: number; C: number }> | null
+  previousItems?: Array<{ name: string; P: number; F: number; C: number }> | null,
+  calibration: PfcCalibration = DEFAULT_PFC_CALIBRATION
 ): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
@@ -166,27 +168,28 @@ export async function analyzeImagesPfc(
   // メモがある場合は常に単一AIコールで処理（写真+メモを一緒に解析）
   // → ダブルカウント（メモが写真の食材を描写する場合の重複計算）を防止
   if (supplementText) {
-    return analyzeImagesSingleCall(images, supplementText, explicit, previousItems || null);
+    return analyzeImagesSingleCall(images, supplementText, explicit, previousItems || null, calibration);
   }
 
   // 複数枚（メモなし）→ 並列解析で高速化（各皿は別物として合算）
   if (images.length > 1) {
-    return analyzeImagesParallel(images, null);
+    return analyzeImagesParallel(images, null, calibration);
   }
 
-  return analyzeImagesSingleCall(images, null, false, null);
+  return analyzeImagesSingleCall(images, null, false, null, calibration);
 }
 
 async function analyzeImagesParallel(
   images: Array<{ base64: string; mimeType: string }>,
-  supplementText: string | null
+  supplementText: string | null,
+  calibration: PfcCalibration
 ): Promise<Pfc> {
   // バッチ単位で並列解析（同時実行数を制限してレート制限を回避）
   const results: Pfc[] = [];
   for (let i = 0; i < images.length; i += PARALLEL_BATCH_SIZE) {
     const batch = images.slice(i, i + PARALLEL_BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map((img) => analyzeImagesSingleCall([img], supplementText, false, null))
+      batch.map((img) => analyzeImagesSingleCall([img], supplementText, false, null, calibration))
     );
     results.push(...batchResults);
   }
@@ -215,7 +218,8 @@ async function analyzeImagesSingleCall(
   images: Array<{ base64: string; mimeType: string }>,
   supplementText: string | null,
   explicit: boolean,
-  previousItems: Array<{ name: string; P: number; F: number; C: number }> | null
+  previousItems: Array<{ name: string; P: number; F: number; C: number }> | null,
+  calibration: PfcCalibration
 ): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
@@ -348,11 +352,13 @@ PFCに加えて、以下5つも栄養学の標準値で推定してください�
   parts.push({ text: prompt });
 
   const text = await callGemini(parts, apiKey);
-  // 明示量がある場合は補正なし（テキスト準拠）、なければ画像補正適用
-  return parsePfcJson(text, explicit ? PFC_CALIBRATION_TEXT : PFC_CALIBRATION_IMAGE);
+  return parsePfcJson(text, calibration);
 }
 
-export async function analyzeTextPfc(textDesc: string): Promise<Pfc> {
+export async function analyzeTextPfc(
+  textDesc: string,
+  calibration: PfcCalibration = DEFAULT_PFC_CALIBRATION
+): Promise<Pfc> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY 未設定');
 
@@ -398,7 +404,7 @@ ${textDesc}
 }`;
 
   const text = await callGemini([{ text: prompt }], apiKey);
-  return parsePfcJson(text, PFC_CALIBRATION_TEXT);
+  return parsePfcJson(text, calibration);
 }
 
 // 体重予測：過去データから3ヶ月後の体重を予測
