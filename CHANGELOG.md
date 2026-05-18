@@ -9,6 +9,16 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – 招待認証ページを /home/onboard に移管（LIFF OAuth 400 修正）
+
+- 不具合: 旧 invite link `https://liff.line.me/<LIFF_ID>/onboard?token=...` を踏むと LIFF Endpoint URL `/home` 配下に解決して `/home/onboard` が存在せず 404。本日 main で `/onboard?token=...` の直URLに変更したところ、今度は `liff.login()` の redirect_uri が `/onboard`（Endpoint URL `/home` の配下でない）になり LINE 側で 400 Bad Request を返すように
+- 修正:
+  - 新規 `app/home/onboard/page.tsx` — 既存 `/onboard` の LIFF 認証 + redeem ロジックを `/home/onboard` に移植。Endpoint URL `/home` の配下にあるため `liff.login()` redirect_uri が LINE の検証を通る
+  - `app/onboard/page.tsx` を server-side redirect 化（token 引数を保持したまま `/home/onboard?token=...` へ転送）。本日 main 経由で発行された旧形式 `app.fitmeal.jp/onboard?token=...` リンクの後方互換用
+  - 既存 `invite-link/route.ts` の `liff.line.me/<ID>/onboard?token=...` URL は据え置き（resolve 先 `/home/onboard` が存在するようになったので動作する）
+- 影響範囲: 顧客側 LIFF /onboard（リダイレクト化）, /home/onboard（新規） / 管理画面の招待リンクコピー
+- 検証手順: staging.fitmeal.jp の管理画面で招待リンクを発行 → 開発用 LINE で開く → 認証完了画面まで到達することを確認
+
 ## 2026-05-18 (staging) – ホーム一覧の食事サムネイル重複排除
 
 - fix(app/home): 1枚の写真から複数食材が判定された場合、ホーム画面の食事カードに同じ写真が複数並んでいた問題を修正。`imageUrl` で重複排除し、ユニークな写真のみ表示
