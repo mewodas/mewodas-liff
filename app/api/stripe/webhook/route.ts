@@ -1,18 +1,23 @@
 // Stripe Webhook ハンドラ
 //
-// Stripe から送られるイベントを受信して Notion テナント DB に同期。
 // 主なイベント:
 //   - customer.subscription.created/updated/deleted
 //   - invoice.payment_succeeded
 //   - invoice.payment_failed
 //   - checkout.session.completed
 //
-// セキュリティ:
-//   - STRIPE_WEBHOOK_SECRET で署名検証
+// per-user item の識別:
+//   STRIPE_PRICE_STARTER_PER_USER / GROWTH / SCALE 環境変数に一致する Price ID を持つ item を席数源泉とする。
+//   Price ID が環境変数未設定 or 一致しない Subscription はスキップ（旧契約 or dev/preview inline）。
 
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { getStripe, subscriptionStatusToNotion } from '@/lib/stripe';
+import {
+  getStripe,
+  subscriptionStatusToNotion,
+  getPlanTierBySeats,
+  getMonthlyTotal,
+} from '@/lib/stripe';
 import { listTenantRows, updateTenantRow } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 
@@ -52,7 +57,6 @@ export async function POST(req: NextRequest) {
         await handleInvoicePaymentFailed(event.data.object);
         break;
       default:
-        // 未処理イベントは ack だけ返す
         break;
     }
     return NextResponse.json({ received: true });
@@ -63,6 +67,19 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function getPerUserPriceIds(): Set<string> {
+  const ids = new Set<string>();
+  const env = [
+    process.env.STRIPE_PRICE_STARTER_PER_USER,
+    process.env.STRIPE_PRICE_GROWTH_PER_USER,
+    process.env.STRIPE_PRICE_SCALE_PER_USER,
+  ];
+  for (const id of env) {
+    if (id) ids.add(id);
+  }
+  return ids;
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -85,28 +102,63 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   if (!tenant) return;
 
   const status = subscriptionStatusToNotion(sub.status);
-  // 最新の Stripe SDK では current_period_end は items.data[0].current_period_end に移動
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodEnd = (sub as any).current_period_end || sub.items.data[0]?.current_period_end;
   const nextBillingDate = periodEnd
     ? new Date(periodEnd * 1000).toISOString().split('T')[0]
     : null;
 
-  // 数量と料金は最初の item から取得
-  const item = sub.items.data[0];
-  const quantity = item?.quantity ?? 0;
-  const unitAmount = item?.price?.unit_amount ?? 0;
-  const interval = item?.price?.recurring?.interval;
-  const monthlyPrice = interval === 'year' ? Math.round((unitAmount * quantity) / 12) : unitAmount * quantity;
+  // per-user item を Price ID で識別
+  const perUserPriceIds = getPerUserPriceIds();
+  let seatLimit: number | null = null;
+  let perUserUnitAmount = 0;
+  let perUserQuantity = 0;
+  let supportFeeAmount = 0;
 
-  await updateTenantRow(tenant.pageId, {
+  if (perUserPriceIds.size > 0) {
+    // 新プラン構造 Subscription
+    for (const item of sub.items.data) {
+      const priceId = item.price?.id;
+      if (priceId && perUserPriceIds.has(priceId)) {
+        perUserQuantity = item.quantity ?? 0;
+        perUserUnitAmount = item.price?.unit_amount ?? 0;
+        seatLimit = perUserQuantity;
+      } else {
+        // サポート費 item
+        supportFeeAmount = (item.price?.unit_amount ?? 0) * (item.quantity ?? 1);
+      }
+    }
+  } else {
+    // Price ID 未設定（dev/preview inline price_data）: 旧構造と同様にスキップせず処理
+    // inline price の場合 price.id は 'price_...' ではなく一時 ID なので識別不可
+    // metadata の seats を使用
+    const metaSeats = Number((sub as Stripe.Subscription).metadata?.seats);
+    if (metaSeats > 0) {
+      seatLimit = metaSeats;
+      const item = sub.items.data[0];
+      perUserQuantity = item?.quantity ?? 0;
+      perUserUnitAmount = item?.price?.unit_amount ?? 0;
+    }
+  }
+
+  const planTier = seatLimit !== null && seatLimit > 0 ? getPlanTierBySeats(seatLimit) : null;
+  const { total: expectedTotal } = seatLimit !== null ? getMonthlyTotal(seatLimit) : { total: 0 };
+  // 月額は計算値を使う（サポート費 + per-user 合計）
+  const monthlyPrice = seatLimit !== null ? expectedTotal : (supportFeeAmount + perUserUnitAmount * perUserQuantity);
+
+  const patch: Parameters<typeof updateTenantRow>[1] = {
     stripeSubscriptionId: sub.id,
     paymentStatus: status,
     nextBillingDate,
-    customerCount: quantity,
-    monthlyPrice,
-    billingCycle: interval === 'year' ? '年払い' : '月払い',
-  });
+    monthlyPrice: monthlyPrice || undefined,
+    billingCycle: '月払い',
+  };
+  if (seatLimit !== null) {
+    patch.seatLimit = seatLimit;
+    patch.planTier = planTier;
+  }
+
+  await updateTenantRow(tenant.pageId, patch);
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
@@ -117,6 +169,8 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   await updateTenantRow(tenant.pageId, {
     paymentStatus: '解約済み',
     status: '解約',
+    seatLimit: null,
+    planTier: null,
   });
 }
 

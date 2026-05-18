@@ -4,12 +4,23 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { createInviteToken } from '@/lib/inviteToken';
 import { getCustomer } from '@/lib/repository/customers';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
+import { getSeatStatus } from '@/lib/seats';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const POST = withAdminTenant(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
+
+  // 席数上限チェック
+  const seatStatus = await getSeatStatus();
+  if (seatStatus.isOverLimit) {
+    return NextResponse.json(
+      { error: 'seat_limit_reached', seatLimit: seatStatus.seatLimit, currentSeats: seatStatus.currentSeats },
+      { status: 403 }
+    );
+  }
+
   const customer = await getCustomer(id);
   if (!customer) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
