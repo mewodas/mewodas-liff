@@ -9,6 +9,11 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – 診断 API /api/debug-calibration を削除
+
+- chore(api/debug-calibration): staging 動作確認用に追加した診断エンドポイントを削除（役目終了）
+- 影響範囲: API。staging/本番ともに /api/debug-calibration は 404 になる
+
 ## 2026-05-18 – セキュリティ: CRON_SECRET 本番設定 + StatusInfoPopover onBlur 修正
 
 - fix(security): CRON_SECRET が本番 env 未設定のため認証ロジックがバイパスされていた。Vercel Production / Preview / Development の全環境に設定し、以降 Bearer 認証が必須になる。再デプロイ後から有効
