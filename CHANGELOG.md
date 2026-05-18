@@ -16,6 +16,12 @@
 - 影響範囲: 顧客側 LIFF /record（推定値の挙動）
 - 背景: 教科書値ベース計算で全体的に高く出ていた問題を、画像認識主体の推定で実態に近づける狙い。補正係数による事後補正と併用
 
+## 2026-05-18 – 顧客詳細 2件のバグ修正（StatusInfoPopover 幅・所属店舗ドロップダウン）
+
+- fix(admin/customers/[id]): StatusInfoPopover のコンテナを max-w-xs から w-72 固定幅に変更。items-center → items-start、説明テキストに flex-1 leading-relaxed を付与し日本語が1文字ずつ縦に折り返す現象を修正
+- 影響範囲: 管理画面 /admin/customers/[id]（/store/customers/[id] も同ファイル）
+- 備考: 所属店舗ドロップダウン空は Notion 店舗DB にデータ未登録が原因（コードは正常）→ 社長に確認依頼
+
 ## 2026-05-18 – StatusInfoPopover をバッジ+1行説明の2カラム形式に変更
 
 - UI(admin/customers/[id]): StatusInfoPopover のテキストリストを「バッジ+短い説明」の横並びレイアウトに変更。バッジ色は admin/page.tsx の StatusBadge と完全一致（STATUS_BADGE_CLASSES 定数で管理）

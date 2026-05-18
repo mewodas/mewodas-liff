@@ -1167,16 +1167,16 @@ function StatusInfoPopover() {
         <Info className="w-3.5 h-3.5" strokeWidth={2.2} />
       </button>
       {open && (
-        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 max-w-xs bg-white border border-stone-200 rounded-xl shadow-lg p-3">
+        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
           <p className="text-[10px] font-bold text-stone-500 mb-2 uppercase tracking-wide">ステータスの意味</p>
           <ul className="space-y-2">
             {STATUS_OPTIONS.map((s) => (
-              <li key={s} className="flex items-center gap-2">
+              <li key={s} className="flex items-start gap-2">
                 <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE_CLASSES[s] ?? 'bg-stone-100 text-stone-700 border-stone-300'}`}>
                   <Circle className="w-2 h-2 fill-current" strokeWidth={0} />
                   {s}
                 </span>
-                <span className="text-xs text-stone-600">{STATUS_DESCRIPTIONS[s]}</span>
+                <span className="flex-1 text-xs text-stone-600 leading-relaxed">{STATUS_DESCRIPTIONS[s]}</span>
               </li>
             ))}
           </ul>
