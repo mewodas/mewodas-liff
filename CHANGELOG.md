@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – セキュリティ: CRON_SECRET 本番設定 + StatusInfoPopover onBlur 修正
+
+- fix(security): CRON_SECRET が本番 env 未設定のため認証ロジックがバイパスされていた。Vercel Production / Preview / Development の全環境に設定し、以降 Bearer 認証が必須になる。再デプロイ後から有効
+- fix(admin/customers/[id]): StatusInfoPopover の onBlur でモバイルタップ直後にポップオーバーが閉じる問題を修正。useEffect + document.addEventListener('pointerdown') による外側クリック検知に変更、Esc キーでも閉じるよう対応
+- 影響範囲: API /api/cron/update-calibrations・/api/cron/daily-reports（認証強化）、管理画面 /admin/customers/[id]
+
 ## 2026-05-18 – ステータスドロップダウンにⓘツールチップ追加
 - feat(store/admin): 顧客詳細「基本情報」ステータスラベル横にInfoアイコンを追加
 - feat(store/admin): クリックで各ステータス（設定中・進行中・休止中・卒業）の説明ポップオーバーを表示

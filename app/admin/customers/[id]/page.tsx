@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Target,
@@ -1125,20 +1125,40 @@ function ExerciseBarChart({
 
 function StatusInfoPopover() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex" ref={containerRef}>
       <button
         type="button"
         aria-label="ステータスの説明を表示"
+        aria-expanded={open}
+        aria-haspopup="true"
         onClick={() => setOpen((v) => !v)}
-        onBlur={() => setOpen(false)}
         className="flex items-center justify-center w-5 h-5 rounded-full text-stone-400 hover:text-stone-600 active:text-stone-800 focus:outline-none"
       >
         <Info className="w-3.5 h-3.5" strokeWidth={2.2} />
       </button>
       {open && (
-        <div className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
+        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
           <p className="text-[10px] font-bold text-stone-500 mb-2 uppercase tracking-wide">ステータスの意味</p>
           <ul className="space-y-2">
             {STATUS_OPTIONS.map((s) => (
