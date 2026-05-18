@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 00:45 – staging Basic Auth: /manifest.webmanifest も除外（前回の除外漏れ）
+
+- 修正: `proxy.ts` で `/manifest.webmanifest` `/manifest.json` を Basic Auth 除外に追加
+- 原因: 前回の修正で `/icon.svg` は除外したが、login ページの HTML が参照する `<link rel="manifest" href="/manifest.webmanifest">` は除外漏れで 401 を返し続けていた
+- 影響範囲: staging / preview のみ
+
 ## 2026-05-19 00:40 – staging Basic Auth: Next.js metadata files (/icon.svg 等) を除外
 
 - 修正: `proxy.ts` で staging Basic Auth ガードから `/icon.svg` `/apple-icon.*` `/opengraph-image.*` `/twitter-image.*` `/robots.txt` `/sitemap.xml` を除外
