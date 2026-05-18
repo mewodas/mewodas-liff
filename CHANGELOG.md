@@ -9,6 +9,11 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – StatusInfoPopover をバッジ+1行説明の2カラム形式に変更
+
+- UI(admin/customers/[id]): StatusInfoPopover のテキストリストを「バッジ+短い説明」の横並びレイアウトに変更。バッジ色は admin/page.tsx の StatusBadge と完全一致（STATUS_BADGE_CLASSES 定数で管理）
+- 影響範囲: 管理画面 /admin/customers/[id]（社長のみ）
+
 ## 2026-05-18 – 診断 API /api/debug-calibration を削除
 
 - chore(api/debug-calibration): staging 動作確認用に追加した診断エンドポイントを削除（役目終了）

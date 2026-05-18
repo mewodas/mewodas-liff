@@ -17,6 +17,7 @@ import {
   Dumbbell,
   AlertTriangle,
   Info,
+  Circle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -64,11 +65,19 @@ type Notification = {
 
 const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
 
+// バッジ色は app/admin/page.tsx の StatusBadge と同期させること
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  進行中: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  設定中: 'bg-violet-100 text-violet-700 border-violet-300',
+  休止中: 'bg-amber-100 text-amber-800 border-amber-300',
+  卒業: 'bg-sky-100 text-sky-700 border-sky-300',
+};
+
 const STATUS_DESCRIPTIONS: Record<string, string> = {
-  設定中: '顧客プロフィール作成中。LIFFリンク未送付またはLINE未連携の状態。招待リンクを送ると顧客が初回登録した時点で「進行中」に自動移行します。',
-  進行中: '通常運用中。食事記録・AIフィードバック・デイリーレポートの送信対象になります。',
-  休止中: '一時的に食事管理を停止中。食事記録・レポート送信は行われません。再開時に「進行中」へ戻してください。',
-  卒業: '目標達成またはサービス終了。食事記録・レポート送信は行われません。',
+  設定中: '作成中・LINE未連携',
+  進行中: '通常運用中。記録・レポート対象',
+  休止中: '一時停止中',
+  卒業: 'サービス終了',
 };
 const GENDER_OPTIONS = ['男性', '女性'];
 
@@ -1158,12 +1167,15 @@ function StatusInfoPopover() {
         <Info className="w-3.5 h-3.5" strokeWidth={2.2} />
       </button>
       {open && (
-        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
+        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 max-w-xs bg-white border border-stone-200 rounded-xl shadow-lg p-3">
           <p className="text-[10px] font-bold text-stone-500 mb-2 uppercase tracking-wide">ステータスの意味</p>
           <ul className="space-y-2">
             {STATUS_OPTIONS.map((s) => (
-              <li key={s}>
-                <span className="text-xs font-bold text-stone-900">{s}：</span>
+              <li key={s} className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE_CLASSES[s] ?? 'bg-stone-100 text-stone-700 border-stone-300'}`}>
+                  <Circle className="w-2 h-2 fill-current" strokeWidth={0} />
+                  {s}
+                </span>
                 <span className="text-xs text-stone-600">{STATUS_DESCRIPTIONS[s]}</span>
               </li>
             ))}
