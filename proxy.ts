@@ -67,8 +67,18 @@ export function proxy(request: NextRequest) {
     const isCronPath = pathname.startsWith('/api/cron/');
     const isStaticAsset =
       pathname.startsWith('/_next/static/') || pathname === '/favicon.ico';
+    // fetch() はブラウザが Basic Auth ヘッダーを自動付与しないため、
+    // 認証系 API は Basic Auth チェックをスキップする
+    const isAuthApi =
+      pathname === '/api/admin/auth/login' ||
+      pathname === '/api/admin/auth/logout' ||
+      pathname === '/api/admin/auth/me' ||
+      pathname === '/api/admin/auth/reset-password' ||
+      pathname === '/api/admin/auth/reset-password/confirm' ||
+      pathname === '/api/store/auth/login' ||
+      pathname === '/api/store/auth/logout';
 
-    if (!isCronPath && !isStaticAsset) {
+    if (!isCronPath && !isStaticAsset && !isAuthApi) {
       if (!checkBasicAuth(request)) {
         return basicAuthResponse();
       }

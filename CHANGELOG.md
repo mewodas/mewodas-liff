@@ -9,6 +9,13 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – staging の /admin/login で「ログイン中…」のままになるバグ修正
+
+- 不具合: staging.fitmeal.jp/admin/login でメール/パスワードを入力してログインボタンを押すと、ブラウザが `https://staging.fitmeal.jp` へ再度 Basic Auth ダイアログを表示し「ログイン中…」のまま進まない
+- 原因: `proxy.ts`（Middleware）の Basic Auth ガードが `/api/admin/auth/login` にも適用されていた。ブラウザは初回ページロード時の Basic Auth 資格情報を `fetch()` リクエストに自動付与しないため、ログイン API POST が 401 を返しブラウザが再度 Basic Auth ダイアログを表示していた
+- 修正: `proxy.ts` の staging Basic Auth ブロックに `isAuthApi` 除外条件を追加。`/api/admin/auth/*` および `/api/store/auth/login` はBasic Auth チェックをスキップ
+- 影響範囲: staging 環境のみ（Basic Auth は staging/preview にのみ適用）。本番への影響なし
+
 ## 2026-05-18 (staging) – 招待認証ページを /home/onboard に移管（LIFF OAuth 400 修正）
 
 - 不具合: 旧 invite link `https://liff.line.me/<LIFF_ID>/onboard?token=...` を踏むと LIFF Endpoint URL `/home` 配下に解決して `/home/onboard` が存在せず 404。本日 main で `/onboard?token=...` の直URLに変更したところ、今度は `liff.login()` の redirect_uri が `/onboard`（Endpoint URL `/home` の配下でない）になり LINE 側で 400 Bad Request を返すように
