@@ -74,7 +74,9 @@ export function proxy(request: NextRequest) {
       // ブラウザがページ読み込み時に自動取得する。Basic Auth 401 を返すと WWW-Authenticate に応じてダイアログが再表示されるため除外
       /^\/(icon|apple-icon|opengraph-image|twitter-image)(-\w+)?\.(svg|png|jpg|jpeg|ico)$/.test(pathname) ||
       pathname === '/robots.txt' ||
-      pathname === '/sitemap.xml';
+      pathname === '/sitemap.xml' ||
+      pathname === '/manifest.webmanifest' ||
+      pathname === '/manifest.json';
     const isAdminOrStore =
       pathname.startsWith('/admin') ||
       pathname.startsWith('/store') ||
