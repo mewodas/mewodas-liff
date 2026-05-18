@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCorrectionRecords } from '@/lib/notion';
 import { withAdminTenant } from '@/lib/withTenant';
+import { computeCalibrationSuggestion } from '@/lib/calibration';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -76,23 +77,12 @@ export const GET = withAdminTenant(async (req) => {
           }
         : { kcal: 0, P: 0, F: 0, C: 0 };
 
-    // キャリブレーション係数の推奨：AI値に対する補正比率の平均
-    const ratioSum = corrected.reduce(
-      (acc, r) => ({
-        P: acc.P + (r.aiOriginal.P > 0 ? r.current.P / r.aiOriginal.P : 1),
-        F: acc.F + (r.aiOriginal.F > 0 ? r.current.F / r.aiOriginal.F : 1),
-        C: acc.C + (r.aiOriginal.C > 0 ? r.current.C / r.aiOriginal.C : 1),
-      }),
-      { P: 0, F: 0, C: 0 }
-    );
-    const calibrationSuggestion =
-      corrected.length > 0
-        ? {
-            P: Math.round((ratioSum.P / corrected.length) * 100) / 100,
-            F: Math.round((ratioSum.F / corrected.length) * 100) / 100,
-            C: Math.round((ratioSum.C / corrected.length) * 100) / 100,
-          }
-        : { P: 1.0, F: 1.0, C: 1.0 };
+    // キャリブレーション係数の推奨：lib/calibration.ts で共通ロジックを実行
+    //   - トレーナー/社長修正のみ集計（顧客修正は除外）
+    //   - 未修正レコードも ratio=1.0 として含める（選択バイアス対策）
+    //   - 上下 5% トリム + 0.7〜1.3 クリッピング + 30 件閾値
+    const calibrationResult = computeCalibrationSuggestion(records);
+    const calibrationSuggestion = calibrationResult.suggestion;
 
     // 食事区分別集計
     const byMealType: Record<
@@ -150,6 +140,13 @@ export const GET = withAdminTenant(async (req) => {
         records.length > 0 ? Math.round((corrected.length / records.length) * 1000) / 10 : 0,
       avgDiff,
       calibrationSuggestion,
+      calibrationDetails: {
+        updated: calibrationResult.updated,
+        sampleSize: calibrationResult.sampleSize,
+        trainerCorrectedCount: calibrationResult.trainerCorrectedCount,
+        uncorrectedCount: calibrationResult.uncorrectedCount,
+        skipReason: calibrationResult.skipReason,
+      },
       byMealType,
       byCorrector: {
         トレーナー: byCorrector['トレーナー'].count,

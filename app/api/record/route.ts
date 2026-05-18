@@ -3,6 +3,8 @@ import { waitUntil } from '@vercel/functions';
 import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
 import { saveImagesToDriveAsync } from '@/lib/drive';
+import { getCurrentTenant } from '@/lib/tenant';
+import { getTenantByIdAsync, getApplicableCalibration } from '@/lib/tenantResolver';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -61,12 +63,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // テナント別 PFC キャリブレーション係数を解決
+    // テナントコンテキストが無い場合は静的フォールバック（MEWODAS）。Notion から最新版を取得して係数を反映
+    const ctxTenant = getCurrentTenant();
+    const fullTenant = await getTenantByIdAsync(ctxTenant.id).catch(() => null);
+    const calibration = getApplicableCalibration(fullTenant ?? ctxTenant);
+
     // 顧客情報取得とPFC解析を並列実行
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
       images.length > 0
-        ? analyzeImagesPfc(images, supplementText || null)
-        : analyzeTextPfc(supplementText),
+        ? analyzeImagesPfc(images, supplementText || null, null, calibration)
+        : analyzeTextPfc(supplementText, calibration),
     ]);
     // eslint-disable-next-line no-console
     console.log('PFC解析結果:', {

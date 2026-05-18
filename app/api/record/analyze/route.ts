@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeImagesPfc, analyzeTextPfc } from '@/lib/gemini';
 import { getCustomerByLineId } from '@/lib/notion';
+import { getCurrentTenant } from '@/lib/tenant';
+import { getTenantByIdAsync, getApplicableCalibration } from '@/lib/tenantResolver';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -62,11 +64,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // テナント別 PFC キャリブレーション係数を解決
+    const ctxTenant = getCurrentTenant();
+    const fullTenant = await getTenantByIdAsync(ctxTenant.id).catch(() => null);
+    const calibration = getApplicableCalibration(fullTenant ?? ctxTenant);
+
     const [customer, pfc] = await Promise.all([
       getCustomerByLineId(lineUserId),
       images.length > 0
-        ? analyzeImagesPfc(images, supplementText || null, previousItems)
-        : analyzeTextPfc(supplementText),
+        ? analyzeImagesPfc(images, supplementText || null, previousItems, calibration)
+        : analyzeTextPfc(supplementText, calibration),
     ]);
 
     if (!customer || customer.foodStatus !== '進行中') {

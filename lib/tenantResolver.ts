@@ -45,6 +45,12 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
       lineChannelToken: r.lineChannelToken ?? undefined,
       lineAutoSendEnabled: r.lineAutoSendEnabled,
       autoSendTime: r.autoSendTime ?? undefined,
+      pfcRecommendedP: r.pfcRecommendedP,
+      pfcRecommendedF: r.pfcRecommendedF,
+      pfcRecommendedC: r.pfcRecommendedC,
+      pfcOverrideP: r.pfcOverrideP,
+      pfcOverrideF: r.pfcOverrideF,
+      pfcOverrideC: r.pfcOverrideC,
       ...base,
     };
     tenants.set(r.tenantId, cfg);
@@ -123,4 +129,25 @@ export async function findTenantBySlugOrId(slugOrId: string): Promise<TenantConf
 
 export function invalidateTenantCache(): void {
   cache = null;
+}
+
+/**
+ * テナントから適用 PFC キャリブレーション係数を解決する。
+ * 優先順位: 手動オーバーライド (pfcOverride_X) > 自動推奨 (pfcRecommended_X) > 1.0
+ * クリッピング: 0.7 〜 1.3 の範囲に強制（暴走防止）
+ */
+export function getApplicableCalibration(
+  tenant: TenantConfig
+): { P: number; F: number; C: number } {
+  const clip = (v: number) => Math.min(1.3, Math.max(0.7, v));
+  const resolve = (override?: number | null, recommended?: number | null): number => {
+    if (typeof override === 'number' && !Number.isNaN(override)) return clip(override);
+    if (typeof recommended === 'number' && !Number.isNaN(recommended)) return clip(recommended);
+    return 1.0;
+  };
+  return {
+    P: resolve(tenant.pfcOverrideP, tenant.pfcRecommendedP),
+    F: resolve(tenant.pfcOverrideF, tenant.pfcRecommendedF),
+    C: resolve(tenant.pfcOverrideC, tenant.pfcRecommendedC),
+  };
 }

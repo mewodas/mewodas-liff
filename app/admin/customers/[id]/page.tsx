@@ -16,6 +16,7 @@ import {
   TrendingDown,
   Dumbbell,
   AlertTriangle,
+  Info,
 } from 'lucide-react';
 import {
   LineChart,
@@ -62,6 +63,13 @@ type Notification = {
 };
 
 const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
+
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  設定中: '顧客プロフィール作成中。LIFFリンク未送付またはLINE未連携の状態。招待リンクを送ると顧客が初回登録した時点で「進行中」に自動移行します。',
+  進行中: '通常運用中。食事記録・AIフィードバック・デイリーレポートの送信対象になります。',
+  休止中: '一時的に食事管理を停止中。食事記録・レポート送信は行われません。再開時に「進行中」へ戻してください。',
+  卒業: '目標達成またはサービス終了。食事記録・レポート送信は行われません。',
+};
 const GENDER_OPTIONS = ['男性', '女性'];
 
 const ACTIVITY_DISPLAY: Record<string, string> = {
@@ -345,9 +353,10 @@ export default function CustomerDetailPage({
             <Field label="LINEユーザーID" value={customer.lineUserId || '未設定'} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">
-                  ステータス
-                </label>
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="text-xs font-bold text-stone-700">ステータス</label>
+                  <StatusInfoPopover />
+                </div>
                 <select
                   value={foodStatus}
                   onChange={(e) => setFoodStatus(e.target.value)}
@@ -1110,6 +1119,37 @@ function ExerciseBarChart({
           <Bar dataKey="min" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+function StatusInfoPopover() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="ステータスの説明を表示"
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setOpen(false)}
+        className="flex items-center justify-center w-5 h-5 rounded-full text-stone-400 hover:text-stone-600 active:text-stone-800 focus:outline-none"
+      >
+        <Info className="w-3.5 h-3.5" strokeWidth={2.2} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
+          <p className="text-[10px] font-bold text-stone-500 mb-2 uppercase tracking-wide">ステータスの意味</p>
+          <ul className="space-y-2">
+            {STATUS_OPTIONS.map((s) => (
+              <li key={s}>
+                <span className="text-xs font-bold text-stone-900">{s}：</span>
+                <span className="text-xs text-stone-600">{STATUS_DESCRIPTIONS[s]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

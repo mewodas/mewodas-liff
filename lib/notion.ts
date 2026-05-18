@@ -564,6 +564,14 @@ export type TenantRow = {
   customerCount: number | null;
   monthlyPrice: number | null;
   billingCycle: string | null;
+  /** PFC キャリブレーション（自動算出。cron が日次更新） */
+  pfcRecommendedP: number | null;
+  pfcRecommendedF: number | null;
+  pfcRecommendedC: number | null;
+  /** PFC キャリブレーション（手動オーバーライド。空なら推奨値を使用） */
+  pfcOverrideP: number | null;
+  pfcOverrideF: number | null;
+  pfcOverrideC: number | null;
 };
 
 export async function updateTenantRow(
@@ -584,6 +592,12 @@ export async function updateTenantRow(
     customerCount?: number;
     monthlyPrice?: number;
     billingCycle?: string;
+    pfcRecommendedP?: number | null;
+    pfcRecommendedF?: number | null;
+    pfcRecommendedC?: number | null;
+    pfcOverrideP?: number | null;
+    pfcOverrideF?: number | null;
+    pfcOverrideC?: number | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -640,6 +654,19 @@ export async function updateTenantRow(
   if (patch.billingCycle !== undefined) {
     properties['請求サイクル'] = { select: { name: patch.billingCycle } };
   }
+  const pfcMap: Array<[string, number | null | undefined]> = [
+    ['PFC推奨_P', patch.pfcRecommendedP],
+    ['PFC推奨_F', patch.pfcRecommendedF],
+    ['PFC推奨_C', patch.pfcRecommendedC],
+    ['PFC適用_P', patch.pfcOverrideP],
+    ['PFC適用_F', patch.pfcOverrideF],
+    ['PFC適用_C', patch.pfcOverrideC],
+  ];
+  for (const [colName, value] of pfcMap) {
+    if (value !== undefined) {
+      properties[colName] = { number: value };
+    }
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -672,6 +699,12 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       customerCount: p['顧客数']?.number ?? null,
       monthlyPrice: p['月額料金']?.number ?? null,
       billingCycle: p['請求サイクル']?.select?.name || null,
+      pfcRecommendedP: p['PFC推奨_P']?.number ?? null,
+      pfcRecommendedF: p['PFC推奨_F']?.number ?? null,
+      pfcRecommendedC: p['PFC推奨_C']?.number ?? null,
+      pfcOverrideP: p['PFC適用_P']?.number ?? null,
+      pfcOverrideF: p['PFC適用_F']?.number ?? null,
+      pfcOverrideC: p['PFC適用_C']?.number ?? null,
     };
   });
 }

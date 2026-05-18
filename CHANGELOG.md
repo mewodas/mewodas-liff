@@ -9,6 +9,21 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – ステータスドロップダウンにⓘツールチップ追加
+- feat(store/admin): 顧客詳細「基本情報」ステータスラベル横にInfoアイコンを追加
+- feat(store/admin): クリックで各ステータス（設定中・進行中・休止中・卒業）の説明ポップオーバーを表示
+- 影響範囲: 管理画面（/admin および /store 共有コンポーネント）のみ。顧客側 LIFF への影響なし
+
+## 2026-05-18 (staging) – PFC キャリブレーション テナント別自動補正
+
+- feat(calibration): テナント別の PFC キャリブレーション係数を Notion テナント DB に追加。`PFC推奨_P/F/C`（cron 自動更新）+ `PFC適用_P/F/C`（社長の手動オーバーライド）の 6 列
+- feat(gemini): `analyzeImagesPfc` / `analyzeTextPfc` に `calibration` 引数を追加。テナント解決した係数を Gemini 推定値に乗算
+- feat(cron): `/api/cron/update-calibrations` を新設。日次 JST 03:00 (UTC 18:00) に全テナントを巡回し、過去 30 日のトレーナー修正データから推奨係数を算出して Notion に書き戻す
+- feat(lib): `lib/calibration.ts` を新設し集計ロジックを共通化（トレーナー修正のみ + 未修正 ratio=1.0 で選択バイアス対策 + 上下 5% トリム + 0.7〜1.3 クリッピング + 30 件閾値）
+- refactor(api/admin/corrections): 集計ロジックを `lib/calibration.ts` に委譲。レスポンスに `calibrationDetails`（サンプル数・スキップ理由）を追加
+- 影響範囲: 顧客側 LIFF（食事推定値の補正）/ 管理画面 / API / Cron
+- 背景: 顧客から「あすけんより数値が高い」とクレーム。トレーナーが Notion で修正したデータに基づき係数を自動学習する仕組み
+
 ## 2026-05-18 (staging) – /onboard 完了画面の説明短縮
 - ui(onboard): 「食事の写真送信・体重記録・前日レポート受信もすべて公式LINEから行います。」段落を削除
 

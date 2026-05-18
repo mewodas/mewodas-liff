@@ -1,1 +1,8 @@
-{}
+{
+  "crons": [
+    {
+      "path": "/api/cron/update-calibrations",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}
