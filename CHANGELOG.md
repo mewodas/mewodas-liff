@@ -16,12 +16,24 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 – 招待認証ページを /home/onboard に移管（LIFF OAuth 400 修正・第2弾）
+
+- 不具合: 本日 5ab0537 で invite link を `https://app.fitmeal.jp/onboard?token=...` の直URL形式に変えたところ、`liff.login()` の redirect_uri が `/onboard`（LIFF Endpoint URL `/home` の配下でない）になり LINE 側 access.line.me で 400 Bad Request を返すように。顧客「中西さん」が踏んで詰まった
+- 修正:
+  - 新規 `app/home/onboard/page.tsx` — 既存 `/onboard` の LIFF 認証 + redeem ロジックを `/home/onboard` に移植。Endpoint URL `/home` の配下にあるため `liff.login()` redirect_uri が LINE の検証を通る
+  - `app/onboard/page.tsx` を server-side redirect 化（token 引数を保持したまま `/home/onboard?token=...` へ転送）。本日発行済みの旧 `app.fitmeal.jp/onboard?token=...` リンクの後方互換用
+  - 既存 `invite-link/route.ts` の URL は据え置き（直URL `/onboard?token=...`、上記の redirect 経由で /home/onboard に到達）
+- 影響範囲: 顧客側 LIFF /onboard（リダイレクト化）, /home/onboard（新規）
+- 検証手順: 本番 /admin でテスト顧客に招待リンク発行 → 社長が iPhone LINE で踏み、認証完了画面まで到達することを確認 → OK なら中西さんに再送
+- staging 経由を試みたが staging /admin/login の JS hydration 問題で検証不能のため、cherry-pick で main に直適用（AGENTS.md 緊急バグ修正条項）
+
 ## 2026-05-18 – 招待リンク 404 修正（顧客認証URLが開けない致命バグ）
 
 - fix(api/admin/customers/[id]/invite-link): 招待リンクを `https://liff.line.me/<LIFF_ID>/onboard?token=...` で生成していたが、LIFF Endpoint URL が `https://app.fitmeal.jp/home` を指している運用のため、LIFF が `https://app.fitmeal.jp/home/onboard?token=...` に解決して 404 になっていた。`${NEXT_PUBLIC_APP_URL}/onboard?token=...` の直接URL形式に変更（/onboard ページ自体が `liff.init()` + `liff.login()` を内包しているため、LIFF 経由でなくとも認証可）
 - chore: 未使用の `fetchOfficialLineUrl` import を削除
 - 影響範囲: 管理画面から発行される顧客招待リンク全般（本番）。発行済みの旧 LIFF 形式リンクは引き続き 404 のため、対象顧客には再発行が必要
 - 緊急修正のため main 直push（AGENTS.md ルール4: `app/api/admin/*` 配下）
+- 注: この修正は OAuth redirect_uri 不整合で 400 を引き起こすことが発覚し、上記「第2弾」で /home/onboard 移管に切り替えた
 
 ## 2026-05-18 – ホーム一覧の食事サムネイル重複排除
 
