@@ -9,6 +9,12 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-18 (staging) – PFC キャリブレーション: items 配列にも係数を適用
+
+- fix(lib/gemini): `parsePfcJson` で合計 P/F/C のみに calibration を掛けていたが、items 配列の各品目には掛かっていなかった。`/record/analyze` の画面表示は items を表示するため、社長視点では補正が効いていないように見えていた
+- 修正: items 配列の各 P/F/C にも calibration を乗算し、合計と表示値の整合性を維持
+- 影響範囲: 顧客側 LIFF /record（画面表示の P/F/C 値）
+
 ## 2026-05-18 (staging) – PFC キャリブレーション: withLiffTenant ラッパー追加でテナント解決を修正
 
 - fix(api/record, api/record/analyze): `withLiffTenant` でラップ。これまでテナントコンテキスト未設定のため `getCurrentTenant()` が静的 MEWODAS にフォールバックし、staging で `FITMEAL_TENANT_ID_OVERRIDE=mewodas-staging` を見ていなかった
