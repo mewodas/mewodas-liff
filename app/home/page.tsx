@@ -1365,21 +1365,28 @@ function MealSection({
               className="block border-t border-stone-100 px-4 py-3 active:bg-stone-50 overflow-x-auto scrollbar-hide"
             >
               <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
-                {records
-                  .filter((r) => r.imageUrl)
-                  .map((r) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={r.pageId}
-                      src={toDriveThumbnailUrl(r.imageUrl!)}
-                      alt={r.title}
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      className="w-20 h-20 object-cover rounded-xl bg-stone-100 flex-shrink-0"
-                    />
-                  ))}
+                {Array.from(
+                  records
+                    .filter((r) => r.imageUrl)
+                    .reduce((map, r) => {
+                      const key = r.imageUrl!;
+                      if (!map.has(key)) map.set(key, r);
+                      return map;
+                    }, new Map<string, MealRecord>())
+                    .values(),
+                ).map((r) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={r.pageId}
+                    src={toDriveThumbnailUrl(r.imageUrl!)}
+                    alt={r.title}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-20 h-20 object-cover rounded-xl bg-stone-100 flex-shrink-0"
+                  />
+                ))}
               </div>
             </Link>
           )}
