@@ -14,7 +14,7 @@ import AdminShell from '../AdminShell';
 import SeatChangeModal from './SeatChangeModal';
 
 const MIN_SEATS = 3;
-const SUPPORT_FEE = 5000;
+const SUPPORT_FEE = 5500;
 
 function getPlanTier(seats: number): string {
   if (seats <= 20) return 'Starter';
@@ -23,9 +23,9 @@ function getPlanTier(seats: number): string {
 }
 
 function getUnitPrice(seats: number): number {
-  if (seats <= 20) return 2500;
-  if (seats <= 50) return 2000;
-  return 1500;
+  if (seats <= 20) return 2750;
+  if (seats <= 50) return 2200;
+  return 1650;
 }
 
 function getMonthlyTotal(seats: number): number {
@@ -265,9 +265,9 @@ export default function BillingPage() {
                 {/* プラン比較 */}
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { tier: 'Starter', range: '3〜20名', minSeats: 3, unitPrice: 2500 },
-                    { tier: 'Growth', range: '21〜50名', minSeats: 21, unitPrice: 2000 },
-                    { tier: 'Scale', range: '51名+', minSeats: 51, unitPrice: 1500 },
+                    { tier: 'Starter', range: '3〜20名', minSeats: 3, unitPrice: 2750 },
+                    { tier: 'Growth', range: '21〜50名', minSeats: 21, unitPrice: 2200 },
+                    { tier: 'Scale', range: '51名+', minSeats: 51, unitPrice: 1650 },
                   ] as const).map((p) => (
                     <div key={p.tier} className={`bg-white rounded-xl border p-3 space-y-1 text-center ${tier === p.tier ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200'}`}>
                       <div className="text-xs font-bold text-stone-900">{p.tier}</div>
@@ -280,7 +280,7 @@ export default function BillingPage() {
                     </div>
                   ))}
                 </div>
-                <div className="text-[10px] text-stone-500 text-center">サポート費 ¥5,000/月 + per-user × 席数</div>
+                <div className="text-[10px] text-stone-500 text-center">サポート費 ¥5,500/月 + per-user × 席数（すべて税込）</div>
 
                 {/* 新規契約フォーム */}
                 <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">

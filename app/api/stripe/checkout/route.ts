@@ -1,8 +1,8 @@
 // Stripe Checkout Session 作成 API（新プラン構造）
 //
 // 2 line_item 構造:
-//   Item 1: サポート費 (¥5,000 固定, quantity=1)
-//   Item 2: per-user (¥2,500/¥2,000/¥1,500 by tier, quantity=seats)
+//   Item 1: サポート費 (¥5,500 固定, quantity=1) ※税込
+//   Item 2: per-user (¥2,750/¥2,200/¥1,650 by tier, quantity=seats) ※税込
 //
 // 入力: { seats: number }  ※ seats >= 3 必須
 

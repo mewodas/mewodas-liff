@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Users, ArrowRight, AlertTriangle } from 'lucide-react';
 
 const MIN_SEATS = 3;
-const SUPPORT_FEE = 5000;
+const SUPPORT_FEE = 5500;
 
 function getPlanTier(seats: number): string {
   if (seats <= 20) return 'Starter';
@@ -13,9 +13,9 @@ function getPlanTier(seats: number): string {
 }
 
 function getUnitPrice(seats: number): number {
-  if (seats <= 20) return 2500;
-  if (seats <= 50) return 2000;
-  return 1500;
+  if (seats <= 20) return 2750;
+  if (seats <= 50) return 2200;
+  return 1650;
 }
 
 function getMonthlyTotal(seats: number): number {
@@ -157,7 +157,7 @@ export default function SeatChangeModal({ currentSeats, currentUseCount, onClose
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
           <div className="text-xs text-stone-700 font-bold mb-0.5">変更後の月額（目安）</div>
           <div className="text-2xl font-bold text-emerald-700">¥{newMonthly.toLocaleString()}</div>
-          <div className="text-[10px] text-stone-500 mt-0.5">サポート費¥5,000 + per-user合計</div>
+          <div className="text-[10px] text-stone-500 mt-0.5">サポート費¥5,500 + per-user合計（税込）</div>
         </div>
 
         {/* 日割り差額プレビュー */}

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-19 18:30 (本番) – FitMeal 料金を Stripe 本番Priceに合わせて税込統一
+
+- fix(stripe): `SUPPORT_FEE` 5,000→5,500、Starter 2,500→2,750、Growth 2,000→2,200、Scale 1,500→1,650 に変更（Stripe Liveで税込登録されたPriceに合わせる仮対応）
+- fix(admin/billing): プラン比較カード・サポート費表示・SeatChangeModal の見積もりを税込に統一。「税込」注記追加
+- 影響範囲: 管理画面 `/store/billing` `/admin/billing`、Stripe Checkout 見積もり整合性
+- 関連: 2026-05-19 朝 Stripe Live モード切替後、Checkout で UI 表示(¥17,500)と請求金額(¥19,250)が乖離していた問題への対応
+
 ## 2026-05-19 (staging) – /record オンボツアー全面再構成＋UI配置変更
 
 - feat(record/tour): オンボツアーを4ステップ→6ステップに再構成（record-date / record-photo-group / record-fooddb / record-mymenu / record-text / record-no-meal）
