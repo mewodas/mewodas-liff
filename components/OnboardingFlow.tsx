@@ -86,13 +86,6 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     window.location.href = '/home';
   }
 
-  async function completeAndRecord() {
-    if (completing) return;
-    setCompleting(true);
-    await markOnboarded();
-    window.location.href = '/record';
-  }
-
   async function next() {
     if (step < TOTAL - 1) {
       setStep((s) => (s + 1) as Step);
@@ -132,7 +125,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
 
       {/* ステップ別コンテンツ */}
       {step === 1 && (
-        <StepWelcome name={customerName} onRecord={completeAndRecord} onNext={next} onSkip={complete} />
+        <StepWelcome name={customerName} onNext={next} onSkip={complete} />
       )}
       {step === 2 && (
         <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
@@ -166,12 +159,10 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
 
 function StepWelcome({
   name,
-  onRecord,
   onNext,
   onSkip,
 }: {
   name: string;
-  onRecord: () => void;
   onNext: () => void;
   onSkip: () => void;
 }) {
@@ -190,17 +181,10 @@ function StepWelcome({
         </div>
         <button
           type="button"
-          onClick={onRecord}
+          onClick={onNext}
           className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 flex items-center justify-center gap-2 text-sm"
         >
-          食事を記録 <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="text-xs text-stone-500 underline"
-        >
-          使い方を見る
+          使い方を見る <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
         </button>
         <button type="button" onClick={onSkip} className="text-xs text-stone-400 underline">
           スキップ
