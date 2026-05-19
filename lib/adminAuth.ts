@@ -93,7 +93,7 @@ export function getAdminCredentials(): { email: string; passwordHash: string } |
 export function createSessionCookie(
   email: string,
   opts?: { role?: AdminRole; currentTenantId?: string }
-): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: 'strict'; path: string; maxAge: number } } {
+): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; maxAge: number } } {
   const value = signSession({
     email,
     exp: Date.now() + SESSION_TTL_MS,
@@ -106,7 +106,7 @@ export function createSessionCookie(
     options: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/',
       maxAge: Math.floor(SESSION_TTL_MS / 1000),
     },
@@ -120,7 +120,7 @@ export function clearSessionCookieOptions() {
     options: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
       path: '/',
       maxAge: 0,
     },
