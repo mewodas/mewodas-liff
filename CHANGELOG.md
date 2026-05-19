@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-05-19 – Notion クエリキャッシュ統一（テナント分離 key）
+
+- perf(cache): `lib/notion.ts` のインメモリ `customerCache` Map を削除し `lib/cache.ts` に統一
+- perf(cache): `getCustomerByLineId` を `${tenantId}:customer:${lineUserId}` key（30 分 TTL）でキャッシュ、`opts.force` でバイパス可
+- perf(cache): `getFoodRecordsByDate` / `getFoodRecordsByDateRange` を `${tenantId}:foodRecords:*` key（2 分 TTL）でキャッシュ
+- perf(cache): `lib/notion.ts` に `notionFetch(apiKey)` ヘルパー追加（`'use cache'` 将来対応の下準備）
+- fix(cache): `updateCustomer` / `updateFoodRecord` / `deleteFoodRecord` / `saveFoodRecord` の書き込み後に `invalidate(prefix)` を呼んで対応キャッシュを即時無効化
+- fix(cache): `parseCustomerFromPage` ヘルパーに共通化し `parseCustomerPage` の重複を排除
+- note: Next.js 16 の `'use cache'` は `cacheComponents: true` 必須かつ `dynamic = 'force-dynamic'` と非互換のため今回は見送り。既存インメモリキャッシュの品質改善に留める
+- 影響範囲: バックエンド API のみ（顧客側 LIFF UI 変更なし）
+
 ## 2026-05-19 (staging) – ツアーリセット機能（LIFF 側）
 
 - feat(tour-reset): 管理画面「ツアーをリセット」ボタンと連動する LIFF 側実装
