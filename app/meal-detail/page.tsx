@@ -129,8 +129,8 @@ function MealDetailInner() {
 
   async function fetchData() {
     if (!userId) return;
-    const res = await fetch(
-      `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${date}&t=${Date.now()}`,
+    const res = await apiFetch(
+      `/api/today?date=${date}&t=${Date.now()}`,
       { cache: 'no-store' }
     );
     if (!res.ok) {

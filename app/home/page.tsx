@@ -220,8 +220,8 @@ function HomePageInner() {
     setPredictionLoading(true);
     (async () => {
       try {
-        const res = await fetch(
-          `/api/predict-weight?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`,
+        const res = await apiFetch(
+          `/api/predict-weight?t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) {
