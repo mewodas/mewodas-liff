@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-19 – 設定中顧客クリーンアップ機能 4点
+
+- feat(admin/page): ステータスフィルタに「招待未送信」追加（foodStatus=設定中かつ lineUserId なし）
+- feat(admin/page): 14日以上未起動の設定中顧客件数バナーを上部に追加（0件時は非表示）
+- feat(api): `POST /api/admin/customers/bulk-cleanup` — 設定中14日経過顧客を Notion アーカイブ
+- feat(admin/page): 一括削除ボタンをバナー内に配置（確認ダイアログ付き）
+- feat(admin/customers/new): 顧客追加成功後に招待リンク主CTA 画面を表示（コピー・LINE送信ボタン付き）
+- fix(lib/notion): Customer 型に `createdTime` フィールド追加、`parseCustomerFromPage` で `page.created_time` を読む
+- fix(lib/notion): `archiveCustomer()` 関数追加（PATCH /pages/:id archived:true）
+- fix(lib/repository/customers): `archiveCustomer()` エクスポート追加
+- 影響範囲: 管理画面のみ（顧客 LIFF 側は無変更）
+
 ## 2026-05-19 21:15 (本番) – 席数カウントを「進行中」のみに変更
 
 - change(seats): seat カウント対象を「進行中」顧客のみに変更（設定中・休止中・卒業は除外）

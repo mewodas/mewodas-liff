@@ -38,6 +38,7 @@ export type Customer = {
   storeId: string | null;
   onboardingCompletedAt: string | null;
   tourResetAt: string | null;
+  createdTime: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -99,7 +100,7 @@ const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000;
 const FOOD_RECORDS_CACHE_TTL_MS = 2 * 60 * 1000;
 
 function parseCustomerFromPage(
-  page: { id: string; properties: Record<string, any> },
+  page: { id: string; created_time?: string; properties: Record<string, any> },
   lineUserId: string,
   defaultGoals: { kcal: number; P: number; F: number; C: number }
 ): Customer {
@@ -136,6 +137,7 @@ function parseCustomerFromPage(
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
     onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
     tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
+    createdTime: page.created_time ?? null,
   };
 }
 
@@ -356,6 +358,14 @@ export async function updateCustomer(
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:customer:`);
+  invalidate(`${tenantId}:customers:`);
+}
+
+// 顧客ページをアーカイブ（論理削除）
+export async function archiveCustomer(pageId: string): Promise<void> {
+  await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:customer:`);
   invalidate(`${tenantId}:customers:`);

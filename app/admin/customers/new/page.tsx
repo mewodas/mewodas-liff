@@ -2,21 +2,24 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   UserPlus,
   Target,
   ClipboardList,
   Calculator,
   Hourglass,
-  Calendar as CalendarIcon,
+  ClipboardCopy,
+  Check,
   AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type StoreItem = { pageId: string; storeId: string; name: string };
+type CreatedCustomer = { pageId: string; name: string };
 
 const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
 const GENDER_OPTIONS = ['男性', '女性'];
@@ -26,8 +29,149 @@ function jstToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustomer; base: string; seatBlocked: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [shareText, setShareText] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (seatBlocked) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/customers/${customer.pageId}/invite-link`, { method: 'POST' });
+        if (!res.ok) throw new Error('リンク生成失敗');
+        const j = await res.json();
+        setInviteUrl(j.url);
+        setShareText(j.shareText || j.url);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'エラー');
+      }
+    })();
+  }, [customer.pageId, seatBlocked]);
+
+  async function copyLink() {
+    if (!shareText) return;
+    setCopying(true);
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      // ignore
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  const lineUrl = inviteUrl ? `https://line.me/R/msg/text/?${encodeURIComponent(shareText || inviteUrl)}` : null;
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-2">
+        <div className="text-sm font-bold text-emerald-900">
+          {customer.name} 様の登録が完了しました
+        </div>
+        <p className="text-xs text-emerald-800 leading-relaxed">
+          次のステップ: 招待リンクを LINE で送信してください。顧客が初回アクセスすると LINE アカウントが自動で紐付けられます。
+        </p>
+      </div>
+
+      {seatBlocked && (
+        <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
+          <div>
+            <div className="font-bold">席数上限のため招待リンクを発行できません</div>
+            <Link href={`${base}/billing`} className="text-rose-700 font-bold underline mt-1 inline-block">
+              増枠する →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {loadError && (
+        <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{loadError}</div>
+      )}
+
+      {!seatBlocked && (
+        <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+            <ClipboardCopy className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+            招待リンクを送る
+          </h3>
+
+          {!inviteUrl && !loadError && (
+            <div className="text-xs text-stone-500">リンク生成中…</div>
+          )}
+
+          {inviteUrl && (
+            <>
+              <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+                <p className="text-[11px] text-stone-500 mb-1">送信テキスト（案内文込み）</p>
+                <pre className="text-xs text-stone-700 whitespace-pre-wrap font-sans leading-relaxed">{shareText}</pre>
+              </div>
+
+              <button
+                type="button"
+                onClick={copyLink}
+                disabled={copying}
+                className="w-full bg-sky-500 text-white font-bold py-3 rounded-xl active:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" strokeWidth={2.4} />
+                    コピーしました
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+                    {copying ? 'コピー中…' : '招待リンクをコピー（案内文付き）'}
+                  </>
+                )}
+              </button>
+
+              {lineUrl && (
+                <a
+                  href={lineUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#06C755] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.477 2 2 6.033 2 11c0 3.491 2.115 6.532 5.29 8.255-.073.694-.278 2.202-.319 2.542-.05.408.15.405.316.295.13-.088 1.7-1.137 2.393-1.6.753.103 1.525.158 2.32.158 5.523 0 10-4.033 10-9 0-4.967-4.477-9-10-9z" />
+                  </svg>
+                  LINE で送る
+                </a>
+              )}
+
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                ※ 招待リンクの有効期限は30日間です。期限切れの場合は顧客詳細画面から再発行できます。
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      <Link
+        href={`${base}/customers/${customer.pageId}`}
+        className="w-full bg-stone-100 text-stone-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm border border-stone-200"
+      >
+        顧客詳細を見る
+        <ChevronRight className="w-4 h-4" strokeWidth={2.2} />
+      </Link>
+
+      <Link
+        href={base}
+        className="block text-center text-xs text-stone-500 underline py-1"
+      >
+        顧客一覧に戻る
+      </Link>
+    </div>
+  );
+}
+
 export default function NewCustomerPage() {
-  const router = useRouter();
   const base = useAdminBase();
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin') ?? false;
@@ -55,6 +199,7 @@ export default function NewCustomerPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seatBlocked, setSeatBlocked] = useState(false);
+  const [created, setCreated] = useState<CreatedCustomer | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/stores', { cache: 'no-store' })
@@ -65,7 +210,6 @@ export default function NewCustomerPage() {
         if (list.length === 1) setStoreId(list[0].storeId);
       })
       .catch(() => {});
-    // 席数上限チェック
     fetch('/api/admin/billing/info', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
@@ -161,12 +305,21 @@ export default function NewCustomerPage() {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `作成失敗（${res.status}）`);
       }
-      router.push(`${base}?saved=1`);
+      const j = await res.json();
+      setCreated({ pageId: j.customer.pageId, name: name.trim() });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSaving(false);
     }
+  }
+
+  if (created) {
+    return (
+      <AdminShell title="顧客追加完了" back={{ href: base }}>
+        <InvitePanel customer={created} base={base} seatBlocked={seatBlocked} />
+      </AdminShell>
+    );
   }
 
   return (
@@ -262,7 +415,6 @@ export default function NewCustomerPage() {
             <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
             身体情報
           </h2>
-          {/* 1段目: 性別 / 年齢 / 身長 / 現在体重 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block">
@@ -281,7 +433,6 @@ export default function NewCustomerPage() {
             <NumInput label="身長" value={heightCm} onChange={setHeightCm} step="0.1" suffix="cm" />
             <NumInput label="現在体重" value={currentWeight} onChange={setCurrentWeight} step="0.1" suffix="kg" />
           </div>
-          {/* 2段目: 活動レベル / 希望のプラン */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block">
@@ -325,7 +476,6 @@ export default function NewCustomerPage() {
             目標
           </h2>
 
-          {/* 目標体重・目標達成日 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-stone-700 mb-1 block">
@@ -409,10 +559,8 @@ export default function NewCustomerPage() {
             </div>
           )}
 
-          {/* 目標カロリー・PFC グリッド（2列×4行） */}
           <div>
             <div className="grid grid-cols-2 gap-2">
-              {/* 行1: 現在の消費カロリー / 目標カロリー */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">現在の消費カロリー</label>
                 <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
@@ -435,7 +583,6 @@ export default function NewCustomerPage() {
                 </div>
               </div>
 
-              {/* 行2: 目標タンパク質(g) / 目標タンパク質(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（g）</label>
                 <div className="relative">
@@ -458,7 +605,6 @@ export default function NewCustomerPage() {
                 </div>
               </div>
 
-              {/* 行3: 目標脂質(g) / 目標脂質(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（g）</label>
                 <div className="relative">
@@ -481,7 +627,6 @@ export default function NewCustomerPage() {
                 </div>
               </div>
 
-              {/* 行4: 目標炭水化物(g) / 目標炭水化物(%) */}
               <div>
                 <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（g）</label>
                 <div className="relative">
