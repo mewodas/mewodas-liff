@@ -11,6 +11,7 @@
 //   - 手動実行用: ?secret=XXX クエリパラメータでも可
 
 import { NextRequest, NextResponse } from 'next/server';
+import { checkCronAuth } from '@/lib/cronAuth';
 import {
   listTenantRows,
   getCorrectionRecords,
@@ -56,18 +57,8 @@ function tenantRowToConfig(r: TenantRow): TenantConfig {
 }
 
 export async function GET(req: NextRequest) {
-  // 認証
-  const auth = req.headers.get('authorization') || '';
-  const cronSecret = process.env.CRON_SECRET || '';
-  const url = new URL(req.url);
-  const querySecret = url.searchParams.get('secret');
-  const isAuthorized =
-    !cronSecret ||
-    auth === `Bearer ${cronSecret}` ||
-    querySecret === cronSecret;
-  if (!isAuthorized) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  const authError = checkCronAuth(req);
+  if (authError) return authError;
 
   const startedAt = Date.now();
   const now = jstNow();

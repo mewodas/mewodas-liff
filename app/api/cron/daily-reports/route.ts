@@ -8,6 +8,7 @@
 //   - 手動でも呼び出せるよう、env CRON_SECRET と一致すれば許可
 
 import { NextRequest, NextResponse } from 'next/server';
+import { checkCronAuth } from '@/lib/cronAuth';
 import { listTenantRows, listAllCustomers } from '@/lib/notion';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { listTemplates } from '@/lib/templates';
@@ -55,19 +56,8 @@ function tenantToConfig(r: Awaited<ReturnType<typeof listTenantRows>>[number]): 
 }
 
 export async function GET(req: NextRequest) {
-  // 認証: Vercel Cron は Authorization: Bearer CRON_SECRET を送る
-  // 手動実行用に env CRON_SECRET と一致すれば許可
-  const auth = req.headers.get('authorization') || '';
-  const cronSecret = process.env.CRON_SECRET || '';
-  const url = new URL(req.url);
-  const querySecret = url.searchParams.get('secret');
-  const isAuthorized =
-    !cronSecret || // CRON_SECRET 未設定なら認証スキップ（開発時）
-    auth === `Bearer ${cronSecret}` ||
-    querySecret === cronSecret;
-  if (!isAuthorized) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  const authError = checkCronAuth(req);
+  if (authError) return authError;
 
   const startedAt = Date.now();
   const now = jstNow();

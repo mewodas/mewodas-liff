@@ -3,12 +3,23 @@ import { createHmac, timingSafeEqual } from 'crypto';
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
 
 function getSecret(): string {
-  const s =
-    process.env.INVITE_TOKEN_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.RESET_TOKEN_SECRET ||
-    process.env.ADMIN_SESSION_SECRET;
-  if (!s || s.length < 16) {
+  if (!process.env.INVITE_TOKEN_SECRET) {
+    const fallback =
+      process.env.NEXTAUTH_SECRET ||
+      process.env.RESET_TOKEN_SECRET ||
+      process.env.ADMIN_SESSION_SECRET;
+    if (!fallback || fallback.length < 16) {
+      throw new Error('INVITE_TOKEN_SECRET 未設定 (16文字以上の秘密鍵が必要)');
+    }
+    // eslint-disable-next-line no-console
+    console.error(
+      '[inviteToken] INVITE_TOKEN_SECRET is not set — falling back to a shared secret. ' +
+      'Set INVITE_TOKEN_SECRET as a dedicated env variable to prevent key-sharing risk.'
+    );
+    return fallback;
+  }
+  const s = process.env.INVITE_TOKEN_SECRET;
+  if (s.length < 16) {
     throw new Error('INVITE_TOKEN_SECRET 未設定 (16文字以上の秘密鍵が必要)');
   }
   return s;

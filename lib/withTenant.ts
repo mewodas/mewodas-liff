@@ -87,8 +87,10 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     if (!session) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    // staging 等の環境分離のため、env override があれば最優先
-    const tenantId = process.env.FITMEAL_TENANT_ID_OVERRIDE || session.currentTenantId || 'mewodas';
+    // staging 等の環境分離のため、非本番で env override があれば最優先
+    const tenantIdOverride =
+      process.env.NODE_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
+    const tenantId = tenantIdOverride || session.currentTenantId || 'mewodas';
     // Notion テナント DB アクセス失敗時はデフォルト（MEWODAS）にフォールバック
     let tenant;
     try {
@@ -147,7 +149,8 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
     }
 
     // --- テナント解決 ---
-    const overrideId = process.env.FITMEAL_TENANT_ID_OVERRIDE;
+    const overrideId =
+      process.env.NODE_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
     if (overrideId) {
       try {
         const tenant = (await getTenantByIdAsync(overrideId)) || getDefaultTenant();

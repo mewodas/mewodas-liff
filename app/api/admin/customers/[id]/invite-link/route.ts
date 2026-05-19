@@ -27,11 +27,11 @@ export const POST = withAdminTenant(async (_req: NextRequest, { params }: { para
   }
   const tenant = getCurrentTenant();
   const token = createInviteToken({ customerId: id, tenantId: tenant.id });
-  const liffId = tenant.liffId || process.env.NEXT_PUBLIC_LIFF_ID;
   const base = process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitmeal.jp';
-  const url = liffId
-    ? `https://liff.line.me/${liffId}/onboard?token=${token}`
-    : `${base}/onboard?token=${token}`;
+  // LIFF Endpoint URL は `/home` を指す運用のため、`liff.line.me/<ID>/onboard` で
+  // 渡すと `/home/onboard` に解決されて 404 になる。/onboard ページ自体が
+  // `liff.init()` + `liff.login()` を内包しているので、直接 URL で誘導する。
+  const url = `${base}/onboard?token=${token}`;
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // 顧客に送るための定型文（招待リンクのみ・パターンB）

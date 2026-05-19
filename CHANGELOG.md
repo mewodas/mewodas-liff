@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-19 – staging→main マージコンフリクト解決
+
+- merge: staging と main の 13 ファイルコンフリクトを解決し PR #17 の自動マージ準備
+- 影響範囲: 全ファイル（コンフリクト解決のみ、機能変更なし）
+
 ## 2026-05-19 (staging) – オンボーディングリセット 500 エラー修正
 
 - fix(admin/onboarding): DELETE `/api/admin/customers/[id]/onboarding` が 500 を返す問題を修正
@@ -110,6 +115,72 @@
 - 影響範囲: 顧客側 LIFF 全般 / 管理画面への影響なし
 - 関連: 2026-05-19 staging revert (`0d781e8 → 0cc8bdc force update`) からの再着手
 - 既知の残課題: `/api/extras` 経由で「運動表示が消える」（テナント切替で個人シート読み取り失敗の可能性）— staging テナントの Notion 設定と GAS 連携先を別途確認要
+## 2026-05-19 Security(High): W1/W2/W4/W6 セキュリティ High 一括修正
+
+- security(W1): CRON_SECRET fail-open 修正。`lib/cronAuth.ts` に共通ヘルパー切り出し。本番で未設定なら 503、非本番は警告ログのみ。両 cron route で使用
+- security(W2): `lib/inviteToken.ts` — `INVITE_TOKEN_SECRET` 未設定時に `console.error` で鍵共有リスクを警告。動作を壊さずフォールバック維持（後で専用 env 設定推奨）
+- security(W4): `lib/withTenant.ts` — `FITMEAL_TENANT_ID_OVERRIDE` を `NODE_ENV !== 'production'` 時のみ参照。本番で override が誤設定されてもテナント固定されない
+- security(W6): `next.config.ts` にセキュリティヘッダー追加（全パス対象）。`X-Content-Type-Options` / `X-Frame-Options: SAMEORIGIN` / `Referrer-Policy` / `HSTS` / `Permissions-Policy`（camera 許可）/ `Content-Security-Policy-Report-Only`（まず様子見）
+- 影響範囲: `lib/cronAuth.ts`（新規）/ `lib/inviteToken.ts` / `lib/withTenant.ts` / `next.config.ts` / `app/api/cron/daily-reports/route.ts` / `app/api/cron/update-calibrations/route.ts`
+- 顧客側 UI への影響なし
+
+## 2026-05-19 feat: admin/store 顧客詳細画面にツアーリセットボタン追加
+
+- feat: `/admin/customers/[id]` と `/store/customers/[id]` にツアーリセットボタンを追加（オンボーディングリセットと横並び）
+- 影響範囲: 管理画面 / API / DB（Notion `ツアーリセット日時` 列新設予定）
+- 仕組み: `POST /api/admin/customers/[id]/tour-reset` が Notion の `tourResetAt` を現在時刻で更新。LIFF 側（`/record` `/weight` `/exercise`）は起動時に `/api/customer/me` から `tourResetAt` を取得し、localStorage の完了タイムスタンプと比較して古ければツアーを再表示（staging 側で実施）
+
+## 2026-05-19 Security(Critical): LIFF lineUserId 自己申告なりすまし防止
+
+- security(Critical): LIFF API ルート群が body/query の `lineUserId` を無検証で信頼していたバグを修正。任意の userId を送れば他人の食事記録・体重ログ・通知を読み書き削除できる状態だった
+- 修正方針: `liff.getIDToken()` をサーバーで LINE Verify API (`https://api.line.me/oauth2/v2.1/verify`) 経由で検証し、検証済み `sub` を `verifiedLineUserId` として handler に注入
+- 実装:
+  - `lib/withTenant.ts` に LINE IDトークン検証ロジック組込み（`aud` 検証 / 5分LRUキャッシュ / 503・401分岐 / channel ID は `NEXT_PUBLIC_LIFF_ID` プレフィックス抽出）
+  - LIFF API 全 20 ルート（`/api/today` `/api/history` `/api/notifications` `/api/day` `/api/weekly` `/api/chat` `/api/delete` `/api/record/{update,confirm,manual,skip,analyze}` `/api/log/{weight,exercise}` `/api/extras` `/api/predict-weight` `/api/meal-plan` `/api/suggest` `/api/frequent-foods` `/api/notifications/[id]/read` 他既存5ルート）を `withLiffTenant` でラップ、`lineUserId` 自己申告排除
+  - `/api/delete` `/api/record/update` に pageId テナント境界チェック（Notion 親 DB 照合、`assertFoodRecordOwnership`）
+  - `/api/chat` の Gemini プロンプトに改行除去でプロンプトインジェクション緩和
+  - クライアント側 `lib/apiFetch.ts` 新規（`Authorization: Bearer <idToken>` 自動付与 + 401 自動リトライで IDトークン期限切れ対策）
+  - LIFF 全画面 + `components/OnboardingFlow.tsx` + `components/WeightExerciseCard.tsx` の生 `fetch` を `apiFetch` に置換（meal-detail/page.tsx fetchData 含む）
+- onboarding tour 拡張も同梱（社長作業、staging で動作確認済み）: OnboardingFlow に step 5（体重）・step 6（運動）追加、`exercise/record/weight` に OnboardingTour 統合
+- 影響範囲: 顧客側 LIFF 全画面 / 顧客側 API 全 LIFF ルート / 管理画面・store・stripe・cron への影響なし
+- 検証: staging.fitmeal.jp で社長動作確認済み（食事記録・編集・体重・運動・履歴・チャット・通知すべて OK）
+- 関連: 2026-05-19 セキュリティ監査（lineUserId 自己申告含む Critical 4 件、High 5 件、Medium 3 件すべて対応）
+
+## 2026-05-19 CI 修正: Daily Snapshot Tag workflow の git ident 設定
+- fix(.github/workflows/daily-snapshot.yml): `git tag -a` で `fatal: empty ident name not allowed` を起こしていた問題を、`git config user.email/user.name` を step 内で設定して解消
+- 影響範囲: ロールバック網（毎日 JST 23:00 に `stable-YYYY-MM-DD` タグを自動作成）
+- 背景: 2026-05-16〜18 の3日間連続で workflow が失敗し、`stable-YYYY-MM-DD` の日次タグが作られていなかった。緊急ロールバック手順（AGENTS.md §5）が機能しない状態
+- 残課題: 失敗した 5/16〜5/18 分のタグは未生成。次回 5/19 23:00 (UTC 14:00) の自動実行で動作確認
+
+## 2026-05-19 オンボーディングリセットを /store でも表示
+- UI改善: 顧客詳細ページのオンボーディングリセットセクションから `isAdminRoute` ガードを撤去。/admin と /store の両方で表示・実行可能に
+- API側は `/api/admin/customers/[id]/onboarding` DELETE を共通利用（withAdminTenant が同一の Cookie セッションで /store 利用者も認証可）
+- 副次: 未使用となった `usePathname` import を削除
+- 影響範囲: 管理画面 /admin/customers/[id] および /store/customers/[id]
+
+## 2026-05-19 オンボーディング再リセットが反映されないバグ修正（customerCache バイパス）
+- バグ修正: 管理画面でオンボーディングを2回目以降リセットしても顧客側 LIFF に反映されない問題
+- 根本原因: `lib/notion.ts` の `customerCache`（30分TTLのインメモリキャッシュ）が Vercel serverless インスタンスごとに別物のため、admin DELETE のキャッシュ無効化は当該インスタンスにしか効かず、顧客側 `/api/customer/me` が別インスタンスにヒットすると古い「オンボ完了」状態を返していた
+- 修正: `getCustomerByLineId` に `force?: boolean` オプションを追加。`/api/customer/me` GET ではキャッシュをバイパス（force: true）して常に Notion から最新値を取得
+- 影響範囲: 顧客側 LIFF /home（オンボーディング状態判定） / lib バックエンド
+- パフォーマンス影響: `/api/customer/me` は LIFF ホーム読込時に1回呼ばれるのみで Notion レート制限的に問題なし
+
+## 2026-05-19 オンボーディングリセットにアイコン追加・完了通知ポップアップ追加
+- UI改善: /admin/customers/[id] のオンボーディングリセット見出しに RotateCcw アイコンを追加し、他セクションと統一
+- UI改善: リセット成功時に「オンボーディングをリセットしました。」を alert で表示
+- 影響範囲: 管理画面 /admin/customers/[id]
+
+## 2026-05-19 オンボーディングリセットの表現をフラットに変更
+- UI改善: /admin/customers/[id] のオンボーディングリセットセクションから「危険な操作」表記と赤系装飾を撤去し、中立な見た目に
+- 確認ダイアログの文言も冗長な警告を削減
+- 影響範囲: 管理画面 /admin/customers/[id]
+
+## 2026-05-18 顧客詳細の店舗取得エラーをサイレント失敗からエラー表示に変更
+- バグ修正: `/store/customers/[id]` の所属店舗ドロップダウンが候補ゼロになる問題を調査
+- 根本原因: Notion Integration「メヲダス_GAS連携」が FitMeal 店舗 DB（b74788a7...）に未接続 → Notion API が object_not_found を返すが catch でサイレント失敗していた
+- 修正: 店舗取得 fetch のエラーを setError に渡すよう変更（エラーが画面に表示されるようになった）
+- 影響範囲: 管理画面 /admin/customers/[id]（= /store/customers/[id]）
+- 社長対応必須: Notion「FitMeal 店舗」DB に「メヲダス_GAS連携」インテグレーションを接続する必要あり
 
 機能追加・バグ修正・ロールバックなどの履歴を記録する。
 
@@ -172,6 +243,7 @@
 - 変更ファイル: components/OnboardingFlow.tsx
 
 ## 2026-05-19 19:00 (staging) – 食事記録テキスト入力 PFC 推定プロンプト改善
+## 2026-05-19 – 食事記録テキスト入力 PFC 推定プロンプト改善（staging cherry-pick）
 
 - 食事記録: テキスト入力の PFC 推定プロンプト（analyzeTextPfc）を和食定番向けに改善
 - 影響範囲: 顧客側（テキスト記録時の PFC 値）
@@ -255,28 +327,66 @@
 - 検証手順: staging.fitmeal.jp の管理画面で招待リンクを発行 → 開発用 LINE で開く → 認証完了画面まで到達することを確認
 
 ## 2026-05-18 (staging) – ホーム一覧の食事サムネイル重複排除
+- 経緯: staging a512ff7 から cherry-pick（他の staging commit—契約管理機能等—は別途マージ予定のため除外）
+
+## 2026-05-18 – 招待認証ページを /home/onboard に移管（LIFF OAuth 400 修正・第2弾）
+
+- 不具合: 本日 5ab0537 で invite link を `https://app.fitmeal.jp/onboard?token=...` の直URL形式に変えたところ、`liff.login()` の redirect_uri が `/onboard`（LIFF Endpoint URL `/home` の配下でない）になり LINE 側 access.line.me で 400 Bad Request を返すように。顧客「中西さん」が踏んで詰まった
+- 修正:
+  - 新規 `app/home/onboard/page.tsx` — 既存 `/onboard` の LIFF 認証 + redeem ロジックを `/home/onboard` に移植。Endpoint URL `/home` の配下にあるため `liff.login()` redirect_uri が LINE の検証を通る
+  - `app/onboard/page.tsx` を server-side redirect 化（token 引数を保持したまま `/home/onboard?token=...` へ転送）。本日発行済みの旧 `app.fitmeal.jp/onboard?token=...` リンクの後方互換用
+  - 既存 `invite-link/route.ts` の URL は据え置き（直URL `/onboard?token=...`、上記の redirect 経由で /home/onboard に到達）
+- 影響範囲: 顧客側 LIFF /onboard（リダイレクト化）, /home/onboard（新規）
+- 検証手順: 本番 /admin でテスト顧客に招待リンク発行 → 社長が iPhone LINE で踏み、認証完了画面まで到達することを確認 → OK なら中西さんに再送
+- staging 経由を試みたが staging /admin/login の JS hydration 問題で検証不能のため、cherry-pick で main に直適用（AGENTS.md 緊急バグ修正条項）
+
+## 2026-05-18 – 招待リンク 404 修正（顧客認証URLが開けない致命バグ）
+
+- fix(api/admin/customers/[id]/invite-link): 招待リンクを `https://liff.line.me/<LIFF_ID>/onboard?token=...` で生成していたが、LIFF Endpoint URL が `https://app.fitmeal.jp/home` を指している運用のため、LIFF が `https://app.fitmeal.jp/home/onboard?token=...` に解決して 404 になっていた。`${NEXT_PUBLIC_APP_URL}/onboard?token=...` の直接URL形式に変更（/onboard ページ自体が `liff.init()` + `liff.login()` を内包しているため、LIFF 経由でなくとも認証可）
+- chore: 未使用の `fetchOfficialLineUrl` import を削除
+- 影響範囲: 管理画面から発行される顧客招待リンク全般（本番）。発行済みの旧 LIFF 形式リンクは引き続き 404 のため、対象顧客には再発行が必要
+- 緊急修正のため main 直push（AGENTS.md ルール4: `app/api/admin/*` 配下）
+- 注: この修正は OAuth redirect_uri 不整合で 400 を引き起こすことが発覚し、上記「第2弾」で /home/onboard 移管に切り替えた
+
+## 2026-05-18 – ホーム一覧の食事サムネイル重複排除
 
 - fix(app/home): 1枚の写真から複数食材が判定された場合、ホーム画面の食事カードに同じ写真が複数並んでいた問題を修正。`imageUrl` で重複排除し、ユニークな写真のみ表示
 - 影響範囲: 顧客側（ホーム画面の食事カード下部のサムネイル列）。食事詳細ページのサムネイル表示は従来どおり全枚数を表示
 
-## 2026-05-18 (staging) – Gemini プロンプトを「写真主体・メモは参考値」に変更
+## 2026-05-18 – Gemini プロンプトを「写真主体・メモは参考値」に変更
 
 - feat(lib/gemini): 食事推定プロンプトのスタンスを切り替え。これまで「量明示メモ最優先」だった挙動を「写真主体・メモは参考値」に変更。メモの量明示（「100g」「1杯」等）は参考扱いで、写真と近ければ採用、ずれていれば写真優先
 - 修飾語（ノンオイル等）の反映と、写真に映ってない料理の追加申告は引き続き採用
 - 影響範囲: 顧客側 LIFF /record（推定値の挙動）
 - 背景: 教科書値ベース計算で全体的に高く出ていた問題を、画像認識主体の推定で実態に近づける狙い。補正係数による事後補正と併用
 
-## 2026-05-18 (staging) – PFC キャリブレーション: items 配列にも係数を適用
+## 2026-05-18 – 顧客詳細 2件のバグ修正（StatusInfoPopover 幅・所属店舗ドロップダウン）
 
-- fix(lib/gemini): `parsePfcJson` で合計 P/F/C のみに calibration を掛けていたが、items 配列の各品目には掛かっていなかった。`/record/analyze` の画面表示は items を表示するため、社長視点では補正が効いていないように見えていた
+- fix(admin/customers/[id]): StatusInfoPopover のコンテナを max-w-xs から w-72 固定幅に変更。items-center → items-start、説明テキストに flex-1 leading-relaxed を付与し日本語が1文字ずつ縦に折り返す現象を修正
+- 影響範囲: 管理画面 /admin/customers/[id]（/store/customers/[id] も同ファイル）
+- 備考: 所属店舗ドロップダウン空は Notion 店舗DB にデータ未登録が原因（コードは正常）→ 社長に確認依頼
+
+## 2026-05-18 – StatusInfoPopover をバッジ+1行説明の2カラム形式に変更
+
+- UI(admin/customers/[id]): StatusInfoPopover のテキストリストを「バッジ+短い説明」の横並びレイアウトに変更。バッジ色は admin/page.tsx の StatusBadge と完全一致（STATUS_BADGE_CLASSES 定数で管理）
+- 影響範囲: 管理画面 /admin/customers/[id]（社長のみ）
+
+## 2026-05-18 – 診断 API /api/debug-calibration を削除
+
+- chore(api/debug-calibration): staging 動作確認用に追加した診断エンドポイントを削除（役目終了）
+- 影響範囲: API。staging/本番ともに /api/debug-calibration は 404 になる
+
+## 2026-05-18 – セキュリティ: CRON_SECRET 本番設定 + StatusInfoPopover onBlur 修正
+
+- fix(security): CRON_SECRET が本番 env 未設定のため認証ロジックがバイパスされていた。Vercel Production / Preview / Development の全環境に設定し、以降 Bearer 認証が必須になる。再デプロイ後から有効
+- fix(admin/customers/[id]): StatusInfoPopover の onBlur でモバイルタップ直後にポップオーバーが閉じる問題を修正。useEffect + document.addEventListener('pointerdown') による外側クリック検知に変更、Esc キーでも閉じるよう対応
+- 影響範囲: API /api/cron/update-calibrations・/api/cron/daily-reports（認証強化）、管理画面 /admin/customers/[id]
+
+## 2026-05-18 – PFC キャリブレーション: items 配列にも係数を適用
+
+- fix(lib/gemini): `parsePfcJson` で合計 P/F/C のみに calibration を掛けていたが、items 配列の各品目には掛かっていなかった。`/record/analyze` の画面表示は items を表示するため、補正が UI 上反映されなかった
 - 修正: items 配列の各 P/F/C にも calibration を乗算し、合計と表示値の整合性を維持
 - 影響範囲: 顧客側 LIFF /record（画面表示の P/F/C 値）
-
-## 2026-05-18 (staging) – PFC キャリブレーション: withLiffTenant ラッパー追加でテナント解決を修正
-
-- fix(api/record, api/record/analyze): `withLiffTenant` でラップ。これまでテナントコンテキスト未設定のため `getCurrentTenant()` が静的 MEWODAS にフォールバックし、staging で `FITMEAL_TENANT_ID_OVERRIDE=mewodas-staging` を見ていなかった
-- 影響範囲: 顧客側 LIFF（食事推定値の補正、staging で動作確認可能になる）
-- 関連: 直前のキャリブレーション PR #1 の動作確認で発覚
 
 ## 2026-05-18 – ステータスドロップダウンにⓘツールチップ追加
 - feat(store/admin): 顧客詳細「基本情報」ステータスラベル横にInfoアイコンを追加
