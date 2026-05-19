@@ -10,11 +10,10 @@ import { withLiffTenant } from '@/lib/withTenant';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-export const POST = withLiffTenant(async (req: NextRequest) => {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const contentType = req.headers.get('content-type') || '';
 
-    let lineUserId = '';
     let day = '';
     let mealType = '';
     let comment = '';
@@ -23,7 +22,6 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
     if (contentType.includes('multipart/form-data')) {
       // FormData形式（新クライアント）
       const formData = await req.formData();
-      lineUserId = String(formData.get('lineUserId') || '');
       day = String(formData.get('day') || '');
       mealType = String(formData.get('mealType') || '');
       comment = String(formData.get('comment') || '');
@@ -39,7 +37,6 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
     } else {
       // 旧JSON形式との互換性
       const body = await req.json();
-      lineUserId = body.lineUserId || '';
       day = body.day || '';
       mealType = body.mealType || '';
       comment = body.comment || '';
@@ -53,8 +50,8 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
       }
     }
 
-    if (!lineUserId || !mealType) {
-      return NextResponse.json({ error: 'lineUserId と mealType は必須です' }, { status: 400 });
+    if (!mealType) {
+      return NextResponse.json({ error: 'mealType は必須です' }, { status: 400 });
     }
     const supplementText = comment.trim();
     if (images.length === 0 && !supplementText) {
@@ -72,7 +69,7 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
 
     // 顧客情報取得とPFC解析を並列実行
     const [customer, pfc] = await Promise.all([
-      getCustomerByLineId(lineUserId),
+      getCustomerByLineId(verifiedLineUserId),
       images.length > 0
         ? analyzeImagesPfc(images, supplementText || null, null, calibration)
         : analyzeTextPfc(supplementText, calibration),
@@ -95,7 +92,7 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
     const targetDate = getTargetDate(day);
     const notionRes = await saveFoodRecord({
       customerName: customer.name,
-      lineUserId,
+      lineUserId: verifiedLineUserId,
       pfc,
       mealType,
       goals: customer.goals,
@@ -109,7 +106,7 @@ export const POST = withLiffTenant(async (req: NextRequest) => {
         saveImagesToDriveAsync({
           notionPageId: notionRes.id,
           customerName: customer.name,
-          lineUserId,
+          lineUserId: verifiedLineUserId,
           photos: images,
         })
       );

@@ -5,6 +5,7 @@ import {
   getRangeExtras,
   type FoodRecord,
 } from '@/lib/notion';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -12,8 +13,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 type DailyAgg = {
-  date: string; // 'yyyy-MM-dd'
-  weekday: string; // '月'
+  date: string;
+  weekday: string;
   kcal: number;
   P: number;
   F: number;
@@ -25,7 +26,6 @@ type DailyAgg = {
   exerciseContent: string;
 };
 
-// JST基準の日付を返す
 function jstNow(): Date {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
 }
@@ -37,12 +37,9 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-// 月曜始まりで week_offset で指定された週の月〜日を返す
-// offset = 0: 今週, -1: 先週, +1: 来週
 function getWeekRange(offset: number): { start: Date; end: Date; dates: Date[] } {
   const today = jstNow();
-  const day = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  // 月曜日まで戻す
+  const day = today.getDay();
   const daysToMonday = day === 0 ? 6 : day - 1;
   const monday = new Date(today);
   monday.setDate(today.getDate() - daysToMonday + offset * 7);
@@ -57,43 +54,35 @@ function getWeekRange(offset: number): { start: Date; end: Date; dates: Date[] }
   return { start: monday, end: sunday, dates };
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
-    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
     const offsetStr = req.nextUrl.searchParams.get('offset') || '0';
     const offset = parseInt(offsetStr, 10) || 0;
-
-    if (!lineUserId) {
-      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
-    }
 
     const { start, end, dates } = getWeekRange(offset);
     const startStr = formatDate(start);
     const endStr = formatDate(end);
 
-    // 並列実行で高速化
     const [customer, records] = await Promise.all([
-      getCustomerByLineId(lineUserId),
-      getFoodRecordsByDateRange(lineUserId, startStr, endStr),
+      getCustomerByLineId(verifiedLineUserId),
+      getFoodRecordsByDateRange(verifiedLineUserId, startStr, endStr),
     ]);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
 
-    // 個人シートから期間内の体重・運動データを取得
     const dateLabels = dates.map((d) => `${d.getMonth() + 1}月${d.getDate()}日`);
     const extras = customer.foodSheetPageId
       ? await getRangeExtras(customer.foodSheetPageId, dateLabels)
       : {};
 
-    // 日別集計
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     const daily: DailyAgg[] = dates.map((d) => {
       const ds = formatDate(d);
       const dateLabel = `${d.getMonth() + 1}月${d.getDate()}日`;
-      const dayRecords = records.filter((r) => r.date === ds);
+      const dayRecords = records.filter((r: FoodRecord) => r.date === ds);
       const totals = dayRecords.reduce(
-        (acc, r) => ({
+        (acc: { kcal: number; P: number; F: number; C: number }, r: FoodRecord) => ({
           kcal: acc.kcal + r.kcal,
           P: acc.P + r.P,
           F: acc.F + r.F,
@@ -117,7 +106,6 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 週合計と平均（記録ありの日のみで平均）
     const recordedDays = daily.filter((d) => d.recorded);
     const recordCount = recordedDays.length;
     const sum = daily.reduce(
@@ -138,10 +126,8 @@ export async function GET(req: NextRequest) {
         }
       : { kcal: 0, P: 0, F: 0, C: 0 };
 
-    // 運動日数集計
     const exerciseDays = daily.filter((d) => d.exercised).length;
 
-    // 食事区分別の合計kcal（円グラフ用）
     const mealRatio: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
     for (const r of records) {
       if (r.mealType in mealRatio) {
@@ -173,4 +159,4 @@ export async function GET(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

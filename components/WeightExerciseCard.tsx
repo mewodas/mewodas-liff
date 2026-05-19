@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Scale, Footprints, ClipboardList } from 'lucide-react';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
+import { apiFetch } from '@/lib/apiFetch';
 
 export default function WeightExerciseCard({
   selectedDate,
@@ -146,10 +147,10 @@ function WeightSheet({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/log/weight', {
+      const res = await apiFetch('/api/log/weight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId, date: selectedDate, weight: w }),
+        body: JSON.stringify({ date: selectedDate, weight: w }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -264,11 +265,10 @@ function ExerciseSheet({
       const allItems = pending ? [...items, pending] : items;
       const merged = allItems.join('\n');
       const exercised = allItems.length > 0;
-      const res = await fetch('/api/log/exercise', {
+      const res = await apiFetch('/api/log/exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId,
           date: selectedDate,
           exercised,
           content: merged,

@@ -7,6 +7,7 @@ import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { Star, CheckCircle2, Home, Calendar as CalendarIcon, Plus, Search, Pencil } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import {
@@ -96,11 +97,10 @@ function MyMenuInner() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch('/api/record/manual', {
+      const res = await apiFetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: userId,
           mealType,
           date: targetDate,
           title: `${item.name}（${item.unit}）`,

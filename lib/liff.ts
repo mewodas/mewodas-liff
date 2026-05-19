@@ -12,6 +12,12 @@ export async function initLiff(): Promise<Liff> {
   return liff;
 }
 
+// IDトークン期限切れ時に呼び出し、LIFFを再初期化して新トークンを取得する
+export async function refreshLiff(): Promise<void> {
+  initialized = false;
+  await initLiff();
+}
+
 export async function getLineUserId(): Promise<string | null> {
   await initLiff();
   if (!liff.isLoggedIn()) {
@@ -29,6 +35,11 @@ export async function getLineProfile() {
     return null;
   }
   return liff.getProfile();
+}
+
+export async function getIdToken(): Promise<string | null> {
+  await initLiff();
+  return liff.getIDToken();
 }
 
 export async function closeLiff(): Promise<void> {
