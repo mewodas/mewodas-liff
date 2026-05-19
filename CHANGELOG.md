@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – OnboardingTour リセット後の再表示バグ修正
+
+- fix(OnboardingTour): `tourResetAt=undefined`（APIロード前）の初期状態で `isDone=true` と誤判定し、ツアーが再表示されないバグを修正
+- fix(OnboardingTour): `useEffect` の早期リターン条件として `tourResetAt === undefined` を追加。API取得完了後（null or ISO文字列確定後）にのみ表示判定を行う
+- fix(OnboardingTour): `isDone` 判定の `tourResetAt === undefined` 分岐を削除（上記ガード後は undefined が到達しないため）
+- 影響範囲: 顧客側 LIFF `/record` `/weight` `/exercise`（staging のみ）
+
 ## 2026-05-19 (staging) – /record オンボツアー全面再構成＋UI配置変更
 
 - feat(record/tour): オンボツアーを4ステップ→6ステップに再構成（record-date / record-photo-group / record-fooddb / record-mymenu / record-text / record-no-meal）
