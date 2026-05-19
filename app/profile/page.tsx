@@ -8,7 +8,6 @@ import { User, Save } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
-  furigana: string | null;
   gender: string | null;
   age: number | null;
   heightCm: number | null;
@@ -21,7 +20,6 @@ type CustomerProfile = {
 
 type EditForm = {
   name: string;
-  furigana: string;
   gender: string;
   heightCm: string;
   currentWeight: string;
@@ -47,7 +45,6 @@ function maskPhone(phone: string | null): string {
 function profileToForm(c: CustomerProfile): EditForm {
   return {
     name: c.name,
-    furigana: c.furigana ?? '',
     gender: c.gender ?? '',
     heightCm: c.heightCm !== null ? String(c.heightCm) : '',
     currentWeight: c.currentWeight !== null ? String(c.currentWeight) : '',
@@ -74,7 +71,6 @@ export default function ProfilePage() {
         const c = j.customer;
         const p: CustomerProfile = {
           name: c.name,
-          furigana: c.furigana,
           gender: c.gender,
           age: c.age,
           heightCm: c.heightCm,
@@ -102,7 +98,6 @@ export default function ProfilePage() {
     try {
       const body: Record<string, unknown> = {};
       if (form.name.trim()) body.name = form.name.trim();
-      body.furigana = form.furigana.trim() || null;
       body.gender = form.gender || null;
       body.heightCm = form.heightCm ? parseFloat(form.heightCm) : null;
       body.currentWeight = form.currentWeight ? parseFloat(form.currentWeight) : null;
@@ -121,7 +116,6 @@ export default function ProfilePage() {
       const c = j.customer;
       const p: CustomerProfile = {
         name: c.name,
-        furigana: c.furigana,
         gender: c.gender,
         age: c.age,
         heightCm: c.heightCm,
@@ -173,14 +167,6 @@ export default function ProfilePage() {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="氏名を入力"
-                />
-              </EditRow>
-              <EditRow label="フリガナ">
-                <input
-                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
-                  value={form.furigana}
-                  onChange={e => setForm({ ...form, furigana: e.target.value })}
-                  placeholder="ヤマダ ハナコ"
                 />
               </EditRow>
               <EditRow label="性別">

@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – フリガナ機能を全削除
+
+- remove(liff/profile): プロフィール画面のフリガナ入力フィールド削除
+- remove(api): `PATCH /api/customer/me` から furigana 受付ロジック削除
+- remove(lib/notion): `Customer` 型から `furigana` フィールド、`parseCustomerFromPage` の読み込み、`updateCustomer` の書き込みロジックを削除
+- 設計判断: フリガナは本番運用で必要なしと判断（業務フローで利用していない）
+- 影響範囲: 顧客側 LIFF `/profile`、API `/api/customer/me`、`lib/notion.ts`（Notion DB 側の「フリガナ」カラム自体は触らず、使われない状態で放置）
+
+## 2026-05-20 (staging) – Notion フィールドリネーム準備: 現在体重→開始体重 フォールバック対応
+
+- fix(lib/notion): `parseCustomerFromPage` の読み込みを新名「開始体重(kg)」優先・旧名「現在体重(kg)」フォールバックに変更
+- fix(lib/notion): `createTenantCustomerDb` のスキーマ定義を「開始体重(kg)」に変更（新規テナント向け）
+- 書き込み箇所（createCustomer/updateCustomer）は Notion DB リネーム後に別コミットで切り替え予定
+- 影響範囲: lib/ のみ（顧客 LIFF・管理画面の表示ラベルは変更なし）
+- 関連: FOLLOWUP_RENAME_NOTION.md（リネーム後の作業チェックリスト）
+
 ## 2026-05-20 (本番) – staging→main マージ: フリガナ顧客編集 + アカウント削除を管理画面側へ
 
 - feat(liff/profile): フリガナを顧客自身が編集できるように変更（読み取り専用 → 入力フィールド）

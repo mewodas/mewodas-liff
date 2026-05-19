@@ -19,7 +19,6 @@ export function getTenantNotion() {
 export type Customer = {
   pageId: string;
   name: string;
-  furigana: string | null;
   lineUserId: string;
   foodStatus: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -108,7 +107,6 @@ function parseCustomerFromPage(
   return {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
-    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId,
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
@@ -117,7 +115,7 @@ function parseCustomerFromPage(
       F: p['目標F(g)']?.number ?? defaultGoals.F,
       C: p['目標C(g)']?.number ?? defaultGoals.C,
     },
-    currentWeight: p['現在体重(kg)']?.number ?? null,
+    currentWeight: (p['開始体重(kg)'] ?? p['現在体重(kg)'])?.number ?? null,
     targetWeight: p['目標体重(kg)']?.number ?? null,
     targetDate: p['目標達成日']?.date?.start ?? null,
     foodSheetPageId: (() => {
@@ -283,7 +281,6 @@ export async function updateCustomer(
   pageId: string,
   patch: {
     name?: string;
-    furigana?: string | null;
     goals?: { kcal?: number; P?: number; F?: number; C?: number };
     targetWeight?: number | null;
     targetDate?: string | null;
@@ -304,11 +301,6 @@ export async function updateCustomer(
   const properties: Record<string, unknown> = {};
   if (patch.name !== undefined && patch.name.trim()) {
     properties['氏名'] = { title: [{ text: { content: patch.name.trim().slice(0, 100) } }] };
-  }
-  if (patch.furigana !== undefined) {
-    properties['フリガナ'] = patch.furigana === null || patch.furigana === ''
-      ? { rich_text: [] }
-      : { rich_text: [{ type: 'text', text: { content: patch.furigana.slice(0, 100) } }] };
   }
   if (patch.goals) {
     if (typeof patch.goals.kcal === 'number') properties['目標カロリー(kcal)'] = { number: patch.goals.kcal };
@@ -452,7 +444,7 @@ export async function createTenantCustomerDb(
           ],
         },
       },
-      '現在体重(kg)': { number: {} },
+      '開始体重(kg)': { number: {} },
       '目標体重(kg)': { number: {} },
       目標達成日: { date: {} },
       '目標カロリー(kcal)': { number: {} },
