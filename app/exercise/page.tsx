@@ -92,6 +92,7 @@ export default function ExercisePage() {
   const [success, setSuccess] = useState(false);
   const [savedLog, setSavedLog] = useState<{ exercise: string; durationMin: number; estimatedKcal: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tourResetAt, setTourResetAt] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
@@ -99,8 +100,20 @@ export default function ExercisePage() {
         await initLiff();
         const profile = await getLineProfile();
         if (profile) setUserId(profile.userId);
+        try {
+          const meRes = await apiFetch('/api/customer/me');
+          if (meRes.ok) {
+            const { customer } = await meRes.json();
+            setTourResetAt(customer?.tourResetAt ?? null);
+          } else {
+            setTourResetAt(null);
+          }
+        } catch {
+          setTourResetAt(null);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'LIFF初期化エラー');
+        setTourResetAt(null);
       } finally {
         setReady(true);
       }
@@ -377,8 +390,8 @@ export default function ExercisePage() {
           )}
         </button>
 
-        {ready && (
-          <OnboardingTour storageKey="fitmeal_tour_exercise_done" steps={EXERCISE_TOUR_STEPS} />
+        {ready && tourResetAt !== undefined && (
+          <OnboardingTour storageKey="fitmeal_tour_exercise_done" steps={EXERCISE_TOUR_STEPS} tourResetAt={tourResetAt} />
         )}
       </div>
     </main>

@@ -1,14 +1,20 @@
 // Stripe SDK 初期化 + 料金体系定義
 //
-// メヲダス FitMeal SaaS:
-//   - 初期セットアップ: ¥30,000 (one-time)
-//   - 月額: 5-10名=¥3,000/人, 11-20名=¥2,500/人, 21名+=¥2,000/人
-//   - 年払いは10%OFF（実質1.2ヶ月分割引）
+// FitMeal SaaS 新プラン（2026-05-18 〜）:
+//   サポート費: ¥5,000/月 固定
+//   Starter (3-20名): ¥2,500/人/月
+//   Growth (21-50名): ¥2,000/人/月
+//   Scale (51名+): ¥1,500/人/月
+//   月払いサブスク（毎月自動更新）、ミニマム3名
 //
 // env:
 //   STRIPE_SECRET_KEY: sk_test_... or sk_live_...
 //   STRIPE_WEBHOOK_SECRET: whsec_...
 //   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_... or pk_live_...
+//   STRIPE_PRICE_SUPPORT_FEE: price_... (¥5,000 固定)
+//   STRIPE_PRICE_STARTER_PER_USER: price_... (¥2,500/人)
+//   STRIPE_PRICE_GROWTH_PER_USER: price_... (¥2,000/人)
+//   STRIPE_PRICE_SCALE_PER_USER: price_... (¥1,500/人)
 
 import Stripe from 'stripe';
 
@@ -24,32 +30,56 @@ export function getStripe(): Stripe {
   return stripeInstance;
 }
 
-/**
- * 人数に応じた1人あたりの月額単価（円）
- */
-export function unitPriceFor(customerCount: number): number {
-  if (customerCount <= 10) return 3000;
-  if (customerCount <= 20) return 2500;
-  return 2000;
+export type PlanTier = 'Starter' | 'Growth' | 'Scale';
+
+export const SUPPORT_FEE = 5000;
+export const MIN_SEATS = 3;
+
+export function getPlanTierBySeats(seats: number): PlanTier {
+  if (seats <= 20) return 'Starter';
+  if (seats <= 50) return 'Growth';
+  return 'Scale';
 }
 
-/**
- * 人数 × 単価で月額料金を計算
- */
-export function monthlyPriceFor(customerCount: number): number {
-  return customerCount * unitPriceFor(customerCount);
+export function getUnitPriceByTier(tier: PlanTier): number {
+  if (tier === 'Starter') return 2500;
+  if (tier === 'Growth') return 2000;
+  return 1500;
 }
 
-/**
- * 年払いの場合の料金（10%OFF）
- */
-export function annualPriceFor(customerCount: number): number {
-  return Math.round(monthlyPriceFor(customerCount) * 12 * 0.9);
+export function getMonthlyTotal(seats: number): {
+  tier: PlanTier;
+  unitPrice: number;
+  supportFee: number;
+  perUserSubtotal: number;
+  total: number;
+} {
+  const tier = getPlanTierBySeats(seats);
+  const unitPrice = getUnitPriceByTier(tier);
+  const perUserSubtotal = unitPrice * seats;
+  return {
+    tier,
+    unitPrice,
+    supportFee: SUPPORT_FEE,
+    perUserSubtotal,
+    total: SUPPORT_FEE + perUserSubtotal,
+  };
 }
 
-/**
- * Stripe Subscription の status を Notion の支払いステータスに変換
- */
+export function getMinSeats(): number {
+  return MIN_SEATS;
+}
+
+export function getPriceIdForTier(tier: PlanTier): string | null {
+  if (tier === 'Starter') return process.env.STRIPE_PRICE_STARTER_PER_USER || null;
+  if (tier === 'Growth') return process.env.STRIPE_PRICE_GROWTH_PER_USER || null;
+  return process.env.STRIPE_PRICE_SCALE_PER_USER || null;
+}
+
+export function getSupportFeePriceId(): string | null {
+  return process.env.STRIPE_PRICE_SUPPORT_FEE || null;
+}
+
 export function subscriptionStatusToNotion(
   stripeStatus: Stripe.Subscription.Status
 ): '有効' | '期限切れ' | '未払い' | 'お試し' | 'キャンセル予定' | '解約済み' {

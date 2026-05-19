@@ -8,9 +8,29 @@ import {
   CheckCircle2,
   AlertTriangle,
   ExternalLink,
-  Calculator,
+  TrendingUp,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import SeatChangeModal from './SeatChangeModal';
+
+const MIN_SEATS = 3;
+const SUPPORT_FEE = 5000;
+
+function getPlanTier(seats: number): string {
+  if (seats <= 20) return 'Starter';
+  if (seats <= 50) return 'Growth';
+  return 'Scale';
+}
+
+function getUnitPrice(seats: number): number {
+  if (seats <= 20) return 2500;
+  if (seats <= 50) return 2000;
+  return 1500;
+}
+
+function getMonthlyTotal(seats: number): number {
+  return SUPPORT_FEE + getUnitPrice(seats) * seats;
+}
 
 type BillingInfo = {
   tenantName: string;
@@ -22,39 +42,46 @@ type BillingInfo = {
   nextBillingDate: string | null;
   paymentStatus: string | null;
   hasStripeCustomer: boolean;
+  seatLimit: number | null;
+  currentSeats: number;
+  remaining: number | null;
+  isOverLimit: boolean;
+  isNearLimit: boolean;
+  planTier: string | null;
+  hasContract: boolean;
 };
-
-function unitPriceFor(n: number): number {
-  if (n <= 10) return 3000;
-  if (n <= 20) return 2500;
-  return 2000;
-}
 
 export default function BillingPage() {
   const [info, setInfo] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [customerCount, setCustomerCount] = useState(10);
-  const [billingCycle, setBillingCycle] = useState<'月払い' | '年払い'>('月払い');
+  const [seats, setSeats] = useState(MIN_SEATS);
   const [processing, setProcessing] = useState(false);
+  const [showSeatModal, setShowSeatModal] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/admin/billing/info', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.error) throw new Error(j.error);
-        setInfo(j);
-        if (j.customerCount) setCustomerCount(j.customerCount);
-        if (j.billingCycle === '年払い') setBillingCycle('年払い');
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  async function loadInfo() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/admin/billing/info', { cache: 'no-store' });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      setInfo(j);
+      if (!j.hasContract && j.currentSeats > MIN_SEATS) {
+        setSeats(Math.max(MIN_SEATS, j.currentSeats));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const unitPrice = unitPriceFor(customerCount);
-  const monthlyTotal = customerCount * unitPrice;
-  const annualTotal = Math.round(monthlyTotal * 12 * 0.9);
-  const displayTotal = billingCycle === '年払い' ? annualTotal : monthlyTotal;
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void loadInfo(); }, []);
+
+  const unitPrice = getUnitPrice(seats);
+  const monthlyTotal = getMonthlyTotal(seats);
+  const tier = getPlanTier(seats);
 
   async function startCheckout() {
     setProcessing(true);
@@ -63,7 +90,7 @@ export default function BillingPage() {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerCount, billingCycle }),
+        body: JSON.stringify({ seats }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || `失敗(${res.status})`);
@@ -92,6 +119,18 @@ export default function BillingPage() {
 
   return (
     <AdminShell title="お支払い・プラン">
+      {showSeatModal && info?.hasContract && info.seatLimit !== null && (
+        <SeatChangeModal
+          currentSeats={info.seatLimit}
+          currentUseCount={info.currentSeats}
+          onClose={() => setShowSeatModal(false)}
+          onSuccess={() => {
+            setShowSeatModal(false);
+            setTimeout(() => loadInfo(), 2000);
+          }}
+        />
+      )}
+
       <div className="space-y-3">
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl">
@@ -103,162 +142,211 @@ export default function BillingPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : (
           <>
-            {/* 現在の契約状況 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
-              <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                現在の契約
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Stat label="プラン" value={info?.plan || '未契約'} />
-                <Stat
-                  label="支払いステータス"
-                  value={info?.paymentStatus || '—'}
-                  highlight={info?.paymentStatus === '有効'}
-                />
-                <Stat
-                  label="顧客数"
-                  value={info?.customerCount ? `${info.customerCount}名` : '—'}
-                />
-                <Stat
-                  label="月額料金"
-                  value={info?.monthlyPrice ? `¥${info.monthlyPrice.toLocaleString()}` : '—'}
-                />
-                <Stat
-                  label="請求サイクル"
-                  value={info?.billingCycle || '—'}
-                />
-                <Stat
-                  label="次回請求日"
-                  value={info?.nextBillingDate || '—'}
-                />
+            {/* 上限到達バナー */}
+            {info?.isOverLimit && (
+              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
+                <div>
+                  <div className="font-bold">席数上限に達しています（{info.seatLimit}名満席）</div>
+                  <div>新規招待・顧客追加には増枠が必要です。</div>
+                </div>
               </div>
-              {info?.hasStripeCustomer && (
-                <button
-                  onClick={openPortal}
-                  disabled={processing}
-                  className="w-full bg-stone-100 text-stone-900 font-bold py-2.5 rounded-xl active:bg-stone-200 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
-                >
-                  <ExternalLink className="w-4 h-4" strokeWidth={2.2} />
-                  カード変更・解約・請求履歴
-                </button>
-              )}
-            </section>
+            )}
 
-            {/* プラン選択（新規 or 変更） */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
-              <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                <Calculator className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                {info?.hasStripeCustomer ? 'プラン変更' : '新規契約'}
-              </h2>
+            {/* 残り1席バナー */}
+            {!info?.isOverLimit && info?.isNearLimit && (
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
+                <div>あと1名で席数上限です。早めの増枠をご検討ください。</div>
+              </div>
+            )}
 
-              {/* 顧客数 */}
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <Users className="w-3 h-3 text-stone-600" strokeWidth={2.4} />
-                  顧客数
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCustomerCount(Math.max(1, customerCount - 1))}
-                    className="w-10 h-10 bg-stone-100 rounded-xl active:bg-stone-200 text-xl font-bold"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    value={customerCount}
-                    onChange={(e) => setCustomerCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="flex-1 text-center text-lg font-bold bg-stone-50 border border-stone-200 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            {/* 契約済み */}
+            {info?.hasContract && info.seatLimit !== null ? (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+                <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                  現在の契約
+                </h2>
+
+                {/* プラン・席数 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Stat label="プラン" value={info.planTier || '—'} />
+                  <Stat
+                    label="支払いステータス"
+                    value={info.paymentStatus || '—'}
+                    highlight={info.paymentStatus === '有効'}
                   />
-                  <button
-                    onClick={() => setCustomerCount(customerCount + 1)}
-                    className="w-10 h-10 bg-stone-100 rounded-xl active:bg-stone-200 text-xl font-bold"
-                  >
-                    ＋
-                  </button>
                 </div>
-                <div className="text-[10px] text-stone-500 mt-1">
-                  単価: ¥{unitPrice.toLocaleString()}/月/人
-                  {customerCount > 10 && customerCount <= 20 && '（11-20名割引）'}
-                  {customerCount > 20 && '（21名+割引）'}
-                </div>
-              </div>
 
-              {/* 請求サイクル */}
-              <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-stone-600" strokeWidth={2.4} />
-                  請求サイクル
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setBillingCycle('月払い')}
-                    className={`p-3 rounded-xl border-2 text-left ${
-                      billingCycle === '月払い'
-                        ? 'bg-emerald-50 border-emerald-500'
-                        : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    <div className="text-xs font-bold text-stone-900">月払い</div>
-                    <div className="text-lg font-bold text-emerald-700">
-                      ¥{monthlyTotal.toLocaleString()}/月
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setBillingCycle('年払い')}
-                    className={`p-3 rounded-xl border-2 text-left relative ${
-                      billingCycle === '年払い'
-                        ? 'bg-emerald-50 border-emerald-500'
-                        : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    <div className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                      10%OFF
-                    </div>
-                    <div className="text-xs font-bold text-stone-900">年払い</div>
-                    <div className="text-lg font-bold text-emerald-700">
-                      ¥{annualTotal.toLocaleString()}/年
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* 合計 */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                <div className="text-xs text-stone-700 font-bold mb-1">
-                  {billingCycle === '年払い' ? '年額（一括払い）' : '月額（毎月引き落とし）'}
-                </div>
-                <div className="text-2xl font-bold text-emerald-700">
-                  ¥{displayTotal.toLocaleString()}
-                </div>
-                {billingCycle === '年払い' && (
-                  <div className="text-[10px] text-stone-600 mt-0.5">
-                    通常: ¥{(monthlyTotal * 12).toLocaleString()}/年 → 10% OFF
+                {/* 席数プログレスバー */}
+                <div className="bg-stone-50 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-stone-700">
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="w-3 h-3" strokeWidth={2.4} />
+                      契約席数 {info.seatLimit}名
+                    </span>
+                    <span>使用 {info.currentSeats}名 / 残り {info.remaining !== null ? info.remaining : '—'}名</span>
                   </div>
+                  <div className="w-full bg-stone-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        info.isOverLimit
+                          ? 'bg-rose-500'
+                          : info.isNearLimit
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(100, info.seatLimit > 0 ? (info.currentSeats / info.seatLimit) * 100 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Stat
+                    label="月額料金"
+                    value={info.monthlyPrice ? `¥${info.monthlyPrice.toLocaleString()}` : '—'}
+                  />
+                  <Stat
+                    label="次回請求日"
+                    value={info.nextBillingDate || '—'}
+                  />
+                </div>
+
+                <div className="text-[10px] text-stone-500">
+                  サポート費 ¥{SUPPORT_FEE.toLocaleString()}/月 + per-user 合計
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSeatModal(true)}
+                    disabled={processing}
+                    className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                  >
+                    <TrendingUp className="w-4 h-4" strokeWidth={2.2} />
+                    席数を変更（増減枠）
+                  </button>
+                  <button
+                    onClick={openPortal}
+                    disabled={processing}
+                    className="flex-1 bg-stone-100 text-stone-900 font-bold py-2.5 rounded-xl active:bg-stone-200 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                  >
+                    <ExternalLink className="w-4 h-4" strokeWidth={2.2} />
+                    カード・解約
+                  </button>
+                </div>
+              </section>
+            ) : (
+              <>
+                {/* 未契約 */}
+                {info?.hasStripeCustomer && (
+                  <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+                    <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                      現在の契約
+                    </h2>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Stat label="支払いステータス" value={info.paymentStatus || '—'} />
+                      <Stat label="次回請求日" value={info.nextBillingDate || '—'} />
+                    </div>
+                    <button
+                      onClick={openPortal}
+                      disabled={processing}
+                      className="w-full bg-stone-100 text-stone-900 font-bold py-2.5 rounded-xl active:bg-stone-200 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                    >
+                      <ExternalLink className="w-4 h-4" strokeWidth={2.2} />
+                      カード変更・解約・請求履歴
+                    </button>
+                  </section>
                 )}
-              </div>
 
-              {/* CTA */}
-              <button
-                onClick={startCheckout}
-                disabled={processing}
-                className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" strokeWidth={2.2} />
-                {processing
-                  ? '処理中…'
-                  : info?.hasStripeCustomer
-                  ? 'プラン変更を確認'
-                  : 'カード登録してプラン開始'}
-              </button>
+                {/* プラン比較 */}
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { tier: 'Starter', range: '3〜20名', minSeats: 3, unitPrice: 2500 },
+                    { tier: 'Growth', range: '21〜50名', minSeats: 21, unitPrice: 2000 },
+                    { tier: 'Scale', range: '51名+', minSeats: 51, unitPrice: 1500 },
+                  ] as const).map((p) => (
+                    <div key={p.tier} className={`bg-white rounded-xl border p-3 space-y-1 text-center ${tier === p.tier ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200'}`}>
+                      <div className="text-xs font-bold text-stone-900">{p.tier}</div>
+                      <div className="text-[10px] text-stone-500">{p.range}</div>
+                      <div className="text-sm font-bold text-emerald-700">¥{p.unitPrice.toLocaleString()}</div>
+                      <div className="text-[9px] text-stone-500">/人/月</div>
+                      <div className="text-[10px] text-stone-600 font-bold">
+                        {p.minSeats}名〜 ¥{(SUPPORT_FEE + p.unitPrice * p.minSeats).toLocaleString()}/月〜
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[10px] text-stone-500 text-center">サポート費 ¥5,000/月 + per-user × 席数</div>
 
-              <div className="text-[10px] text-stone-500 text-center">
-                法人で請求書払いをご希望の場合はトレーナー（FitMeal 運営）にご連絡ください
-              </div>
-            </section>
+                {/* 新規契約フォーム */}
+                <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+                  <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                    新規契約
+                  </h2>
 
-            {/* お試し期間 */}
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
+                      <Users className="w-3 h-3" strokeWidth={2.4} />
+                      席数（ミニマム {MIN_SEATS}名）
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSeats(Math.max(MIN_SEATS, seats - 1))}
+                        className="w-10 h-10 bg-stone-100 rounded-xl active:bg-stone-200 text-xl font-bold"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        value={seats}
+                        min={MIN_SEATS}
+                        onChange={(e) => setSeats(Math.max(MIN_SEATS, parseInt(e.target.value, 10) || MIN_SEATS))}
+                        className="flex-1 text-center text-lg font-bold bg-stone-50 border border-stone-200 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button
+                        onClick={() => setSeats(seats + 1)}
+                        className="w-10 h-10 bg-stone-100 rounded-xl active:bg-stone-200 text-xl font-bold"
+                      >
+                        ＋
+                      </button>
+                    </div>
+                    <div className="text-[10px] text-stone-500 mt-1">
+                      プラン: {tier}（¥{unitPrice.toLocaleString()}/人/月）
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <div className="text-xs text-stone-700 font-bold mb-1">月額（毎月自動引き落とし）</div>
+                    <div className="text-2xl font-bold text-emerald-700">
+                      ¥{monthlyTotal.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] text-stone-500 mt-0.5">
+                      サポート費¥{SUPPORT_FEE.toLocaleString()} + ¥{unitPrice.toLocaleString()} × {seats}名
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={startCheckout}
+                    disabled={processing}
+                    className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" strokeWidth={2.2} />
+                    {processing ? '処理中…' : 'カード登録してプラン開始'}
+                  </button>
+
+                  <div className="text-[10px] text-stone-500 text-center">
+                    初期費用なし・違約金なし・月払いサブスク
+                  </div>
+                </section>
+              </>
+            )}
+
+            {/* ステータス系バナー */}
             {info?.paymentStatus === 'お試し' && (
               <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl inline-flex gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
