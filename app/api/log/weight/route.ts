@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { invalidate } from '@/lib/cache';
 import { getCustomerByLineId } from '@/lib/notion';
 import { createWeightLog } from '@/lib/repository/weightLogs';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -32,14 +31,14 @@ async function callGasSaveWeight(payload: {
   }
 }
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { date, weight } = body;
+    const { lineUserId, date, weight } = body;
 
-    if (!date || typeof weight !== 'number') {
+    if (!lineUserId || !date || typeof weight !== 'number') {
       return NextResponse.json(
-        { error: 'date, weight(number) が必要です' },
+        { error: 'lineUserId, date, weight(number) が必要です' },
         { status: 400 }
       );
     }
@@ -50,13 +49,15 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       return NextResponse.json({ error: 'weight が不正です（0〜300kg）' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(verifiedLineUserId).catch(() => null);
+    const customer = await getCustomerByLineId(lineUserId).catch(() => null);
     const customerName = customer?.name ?? '';
 
+    // GAS（個人シート書き込み）と 新体重DB への書き込みを並列実行
+    // GAS 失敗時も新DB には書き込む（フェイルセーフ）
     const [gasResult] = await Promise.allSettled([
-      callGasSaveWeight({ lineUserId: verifiedLineUserId, date, weight }),
+      callGasSaveWeight({ lineUserId, date, weight }),
       createWeightLog({
-        lineUserId: verifiedLineUserId,
+        lineUserId,
         customerName,
         date,
         weightKg: weight,
@@ -70,6 +71,8 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       throw gasResult.reason;
     }
 
+    // GAS が顧客DBの「現在体重」を更新したので、Vercel側の顧客キャッシュを
+    // 全テナント横断でクリア（次回 /api/today などで fresh な値を取得）
     invalidate('');
 
     return NextResponse.json({ ok: true });
@@ -77,4 +80,4 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

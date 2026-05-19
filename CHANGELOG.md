@@ -1,21 +1,5 @@
 # CHANGELOG
 
-## 2026-05-19 Security(Critical): LIFF lineUserId 自己申告なりすまし防止
-
-- security(Critical): LIFF API ルート群が body/query の `lineUserId` を無検証で信頼していたバグを修正。任意の userId を送れば他人の食事記録・体重ログ・通知を読み書き削除できる状態だった
-- 修正方針: `liff.getIDToken()` をサーバーで LINE Verify API (`https://api.line.me/oauth2/v2.1/verify`) 経由で検証し、検証済み `sub` を `verifiedLineUserId` として handler に注入
-- 実装:
-  - `lib/withTenant.ts` に LINE IDトークン検証ロジック組込み（`aud` 検証 / 5分LRUキャッシュ / 503・401分岐 / channel ID は `NEXT_PUBLIC_LIFF_ID` プレフィックス抽出）
-  - LIFF API 全 20 ルート（`/api/today` `/api/history` `/api/notifications` `/api/day` `/api/weekly` `/api/chat` `/api/delete` `/api/record/{update,confirm,manual,skip,analyze}` `/api/log/{weight,exercise}` `/api/extras` `/api/predict-weight` `/api/meal-plan` `/api/suggest` `/api/frequent-foods` `/api/notifications/[id]/read` 他既存5ルート）を `withLiffTenant` でラップ、`lineUserId` 自己申告排除
-  - `/api/delete` `/api/record/update` に pageId テナント境界チェック（Notion 親 DB 照合、`assertFoodRecordOwnership`）
-  - `/api/chat` の Gemini プロンプトに改行除去でプロンプトインジェクション緩和
-  - クライアント側 `lib/apiFetch.ts` 新規（`Authorization: Bearer <idToken>` 自動付与 + 401 自動リトライで IDトークン期限切れ対策）
-  - LIFF 全画面 + `components/OnboardingFlow.tsx` + `components/WeightExerciseCard.tsx` の生 `fetch` を `apiFetch` に置換（meal-detail/page.tsx fetchData 含む）
-- onboarding tour 拡張も同梱（社長作業、staging で動作確認済み）: OnboardingFlow に step 5（体重）・step 6（運動）追加、`exercise/record/weight` に OnboardingTour 統合
-- 影響範囲: 顧客側 LIFF 全画面 / 顧客側 API 全 LIFF ルート / 管理画面・store・stripe・cron への影響なし
-- 検証: staging.fitmeal.jp で社長動作確認済み（食事記録・編集・体重・運動・履歴・チャット・通知すべて OK）
-- 関連: 2026-05-19 セキュリティ監査（lineUserId 自己申告含む Critical 4 件、High 5 件、Medium 3 件すべて対応）
-
 ## 2026-05-19 CI 修正: Daily Snapshot Tag workflow の git ident 設定
 - fix(.github/workflows/daily-snapshot.yml): `git tag -a` で `fatal: empty ident name not allowed` を起こしていた問題を、`git config user.email/user.name` を step 内で設定して解消
 - 影響範囲: ロールバック網（毎日 JST 23:00 に `stable-YYYY-MM-DD` タグを自動作成）

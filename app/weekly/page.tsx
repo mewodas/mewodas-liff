@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import MealRatioChart from '@/components/MealRatioChart';
@@ -102,7 +101,7 @@ export default function WeeklyPage() {
     }
     (async () => {
       try {
-        const res = await apiFetch(`/api/weekly?offset=${offset}&t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`/api/weekly?lineUserId=${encodeURIComponent(userId)}&offset=${offset}&t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) {
           const errJson = await res.json().catch(() => ({}));
           throw new Error(errJson.error || `データ取得失敗（${res.status}）`);

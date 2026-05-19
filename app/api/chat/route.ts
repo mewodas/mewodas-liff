@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, getFoodRecordsByDate, getTargetDate } from '@/lib/notion';
 import { chatWithAi, type ChatMessage } from '@/lib/gemini';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -11,17 +10,18 @@ function jstHour(): number {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })).getHours();
 }
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, history } = body as {
+    const { lineUserId, message, history } = body as {
+      lineUserId?: string;
       message?: string;
       history?: ChatMessage[];
     };
 
-    if (!message) {
+    if (!lineUserId || !message) {
       return NextResponse.json(
-        { error: 'message は必須です' },
+        { error: 'lineUserId と message は必須です' },
         { status: 400 }
       );
     }
@@ -32,12 +32,10 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       );
     }
 
-    const sanitizedMessage = message.replace(/[\r\n]/g, ' ');
-
     const today = getTargetDate('今日');
     const [customer, records] = await Promise.all([
-      getCustomerByLineId(verifiedLineUserId),
-      getFoodRecordsByDate(verifiedLineUserId, today),
+      getCustomerByLineId(lineUserId),
+      getFoodRecordsByDate(lineUserId, today),
     ]);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
@@ -55,7 +53,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const todayMealTypes = Array.from(new Set(records.map((r) => r.mealType).filter(Boolean)));
 
     const reply = await chatWithAi({
-      message: sanitizedMessage,
+      message,
       history: Array.isArray(history) ? history : [],
       customerContext: {
         name: customer.name,
@@ -78,4 +76,4 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

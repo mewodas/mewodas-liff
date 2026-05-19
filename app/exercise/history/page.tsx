@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import { Footprints, Dumbbell, Flame } from 'lucide-react';
 
@@ -74,7 +73,7 @@ export default function ExerciseHistoryPage() {
     const endDate = todayStr;
     const start = new Date(new Date(todayStr).getTime() - (days - 1) * 86400000);
     const startDate = start.toISOString().slice(0, 10);
-    apiFetch(`/api/exercise-log?startDate=${startDate}&endDate=${endDate}&t=${Date.now()}`, {
+    fetch(`/api/exercise-log?lineUserId=${encodeURIComponent(userId)}&startDate=${startDate}&endDate=${endDate}&t=${Date.now()}`, {
       cache: 'no-store',
     })
       .then((r) => (r.ok ? r.json() : { logs: [] }))

@@ -7,7 +7,6 @@ import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { ChefHat, Calendar as CalendarIcon, CheckCircle2, Search, Bot, Sparkles, BarChart3, Utensils, Lightbulb, CookingPot, Target, Home, ClipboardList } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
@@ -185,10 +184,11 @@ function MealPlanInner() {
     setError(null);
     setResult(null);
     try {
-      const res = await apiFetch('/api/meal-plan', {
+      const res = await fetch('/api/meal-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lineUserId: userId,
           dietType,
           avoidIngredients,
           preferIngredients,
@@ -744,7 +744,7 @@ function RecipeSheet({
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch('/api/meal-plan/recipe', {
+        const res = await fetch('/api/meal-plan/recipe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: meal.title, items: meal.items }),
@@ -770,10 +770,11 @@ function RecipeSheet({
     setRecording(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/record/manual', {
+      const res = await fetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lineUserId,
           mealType: meal.type,
           date: targetDate,
           title: meal.title,

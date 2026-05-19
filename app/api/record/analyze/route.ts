@@ -18,15 +18,17 @@ export type AnalyzedItem = {
   C: number;
 };
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export const POST = withLiffTenant(async (req: NextRequest) => {
   try {
     const contentType = req.headers.get('content-type') || '';
+    let lineUserId = '';
     let comment = '';
     let previousItems: Array<{ name: string; P: number; F: number; C: number }> | null = null;
     const images: Array<{ base64: string; mimeType: string }> = [];
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
+      lineUserId = String(formData.get('lineUserId') || '');
       comment = String(formData.get('comment') || '');
       const prev = formData.get('previousItems');
       if (typeof prev === 'string' && prev.trim()) {
@@ -47,8 +49,13 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       }
     } else {
       const body = await req.json();
+      lineUserId = body.lineUserId || '';
       comment = body.comment || '';
       previousItems = body.previousItems || null;
+    }
+
+    if (!lineUserId) {
+      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
     }
     const supplementText = comment.trim();
     if (images.length === 0 && !supplementText) {
@@ -64,7 +71,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const calibration = getApplicableCalibration(tenant);
 
     const [customer, pfc] = await Promise.all([
-      getCustomerByLineId(verifiedLineUserId),
+      getCustomerByLineId(lineUserId),
       images.length > 0
         ? analyzeImagesPfc(images, supplementText || null, previousItems, calibration)
         : analyzeTextPfc(supplementText, calibration),

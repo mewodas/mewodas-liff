@@ -7,7 +7,6 @@ import {
 } from '@/lib/notion';
 import { generateMealPlan } from '@/lib/gemini';
 import { estimateExercise } from '@/lib/exerciseEstimate';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -23,10 +22,11 @@ type ReferenceMenuItem = {
   useCount?: number;
 };
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
+      lineUserId,
       dietType,
       avoidIngredients,
       preferIngredients,
@@ -37,15 +37,18 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       referenceMenu, // マイメニュー（クライアントlocalStorageから）
       ingredients, // 顧客が選んだ材料リスト（任意）
     } = body;
+    if (!lineUserId) {
+      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
+    }
 
-    const customer = await getCustomerByLineId(verifiedLineUserId);
+    const customer = await getCustomerByLineId(lineUserId);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
 
     // 今日の食事記録を取得して残りPFCを計算
     const todayStr = getTargetDate('今日');
-    const todayRecords = await getFoodRecordsByDate(verifiedLineUserId, todayStr).catch(() => []);
+    const todayRecords = await getFoodRecordsByDate(lineUserId, todayStr).catch(() => []);
     const eaten = todayRecords.reduce(
       (acc, r) => ({
         kcal: acc.kcal + (r.kcal || 0),
@@ -102,6 +105,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     if (resolvedMode === 'remaining' && remaining.kcal >= customer.goals.kcal * 0.95) {
       resolvedMode = 'full';
     }
+    const useFullDay = resolvedMode === 'full';
     const validMealTypes = ['朝食', '昼食', '夕食', '間食'];
     const targetMealType =
       resolvedMode === 'one_meal' && typeof oneMealType === 'string' && validMealTypes.includes(oneMealType)
@@ -153,4 +157,4 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export const dynamic = 'force-dynamic';
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+// 「食べなかった」記録：0kcalで記録を残す
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { mealType, day, date } = body;
+    const { lineUserId, mealType, day, date } = body;
 
-    if (!mealType) {
-      return NextResponse.json({ error: 'mealType は必須です' }, { status: 400 });
+    if (!lineUserId || !mealType) {
+      return NextResponse.json({ error: 'lineUserId, mealType は必須です' }, { status: 400 });
     }
     const validMeals = ['朝食', '昼食', '夕食', '間食'];
     if (!validMeals.includes(mealType)) {
       return NextResponse.json({ error: 'mealType が不正です' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(verifiedLineUserId);
+    const customer = await getCustomerByLineId(lineUserId);
     if (!customer || customer.foodStatus !== '進行中') {
       return NextResponse.json(
         { error: '食事管理サービス対象外、またはステータスが進行中ではありません' },
@@ -41,7 +41,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
 
     await saveFoodRecord({
       customerName: customer.name,
-      lineUserId: verifiedLineUserId,
+      lineUserId,
       pfc,
       mealType,
       goals: customer.goals,
@@ -54,4 +54,4 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

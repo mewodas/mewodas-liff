@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import FooterNav from '@/components/FooterNav';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import { CheckCircle2, Camera, AlertTriangle, Search, FileText, Home } from 'lucide-react';
 
@@ -135,10 +134,11 @@ export default function ScanPage() {
     setError(null);
     try {
       const title = `${lookup.title}${lookup.brand ? `（${lookup.brand}）` : ''}`;
-      const res = await apiFetch('/api/record/manual', {
+      const res = await fetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lineUserId: userId,
           mealType,
           day,
           title,

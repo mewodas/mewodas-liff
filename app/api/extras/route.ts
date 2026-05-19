@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, getDailyExtras, isoToJpMd } from '@/lib/notion';
 import { getWeightOnDate } from '@/lib/repository/weightLogs';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -9,19 +8,20 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 // 体重は新体重DBから取得。運動データは引き続き個人シートから。
-export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function GET(req: NextRequest) {
   try {
+    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
     const date = req.nextUrl.searchParams.get('date');
-    if (!date) {
-      return NextResponse.json({ error: 'date が必要' }, { status: 400 });
+    if (!lineUserId || !date) {
+      return NextResponse.json({ error: 'lineUserId と date が必要' }, { status: 400 });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
-    const customer = await getCustomerByLineId(verifiedLineUserId);
+    const customer = await getCustomerByLineId(lineUserId);
 
     // 体重は新DBから取得（個人シート走査不要）
-    const weightLog = await getWeightOnDate(verifiedLineUserId, date).catch(() => null);
+    const weightLog = await getWeightOnDate(lineUserId, date).catch(() => null);
     const weightStr = weightLog ? String(weightLog.weightKg) : '';
 
     // 運動データは引き続き個人シートから
@@ -48,4 +48,4 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
-});
+}

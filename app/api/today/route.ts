@@ -7,7 +7,6 @@ import {
   type FoodRecord,
 } from '@/lib/notion';
 import { getLatestWeight } from '@/lib/repository/weightLogs';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -16,6 +15,7 @@ export const revalidate = 0;
 
 function computeStats(records: FoodRecord[], todayStr: string, _goalKcal: number) {
   void _goalKcal;
+  // 日別に集計
   const byDate = new Map<string, { kcal: number; recorded: boolean }>();
   for (const r of records) {
     const cur = byDate.get(r.date) || { kcal: 0, recorded: false };
@@ -24,6 +24,7 @@ function computeStats(records: FoodRecord[], todayStr: string, _goalKcal: number
     byDate.set(r.date, cur);
   }
 
+  // 当日含む直近30日
   const today = new Date(todayStr);
   let streakDays = 0;
   let bestStreakDays = 0;
@@ -46,6 +47,7 @@ function computeStats(records: FoodRecord[], todayStr: string, _goalKcal: number
       currentStreakInWindow++;
       if (currentStreakInWindow > bestStreakDays) bestStreakDays = currentStreakInWindow;
     } else {
+      // 当日は未記録でもストリーク継続扱い（記録途中の可能性）
       if (i !== 0) {
         stoppedCurrentStreak = true;
         currentStreakInWindow = 0;
@@ -61,32 +63,39 @@ function computeStats(records: FoodRecord[], todayStr: string, _goalKcal: number
   };
 }
 
-export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function GET(req: NextRequest) {
   try {
-    const dateParam = req.nextUrl.searchParams.get('date');
+    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
+    const dateParam = req.nextUrl.searchParams.get('date'); // yyyy-MM-dd, 省略時は今日
+    if (!lineUserId) {
+      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
+    }
     if (dateParam && !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
 
     const today = dateParam || getTargetDate('今日');
     const todayActual = getTargetDate('今日');
+    // バッジ（ストリーク）は常に「今日基点」で計算するため、選択日に関わらず直近30日を取得
     const startStr = (() => {
       const d = new Date(todayActual);
       d.setDate(d.getDate() - 29);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
 
+    // すべての主要Notion取得を最大限並列化
+    // 30日分の取得はバッジ計算用なので、遅い場合は空配列で返してホーム表示を優先（12秒）
     const last30TimeoutMs = 12_000;
     const [customer, records, last30Records, latestWeightLog] = await Promise.all([
-      getCustomerByLineId(verifiedLineUserId),
-      getFoodRecordsByDate(verifiedLineUserId, today),
+      getCustomerByLineId(lineUserId),
+      getFoodRecordsByDate(lineUserId, today),
       Promise.race([
-        getFoodRecordsByDateRange(verifiedLineUserId, startStr, todayActual).catch(() => [] as FoodRecord[]),
+        getFoodRecordsByDateRange(lineUserId, startStr, todayActual).catch(() => [] as FoodRecord[]),
         new Promise<FoodRecord[]>((resolve) =>
           setTimeout(() => resolve([]), last30TimeoutMs)
         ),
       ]),
-      getLatestWeight(verifiedLineUserId).catch(() => null),
+      getLatestWeight(lineUserId).catch(() => null),
     ]);
 
     if (!customer) {
@@ -99,12 +108,14 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
       );
     }
 
+    // 食事区分ごとにグルーピング
     const mealTypes: Array<'朝食' | '昼食' | '夕食' | '間食'> = ['朝食', '昼食', '夕食', '間食'];
     const mealsByType: Record<string, FoodRecord[]> = {};
     for (const t of mealTypes) {
       mealsByType[t] = records.filter((r) => r.mealType === t);
     }
 
+    // 合計
     const totals = records.reduce(
       (acc, r) => ({
         kcal: acc.kcal + r.kcal,
@@ -115,8 +126,12 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
+    // 体重・運動データは別 API /api/extras で取得（パフォーマンス改善のため /api/today から分離）
+
+    // ストリーク計算（常に今日基点で計算、過去日選択時もバッジは消えない）
     const stats = computeStats(last30Records, todayActual, customer.goals.kcal);
 
+    // 新DBの最新体重で currentWeight を上書き（顧客DBの値はキャッシュ用途として残す）
     const currentWeight = latestWeightLog?.weightKg ?? customer.currentWeight;
 
     const response = NextResponse.json({
@@ -132,16 +147,18 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
         totals,
         mealsByType,
         recordCount: records.length,
+        // weight/exercised/exerciseContent は /api/extras から取得（クライアント側で並列fetch）
         weight: '',
         exercised: '',
         exerciseContent: '',
       },
       stats,
     });
+    // ブラウザに10秒だけキャッシュ、その後30秒間は古い値を即返してバックグラウンド更新
     response.headers.set('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
     return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

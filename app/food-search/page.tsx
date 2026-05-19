@@ -7,7 +7,6 @@ import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
 import { Search, CheckCircle2, Home, Calendar as CalendarIcon, UtensilsCrossed, Trash2 } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 
@@ -165,10 +164,11 @@ function FoodSearchInner() {
       const results = await Promise.allSettled(
         lines.flatMap(({ item, qty }) =>
           Array.from({ length: qty }).map(() =>
-            apiFetch('/api/record/manual', {
+            fetch('/api/record/manual', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
+                lineUserId: userId,
                 mealType,
                 date: targetDate,
                 title: `${item.name}（${item.unit}）`,

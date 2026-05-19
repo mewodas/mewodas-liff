@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import PageHeader from '@/components/PageHeader';
-import OnboardingTour from '@/components/OnboardingTour';
 import {
   Camera,
   Image as ImageIcon,
@@ -29,33 +27,6 @@ import {
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
-
-const RECORD_TOUR_STEPS = [
-  {
-    target: 'record-photo',
-    title: '写真で記録する',
-    description: '食事の写真を撮ると、AIが料理を識別してカロリーとPFCを自動計算します。',
-    placement: 'bottom' as const,
-  },
-  {
-    target: 'record-text',
-    title: 'テキストでも記録できます',
-    description: '食材名と分量を入力するだけでもAIが栄養素を推定します。カメラが使えないときに便利です。',
-    placement: 'bottom' as const,
-  },
-  {
-    target: 'record-fooddb',
-    title: '食品DBから検索',
-    description: 'コンビニ食品や市販品はDBで検索して登録できます。素早く正確に記録できます。',
-    placement: 'bottom' as const,
-  },
-  {
-    target: 'record-save',
-    title: '最後に保存します',
-    description: '写真を選んだら「解析する」をタップ。AIが分析後に保存ボタンが表示されます。',
-    placement: 'top' as const,
-  },
-];
 
 type AnalyzedItem = {
   index: number;
@@ -215,7 +186,7 @@ export default function RecordPage() {
       const compressed = await Promise.all(files.slice(0, 2).map((f) => compressImage(f)));
       const form = new FormData();
       compressed.forEach((c) => form.append('photo', c));
-      const res = await apiFetch('/api/record/nutrition-label', { method: 'POST', body: form });
+      const res = await fetch('/api/record/nutrition-label', { method: 'POST', body: form });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `成分表解析失敗（${res.status}）`);
@@ -244,10 +215,11 @@ export default function RecordPage() {
     try {
       const name = edited?.name || labelResult.name;
       const k = edited?.perServing || labelResult.perServing;
-      const res = await apiFetch('/api/record/manual', {
+      const res = await fetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lineUserId: userId,
           mealType,
           date: targetDate,
           title: `${name}（${quantity}× ${labelResult.servingLabel}）`,
@@ -305,7 +277,7 @@ export default function RecordPage() {
       photoList.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
-      const res = await apiFetch('/api/record/analyze', {
+      const res = await fetch('/api/record/analyze', {
         method: 'POST',
         body: formData,
       });
@@ -334,6 +306,7 @@ export default function RecordPage() {
     setStage('saving');
     try {
       const formData = new FormData();
+      formData.append('lineUserId', userId);
       formData.append('date', targetDate);
       formData.append('mealType', mealType);
       formData.append('comment', comment);
@@ -341,7 +314,7 @@ export default function RecordPage() {
       photos.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
-      const res = await apiFetch('/api/record/confirm', {
+      const res = await fetch('/api/record/confirm', {
         method: 'POST',
         body: formData,
       });
@@ -378,10 +351,10 @@ export default function RecordPage() {
     setSkipping(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/record/skip', {
+      const res = await fetch('/api/record/skip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, date: targetDate }),
+        body: JSON.stringify({ lineUserId: userId, mealType, date: targetDate }),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
@@ -919,7 +892,7 @@ export default function RecordPage() {
       </div>
 
       {/* 最下部固定アクションバー：写真があるときは解析する、無いときは食べなかった */}
-      <div data-tour="record-save" className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
         <div className="max-w-md mx-auto">
           {previews.length > 0 ? (
             <button
@@ -951,10 +924,6 @@ export default function RecordPage() {
           onClose={() => setLabelResult(null)}
           onSave={(q, edited) => saveLabel(q, edited)}
         />
-      )}
-
-      {ready && stage === 'hub' && (
-        <OnboardingTour storageKey="fitmeal_tour_record_done" steps={RECORD_TOUR_STEPS} />
       )}
     </main>
   );

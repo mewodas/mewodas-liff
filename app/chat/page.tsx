@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { MessageCircle, User } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -75,10 +74,10 @@ export default function ChatPage() {
 
     try {
       const history = messages.map((m) => ({ role: m.role, content: m.content }));
-      const res = await apiFetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ lineUserId: userId, message: text, history }),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));

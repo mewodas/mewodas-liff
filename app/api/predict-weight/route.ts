@@ -6,7 +6,6 @@ import {
   isoToJpMd,
 } from '@/lib/notion';
 import { predictWeight } from '@/lib/gemini';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -21,8 +20,13 @@ function formatDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function GET(req: NextRequest) {
   try {
+    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
+    if (!lineUserId) {
+      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
+    }
+
     const today = jstNow();
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - 29); // 直近30日
@@ -30,7 +34,7 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     const startStr = formatDate(startDate);
     const endStr = formatDate(today);
 
-    const customer = await getCustomerByLineId(verifiedLineUserId);
+    const customer = await getCustomerByLineId(lineUserId);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
@@ -47,7 +51,7 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     }
 
     const [foodRecords, extras] = await Promise.all([
-      getFoodRecordsByDateRange(verifiedLineUserId, startStr, endStr),
+      getFoodRecordsByDateRange(lineUserId, startStr, endStr),
       customer.foodSheetPageId
         ? getRangeExtras(customer.foodSheetPageId, dateLabels)
         : Promise.resolve({}),
@@ -144,4 +148,4 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}

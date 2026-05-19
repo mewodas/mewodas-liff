@@ -10,12 +10,12 @@ export const dynamic = 'force-dynamic';
 const VALID_CATEGORIES = ['有酸素', '筋トレ', 'ストレッチ', 'その他'] as const;
 const VALID_INTENSITIES = ['軽い', '中等度', '激しい'] as const;
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export const POST = withLiffTenant(async (req: NextRequest) => {
   const body = await req.json();
-  const { date, exercise, category, durationMin, intensity, estimatedKcal, memo } = body;
+  const { lineUserId, date, exercise, category, durationMin, intensity, estimatedKcal, memo } = body;
 
-  if (!date || !exercise || !category || !intensity) {
-    return NextResponse.json({ error: 'date, exercise, category, intensity は必須です' }, { status: 400 });
+  if (!lineUserId || !date || !exercise || !category || !intensity) {
+    return NextResponse.json({ error: 'lineUserId, date, exercise, category, intensity は必須です' }, { status: 400 });
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
@@ -27,13 +27,13 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     return NextResponse.json({ error: `intensity は ${VALID_INTENSITIES.join('/')} のいずれか` }, { status: 400 });
   }
 
-  const customer = await getCustomerByLineId(verifiedLineUserId);
+  const customer = await getCustomerByLineId(lineUserId);
   if (!customer) {
     return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
   }
 
   const log = await createExerciseLog({
-    lineUserId: verifiedLineUserId,
+    lineUserId,
     customerName: customer.name,
     date,
     exercise: String(exercise),
@@ -47,11 +47,16 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
   return NextResponse.json({ ok: true, log });
 });
 
-export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export const GET = withLiffTenant(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
+  const lineUserId = searchParams.get('lineUserId') || '';
   const startDate = searchParams.get('startDate') || undefined;
   const endDate = searchParams.get('endDate') || undefined;
 
-  const logs = await listExerciseLogsByLineUser(verifiedLineUserId, startDate, endDate);
+  if (!lineUserId) {
+    return NextResponse.json({ error: 'lineUserId は必須です' }, { status: 400 });
+  }
+
+  const logs = await listExerciseLogsByLineUser(lineUserId, startDate, endDate);
   return NextResponse.json({ logs });
 });

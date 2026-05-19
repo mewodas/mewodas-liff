@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { TrendingDown, BarChart3, CheckCircle2, AlertTriangle, MessageCircle, Lightbulb } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
 
@@ -56,8 +55,8 @@ export default function PredictionPage() {
         const today = jstToday();
 
         // 顧客情報（体重目標）取得
-        const todayRes = await apiFetch(
-          `/api/today?date=${today}&t=${Date.now()}`,
+        const todayRes = await fetch(
+          `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${today}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (todayRes.ok) {
@@ -80,8 +79,8 @@ export default function PredictionPage() {
           }
         }
         setLoading(true);
-        const res = await apiFetch(
-          `/api/predict-weight?t=${Date.now()}`,
+        const res = await fetch(
+          `/api/predict-weight?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) throw new Error(`予測取得失敗（${res.status}）`);

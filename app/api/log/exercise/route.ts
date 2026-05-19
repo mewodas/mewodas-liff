@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -30,14 +29,14 @@ async function callGasSaveExercise(payload: {
   }
 }
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { date, exercised, content } = body;
+    const { lineUserId, date, exercised, content } = body;
 
-    if (!date || typeof exercised !== 'boolean') {
+    if (!lineUserId || !date || typeof exercised !== 'boolean') {
       return NextResponse.json(
-        { error: 'date, exercised(bool) が必要です' },
+        { error: 'lineUserId, date, exercised(bool) が必要です' },
         { status: 400 }
       );
     }
@@ -45,8 +44,9 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
 
+    // GAS書き込み完了を待ってからレスポンス（上書き反映を確実にする）
     await callGasSaveExercise({
-      lineUserId: verifiedLineUserId,
+      lineUserId,
       date,
       exercised,
       content: content || '',
@@ -57,4 +57,4 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-});
+}
