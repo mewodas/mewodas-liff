@@ -355,7 +355,15 @@ export async function updateCustomer(
       : { date: { start: patch.tourResetAt } };
   }
   if (Object.keys(properties).length === 0) return;
-  await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  // DEBUG (staging only): PATCH 送信内容を Vercel logs に出力
+  // eslint-disable-next-line no-console
+  console.log('[updateCustomer] DEBUG pageId:', pageId, 'properties:', JSON.stringify(properties));
+  const result = await notionRequest('PATCH', `/pages/${pageId}`, { properties });
+  // eslint-disable-next-line no-console
+  console.log('[updateCustomer] DEBUG Notion response properties:', JSON.stringify({
+    onboardingCompletedAt: result?.properties?.['オンボーディング完了日時'],
+    tourResetAt: result?.properties?.['ツアーリセット日時'],
+  }));
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:customer:`);
   invalidate(`${tenantId}:customers:`);
