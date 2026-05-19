@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: 契約画面に解約予約状態を表示 + プロフィール画面を読み取り専用へ戻し
+
+- staging で社長確認済み（解約予約バナー / 「解約予定日」表示 / プロフィール読み取り専用化）
+- マージ commit: 81e3acd（feature commit 5bc2b07）
+- Stripe Dashboard 側: トライアル7日前 / 有効期限が近いカード / カード決済失敗 / 決済手段の更新「Stripe 上のページにリンク」/ サブスクリプション管理リンク を社長作業で ON 済み
+- 影響範囲: 顧客側 LIFF `/profile`、管理画面 `/admin/billing`・`/store/billing`、API `/api/admin/billing/info`
+
 ## 2026-05-20 (staging) – 契約画面に解約予約状態を表示 + プロフィール画面を読み取り専用へ戻し
 
 - feat(admin/billing): Stripe Subscription の `cancel_at_period_end` を `/api/admin/billing/info` で取得し、解約予約中であることを契約画面に表示（黄色バナー、「支払いステータス: 解約予約中」、「次回請求日 → 解約予定日」）
