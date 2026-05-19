@@ -9,9 +9,9 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   // camera needed for meal-photo capture in LIFF
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
-  // Report-Only first — switch to Content-Security-Policy once LIFF SDK compatibility confirmed
+  // staging で enforce 検証中。問題なければ main にも同じ enforce で展開
   {
-    key: 'Content-Security-Policy-Report-Only',
+    key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://va.vercel-scripts.com",
