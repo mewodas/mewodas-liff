@@ -31,7 +31,10 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
   const tenantRow = rows.find((r) => r.tenantId === tenantId);
   const seatLimit = tenantRow?.seatLimit ?? null;
   const planTier = tenantRow?.planTier ?? null;
-  const hasContract = !!(tenantRow?.stripeSubscriptionId && tenantRow?.paymentStatus === '有効');
+  const hasContract = !!(
+    tenantRow?.stripeSubscriptionId &&
+    (tenantRow?.paymentStatus === '有効' || tenantRow?.paymentStatus === 'お試し')
+  );
   const currentSeats = customers.length;
   const remaining = seatLimit !== null ? seatLimit - currentSeats : null;
   const isOverLimit = seatLimit !== null ? currentSeats >= seatLimit : false;

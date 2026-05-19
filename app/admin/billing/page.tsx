@@ -66,9 +66,6 @@ export default function BillingPage() {
       const j = await r.json();
       if (j.error) throw new Error(j.error);
       setInfo(j);
-      if (!j.hasContract && j.currentSeats > MIN_SEATS) {
-        setSeats(Math.max(MIN_SEATS, j.currentSeats));
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -262,15 +259,31 @@ export default function BillingPage() {
                   </section>
                 )}
 
-                {/* プラン比較 */}
+                {/* プラン比較（席数で自動判定・選択不可） */}
+                <div className="text-[11px] text-stone-600 text-center font-bold">
+                  プラン一覧（席数によって自動で決まります）
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   {([
                     { tier: 'Starter', range: '3〜20名', minSeats: 3, unitPrice: 2750 },
                     { tier: 'Growth', range: '21〜50名', minSeats: 21, unitPrice: 2200 },
                     { tier: 'Scale', range: '51名+', minSeats: 51, unitPrice: 1650 },
                   ] as const).map((p) => (
-                    <div key={p.tier} className={`bg-white rounded-xl border p-3 space-y-1 text-center ${tier === p.tier ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200'}`}>
-                      <div className="text-xs font-bold text-stone-900">{p.tier}</div>
+                    <div
+                      key={p.tier}
+                      aria-disabled
+                      className={`rounded-xl border-2 p-3 space-y-1 text-center select-none ${
+                        tier === p.tier
+                          ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                          : 'border-dashed border-stone-200 bg-stone-50 opacity-70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-stone-900 inline-flex items-center gap-1 justify-center">
+                        {p.tier}
+                        {tier === p.tier && (
+                          <span className="text-[9px] text-emerald-700 bg-emerald-200 rounded px-1">適用中</span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-stone-500">{p.range}</div>
                       <div className="text-sm font-bold text-emerald-700">¥{p.unitPrice.toLocaleString()}</div>
                       <div className="text-[9px] text-stone-500">/人/月</div>
@@ -280,7 +293,9 @@ export default function BillingPage() {
                     </div>
                   ))}
                 </div>
-                <div className="text-[10px] text-stone-500 text-center">サポート費 ¥5,500/月 + per-user × 席数（すべて税込）</div>
+                <div className="text-[10px] text-stone-500 text-center">
+                  サポート費 ¥5,500/月 + per-user × 席数（すべて税込）
+                </div>
 
                 {/* 新規契約フォーム */}
                 <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
@@ -330,13 +345,20 @@ export default function BillingPage() {
                     </div>
                   </div>
 
+                  <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-3 text-center">
+                    <div className="text-xs font-bold text-blue-900 mb-0.5">🎁 14日間 無料トライアル</div>
+                    <div className="text-[10px] text-blue-800">
+                      カード登録後 14日間は請求されません。期間中いつでもキャンセル可能。
+                    </div>
+                  </div>
+
                   <button
                     onClick={startCheckout}
                     disabled={processing}
                     className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" strokeWidth={2.2} />
-                    {processing ? '処理中…' : 'カード登録してプラン開始'}
+                    {processing ? '処理中…' : '無料で14日間試す（カード登録）'}
                   </button>
 
                   <div className="text-[10px] text-stone-500 text-center">

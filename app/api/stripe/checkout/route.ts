@@ -96,6 +96,10 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     success_url: `${origin}/store/billing?success=1`,
     cancel_url: `${origin}/store/billing?canceled=1`,
     metadata: { tenantId: tenant.id, seats: String(seats), planTier: tier },
+    subscription_data: {
+      trial_period_days: 14,
+      metadata: { tenantId: tenant.id, seats: String(seats), planTier: tier },
+    },
   });
 
   return NextResponse.json({ url: session.url, sessionId: session.id });

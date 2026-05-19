@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-19 19:00 (本番) – /store/billing UX 改善 + 14日無料トライアル追加
+
+- feat(billing): Stripe Checkout に 14日間の無料トライアル `trial_period_days: 14` を追加
+- feat(billing): 「無料で14日間試す（カード登録）」ボタン文言に変更、トライアル説明バナー追加
+- fix(billing): 席数入力の初期値を常に `MIN_SEATS=3` に固定（旧: 現在の顧客数まで自動増加 → 9 で初期表示されていた）
+- fix(billing): プランカードを「席数で自動判定」と明示。点線ボーダー＋低彩度で非クリック視覚化、適用中の tier に「適用中」バッジ
+- fix(seats): トライアル中（paymentStatus='お試し'）も `hasContract=true` 判定に含める（招待ブロック等が正しく動くように）
+- 影響範囲: 管理画面 `/store/billing` `/admin/billing` UI、Stripe Checkout 動作
+
 ## 2026-05-19 18:30 (本番) – FitMeal 料金を Stripe 本番Priceに合わせて税込統一
 
 - fix(stripe): `SUPPORT_FEE` 5,000→5,500、Starter 2,500→2,750、Growth 2,000→2,200、Scale 1,500→1,650 に変更（Stripe Liveで税込登録されたPriceに合わせる仮対応）
