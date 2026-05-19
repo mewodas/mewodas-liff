@@ -253,7 +253,7 @@ export async function createCustomer(input: {
     properties['プラン'] = { select: { name: input.plan } };
   }
   if (typeof input.currentWeight === 'number') {
-    properties['現在体重(kg)'] = { number: input.currentWeight };
+    properties['開始体重(kg)'] = { number: input.currentWeight };
   }
   if (typeof input.targetWeight === 'number') {
     properties['目標体重(kg)'] = { number: input.targetWeight };
@@ -346,7 +346,7 @@ export async function updateCustomer(
       : { rich_text: [] };
   }
   if (patch.currentWeight !== undefined) {
-    properties['現在体重(kg)'] = patch.currentWeight === null ? { number: null } : { number: patch.currentWeight };
+    properties['開始体重(kg)'] = patch.currentWeight === null ? { number: null } : { number: patch.currentWeight };
   }
   if (patch.onboardingCompletedAt !== undefined) {
     properties['オンボーディング完了日時'] = patch.onboardingCompletedAt === null

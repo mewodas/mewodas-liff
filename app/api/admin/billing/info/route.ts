@@ -6,6 +6,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantRows } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { getSeatStatus } from '@/lib/seats';
+import { getStripe } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,27 @@ export const GET = withAdminTenant(async () => {
   if (!t) {
     return NextResponse.json({ error: 'テナント未登録' }, { status: 404 });
   }
+
+  // Stripe Subscription を直接照会して解約予約 (cancel_at_period_end) を取得。
+  // Webhook はトライアル中の予約では status 変化を受けないため、最新状態は API 経由が確実。
+  let cancelAtPeriodEnd = false;
+  let cancelAt: string | null = null;
+  if (t.stripeSubscriptionId) {
+    try {
+      const sub = await getStripe().subscriptions.retrieve(t.stripeSubscriptionId);
+      cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+      const ts =
+        sub.cancel_at ??
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (sub as any).current_period_end ??
+        sub.items.data[0]?.current_period_end ??
+        null;
+      cancelAt = ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+    } catch (e) {
+      console.error('Stripe subscription retrieve 失敗:', e);
+    }
+  }
+
   return NextResponse.json({
     tenantName: t.name,
     ownerEmail: t.ownerEmail,
@@ -30,6 +52,8 @@ export const GET = withAdminTenant(async () => {
     nextBillingDate: t.nextBillingDate,
     paymentStatus: t.paymentStatus,
     hasStripeCustomer: !!t.stripeCustomerId,
+    cancelAtPeriodEnd,
+    cancelAt,
     // 席数ステータス
     seatLimit: seatStatus.seatLimit,
     currentSeats: seatStatus.currentSeats,
