@@ -18,8 +18,10 @@ export type SeatStatus = {
   hasContract: boolean;
 };
 
-/** 席数カウント対象から外すステータス */
-const INACTIVE_FOOD_STATUSES = new Set(['休止中', '卒業']);
+/** 席数カウント対象のステータス（進行中のみ）
+ *  設定中（仮登録/オンボード中）、休止中、卒業 は seat を消費しない
+ */
+const ACTIVE_FOOD_STATUS = '進行中';
 
 export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatStatus> {
   const tenantId = getCurrentTenant().id;
@@ -41,10 +43,8 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
     tenantRow?.stripeSubscriptionId &&
     (tenantRow?.paymentStatus === '有効' || tenantRow?.paymentStatus === 'お試し')
   );
-  // 休止中・卒業は seat カウントから除外（アクティブ顧客のみ）
-  const activeCustomers = customers.filter(
-    (c) => !c.foodStatus || !INACTIVE_FOOD_STATUSES.has(c.foodStatus)
-  );
+  // 「進行中」顧客のみ seat カウント対象（設定中・休止中・卒業は除外）
+  const activeCustomers = customers.filter((c) => c.foodStatus === ACTIVE_FOOD_STATUS);
   const currentSeats = activeCustomers.length;
   const totalCustomers = customers.length;
   const remaining = seatLimit !== null ? seatLimit - currentSeats : null;
