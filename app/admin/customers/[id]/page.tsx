@@ -967,7 +967,7 @@ export default function CustomerDetailPage({
                   type="button"
                   onClick={resetOnboarding}
                   disabled={resettingOnboard}
-                  className="flex-1 bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
                   {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
