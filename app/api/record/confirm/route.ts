@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
 import { saveImagesToDriveAsync } from '@/lib/drive';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -15,10 +16,9 @@ type ItemPayload = {
   C: number;
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const contentType = req.headers.get('content-type') || '';
-    let lineUserId = '';
     let day = '';
     let mealType = '';
     let comment = '';
@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
     let date = '';
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
-      lineUserId = String(formData.get('lineUserId') || '');
       day = String(formData.get('day') || '');
       date = String(formData.get('date') || '');
       mealType = String(formData.get('mealType') || '');
@@ -50,7 +49,6 @@ export async function POST(req: NextRequest) {
       }
     } else {
       const body = await req.json();
-      lineUserId = body.lineUserId || '';
       day = body.day || '';
       date = body.date || '';
       mealType = body.mealType || '';
@@ -58,8 +56,8 @@ export async function POST(req: NextRequest) {
       items = Array.isArray(body.items) ? body.items : [];
     }
 
-    if (!lineUserId || !mealType) {
-      return NextResponse.json({ error: 'lineUserId と mealType は必須です' }, { status: 400 });
+    if (!mealType) {
+      return NextResponse.json({ error: 'mealType は必須です' }, { status: 400 });
     }
     const validMeals = ['朝食', '昼食', '夕食', '間食'];
     if (!validMeals.includes(mealType)) {
@@ -72,7 +70,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const customer = await getCustomerByLineId(lineUserId);
+    const customer = await getCustomerByLineId(verifiedLineUserId);
     if (!customer || customer.foodStatus !== '進行中') {
       return NextResponse.json(
         { error: '食事管理サービス対象外、またはステータスが進行中ではありません' },
@@ -80,7 +78,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 合計（レスポンス用）
     const totals = items.reduce(
       (acc, it) => ({
         kcal: acc.kcal + (it.kcal || 0),
@@ -91,14 +88,11 @@ export async function POST(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // date(yyyy-MM-dd) があればそれを優先、なければ day(今日/昨日) から算出
     const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
       ? date
       : getTargetDate(day || '今日');
     const trimmedComment = comment.trim() || null;
 
-    // 重複「合計エントリ」フィルタ：他のアイテムの名前を2つ以上含むエントリは
-    // AI が生成した「全体まとめ」とみなして除外（ダブルカウント防止）
     const beforeDedup = items.length;
     items = items.filter((it, idx) => {
       const name = String(it.name || '');
@@ -111,7 +105,6 @@ export async function POST(req: NextRequest) {
           containsCount++;
         }
       }
-      // 他の item を2つ以上含む = 合計エントリと判定
       return containsCount < 2;
     });
     if (items.length !== beforeDedup) {
@@ -122,13 +115,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'すべてのitemsが除外されました（重複検出）' }, { status: 400 });
     }
 
-    // 各アイテムを別レコードとして保存（並列）
-    // → ホーム画面で個別の食材として表示できる
     const saveResults = await Promise.all(
       items.map((it, idx) =>
         saveFoodRecord({
           customerName: customer.name,
-          lineUserId,
+          lineUserId: verifiedLineUserId,
           pfc: {
             kcal: Math.round(it.kcal || 0),
             P: Math.round((it.P || 0) * 10) / 10,
@@ -139,13 +130,11 @@ export async function POST(req: NextRequest) {
           mealType,
           goals: customer.goals,
           targetDate,
-          // 顧客メモは最初のレコードにのみ紐付け（重複を避ける）
           supplementText: idx === 0 ? trimmedComment : null,
         })
       )
     );
 
-    // Drive保存：全レコードに同じ画像URLを書き込む（AI一括登録で写真を共有）
     const firstRecord = saveResults[0];
     if (images.length > 0 && firstRecord && firstRecord.id) {
       const allPageIds = saveResults
@@ -156,7 +145,7 @@ export async function POST(req: NextRequest) {
           notionPageId: firstRecord.id,
           notionPageIds: allPageIds,
           customerName: customer.name,
-          lineUserId,
+          lineUserId: verifiedLineUserId,
           photos: images,
         })
       );
@@ -175,4 +164,4 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

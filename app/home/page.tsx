@@ -4,11 +4,11 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
-import OnboardingTour, { type TourStep } from '@/components/OnboardingTour';
 import OnboardingFlow from '@/components/OnboardingFlow';
 import {
   Calendar as CalendarIcon,
@@ -49,28 +49,6 @@ const MEAL_COLOR: Record<string, string> = {
   夕食: 'text-indigo-500',
   間食: 'text-pink-500',
 };
-
-// アクション型オンボーディング：
-// step1（初回起動）：食事を記録してみよう → 食事記録ボタンを指す
-// step2（食事記録完了後）：振り返りはここから → メニュータブを指す
-const ONBOARDING_STEP1: TourStep[] = [
-  {
-    target: 'footer-record',
-    title: 'まずは食事を1つ記録しましょう',
-    description:
-      '下の「食事記録」をタップ。写真や食品DB、テキストなどお好きな方法で記録できます。',
-    placement: 'top',
-  },
-];
-const ONBOARDING_STEP2: TourStep[] = [
-  {
-    target: 'footer-menu',
-    title: '記録お疲れさまでした！',
-    description:
-      '「メニュー」タブから履歴・週次レポート・AI献立など、振り返り機能にアクセスできます。',
-    placement: 'top',
-  },
-];
 
 type MealRecord = {
   pageId: string;
@@ -212,7 +190,7 @@ function HomePageInner() {
     if (!userId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/customer/me?lineUserId=${encodeURIComponent(userId)}`, {
+        const res = await apiFetch(`/api/customer/me`, {
           cache: 'no-store',
         });
         if (!res.ok) {
@@ -267,7 +245,7 @@ function HomePageInner() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/notifications?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`, {
+        const res = await apiFetch(`/api/notifications?t=${Date.now()}`, {
           cache: 'no-store',
         });
         if (!res.ok) return;
@@ -308,12 +286,12 @@ function HomePageInner() {
       try {
         // /api/today（食事・バッジ）と /api/extras（体重・運動）を並列fetch
         const [todayRes, extrasRes] = await Promise.all([
-          fetch(
-            `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+          apiFetch(
+            `/api/today?date=${selectedDate}&t=${Date.now()}`,
             { cache: 'no-store' }
           ),
-          fetch(
-            `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+          apiFetch(
+            `/api/extras?date=${selectedDate}&t=${Date.now()}`,
             { cache: 'no-store' }
           ).catch(() => null),
         ]);
@@ -508,12 +486,12 @@ function HomePageInner() {
               if (userId) {
                 // today + extras を並列再 fetch して体重・運動の最新値を反映
                 Promise.all([
-                  fetch(
-                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                  apiFetch(
+                    `/api/today?date=${selectedDate}&t=${Date.now()}`,
                     { cache: 'no-store' }
                   ).then((r) => r.json()),
-                  fetch(
-                    `/api/extras?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                  apiFetch(
+                    `/api/extras?date=${selectedDate}&t=${Date.now()}`,
                     { cache: 'no-store' }
                   ).then((r) => r.json()).catch(() => null),
                 ])
@@ -616,8 +594,8 @@ function HomePageInner() {
                 router.refresh();
                 // 強制再取得：URLは同じだが直接フェッチ
                 if (userId) {
-                  fetch(
-                    `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${selectedDate}&t=${Date.now()}`,
+                  apiFetch(
+                    `/api/today?date=${selectedDate}&t=${Date.now()}`,
                     { cache: 'no-store' }
                   )
                     .then((r) => r.json())
@@ -641,58 +619,9 @@ function HomePageInner() {
         <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
       )}
 
-      {/* オンボーディング（アクション誘導型）— OnboardingFlow 表示中は非表示 */}
-      {ready && data && !showOnboarding && (
-        <HomeOnboarding hasRecords={today.recordCount > 0} />
-      )}
     </main>
     </>
   );
-}
-function HomeOnboarding({ hasRecords }: { hasRecords: boolean }) {
-  const [step, setStep] = useState<'step1' | 'step2' | 'done' | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem('mewodas_onboarding_step');
-    if (stored === 'completed') {
-      setStep('done');
-    } else if (stored === 'meal_done') {
-      setStep('step2');
-    } else if (!hasRecords) {
-      setStep('step1');
-    } else {
-      // 既に食事を記録済み（オンボ未経由）→ オンボ完了扱い
-      window.localStorage.setItem('mewodas_onboarding_step', 'completed');
-      setStep('done');
-    }
-  }, [hasRecords]);
-
-  if (step === 'step1') {
-    return (
-      <OnboardingTour
-        storageKey="mewodas_onboarding_step1_seen"
-        steps={ONBOARDING_STEP1}
-      />
-    );
-  }
-  if (step === 'step2') {
-    return (
-      <OnboardingTour
-        storageKey="mewodas_onboarding_step2_seen"
-        steps={ONBOARDING_STEP2}
-        onComplete={() => {
-          try {
-            window.localStorage.setItem('mewodas_onboarding_step', 'completed');
-          } catch {
-            // ignore
-          }
-          setStep('done');
-        }}
-      />
-    );
-  }
-  return null;
 }
 
 function BadgeModal({

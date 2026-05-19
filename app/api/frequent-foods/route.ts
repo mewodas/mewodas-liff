@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, getFoodRecordsByDateRange } from '@/lib/notion';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -34,17 +35,12 @@ function normalizeTitle(raw: string): string {
     .trim();
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
-    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '8', 10);
     const days = parseInt(req.nextUrl.searchParams.get('days') || '90', 10);
 
-    if (!lineUserId) {
-      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
-    }
-
-    const customer = await getCustomerByLineId(lineUserId);
+    const customer = await getCustomerByLineId(verifiedLineUserId);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
@@ -55,7 +51,7 @@ export async function GET(req: NextRequest) {
     const start = jstDateString(startDate);
     const end = jstDateString(now);
 
-    const records = await getFoodRecordsByDateRange(lineUserId, start, end);
+    const records = await getFoodRecordsByDateRange(verifiedLineUserId, start, end);
 
     type Bucket = {
       title: string;
@@ -118,4 +114,4 @@ export async function GET(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

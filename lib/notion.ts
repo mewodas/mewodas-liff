@@ -367,6 +367,17 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
+// pageId が現テナントの食事DBに属することを確認。不一致なら例外 throw
+export async function assertFoodRecordOwnership(pageId: string): Promise<void> {
+  const page = await notionRequest('GET', `/pages/${pageId}`);
+  const parent = page?.parent;
+  const expectedDbId = getTenantNotion().foodDbId.replace(/-/g, '');
+  const actualDbId = (parent?.database_id || '').replace(/-/g, '');
+  if (parent?.type !== 'database_id' || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: pageId does not belong to tenant');
+  }
+}
+
 // ===== テナント自動プロビジョニング =====
 
 // 新規ジム用の「{ジム名} 顧客」DB を作成。FitMeal 顧客スキーマと同じ構造。

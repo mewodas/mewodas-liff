@@ -31,6 +31,11 @@ export async function getLineProfile() {
   return liff.getProfile();
 }
 
+export async function getIdToken(): Promise<string | null> {
+  await initLiff();
+  return liff.getIDToken();
+}
+
 export async function closeLiff(): Promise<void> {
   // 初期化前に呼ばれる可能性に備えてinitLiffを保証
   try {

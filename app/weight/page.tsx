@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import { Scale, CheckCircle2 } from 'lucide-react';
@@ -57,10 +58,10 @@ export default function WeightPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/log/weight', {
+      const res = await apiFetch('/api/log/weight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: userId, date, weight: w }),
+        body: JSON.stringify({ date, weight: w }),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));

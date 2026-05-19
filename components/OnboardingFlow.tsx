@@ -8,6 +8,7 @@ import {
   Camera,
   X,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 type Props = {
   customerName: string;
@@ -71,7 +72,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
 
   async function markOnboarded(): Promise<void> {
     try {
-      await fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
+      await apiFetch(`/api/customer/onboarding`, {
         method: 'POST',
       });
     } catch {

@@ -21,6 +21,8 @@
 - 影響範囲: 顧客側 API 全LIFFルート（13新規ラップ + 既存5ルート挙動更新） / 顧客側全LIFF page (fetch wrapper)
 - 詳細: LINE IDトークンをサーバーで LINE Verify API 検証 / pageIdテナント境界チェック
 - 関連: セキュリティ監査 2026-05-19
+- 追補(code-review対応): 未保護ルート5件追加ラップ（extras/predict-weight/meal-plan/suggest/frequent-foods）、notifications/[id]/read を withLiffTenant ラップ、aud検証追加、LRU eviction バグ修正、meal-plan/notifications/record の apiFetch 置換漏れ3件修正
+- 追補2: channel ID を専用 env から取得する方式をやめ NEXT_PUBLIC_LIFF_ID のプレフィックス抽出に変更（env 追加作業を回避。Channel ID は元々公開情報のためサーバー検証への使用も安全）
 
 ## 2026-05-19 (staging) – オンボーディング追加修正 3点
 
