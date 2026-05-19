@@ -89,7 +89,7 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     }
     // staging 等の環境分離のため、非本番で env override があれば最優先
     const tenantIdOverride =
-      process.env.NODE_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
+      process.env.VERCEL_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
     const tenantId = tenantIdOverride || session.currentTenantId || 'mewodas';
     // Notion テナント DB アクセス失敗時はデフォルト（MEWODAS）にフォールバック
     let tenant;
@@ -150,7 +150,7 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
 
     // --- テナント解決 ---
     const overrideId =
-      process.env.NODE_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
+      process.env.VERCEL_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
     if (overrideId) {
       try {
         const tenant = (await getTenantByIdAsync(overrideId)) || getDefaultTenant();
