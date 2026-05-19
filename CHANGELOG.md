@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – 食事記録ページ ツアー data-tour 属性補完
+
+- fix(onboarding): `record-photo`（写真を撮る）・`record-fooddb`（食品DB）・`record-text`（テキストで記録）カードに data-tour 属性が欠落していた問題を修正
+- fix(onboarding): HubButton コンポーネントに `data-tour` prop を追加して button 要素に伝達
+- 影響範囲: 顧客側 / 食事記録ページ初回ツアー step 1〜3
+
 ## 2026-05-19 (staging) – Security Critical 再着手 + 漏れ修正 + onboarding tour 拡張
 
 - security(Critical): LIFF lineUserId 自己申告なりすまし防止を staging に再適用（前回 revert 後の漏れ追補込み）

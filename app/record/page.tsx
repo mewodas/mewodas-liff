@@ -826,6 +826,7 @@ export default function RecordPage() {
           {/* 写真を撮る：labelでhidden inputをラップしてWebViewのカメラ起動を確実に */}
           <label
             htmlFor="record-camera-input"
+            data-tour="record-photo"
             className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
           >
             <Camera className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
@@ -842,6 +843,7 @@ export default function RecordPage() {
             onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
           />
           <HubButton
+            data-tour="record-fooddb"
             icon={<Search className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="食品DB"
             onClick={() => router.push('/food-search')}
@@ -854,6 +856,7 @@ export default function RecordPage() {
             <span className="text-sm font-bold text-stone-900 text-center leading-tight">成分表を撮る</span>
           </label>
           <HubButton
+            data-tour="record-text"
             icon={<FileText className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="テキストで記録"
             onClick={() => setStage('memo')}
@@ -1236,14 +1239,17 @@ function HubButton({
   icon,
   label,
   onClick,
+  'data-tour': dataTour,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
+  'data-tour'?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      data-tour={dataTour}
       className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50"
     >
       <span className="mb-2 flex items-center justify-center">{icon}</span>
