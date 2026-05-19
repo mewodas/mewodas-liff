@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-19 CI 修正: Daily Snapshot Tag workflow の git ident 設定
+- fix(.github/workflows/daily-snapshot.yml): `git tag -a` で `fatal: empty ident name not allowed` を起こしていた問題を、`git config user.email/user.name` を step 内で設定して解消
+- 影響範囲: ロールバック網（毎日 JST 23:00 に `stable-YYYY-MM-DD` タグを自動作成）
+- 背景: 2026-05-16〜18 の3日間連続で workflow が失敗し、`stable-YYYY-MM-DD` の日次タグが作られていなかった。緊急ロールバック手順（AGENTS.md §5）が機能しない状態
+- 残課題: 失敗した 5/16〜5/18 分のタグは未生成。次回 5/19 23:00 (UTC 14:00) の自動実行で動作確認
+
 ## 2026-05-19 オンボーディングリセットを /store でも表示
 - UI改善: 顧客詳細ページのオンボーディングリセットセクションから `isAdminRoute` ガードを撤去。/admin と /store の両方で表示・実行可能に
 - API側は `/api/admin/customers/[id]/onboarding` DELETE を共通利用（withAdminTenant が同一の Cookie セッションで /store 利用者も認証可）
