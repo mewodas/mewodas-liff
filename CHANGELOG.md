@@ -1,6 +1,15 @@
 # CHANGELOG
 
-## 2026-05-20 (staging) – Notion フィールドリネーム完了: 書き込み側を新名に切り替え
+## 2026-05-20 (staging) – 契約画面に解約予約状態を表示 + プロフィール画面を読み取り専用へ戻し
+
+- feat(admin/billing): Stripe Subscription の `cancel_at_period_end` を `/api/admin/billing/info` で取得し、解約予約中であることを契約画面に表示（黄色バナー、「支払いステータス: 解約予約中」、「次回請求日 → 解約予定日」）
+- 背景: トライアル中に Stripe Portal から解約しても画面上は「お試し」「次回請求日」のままで、解約手続きが完了したかオーナーが判別できなかった（Stripe Webhook は `cancel_at_period_end` を見ていない）
+- revert(liff/profile): 顧客側プロフィール画面の自己編集機能（氏名・性別・身長・体重・生年月日の入力フォーム＋保存ボタン）を削除し、`/goals` と同じスタイルの読み取り専用 UI に戻す
+- 設計判断: 修正はトレーナーが Notion で実施するルール（[[feedback_liff_customer_role]]）を再徹底。`PATCH /api/customer/me` 自体は他経路（onboarding 等）で利用中のため温存
+- 影響範囲: 管理画面 `/admin/billing`・`/store/billing`、API `/api/admin/billing/info`、顧客 LIFF `/profile`
+- 補足: Stripe 側からの解約確認メールは Dashboard → Settings → Billing → Customer portal の Email 通知設定でオン（社長作業）
+
+
 
 - fix(lib/notion): `createCustomer` の書き込みを「開始体重(kg)」に切り替え（旧名「現在体重(kg)」を廃止）
 - fix(lib/notion): `updateCustomer` の書き込みを「開始体重(kg)」に切り替え

@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ExternalLink,
   TrendingUp,
+  XCircle,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import SeatChangeModal from './SeatChangeModal';
@@ -50,6 +51,8 @@ type BillingInfo = {
   isNearLimit: boolean;
   planTier: string | null;
   hasContract: boolean;
+  cancelAtPeriodEnd: boolean;
+  cancelAt: string | null;
 };
 
 export default function BillingPage() {
@@ -159,6 +162,20 @@ export default function BillingPage() {
               </div>
             )}
 
+            {/* 解約予約中バナー（次回請求日に解約発動） */}
+            {info?.cancelAtPeriodEnd && (
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+                <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
+                <div>
+                  <div className="font-bold">解約予約中です</div>
+                  <div>
+                    {info.cancelAt || '次回請求日'} に解約され、それ以降ご利用いただけません。
+                    取り消したい場合は「カード・解約」から復元できます。
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 契約済み */}
             {info?.hasContract && info.seatLimit !== null ? (
               <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
@@ -172,8 +189,9 @@ export default function BillingPage() {
                   <Stat label="プラン" value={info.planTier || '—'} />
                   <Stat
                     label="支払いステータス"
-                    value={info.paymentStatus || '—'}
-                    highlight={info.paymentStatus === '有効'}
+                    value={info.cancelAtPeriodEnd ? '解約予約中' : (info.paymentStatus || '—')}
+                    highlight={!info.cancelAtPeriodEnd && info.paymentStatus === '有効'}
+                    danger={info.cancelAtPeriodEnd}
                   />
                 </div>
 
@@ -213,8 +231,9 @@ export default function BillingPage() {
                     value={info.monthlyPrice ? `¥${info.monthlyPrice.toLocaleString()}` : '—'}
                   />
                   <Stat
-                    label="次回請求日"
-                    value={info.nextBillingDate || '—'}
+                    label={info.cancelAtPeriodEnd ? '解約予定日' : '次回請求日'}
+                    value={(info.cancelAtPeriodEnd ? info.cancelAt : info.nextBillingDate) || '—'}
+                    danger={info.cancelAtPeriodEnd}
                   />
                 </div>
 
@@ -368,7 +387,7 @@ export default function BillingPage() {
             )}
 
             {/* ステータス系バナー */}
-            {info?.paymentStatus === 'お試し' && (
+            {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (
               <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl inline-flex gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 お試し期間中です。期間終了前にカード登録をお願いします。
@@ -387,11 +406,25 @@ export default function BillingPage() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Stat({
+  label,
+  value,
+  highlight,
+  danger,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  danger?: boolean;
+}) {
   return (
-    <div className="bg-stone-50 rounded-xl p-3">
+    <div className={`rounded-xl p-3 ${danger ? 'bg-amber-50 border border-amber-200' : 'bg-stone-50'}`}>
       <div className="text-[10px] text-stone-500 font-bold mb-1">{label}</div>
-      <div className={`text-sm font-bold ${highlight ? 'text-emerald-700' : 'text-stone-900'}`}>
+      <div
+        className={`text-sm font-bold ${
+          danger ? 'text-amber-800' : highlight ? 'text-emerald-700' : 'text-stone-900'
+        }`}
+      >
         {value}
       </div>
     </div>
