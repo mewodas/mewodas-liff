@@ -71,33 +71,35 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     };
   }, [step]);
 
-  function complete() {
-    if (completing) return;
-    setCompleting(true);
-    fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
-      method: 'POST',
-    }).catch(() => {});
-    setTimeout(() => {
-      window.location.href = '/home';
-    }, 100);
+  async function markOnboarded(): Promise<void> {
+    try {
+      await fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
+        method: 'POST',
+      });
+    } catch {
+      // API失敗でもリダイレクトは続行
+    }
   }
 
-  function completeAndRecord() {
+  async function complete() {
     if (completing) return;
     setCompleting(true);
-    fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
-      method: 'POST',
-    }).catch(() => {});
-    setTimeout(() => {
-      window.location.href = '/record';
-    }, 100);
+    await markOnboarded();
+    window.location.href = '/home';
   }
 
-  function next() {
+  async function completeAndRecord() {
+    if (completing) return;
+    setCompleting(true);
+    await markOnboarded();
+    window.location.href = '/record';
+  }
+
+  async function next() {
     if (step < TOTAL - 1) {
       setStep((s) => (s + 1) as Step);
     } else {
-      complete();
+      await complete();
     }
   }
 
@@ -134,10 +136,8 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
             スキップ
           </button>
         </>
-      ) : step === 1 ? (
-        <div className="absolute inset-0 bg-black/20" />
       ) : (
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-black/20" />
       )}
 
       {/* ステップ別コンテンツ */}
