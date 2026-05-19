@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – オンボーディング3点修正
+
+- fix(onboarding): `complete()` を `markOnboarded()` + `skip()` に分離し、`await apiFetch(...)` で onboarding API 完了を待ってから遷移するよう修正（fire-and-forget でリクエストキャンセルされていたリグレッション解消）
+- feat(onboarding): ホームオンボ最終ステップ（StepComplete）の「次へ」ボタンで `markOnboarded()` await → `/record` に `router.push` するよう変更し、食事記録ツアーへシームレスにつなげる
+- feat(onboarding): スキップ系ボタンは `skip()` （markOnboarded → /home）、「次へ」完了系は `next()` → `/record` に分離
+- note(onboarding): `/record` ツアーが出ない場合は LINE アプリのキャッシュ or `localStorage.removeItem('fitmeal_tour_record_done')` で解消
+- 影響範囲: 顧客側 / `components/OnboardingFlow.tsx`
+
 ## 2026-05-19 – Notion クエリキャッシュ統一（テナント分離 key）
 
 - perf(cache): `lib/notion.ts` のインメモリ `customerCache` Map を削除し `lib/cache.ts` に統一

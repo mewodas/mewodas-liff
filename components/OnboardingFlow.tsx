@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ChevronRight,
   UtensilsCrossed,
@@ -21,6 +22,7 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL = 7;
 
 export default function OnboardingFlow({ customerName, lineUserId }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [completing, setCompleting] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
@@ -97,22 +99,32 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     };
   }, [step]);
 
-  function complete() {
+  async function markOnboarded() {
+    try {
+      await apiFetch(`/api/customer/onboarding`, { method: 'POST' });
+    } catch {
+      // 失敗しても遷移は続ける
+    }
+  }
+
+  function skip() {
     if (completing) return;
     setCompleting(true);
-    apiFetch(`/api/customer/onboarding`, {
-      method: 'POST',
-    }).catch(() => {});
-    setTimeout(() => {
+    markOnboarded().then(() => {
       window.location.href = '/home';
-    }, 100);
+    });
   }
 
   function next() {
     if (step < TOTAL) {
       setStep((s) => (s + 1) as Step);
     } else {
-      complete();
+      // StepComplete の「次へ」→ /record へ遷移
+      if (completing) return;
+      setCompleting(true);
+      markOnboarded().then(() => {
+        router.push('/record');
+      });
     }
   }
 
@@ -140,7 +152,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
           />
           <button
             type="button"
-            onClick={complete}
+            onClick={skip}
             className="absolute top-4 right-4 z-10 text-white/80 bg-black/30 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
           >
             スキップ
@@ -151,25 +163,25 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
       )}
 
       {step === 1 && (
-        <StepWelcome name={customerName} onNext={next} onSkip={complete} />
+        <StepWelcome name={customerName} onNext={next} onSkip={skip} />
       )}
       {step === 2 && (
-        <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+        <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
       )}
       {step === 3 && (
-        <StepMealCards spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+        <StepMealCards spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
       )}
       {step === 4 && (
-        <StepPhotoHint onNext={next} onSkip={complete} />
+        <StepPhotoHint onNext={next} onSkip={skip} />
       )}
       {step === 5 && (
-        <StepWeightIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+        <StepWeightIntro spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
       )}
       {step === 6 && (
-        <StepExerciseIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+        <StepExerciseIntro spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
       )}
       {step === 7 && (
-        <StepComplete onNext={complete} completing={completing} />
+        <StepComplete onNext={next} completing={completing} />
       )}
 
       {!showSpotlight && (
@@ -495,17 +507,21 @@ function StepComplete({ onNext, completing }: { onNext: () => void; completing: 
         <div>
           <h2 className="text-xl font-bold text-stone-900 mb-2">準備完了！</h2>
           <p className="text-sm text-stone-600 leading-relaxed">
-            さっそく今日の食事を記録して、<br />
-            目標達成を目指しましょう！
+            さっそく食事記録の使い方を<br />
+            実際の画面でご案内します！
           </p>
         </div>
         <button
           type="button"
           onClick={onNext}
           disabled={completing}
-          className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 disabled:opacity-60 text-sm"
+          className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 disabled:opacity-60 text-sm flex items-center justify-center gap-2"
         >
-          {completing ? 'ホームへ移動中…' : 'ホームで記録を始める'}
+          {completing ? '移動中…' : (
+            <>
+              食事記録画面へ <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+            </>
+          )}
         </button>
       </div>
     </div>
