@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/update-calibrations",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/customers-cleanup",
+      "schedule": "0 18 * * *"
     }
   ]
 }

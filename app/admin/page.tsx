@@ -30,7 +30,7 @@ type Customer = {
 type Store = { pageId: string; storeId: string; name: string };
 
 const STALE_DAYS = 14;
-const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業', '招待未送信'];
+const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
 
 function isStale(c: Customer): boolean {
   if (c.foodStatus !== '設定中' || c.lineUserId) return false;
@@ -129,11 +129,7 @@ export default function AdminCustomersPage() {
   const filtered = useMemo(() => {
     const qn = q.trim();
     return customers.filter((c) => {
-      if (statusFilter === '招待未送信') {
-        if (c.foodStatus !== '設定中' || c.lineUserId) return false;
-      } else if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) {
-        return false;
-      }
+      if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
       if (storeFilter && c.storeId !== storeFilter) return false;
       if (qn && !c.name.includes(qn)) return false;
       return true;
@@ -235,7 +231,10 @@ export default function AdminCustomersPage() {
             <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" strokeWidth={2.2} />
             <div className="flex-1 min-w-0">
               <div className="font-bold">
-                14日以上未起動の顧客が {staleCount} 名います。クリーンアップを検討してください。
+                14日以上未起動の顧客が {staleCount} 名います。
+              </div>
+              <div className="mt-0.5 text-[11px]">
+                毎日 03:00 (JST) に自動削除されます。今すぐ手動でクリーンアップする場合は下のボタンから。
               </div>
               <button
                 type="button"
@@ -244,7 +243,7 @@ export default function AdminCustomersPage() {
                 className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold bg-rose-600 text-white px-2.5 py-1 rounded-lg disabled:opacity-50"
               >
                 <Trash2 className="w-3 h-3" strokeWidth={2.4} />
-                {cleaning ? '削除中…' : `14日以上未起動の顧客を一括削除（${staleCount}名）`}
+                {cleaning ? '削除中…' : `今すぐ一括削除（${staleCount}名）`}
               </button>
             </div>
           </div>

@@ -148,6 +148,9 @@ function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustome
               <p className="text-[11px] text-stone-500 leading-relaxed">
                 ※ 招待リンクの有効期限は30日間です。期限切れの場合は顧客詳細画面から再発行できます。
               </p>
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-[11px] p-2.5 rounded-lg leading-relaxed">
+                <span className="font-bold">⚠ 14日ルール:</span> 招待リンクが利用されないまま「設定中」が <strong>14日経過</strong>すると、毎日 03:00 (JST) の自動クリーンアップで <strong>削除</strong>されます。早めに送付してください。
+              </div>
             </>
           )}
         </div>

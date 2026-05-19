@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-19 21:30 (本番) – 設定中14日経過の自動削除 + 「招待未送信」フィルタ削除
+
+- feat(cron): `/api/cron/customers-cleanup` 新規作成。毎日 03:00 (JST) に全テナント横断で 設定中 + LINE未連携 + 14日経過 顧客を自動アーカイブ化
+- chore(vercel.json): customers-cleanup cron をスケジュール `0 18 * * *` (UTC) = 03:00 JST で登録
+- fix(admin): 「招待未送信」フィルタを削除（`設定中` フィルタと実質同じだったため整理）
+- fix(admin): 14日経過バナーの文言を「自動削除されます」に変更、手動削除ボタンを「今すぐ一括削除」に改名
+- feat(admin/customers/new): 顧客作成成功画面の InvitePanel に「14日ルール（招待未利用なら自動削除）」の警告ブロックを追加
+- 影響範囲: 管理画面顧客一覧、新規顧客追加フォーム、cron 1本追加
+
 ## 2026-05-19 – 設定中顧客クリーンアップ機能 4点
 
 - feat(admin/page): ステータスフィルタに「招待未送信」追加（foodStatus=設定中かつ lineUserId なし）
