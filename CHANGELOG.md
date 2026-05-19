@@ -9,6 +9,19 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 (staging) – admin/customers/[id]: オンボリセット UI を main に同期
+
+- ui(admin): staging の customers/[id]/page.tsx を main と同一内容に統一
+- 変更点: isAdminRoute ガード撤去（/store でもリセット表示）、RotateCcw アイコン復元、confirm/alert 文言を main 準拠に、STATUS_BADGE_CLASSES 復元、StatusInfoPopover の containerRef+addEventListener 方式を復元
+- 影響範囲: 管理画面 /admin/customers/[id]（顧客側なし）
+
+## 2026-05-19 (staging) – Security Critical: LIFF lineUserId 自己申告なりすましを修正
+
+- Security(Critical): LIFF lineUserId 自己申告なりすましを修正
+- 影響範囲: 顧客側 API 全LIFFルート（13新規ラップ + 既存5ルート挙動更新） / 顧客側全LIFF page (fetch wrapper)
+- 詳細: LINE IDトークンをサーバーで LINE Verify API 検証 / pageIdテナント境界チェック
+- 関連: セキュリティ監査 2026-05-19
+
 ## 2026-05-19 (staging) – オンボーディング追加修正 3点
 
 - fix: OnboardingFlow 表示中に HomeOnboarding（OnboardingTour）が同時起動して背景が濃いグレーになる問題を修正（showOnboarding=true のとき HomeOnboarding をレンダリングしない）

@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Target,
   Scale,
@@ -15,8 +15,9 @@ import {
   ChevronUp,
   TrendingDown,
   Dumbbell,
-  AlertTriangle,
   Info,
+  Circle,
+  RotateCcw,
 } from 'lucide-react';
 import {
   LineChart,
@@ -64,11 +65,19 @@ type Notification = {
 
 const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
 
+// バッジ色は app/admin/page.tsx の StatusBadge と同期させること
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  進行中: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  設定中: 'bg-violet-100 text-violet-700 border-violet-300',
+  休止中: 'bg-amber-100 text-amber-800 border-amber-300',
+  卒業: 'bg-sky-100 text-sky-700 border-sky-300',
+};
+
 const STATUS_DESCRIPTIONS: Record<string, string> = {
-  設定中: '顧客プロフィール作成中。LIFFリンク未送付またはLINE未連携の状態。招待リンクを送ると顧客が初回登録した時点で「進行中」に自動移行します。',
-  進行中: '通常運用中。食事記録・AIフィードバック・デイリーレポートの送信対象になります。',
-  休止中: '一時的に食事管理を停止中。食事記録・レポート送信は行われません。再開時に「進行中」へ戻してください。',
-  卒業: '目標達成またはサービス終了。食事記録・レポート送信は行われません。',
+  設定中: '作成中・LINE未連携',
+  進行中: '通常運用中。記録・レポート対象',
+  休止中: '一時停止中',
+  卒業: 'サービス終了',
 };
 const GENDER_OPTIONS = ['男性', '女性'];
 
@@ -92,8 +101,6 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const router = useRouter();
-  const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
   const [resettingOnboard, setResettingOnboard] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,9 +154,15 @@ export default function CustomerDetailPage({
 
   useEffect(() => {
     fetch('/api/admin/stores', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setStores(j?.stores || []))
-      .catch(() => {});
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) {
+          setError(j?.error ? `店舗取得エラー: ${j.error}` : `店舗取得失敗（${r.status}）`);
+          return;
+        }
+        setStores(j?.stores || []);
+      })
+      .catch((e) => setError(`店舗取得エラー: ${e.message}`));
     fetch(`/api/admin/customers/${id}/notifications`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setNotifications(j?.notifications || []))
@@ -278,13 +291,14 @@ export default function CustomerDetailPage({
   }
 
   async function resetOnboarding() {
-    if (!confirm('この顧客のオンボーディング完了状態をリセットします。\n顧客は次回 LIFF を開いたときに、再度オンボーディング画面が表示されます。\n本当にリセットしますか？')) {
+    if (!confirm('オンボーディングをリセットします。\n顧客は次回 LIFF を開いたときに、再度オンボーディング画面が表示されます。')) {
       return;
     }
     setResettingOnboard(true);
     try {
       const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+      alert('オンボーディングをリセットしました。');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'リセット失敗');
     } finally {
@@ -940,26 +954,24 @@ export default function CustomerDetailPage({
             </section>
           )}
 
-          {isAdminRoute && (
-            <section className="bg-white rounded-2xl border-2 border-red-200 shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-red-600" strokeWidth={2.2} />
-                <h3 className="text-sm font-bold text-red-700">危険な操作（管理者専用）</h3>
-              </div>
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+              <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                オンボーディングリセット
+              </h3>
               <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
-                オンボーディングをリセットすると、顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
-                顧客の入力した目標値・体重・性別などの基本情報は保持されます。
+                顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
+                目標値・体重・性別などの基本情報は保持されます。
               </p>
               <button
                 type="button"
                 onClick={resetOnboarding}
                 disabled={resettingOnboard}
-                className="w-full bg-white border-2 border-red-500 text-red-600 font-bold py-2.5 rounded-xl text-sm active:bg-red-50 disabled:opacity-50"
+                className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50"
               >
-                {resettingOnboard ? 'リセット中…' : '🔄 オンボーディングをリセット'}
+                {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
               </button>
             </section>
-          )}
         </div>
       )}
     </AdminShell>
@@ -1125,26 +1137,49 @@ function ExerciseBarChart({
 
 function StatusInfoPopover() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex" ref={containerRef}>
       <button
         type="button"
         aria-label="ステータスの説明を表示"
+        aria-expanded={open}
+        aria-haspopup="true"
         onClick={() => setOpen((v) => !v)}
-        onBlur={() => setOpen(false)}
         className="flex items-center justify-center w-5 h-5 rounded-full text-stone-400 hover:text-stone-600 active:text-stone-800 focus:outline-none"
       >
         <Info className="w-3.5 h-3.5" strokeWidth={2.2} />
       </button>
       {open && (
-        <div className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
+        <div role="dialog" aria-label="ステータスの意味" className="absolute left-0 top-6 z-50 w-72 bg-white border border-stone-200 rounded-xl shadow-lg p-3">
           <p className="text-[10px] font-bold text-stone-500 mb-2 uppercase tracking-wide">ステータスの意味</p>
           <ul className="space-y-2">
             {STATUS_OPTIONS.map((s) => (
-              <li key={s}>
-                <span className="text-xs font-bold text-stone-900">{s}：</span>
-                <span className="text-xs text-stone-600">{STATUS_DESCRIPTIONS[s]}</span>
+              <li key={s} className="flex items-start gap-2">
+                <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE_CLASSES[s] ?? 'bg-stone-100 text-stone-700 border-stone-300'}`}>
+                  <Circle className="w-2 h-2 fill-current" strokeWidth={0} />
+                  {s}
+                </span>
+                <span className="flex-1 text-xs text-stone-600 leading-relaxed">{STATUS_DESCRIPTIONS[s]}</span>
               </li>
             ))}
           </ul>
