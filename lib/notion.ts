@@ -35,6 +35,7 @@ export type Customer = {
   plan: string | null;
   storeId: string | null;
   onboardingCompletedAt: string | null;
+  tourResetAt: string | null;
 };
 
 export type NutritionDetailsRecord = {
@@ -144,6 +145,7 @@ export async function getCustomerByLineId(
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
     onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
+    tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
   };
   customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
@@ -183,6 +185,7 @@ function parseCustomerPage(page: { id: string; properties: Record<string, any> }
     plan: p['プラン']?.select?.name ?? null,
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
     onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
+    tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
   };
 }
 
@@ -305,6 +308,7 @@ export async function updateCustomer(
     storeId?: string | null;
     lineUserId?: string | null;
     onboardingCompletedAt?: string | null;
+    tourResetAt?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
