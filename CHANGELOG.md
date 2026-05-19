@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – プロフィールにフリガナ編集追加 + アカウント削除を管理画面側へ移動
+
+- feat(liff/profile): フリガナを顧客自身が編集できるように変更（読み取り専用 → 入力フィールド）
+- feat(api): `PATCH /api/customer/me` に `furigana` フィールドのサポートを追加
+- fix(lib/notion): `updateCustomer()` の patch 型に `furigana` を追加
+- remove(liff/profile): プロフィール最下部のアカウント削除セクションを削除（顧客自己削除をやめる）
+- remove(liff/home): 非進行中ステータス案内画面の「アカウント削除はこちら」リンクを削除
+- feat(admin/customers/[id]): 管理画面の顧客詳細最下部に「アカウント削除」セクション追加（赤系UI、確認ダイアログ付き）
+- feat(api): `DELETE /api/admin/customers/[id]` エンドポイント新規（archiveCustomer を呼ぶ）
+- feat(lib/repository/customers): `archiveCustomer()` を Notion 実装からエクスポート
+- 影響範囲: 顧客側 LIFF `/profile` `/home`、管理画面 `/admin/customers/[id]`、API `/api/customer/me` `/api/admin/customers/[id]`（staging のみ）
+
 ## 2026-05-20 (staging) – /goals 開始体重表示を復元
 
 - fix(liff/goals): 48aa383 で削除された開始体重（currentWeight）の型定義・フェッチ・StatCard を復元

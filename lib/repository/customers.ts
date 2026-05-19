@@ -8,6 +8,7 @@ import {
   getCustomerByPageId as notionGetCustomerByPageId,
   updateCustomer as notionUpdateCustomer,
   createCustomer as notionCreateCustomer,
+  archiveCustomer as notionArchiveCustomer,
   type Customer,
 } from '@/lib/notion';
 import { getCached, setCached, invalidate } from '@/lib/cache';
@@ -75,4 +76,10 @@ export async function createCustomer(input: CustomerCreateInput): Promise<Custom
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:customers:`);
   return notionCreateCustomer(input);
+}
+
+export async function archiveCustomer(pageId: string): Promise<void> {
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:customers:`);
+  return notionArchiveCustomer(pageId);
 }

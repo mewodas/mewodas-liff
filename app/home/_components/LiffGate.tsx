@@ -250,12 +250,6 @@ function LiffGateInner() {
               </a>
             )}
           </div>
-          <Link
-            href="/profile"
-            className="text-xs text-stone-400 underline underline-offset-2"
-          >
-            アカウント削除はこちら（プロフィールページ）
-          </Link>
         </div>
       </main>
     );

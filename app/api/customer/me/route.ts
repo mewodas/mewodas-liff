@@ -30,6 +30,13 @@ export const PATCH = withLiffTenant(async (req: NextRequest, _ctx: unknown, veri
   if (typeof body.name === 'string' && body.name.trim()) {
     patch.name = body.name.trim();
   }
+  if (body.furigana !== undefined) {
+    if (body.furigana === null || body.furigana === '') {
+      patch.furigana = null;
+    } else if (typeof body.furigana === 'string') {
+      patch.furigana = body.furigana.trim().slice(0, 100);
+    }
+  }
   if (body.gender !== undefined) {
     patch.gender = typeof body.gender === 'string' ? body.gender : null;
   }

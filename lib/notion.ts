@@ -281,6 +281,7 @@ export async function updateCustomer(
   pageId: string,
   patch: {
     name?: string;
+    furigana?: string | null;
     goals?: { kcal?: number; P?: number; F?: number; C?: number };
     targetWeight?: number | null;
     targetDate?: string | null;
@@ -301,6 +302,11 @@ export async function updateCustomer(
   const properties: Record<string, unknown> = {};
   if (patch.name !== undefined && patch.name.trim()) {
     properties['氏名'] = { title: [{ text: { content: patch.name.trim().slice(0, 100) } }] };
+  }
+  if (patch.furigana !== undefined) {
+    properties['フリガナ'] = patch.furigana === null || patch.furigana === ''
+      ? { rich_text: [] }
+      : { rich_text: [{ type: 'text', text: { content: patch.furigana.slice(0, 100) } }] };
   }
   if (patch.goals) {
     if (typeof patch.goals.kcal === 'number') properties['目標カロリー(kcal)'] = { number: patch.goals.kcal };
