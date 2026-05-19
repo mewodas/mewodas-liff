@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-19 19:15 (本番) – Stripe Webhook イベント順序問題の修正
+
+- fix(stripe/webhook): `customer.subscription.created` が `checkout.session.completed` より先に到着した場合、Notion に Customer ID が未登録のため tenant 解決に失敗し、`支払いステータス` `席数` `プラン種別` が更新されない問題を修正
+- fix(stripe/webhook): `handleCheckoutCompleted` で Customer ID 登録後に subscription を retrieve して `handleSubscriptionUpdate` を明示的にトリガー
+- fix(stripe/webhook): `handleSubscriptionUpdate` で customer ID 解決失敗時、`sub.metadata.tenantId` でフォールバック検索
+- 影響範囲: Stripe Checkout 完了後の Notion テナント DB 自動更新
+
 ## 2026-05-19 19:00 (本番) – /store/billing UX 改善 + 14日無料トライアル追加
 
 - feat(billing): Stripe Checkout に 14日間の無料トライアル `trial_period_days: 14` を追加

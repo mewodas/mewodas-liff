@@ -94,11 +94,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     stripeCustomerId: customerId || null,
     stripeSubscriptionId: subscriptionId || null,
   });
+
+  // subscription.created が先に走って tenant 解決に失敗していた場合のリカバリ:
+  // ここで明示的に retrieve → 同じ更新処理を流す
+  if (subscriptionId) {
+    try {
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      await handleSubscriptionUpdate(sub);
+    } catch (e) {
+      console.error('checkout.session.completed → subscription retrieve 失敗:', e);
+    }
+  }
 }
 
 async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
-  const tenant = await findTenantByCustomerId(customerId);
+  // 1次: customer ID で検索（通常ルート）
+  // 2次: sub.metadata.tenantId で検索（checkout.session.completed 前に subscription.created が
+  //       届いた場合、Notion 側にまだ customer ID が無いため customer ID では一致しない）
+  let tenant = await findTenantByCustomerId(customerId);
+  if (!tenant) {
+    const metaTenantId = sub.metadata?.tenantId;
+    if (metaTenantId) {
+      tenant = await findTenantByTenantId(metaTenantId);
+    }
+  }
   if (!tenant) return;
 
   const status = subscriptionStatusToNotion(sub.status);
@@ -188,6 +209,11 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 async function findTenantByCustomerId(customerId: string) {
   const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
   return rows.find((r) => r.stripeCustomerId === customerId) || null;
+}
+
+async function findTenantByTenantId(tenantId: string) {
+  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  return rows.find((r) => r.tenantId === tenantId) || null;
 }
 
 async function updateTenantByStripeIds(
