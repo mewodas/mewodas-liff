@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-19 Security(High): W1/W2/W4/W6 セキュリティ High 一括修正
+
+- security(W1): CRON_SECRET fail-open 修正。`lib/cronAuth.ts` に共通ヘルパー切り出し。本番で未設定なら 503、非本番は警告ログのみ。両 cron route で使用
+- security(W2): `lib/inviteToken.ts` — `INVITE_TOKEN_SECRET` 未設定時に `console.error` で鍵共有リスクを警告。動作を壊さずフォールバック維持（後で専用 env 設定推奨）
+- security(W4): `lib/withTenant.ts` — `FITMEAL_TENANT_ID_OVERRIDE` を `NODE_ENV !== 'production'` 時のみ参照。本番で override が誤設定されてもテナント固定されない
+- security(W6): `next.config.ts` にセキュリティヘッダー追加（全パス対象）。`X-Content-Type-Options` / `X-Frame-Options: SAMEORIGIN` / `Referrer-Policy` / `HSTS` / `Permissions-Policy`（camera 許可）/ `Content-Security-Policy-Report-Only`（まず様子見）
+- 影響範囲: `lib/cronAuth.ts`（新規）/ `lib/inviteToken.ts` / `lib/withTenant.ts` / `next.config.ts` / `app/api/cron/daily-reports/route.ts` / `app/api/cron/update-calibrations/route.ts`
+- 顧客側 UI への影響なし
+
 ## 2026-05-19 feat: admin/store 顧客詳細画面にツアーリセットボタン追加
 
 - feat: `/admin/customers/[id]` と `/store/customers/[id]` にツアーリセットボタンを追加（オンボーディングリセットと横並び）
