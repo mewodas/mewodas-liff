@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
+import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
@@ -148,8 +149,8 @@ export default function HistoryPage() {
     }
     (async () => {
       try {
-        const res = await fetch(
-          `/api/history?lineUserId=${encodeURIComponent(userId)}&year=${year}&month=${month}&t=${Date.now()}`,
+        const res = await apiFetch(
+          `/api/history?year=${year}&month=${month}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) {
@@ -631,8 +632,8 @@ function DayDetail({
     setErr(null);
     (async () => {
       try {
-        const res = await fetch(
-          `/api/day?lineUserId=${encodeURIComponent(lineUserId)}&date=${dateString}&t=${Date.now()}`,
+        const res = await apiFetch(
+          `/api/day?date=${dateString}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);

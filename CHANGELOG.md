@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – Phase 3 staging バグ修正 5 件（うち 1 件は既知のため別途）
+
+- fix(Bug1/home): LiffGate.tsx のクイックアクション「AI食事相談」「AI献立作成」が絵文字になっていた問題を修正。lucide-react の `MessageCircle` / `ChefHat` アイコン JSX に戻した
+- fix(Bug2/history): `app/history/page.tsx` の bare fetch 2 箇所（`/api/history`・`/api/day`）を `apiFetch` に置換。Authorization ヘッダーが付与されず 401 になっていた
+- fix(Bug3/notifications): `app/api/notifications/route.ts` の catch ブロックに `console.error` を追加して 500 エラーの詳細をログ出力するよう強化
+- fix(Bug4/home): `handleWeightUpdated` を optimistic update に変更。保存後に `/api/today`（重い）+ `/api/extras` の2連打から `/api/extras` のみの軽量再取得に絞り、体重・運動保存完了までの待ち時間を短縮
+- skip(Bug5/exercise): 運動記録が表示されない件は staging テナント Notion 設定起因の既知課題。コードレベルでは対処せず、社長が staging テナント設定を見直す別タスク扱い
+- 影響範囲: 顧客側 / `app/home/_components/LiffGate.tsx`、`app/history/page.tsx`、`app/api/notifications/route.ts`
+
 ## 2026-05-19 (staging) – /record ツアー再表示バグ修正 + スキップボタン削除
 
 - fix(onboarding): オンボリセット API (`DELETE /api/admin/customers/[id]/onboarding`) で `tourResetAt` を現在時刻で更新するよう修正。従来は `onboardingCompletedAt: null` のみで localStorage の `fitmeal_tour_record_done` キーより新しい値がセットされず、ツアーが再起動しなかった。

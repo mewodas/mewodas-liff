@@ -9,7 +9,7 @@ import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingFlow from '@/components/OnboardingFlow';
-import { UtensilsCrossed, RefreshCw, Bell } from 'lucide-react';
+import { UtensilsCrossed, RefreshCw, Bell, MessageCircle, ChefHat } from 'lucide-react';
 import type { TodayData, PredictionData, MealRecord } from './types';
 import { DateStrip } from './DateStrip';
 import { BadgeModal } from './BadgeModal';
@@ -224,18 +224,24 @@ function LiffGateInner() {
     invalidate('weekly_');
     invalidate('history_');
     if (userId) {
-      Promise.all([
-        apiFetch(`/api/today?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()),
-        apiFetch(`/api/extras?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
-      ])
-        .then(([json, extras]) => {
-          if (extras) {
-            json.today.weight = extras.weight || '';
-            json.today.exercised = extras.exercised || '';
-            json.today.exerciseContent = extras.exerciseContent || '';
-          }
-          setData(json);
-          setCached(`today_v2_${userId}_${selectedDate}`, json);
+      apiFetch(`/api/extras?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((extras) => {
+          if (!extras) return;
+          setData((prev) => {
+            if (!prev) return prev;
+            const updated = {
+              ...prev,
+              today: {
+                ...prev.today,
+                weight: extras.weight || '',
+                exercised: extras.exercised || '',
+                exerciseContent: extras.exerciseContent || '',
+              },
+            };
+            setCached(`today_v2_${userId}_${selectedDate}`, updated);
+            return updated;
+          });
         })
         .catch(() => {});
     }
@@ -350,12 +356,12 @@ function LiffGateInner() {
               />
               <QuickAction
                 href="/chat"
-                icon={<span className="w-5 h-5 text-emerald-600 flex items-center justify-center text-base">💬</span>}
+                icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
                 label="AI食事相談"
               />
               <QuickAction
                 href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
-                icon={<span className="w-5 h-5 text-emerald-600 flex items-center justify-center text-base">🍳</span>}
+                icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
                 label="AI献立作成"
               />
             </div>
