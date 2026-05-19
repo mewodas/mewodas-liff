@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – /record オンボツアー全面再構成＋UI配置変更
+
+- feat(record/tour): オンボツアーを4ステップ→6ステップに再構成（record-date / record-photo-group / record-fooddb / record-mymenu / record-text / record-no-meal）
+- feat(record/ui): グリッドの並び順変更：写真を撮る・画像から選ぶ・成分表を撮る が連続する配置に（旧：写真/画像/マイメニュー/食品DB/成分表/テキスト → 新：写真/画像/成分表/食品DB/マイメニュー/テキスト）
+- feat(record/ui): 写真3ボタンを `record-photo-group` wrapper div でまとめ、ツアーがグループ全体をハイライト可能に
+- feat(record/ui): 日付セレクタに `data-tour="record-date"` 付与
+- feat(record/ui): マイメニューに `data-tour="record-mymenu"` 付与
+- feat(record/ui): 「食べなかった」ボタンに `data-tour="record-no-meal"` 付与
+- 影響範囲: 顧客側 LIFF `/record`（staging のみ）
+
 ## 2026-05-19 – staging→main マージコンフリクト解決
 
 - merge: staging と main の 13 ファイルコンフリクトを解決し PR #17 の自動マージ準備

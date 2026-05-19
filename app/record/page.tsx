@@ -32,27 +32,39 @@ type DayLabel = '今日' | '昨日';
 
 const RECORD_TOUR_STEPS = [
   {
-    target: 'record-photo',
-    title: '写真で記録する',
-    description: '食事の写真を撮ると、AIが料理を識別してカロリーとPFCを自動計算します。',
+    target: 'record-date',
+    title: '日付を選びます',
+    description: '記録する日付を選択できます。前日や過去の食事も後から記録できます。',
     placement: 'bottom' as const,
   },
   {
-    target: 'record-text',
-    title: 'テキストでも記録できます',
-    description: '食材名と分量を入力するだけでもAIが栄養素を推定します。カメラが使えないときに便利です。',
+    target: 'record-photo-group',
+    title: '写真から解析できます',
+    description: '写真を撮る・画像から選ぶ・成分表を撮るの3つから、AIが自動で栄養素を解析します。',
     placement: 'bottom' as const,
   },
   {
     target: 'record-fooddb',
     title: '食品DBから検索',
-    description: 'コンビニ食品や市販品はDBで検索して登録できます。素早く正確に記録できます。',
+    description: '食品名で検索して、登録済みの栄養情報からすばやく正確に記録できます。',
     placement: 'bottom' as const,
   },
   {
-    target: 'record-save',
-    title: '最後に保存します',
-    description: '写真を選んだら「解析する」をタップ。AIが分析後に保存ボタンが表示されます。',
+    target: 'record-mymenu',
+    title: 'マイメニュー',
+    description: 'よく食べるメニューを登録しておけば、ワンタップで記録できます。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'record-text',
+    title: 'テキストで記録',
+    description: '食事内容をテキストで入力すれば、AIが栄養素を推定します。カメラが使えないときに便利です。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'record-no-meal',
+    title: '食べなかった日も記録',
+    description: '食事を取らなかった場合は「食べなかった」を選択して空白を埋めましょう。',
     placement: 'top' as const,
   },
 ];
@@ -762,7 +774,7 @@ export default function RecordPage() {
         )}
 
         {/* 大きな日付・食事区分セレクタ */}
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-5 border border-stone-200">
+        <div data-tour="record-date" className="bg-white rounded-2xl shadow-md p-5 mb-5 border border-stone-200">
           <div className="flex items-center justify-between gap-2 mb-4">
             <button
               type="button"
@@ -836,38 +848,41 @@ export default function RecordPage() {
 
         {/* 6カードグリッド */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          {/* 写真を撮る：labelでhidden inputをラップしてWebViewのカメラ起動を確実に */}
-          <label
-            htmlFor="record-camera-input"
-            data-tour="record-photo"
-            className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
-          >
-            <Camera className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
-            <span className="text-sm font-bold text-stone-900 text-center leading-tight">写真を撮る</span>
-          </label>
-          <HubButton
-            icon={<ImageIcon className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
-            label="画像から選ぶ"
-            onClick={() => libraryInputRef.current?.click()}
-          />
-          <HubButton
-            icon={<Star className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
-            label="マイメニュー"
-            onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
-          />
+          {/* 写真3ボタンを record-photo-group でまとめてツアーターゲットにする */}
+          <div data-tour="record-photo-group" className="col-span-3 grid grid-cols-3 gap-3">
+            {/* 写真を撮る：labelでhidden inputをラップしてWebViewのカメラ起動を確実に */}
+            <label
+              htmlFor="record-camera-input"
+              className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
+            >
+              <Camera className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
+              <span className="text-sm font-bold text-stone-900 text-center leading-tight">写真を撮る</span>
+            </label>
+            <HubButton
+              icon={<ImageIcon className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
+              label="画像から選ぶ"
+              onClick={() => libraryInputRef.current?.click()}
+            />
+            <label
+              htmlFor="record-label-input"
+              className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
+            >
+              <ScanText className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
+              <span className="text-sm font-bold text-stone-900 text-center leading-tight">成分表を撮る</span>
+            </label>
+          </div>
           <HubButton
             data-tour="record-fooddb"
             icon={<Search className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
             label="食品DB"
             onClick={() => router.push('/food-search')}
           />
-          <label
-            htmlFor="record-label-input"
-            className="flex flex-col items-center justify-center bg-white rounded-2xl py-6 px-2 border border-stone-200 shadow-sm active:bg-emerald-50 cursor-pointer"
-          >
-            <ScanText className="w-7 h-7 text-emerald-600 mb-2" strokeWidth={2} />
-            <span className="text-sm font-bold text-stone-900 text-center leading-tight">成分表を撮る</span>
-          </label>
+          <HubButton
+            data-tour="record-mymenu"
+            icon={<Star className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
+            label="マイメニュー"
+            onClick={() => router.push(`/my-menu?date=${encodeURIComponent(targetDate)}&meal=${encodeURIComponent(mealType)}`)}
+          />
           <HubButton
             data-tour="record-text"
             icon={<FileText className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
@@ -935,7 +950,7 @@ export default function RecordPage() {
       </div>
 
       {/* 最下部固定アクションバー：写真があるときは解析する、無いときは食べなかった */}
-      <div data-tour="record-save" className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
         <div className="max-w-md mx-auto">
           {previews.length > 0 ? (
             <button
@@ -947,6 +962,7 @@ export default function RecordPage() {
             </button>
           ) : (
             <button
+              data-tour="record-no-meal"
               onClick={handleSkip}
               disabled={skipping}
               className="w-full bg-white border-2 border-stone-300 text-stone-700 font-bold py-3 rounded-2xl active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-2"
