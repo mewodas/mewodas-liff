@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – 体重・運動保存の楽観的 UI 更新
+
+- perf(home): `WeightExerciseCard` の `onSaved` コールバックに保存値 (`WeightExerciseUpdate`) を渡すよう変更
+- perf(home): `LiffGate.tsx` の `handleWeightUpdated` を楽観的更新に変更。POST 成功と同時に `setData` で即時反映し、バックグラウンドで `/api/extras` を再取得して整合性同期
+- perf(history): `app/history/page.tsx` の `onUpdated` も同様に楽観的 `setDayExtras` + `reloadKey` バックグラウンド同期に変更
+- 影響範囲: 顧客側 / `components/WeightExerciseCard.tsx`、`app/home/_components/LiffGate.tsx`、`app/history/page.tsx`
+- トレードオフ: `/api/extras` バックグラウンド fetch が完了する前後で一瞬表示値が変わり得るが、POST 成功後に正確な値が届くため視覚的不整合は 1〜2 秒以内に解消
+
 ## 2026-05-19 (staging) – Phase 3 staging バグ修正 5 件（うち 1 件は既知のため別途）
 
 - fix(Bug1/home): LiffGate.tsx のクイックアクション「AI食事相談」「AI献立作成」が絵文字になっていた問題を修正。lucide-react の `MessageCircle` / `ChefHat` アイコン JSX に戻した

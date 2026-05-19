@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
-import WeightExerciseCard from '@/components/WeightExerciseCard';
+import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingFlow from '@/components/OnboardingFlow';
 import { UtensilsCrossed, RefreshCw, Bell, MessageCircle, ChefHat } from 'lucide-react';
@@ -219,32 +219,49 @@ function LiffGateInner() {
   const dateLabel = formatJpDate(today.date);
   const effectiveCurrentWeight = today.weight ? parseFloat(today.weight) : customer.currentWeight;
 
-  function handleWeightUpdated() {
+  function handleWeightUpdated(next?: WeightExerciseUpdate) {
     invalidate('today_');
     invalidate('weekly_');
     invalidate('history_');
-    if (userId) {
-      apiFetch(`/api/extras?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((extras) => {
-          if (!extras) return;
-          setData((prev) => {
-            if (!prev) return prev;
-            const updated = {
-              ...prev,
-              today: {
-                ...prev.today,
-                weight: extras.weight || '',
-                exercised: extras.exercised || '',
-                exerciseContent: extras.exerciseContent || '',
-              },
-            };
-            setCached(`today_v2_${userId}_${selectedDate}`, updated);
-            return updated;
-          });
-        })
-        .catch(() => {});
+    if (!userId) return;
+
+    if (next) {
+      setData((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          today: {
+            ...prev.today,
+            ...(next.weight !== undefined ? { weight: next.weight } : {}),
+            ...(next.exercised !== undefined ? { exercised: next.exercised } : {}),
+            ...(next.exerciseContent !== undefined ? { exerciseContent: next.exerciseContent } : {}),
+          },
+        };
+        setCached(`today_v2_${userId}_${selectedDate}`, updated);
+        return updated;
+      });
     }
+
+    apiFetch(`/api/extras?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((extras) => {
+        if (!extras) return;
+        setData((prev) => {
+          if (!prev) return prev;
+          const updated = {
+            ...prev,
+            today: {
+              ...prev.today,
+              weight: extras.weight || '',
+              exercised: extras.exercised || '',
+              exerciseContent: extras.exerciseContent || '',
+            },
+          };
+          setCached(`today_v2_${userId}_${selectedDate}`, updated);
+          return updated;
+        });
+      })
+      .catch(() => {});
   }
 
   function handleMealDeleted() {

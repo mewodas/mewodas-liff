@@ -5,6 +5,12 @@ import { Scale, Footprints, ClipboardList } from 'lucide-react';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import { apiFetch } from '@/lib/apiFetch';
 
+export type WeightExerciseUpdate = {
+  weight?: string;
+  exercised?: string;
+  exerciseContent?: string;
+};
+
 export default function WeightExerciseCard({
   selectedDate,
   isToday,
@@ -20,7 +26,7 @@ export default function WeightExerciseCard({
   initialWeight?: string;
   initialExercised?: string;
   initialExerciseContent?: string;
-  onUpdated: () => void;
+  onUpdated: (next?: WeightExerciseUpdate) => void;
 }) {
   const [weightOpen, setWeightOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
@@ -95,9 +101,9 @@ export default function WeightExerciseCard({
           lineUserId={lineUserId}
           initialValue={initialWeight || ''}
           onClose={() => setWeightOpen(false)}
-          onSaved={() => {
+          onSaved={(next) => {
             setWeightOpen(false);
-            onUpdated();
+            onUpdated(next);
           }}
         />
       )}
@@ -110,9 +116,9 @@ export default function WeightExerciseCard({
           initialContent={initialExerciseContent || ''}
           hasInitial={hasExercise}
           onClose={() => setExerciseOpen(false)}
-          onSaved={() => {
+          onSaved={(next) => {
             setExerciseOpen(false);
-            onUpdated();
+            onUpdated(next);
           }}
         />
       )}
@@ -131,7 +137,7 @@ function WeightSheet({
   lineUserId: string;
   initialValue: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (next: WeightExerciseUpdate) => void;
 }) {
   const [weight, setWeight] = useState(initialValue);
   const [saving, setSaving] = useState(false);
@@ -156,7 +162,7 @@ function WeightSheet({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
-      onSaved();
+      onSaved({ weight: String(w) });
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信エラー');
     } finally {
@@ -233,7 +239,7 @@ function ExerciseSheet({
   initialContent: string;
   hasInitial: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (next: WeightExerciseUpdate) => void;
 }) {
   const initialItems = initialContent
     ? initialContent
@@ -278,7 +284,10 @@ function ExerciseSheet({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
-      onSaved();
+      onSaved({
+        exercised: exercised ? '✅' : '',
+        exerciseContent: merged,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信エラー');
     } finally {
