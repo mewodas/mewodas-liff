@@ -30,6 +30,7 @@ export type CustomerPatch = {
   storeId?: string | null;
   lineUserId?: string | null;
   onboardingCompletedAt?: string | null;
+  tourResetAt?: string | null;
 };
 
 export async function listCustomers(opts?: { noCache?: boolean }): Promise<Customer[]> {

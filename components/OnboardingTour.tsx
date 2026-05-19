@@ -19,9 +19,11 @@ type Props = {
   force?: boolean;
   /** すべてのステップ完了 or スキップ時に呼ばれる */
   onComplete?: () => void;
+  /** 管理画面からリセットされた日時（ISO8601）。localStorageの完了日時より新しければ再表示 */
+  tourResetAt?: string | null;
 };
 
-export default function OnboardingTour({ storageKey, steps, force, onComplete }: Props) {
+export default function OnboardingTour({ storageKey, steps, force, onComplete, tourResetAt }: Props) {
   const [active, setActive] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -33,13 +35,16 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete }:
       setActive(true);
       return;
     }
-    const done = window.localStorage.getItem(storageKey);
-    if (!done) {
+    const stored = window.localStorage.getItem(storageKey);
+    const isDone = stored !== null && (
+      tourResetAt === null || tourResetAt === undefined || stored >= tourResetAt
+    );
+    if (!isDone) {
       // 描画完了を少し待ってから表示
       const id = setTimeout(() => setActive(true), 400);
       return () => clearTimeout(id);
     }
-  }, [storageKey, force]);
+  }, [storageKey, force, tourResetAt]);
 
   // ターゲット要素の位置を取得
   useEffect(() => {

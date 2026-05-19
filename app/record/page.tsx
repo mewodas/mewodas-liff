@@ -126,6 +126,7 @@ export default function RecordPage() {
     note: string;
   } | null>(null);
   const [labelBusy, setLabelBusy] = useState(false);
+  const [tourResetAt, setTourResetAt] = useState<string | null | undefined>(undefined);
 
   // 食事記録が完了したらオンボの段階を進める
   useEffect(() => {
@@ -163,9 +164,21 @@ export default function RecordPage() {
             if (dayParam === '昨日') setTargetDate(addDaysStr(todayStr, -1));
           }
         }
+        try {
+          const meRes = await apiFetch('/api/customer/me');
+          if (meRes.ok) {
+            const { customer } = await meRes.json();
+            setTourResetAt(customer?.tourResetAt ?? null);
+          } else {
+            setTourResetAt(null);
+          }
+        } catch {
+          setTourResetAt(null);
+        }
         setReady(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'LIFF初期化失敗');
+        setTourResetAt(null);
         setReady(true);
       }
     })();
@@ -956,8 +969,8 @@ export default function RecordPage() {
         />
       )}
 
-      {ready && stage === 'hub' && (
-        <OnboardingTour storageKey="fitmeal_tour_record_done" steps={RECORD_TOUR_STEPS} />
+      {ready && stage === 'hub' && tourResetAt !== undefined && (
+        <OnboardingTour storageKey="fitmeal_tour_record_done" steps={RECORD_TOUR_STEPS} tourResetAt={tourResetAt} />
       )}
     </main>
   );

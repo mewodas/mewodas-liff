@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – ツアーリセット機能（LIFF 側）
+
+- feat(tour-reset): 管理画面「ツアーをリセット」ボタンと連動する LIFF 側実装
+  - `lib/notion.ts`: `parseCustomerPage`・`updateCustomer` に `ツアーリセット日時` 読み書きを追加
+  - `lib/repository/customers.ts`: `CustomerPatch` に `tourResetAt` フィールドを追加
+  - `components/OnboardingTour.tsx`: `tourResetAt` prop 追加、localStorage のタイムスタンプと比較してリセット判定
+  - `app/record/page.tsx`: LIFF 初期化後に `/api/customer/me` から `tourResetAt` を取得して `OnboardingTour` に渡す
+  - `app/weight/page.tsx`: 同上
+  - `app/exercise/page.tsx`: 同上
+- 影響範囲: 顧客側 LIFF（/record, /weight, /exercise）
+- 関連: 管理画面側の実装は main ブランチに実装済み（2026-05-19）
+
 ## 2026-05-19 (staging) – 食事記録ページ ツアー data-tour 属性補完
 
 - fix(onboarding): `record-photo`（写真を撮る）・`record-fooddb`（食品DB）・`record-text`（テキストで記録）カードに data-tour 属性が欠落していた問題を修正
