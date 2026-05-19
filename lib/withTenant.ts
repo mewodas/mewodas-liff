@@ -101,6 +101,7 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
     try {
       return await runInTenantContext(tenant, () => handler(req, ctx));
     } catch (e) {
+      console.error('[withAdminTenant] handler error:', e);
       if (process.env.SENTRY_DSN) {
         Sentry.withScope((scope) => {
           scope.setTag('tenant_id', tenant.id);

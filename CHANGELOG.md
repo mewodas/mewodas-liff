@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – オンボーディングリセット 500 エラー修正
+
+- fix(admin/onboarding): DELETE `/api/admin/customers/[id]/onboarding` が 500 を返す問題を修正
+- 原因: staging の Notion 顧客 DB に「ツアーリセット日時」列が存在しない場合、`patchCustomer` が Notion 400 を受けて例外を throw し、`withAdminTenant` が 500 を返していた
+- 修正: route.ts で `onboardingCompletedAt` と `tourResetAt` の同時書き込みを try/catch でラップ。失敗時は `onboardingCompletedAt: null` のみで確実にリセットし、`tourResetAt` は単体書き込みを試みてエラーでも 500 にしない
+- 診断強化: `withAdminTenant` の catch に `console.error` を追加し Vercel ログにエラー詳細を出力
+- 影響範囲: 管理画面 / `app/api/admin/customers/[id]/onboarding/route.ts`、`lib/withTenant.ts`
+
 ## 2026-05-19 (staging) – 体重・運動保存の楽観的 UI 更新
 
 - perf(home): `WeightExerciseCard` の `onSaved` コールバックに保存値 (`WeightExerciseUpdate`) を渡すよう変更
