@@ -1,6 +1,4 @@
-import { getCached, setCached, invalidate } from './cache';
 import { getCurrentTenant } from './tenant';
-import type { PlanTier } from './stripe';
 
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
@@ -64,12 +62,12 @@ export type FoodRecord = {
   lineUserId?: string;
 };
 
-async function notionFetch(
+async function notionRequest(
   method: string,
   path: string,
-  apiKey: string,
   payload?: object
 ): Promise<any> {
+  const apiKey = getTenantNotion().apiKey;
   if (!apiKey) throw new Error('NOTION_API_KEY（テナント設定）未設定');
   const res = await fetch(`${NOTION_BASE}${path}`, {
     method,
@@ -87,34 +85,46 @@ async function notionFetch(
   return res.json();
 }
 
-async function notionRequest(
-  method: string,
-  path: string,
-  payload?: object
-): Promise<any> {
-  return notionFetch(method, path, getTenantNotion().apiKey, payload);
-}
+// 顧客情報のインメモリキャッシュ（同じVercel関数インスタンス内）
+// 連続して画面遷移する際の顧客取得を高速化
+const customerCache = new Map<string, { customer: Customer; expiry: number }>();
+const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000; // 30分（顧客情報は頻繁に変わらない）
 
-const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000;
-const FOOD_RECORDS_CACHE_TTL_MS = 2 * 60 * 1000;
-
-function parseCustomerFromPage(
-  page: { id: string; properties: Record<string, any> },
+export async function getCustomerByLineId(
   lineUserId: string,
-  defaultGoals: { kcal: number; P: number; F: number; C: number }
-): Customer {
+  opts?: { force?: boolean }
+): Promise<Customer | null> {
+  if (!opts?.force) {
+    const cached = customerCache.get(lineUserId);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.customer;
+    }
+  }
+  const tenant = getTenantNotion();
+  const res = await notionRequest(
+    'POST',
+    `/databases/${tenant.customerDbId}/query`,
+    {
+      filter: {
+        property: 'LINEユーザーID',
+        rich_text: { equals: lineUserId },
+      },
+    }
+  );
+  if (!res.results || res.results.length === 0) return null;
+  const page = res.results[0];
   const p = page.properties;
-  return {
+  const customer: Customer = {
     pageId: page.id,
     name: p['氏名']?.title?.[0]?.plain_text || '不明',
     furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
     lineUserId,
     foodStatus: p['食事管理ステータス']?.select?.name || null,
     goals: {
-      kcal: p['目標カロリー(kcal)']?.number ?? defaultGoals.kcal,
-      P: p['目標P(g)']?.number ?? defaultGoals.P,
-      F: p['目標F(g)']?.number ?? defaultGoals.F,
-      C: p['目標C(g)']?.number ?? defaultGoals.C,
+      kcal: p['目標カロリー(kcal)']?.number ?? tenant.defaultGoals.kcal,
+      P: p['目標P(g)']?.number ?? tenant.defaultGoals.P,
+      F: p['目標F(g)']?.number ?? tenant.defaultGoals.F,
+      C: p['目標C(g)']?.number ?? tenant.defaultGoals.C,
     },
     currentWeight: p['現在体重(kg)']?.number ?? null,
     targetWeight: p['目標体重(kg)']?.number ?? null,
@@ -137,42 +147,46 @@ function parseCustomerFromPage(
     onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
     tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
   };
-}
-
-export async function getCustomerByLineId(
-  lineUserId: string,
-  opts?: { force?: boolean }
-): Promise<Customer | null> {
-  const t = getTenantNotion();
-  const tenantId = getCurrentTenant().id;
-  const cacheKey = `${tenantId}:customer:${lineUserId}`;
-  if (!opts?.force) {
-    const hit = getCached<Customer | null>(cacheKey);
-    if (hit !== undefined) return hit;
-  }
-  const res = await notionRequest(
-    'POST',
-    `/databases/${t.customerDbId}/query`,
-    {
-      filter: {
-        property: 'LINEユーザーID',
-        rich_text: { equals: lineUserId },
-      },
-    }
-  );
-  if (!res.results || res.results.length === 0) {
-    setCached(cacheKey, null, CUSTOMER_CACHE_TTL_MS);
-    return null;
-  }
-  const customer = parseCustomerFromPage(res.results[0], lineUserId, t.defaultGoals);
-  setCached(cacheKey, customer, CUSTOMER_CACHE_TTL_MS);
+  customerCache.set(lineUserId, { customer, expiry: Date.now() + CUSTOMER_CACHE_TTL_MS });
   return customer;
 }
 
 function parseCustomerPage(page: { id: string; properties: Record<string, any> }): Customer {
   const tenant = getTenantNotion();
-  const lineUserId = page.properties['LINEユーザーID']?.rich_text?.[0]?.plain_text || '';
-  return parseCustomerFromPage(page, lineUserId, tenant.defaultGoals);
+  const p = page.properties;
+  return {
+    pageId: page.id,
+    name: p['氏名']?.title?.[0]?.plain_text || '不明',
+    furigana: p['フリガナ']?.rich_text?.[0]?.plain_text ?? null,
+    lineUserId: p['LINEユーザーID']?.rich_text?.[0]?.plain_text || '',
+    foodStatus: p['食事管理ステータス']?.select?.name || null,
+    goals: {
+      kcal: p['目標カロリー(kcal)']?.number ?? tenant.defaultGoals.kcal,
+      P: p['目標P(g)']?.number ?? tenant.defaultGoals.P,
+      F: p['目標F(g)']?.number ?? tenant.defaultGoals.F,
+      C: p['目標C(g)']?.number ?? tenant.defaultGoals.C,
+    },
+    currentWeight: p['現在体重(kg)']?.number ?? null,
+    targetWeight: p['目標体重(kg)']?.number ?? null,
+    targetDate: p['目標達成日']?.date?.start ?? null,
+    foodSheetPageId: (() => {
+      const url = p['食事記録リンク']?.url;
+      if (!url) return null;
+      const m = url.match(/([a-f0-9]{32})(?:[?#].*)?$/i);
+      return m ? m[1] : null;
+    })(),
+    gender: p['性別']?.select?.name ?? null,
+    heightCm: p['身長(cm)']?.number ?? null,
+    age: p['年齢']?.number ?? null,
+    birthDate: p['生年月日']?.date?.start ?? null,
+    email: p['メールアドレス']?.email ?? null,
+    phone: p['電話番号']?.phone_number ?? null,
+    activityLevel: p['活動レベル']?.select?.name ?? null,
+    plan: p['プラン']?.select?.name ?? null,
+    storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
+    onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
+    tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
+  };
 }
 
 export async function listAllCustomers(): Promise<Customer[]> {
@@ -356,16 +370,12 @@ export async function updateCustomer(
   }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
-  const tenantId = getCurrentTenant().id;
-  invalidate(`${tenantId}:customer:`);
-  invalidate(`${tenantId}:customers:`);
+  customerCache.clear();
 }
 
 // 食事記録を削除（Notionページをarchive扱いに）
 export async function deleteFoodRecord(pageId: string): Promise<void> {
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
-  const tenantId = getCurrentTenant().id;
-  invalidate(`${tenantId}:foodRecords:`);
 }
 
 // pageId が現テナントの食事DBに属することを確認。不一致なら例外 throw
@@ -585,10 +595,6 @@ export type TenantRow = {
   pfcOverrideP: number | null;
   pfcOverrideF: number | null;
   pfcOverrideC: number | null;
-  /** 契約席数（Stripe per-user item の quantity と同期） */
-  seatLimit: number | null;
-  /** プラン種別（Starter / Growth / Scale） */
-  planTier: PlanTier | null;
 };
 
 export async function updateTenantRow(
@@ -615,8 +621,6 @@ export async function updateTenantRow(
     pfcOverrideP?: number | null;
     pfcOverrideF?: number | null;
     pfcOverrideC?: number | null;
-    seatLimit?: number | null;
-    planTier?: PlanTier | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -686,12 +690,6 @@ export async function updateTenantRow(
       properties[colName] = { number: value };
     }
   }
-  if (patch.seatLimit !== undefined) {
-    properties['契約席数'] = patch.seatLimit !== null ? { number: patch.seatLimit } : { number: null };
-  }
-  if (patch.planTier !== undefined) {
-    properties['プラン種別'] = patch.planTier !== null ? { select: { name: patch.planTier } } : { select: null };
-  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -730,8 +728,6 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       pfcOverrideP: p['PFC適用_P']?.number ?? null,
       pfcOverrideF: p['PFC適用_F']?.number ?? null,
       pfcOverrideC: p['PFC適用_C']?.number ?? null,
-      seatLimit: p['契約席数']?.number ?? null,
-      planTier: (p['プラン種別']?.select?.name as PlanTier | undefined) ?? null,
     };
   });
 }
@@ -778,12 +774,10 @@ export async function updateFoodRecord(
     if (patch.correctedBy && /補正者|property/i.test(message)) {
       delete (properties as Record<string, unknown>)['補正者'];
       await notionRequest('PATCH', `/pages/${pageId}`, { properties });
-    } else {
-      throw e;
+      return;
     }
+    throw e;
   }
-  const tenantId = getCurrentTenant().id;
-  invalidate(`${tenantId}:foodRecords:`);
 }
 
 // 個人シートの食事記録テーブルから複数日付の体重・運動データをまとめて取得
@@ -917,12 +911,7 @@ export async function getFoodRecordsByDateRange(
   startDate: string,
   endDate: string
 ): Promise<FoodRecord[]> {
-  const t = getTenantNotion();
-  const tenantId = getCurrentTenant().id;
-  const cacheKey = `${tenantId}:foodRecords:range:${lineUserId}:${startDate}:${endDate}`;
-  const hit = getCached<FoodRecord[]>(cacheKey);
-  if (hit !== undefined) return hit;
-  const res = await notionRequest('POST', `/databases/${t.foodDbId}/query`, {
+  const res = await notionRequest('POST', `/databases/${getTenantNotion().foodDbId}/query`, {
     filter: {
       and: [
         { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
@@ -936,9 +925,7 @@ export async function getFoodRecordsByDateRange(
     ],
     page_size: 100,
   });
-  const records = (res.results || []).map(notionPageToFoodRecord);
-  setCached(cacheKey, records, FOOD_RECORDS_CACHE_TTL_MS);
-  return records;
+  return (res.results || []).map(notionPageToFoodRecord);
 }
 
 function notionPageToFoodRecord(page: { id: string; properties: Record<string, unknown>; created_time: string }): FoodRecord {
@@ -1110,12 +1097,7 @@ export async function getFoodRecordsByDate(
   lineUserId: string,
   dateString: string
 ): Promise<FoodRecord[]> {
-  const t = getTenantNotion();
-  const tenantId = getCurrentTenant().id;
-  const cacheKey = `${tenantId}:foodRecords:date:${lineUserId}:${dateString}`;
-  const hit = getCached<FoodRecord[]>(cacheKey);
-  if (hit !== undefined) return hit;
-  const res = await notionRequest('POST', `/databases/${t.foodDbId}/query`, {
+  const res = await notionRequest('POST', `/databases/${getTenantNotion().foodDbId}/query`, {
     filter: {
       and: [
         { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
@@ -1124,9 +1106,7 @@ export async function getFoodRecordsByDate(
     },
     sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
   });
-  const records = (res.results || []).map(notionPageToFoodRecord);
-  setCached(cacheKey, records, FOOD_RECORDS_CACHE_TTL_MS);
-  return records;
+  return (res.results || []).map(notionPageToFoodRecord);
 }
 
 export async function saveFoodRecord(params: {
@@ -1210,12 +1190,10 @@ export async function saveFoodRecord(params: {
     };
   }
 
-  const tenantId = getCurrentTenant().id;
   // 最初は AI推定_* プロパティを含めて保存を試みる
   // 該当プロパティが Notion DB にない場合は除外して再試行（後方互換）
-  let result;
   try {
-    result = await notionRequest('POST', '/pages', {
+    return await notionRequest('POST', '/pages', {
       parent: { database_id: getTenantNotion().foodDbId },
       properties,
     });
@@ -1231,16 +1209,13 @@ export async function saveFoodRecord(params: {
       delete fallbackProps['AI推定_C'];
       // eslint-disable-next-line no-console
       console.warn('AI推定_* プロパティが Notion DB に未追加。フォールバック保存。');
-      result = await notionRequest('POST', '/pages', {
+      return await notionRequest('POST', '/pages', {
         parent: { database_id: getTenantNotion().foodDbId },
         properties: fallbackProps,
       });
-    } else {
-      throw e;
     }
+    throw e;
   }
-  invalidate(`${tenantId}:foodRecords:`);
-  return result;
 }
 
 // JST の "yyyy-MM-dd"

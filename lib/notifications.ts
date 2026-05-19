@@ -17,7 +17,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { getCached, setCached, invalidate } from '@/lib/cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
-const NOTION_API_VERSION = '2022-06-28';
+const NOTION_API_VERSION = '2025-09-03';
 
 export type NotificationCategory = '前日レポート' | '週次レポート' | 'お知らせ' | 'アドバイス';
 
@@ -34,19 +34,8 @@ export type Notification = {
   createdAt: string;
 };
 
-// Notion の DB ID は 32 桁の hex（ハイフンあり/なし両方許容）
-const NOTION_DB_ID_RE = /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function getDbId(): string | null {
-  const raw = process.env.NOTION_NOTIFICATIONS_DB_ID;
-  if (!raw) return null;
-  const v = raw.trim();
-  if (!NOTION_DB_ID_RE.test(v)) {
-    // eslint-disable-next-line no-console
-    console.warn(`[notifications] NOTION_NOTIFICATIONS_DB_ID is not a valid Notion DB ID: "${v}"`);
-    return null;
-  }
-  return v;
+  return process.env.NOTION_NOTIFICATIONS_DB_ID || null;
 }
 
 export function isNotificationsConfigured(): boolean {

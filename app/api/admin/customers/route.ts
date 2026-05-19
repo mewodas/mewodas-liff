@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { listCustomers, createCustomer } from '@/lib/repository/customers';
 import { withAdminTenant } from '@/lib/withTenant';
-import { getSeatStatus, invalidateSeatCache } from '@/lib/seats';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,15 +18,6 @@ export const GET = withAdminTenant(async () => {
 
 export const POST = withAdminTenant(async (req) => {
   try {
-    // 席数上限チェック
-    const seatStatus = await getSeatStatus({ noCache: true });
-    if (seatStatus.isOverLimit) {
-      return NextResponse.json(
-        { error: 'seat_limit_reached', seatLimit: seatStatus.seatLimit, currentSeats: seatStatus.currentSeats },
-        { status: 403 }
-      );
-    }
-
     const body = await req.json();
     const name = String(body.name || '').trim();
     if (!name) return NextResponse.json({ error: '氏名必須' }, { status: 400 });
@@ -46,7 +36,6 @@ export const POST = withAdminTenant(async (req) => {
       goals: body.goals && typeof body.goals === 'object' ? body.goals : undefined,
       storeId: body.storeId || undefined,
     });
-    invalidateSeatCache();
     return NextResponse.json({ ok: true, customer });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });

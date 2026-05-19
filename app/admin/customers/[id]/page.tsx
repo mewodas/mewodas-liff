@@ -975,7 +975,7 @@ export default function CustomerDetailPage({
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                オンボーディングリセット
+                リセット
               </h3>
               <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
                 顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。

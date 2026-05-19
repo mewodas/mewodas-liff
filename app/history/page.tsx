@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
-import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
+import WeightExerciseCard from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import {
   BookOpen,
@@ -149,8 +148,8 @@ export default function HistoryPage() {
     }
     (async () => {
       try {
-        const res = await apiFetch(
-          `/api/history?year=${year}&month=${month}&t=${Date.now()}`,
+        const res = await fetch(
+          `/api/history?lineUserId=${encodeURIComponent(userId)}&year=${year}&month=${month}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) {
@@ -632,8 +631,8 @@ function DayDetail({
     setErr(null);
     (async () => {
       try {
-        const res = await apiFetch(
-          `/api/day?date=${dateString}&t=${Date.now()}`,
+        const res = await fetch(
+          `/api/day?lineUserId=${encodeURIComponent(lineUserId)}&date=${dateString}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
@@ -674,17 +673,10 @@ function DayDetail({
             initialWeight={dayExtras.weight}
             initialExercised={dayExtras.exercised}
             initialExerciseContent={dayExtras.exerciseContent}
-            onUpdated={(next?: WeightExerciseUpdate) => {
+            onUpdated={() => {
               invalidate('today_');
               invalidate('weekly_');
               invalidate('history_');
-              if (next) {
-                setDayExtras((prev) => ({
-                  weight: next.weight !== undefined ? next.weight : prev.weight,
-                  exercised: next.exercised !== undefined ? next.exercised : prev.exercised,
-                  exerciseContent: next.exerciseContent !== undefined ? next.exerciseContent : prev.exerciseContent,
-                }));
-              }
               setReloadKey((k) => k + 1);
             }}
           />

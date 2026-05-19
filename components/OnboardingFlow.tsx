@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   ChevronRight,
   UtensilsCrossed,
@@ -22,7 +21,6 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL = 7;
 
 export default function OnboardingFlow({ customerName, lineUserId }: Props) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [completing, setCompleting] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
@@ -99,32 +97,22 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     };
   }, [step]);
 
-  async function markOnboarded() {
-    try {
-      await apiFetch(`/api/customer/onboarding`, { method: 'POST' });
-    } catch {
-      // 失敗しても遷移は続ける
-    }
-  }
-
-  function skip() {
+  function complete() {
     if (completing) return;
     setCompleting(true);
-    markOnboarded().then(() => {
+    apiFetch(`/api/customer/onboarding`, {
+      method: 'POST',
+    }).catch(() => {});
+    setTimeout(() => {
       window.location.href = '/home';
-    });
+    }, 100);
   }
 
   function next() {
     if (step < TOTAL) {
       setStep((s) => (s + 1) as Step);
     } else {
-      // StepComplete の「次へ」→ /record へ遷移
-      if (completing) return;
-      setCompleting(true);
-      markOnboarded().then(() => {
-        router.push('/record');
-      });
+      complete();
     }
   }
 
@@ -150,31 +138,38 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
             className="absolute rounded-2xl pointer-events-none transition-all duration-300"
             style={spotlightStyle}
           />
+          <button
+            type="button"
+            onClick={complete}
+            className="absolute top-4 right-4 z-10 text-white/80 bg-black/30 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
+          >
+            スキップ
+          </button>
         </>
       ) : (
         <div className="absolute inset-0 bg-black/50" />
       )}
 
       {step === 1 && (
-        <StepWelcome name={customerName} onNext={next} onSkip={skip} />
+        <StepWelcome name={customerName} onNext={next} onSkip={complete} />
       )}
       {step === 2 && (
-        <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
+        <StepFooterRecord spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
       )}
       {step === 3 && (
-        <StepMealCards spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
+        <StepMealCards spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
       )}
       {step === 4 && (
-        <StepPhotoHint onNext={next} onSkip={skip} />
+        <StepPhotoHint onNext={next} onSkip={complete} />
       )}
       {step === 5 && (
-        <StepWeightIntro spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
+        <StepWeightIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
       )}
       {step === 6 && (
-        <StepExerciseIntro spotlightRect={spotlightRect} onNext={next} onSkip={skip} />
+        <StepExerciseIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
       )}
       {step === 7 && (
-        <StepComplete onNext={next} completing={completing} />
+        <StepComplete onNext={complete} completing={completing} />
       )}
 
       {!showSpotlight && (
@@ -482,7 +477,7 @@ function StepPhotoHint({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
             onClick={onSkip}
             className="px-4 py-3 rounded-2xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
           >
-            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+            スキップ
           </button>
         </div>
       </div>
@@ -500,21 +495,17 @@ function StepComplete({ onNext, completing }: { onNext: () => void; completing: 
         <div>
           <h2 className="text-xl font-bold text-stone-900 mb-2">準備完了！</h2>
           <p className="text-sm text-stone-600 leading-relaxed">
-            さっそく食事記録の使い方を<br />
-            実際の画面でご案内します！
+            さっそく今日の食事を記録して、<br />
+            目標達成を目指しましょう！
           </p>
         </div>
         <button
           type="button"
           onClick={onNext}
           disabled={completing}
-          className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+          className="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-2xl active:bg-emerald-700 disabled:opacity-60 text-sm"
         >
-          {completing ? '移動中…' : (
-            <>
-              食事記録画面へ <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
-            </>
-          )}
+          {completing ? 'ホームへ移動中…' : 'ホームで記録を始める'}
         </button>
       </div>
     </div>

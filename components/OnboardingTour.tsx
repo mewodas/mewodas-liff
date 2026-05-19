@@ -19,7 +19,7 @@ type Props = {
   force?: boolean;
   /** すべてのステップ完了 or スキップ時に呼ばれる */
   onComplete?: () => void;
-  /** 管理画面からリセットされた日時（ISO8601）。localStorageの完了日時より新しければ再表示 */
+  /** 管理画面からリセットされた日時（これより古い localStorage 値は未完了扱い） */
   tourResetAt?: string | null;
 };
 

@@ -46,7 +46,6 @@ export default function WeightPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tourResetAt, setTourResetAt] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
@@ -54,20 +53,8 @@ export default function WeightPage() {
         await initLiff();
         const profile = await getLineProfile();
         if (profile) setUserId(profile.userId);
-        try {
-          const meRes = await apiFetch('/api/customer/me');
-          if (meRes.ok) {
-            const { customer } = await meRes.json();
-            setTourResetAt(customer?.tourResetAt ?? null);
-          } else {
-            setTourResetAt(null);
-          }
-        } catch {
-          setTourResetAt(null);
-        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'LIFF初期化エラー');
-        setTourResetAt(null);
       } finally {
         setReady(true);
       }
@@ -194,8 +181,8 @@ export default function WeightPage() {
           {submitting ? '保存中…' : '記録する'}
         </button>
 
-        {ready && tourResetAt !== undefined && (
-          <OnboardingTour storageKey="fitmeal_tour_weight_done" steps={WEIGHT_TOUR_STEPS} tourResetAt={tourResetAt} />
+        {ready && (
+          <OnboardingTour storageKey="fitmeal_tour_weight_done" steps={WEIGHT_TOUR_STEPS} />
         )}
       </div>
     </main>

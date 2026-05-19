@@ -3,16 +3,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
+import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
-
-type SeatInfo = {
-  seatLimit: number | null;
-  currentSeats: number;
-  isOverLimit: boolean;
-  isNearLimit: boolean;
-};
 
 type Customer = {
   pageId: string;
@@ -76,7 +69,6 @@ export default function AdminCustomersPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
-  const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -86,25 +78,15 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [cRes, sRes, bRes] = await Promise.all([
+        const [cRes, sRes] = await Promise.all([
           fetch('/api/admin/customers', { cache: 'no-store' }),
           fetch('/api/admin/stores', { cache: 'no-store' }),
-          fetch('/api/admin/billing/info', { cache: 'no-store' }),
         ]);
         if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
         const cJ = await cRes.json();
         const sJ = sRes.ok ? await sRes.json() : { stores: [] };
-        const bJ = bRes.ok ? await bRes.json() : null;
         setCustomers(cJ.customers || []);
         setStores(sJ.stores || []);
-        if (bJ && !bJ.error) {
-          setSeatInfo({
-            seatLimit: bJ.seatLimit,
-            currentSeats: bJ.currentSeats,
-            isOverLimit: bJ.isOverLimit,
-            isNearLimit: bJ.isNearLimit,
-          });
-        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -157,35 +139,6 @@ export default function AdminCustomersPage() {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-xl inline-flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-400" strokeWidth={2.4} />
             {toastMsg}
-          </div>
-        )}
-
-        {/* 席数上限バナー */}
-        {seatInfo?.isOverLimit && (
-          <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
-            <div className="flex-1">
-              <div className="font-bold">
-                契約席数 {seatInfo.seatLimit}名 / 使用 {seatInfo.currentSeats}名 — 上限到達
-              </div>
-              <div>新規招待には増枠が必要です。</div>
-              <Link href={`${base}/billing`} className="text-rose-700 font-bold underline mt-1 inline-block">
-                プランを変更する →
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* 残り1席バナー */}
-        {!seatInfo?.isOverLimit && seatInfo?.isNearLimit && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" strokeWidth={2.2} />
-            <div>
-              あと1名で席数上限です。早めの増枠をご検討ください。
-              <Link href={`${base}/billing`} className="text-amber-800 font-bold underline ml-1">
-                プランを確認する →
-              </Link>
-            </div>
           </div>
         )}
 
@@ -288,23 +241,15 @@ export default function AdminCustomersPage() {
                     </div>
                     <div className="mt-1.5 flex gap-2 flex-wrap">
                       {!c.lineUserId ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => copyInviteLink(e, c.pageId)}
-                            disabled={copyingId === c.pageId || !!seatInfo?.isOverLimit}
-                            className="text-[11px] font-bold bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg active:bg-sky-200 disabled:opacity-50 inline-flex items-center gap-1"
-                          >
-                            <ClipboardCopy className="w-3 h-3" strokeWidth={2.4} />
-                            {copyingId === c.pageId ? 'コピー中…' : '招待リンクをコピー'}
-                          </button>
-                          {seatInfo?.isOverLimit && (
-                            <span className="text-[10px] text-rose-600 font-bold inline-flex items-center gap-0.5">
-                              <AlertTriangle className="w-3 h-3" strokeWidth={2.2} />
-                              席数上限のため招待停止中
-                            </span>
-                          )}
-                        </>
+                        <button
+                          type="button"
+                          onClick={(e) => copyInviteLink(e, c.pageId)}
+                          disabled={copyingId === c.pageId}
+                          className="text-[11px] font-bold bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg active:bg-sky-200 disabled:opacity-50 inline-flex items-center gap-1"
+                        >
+                          <ClipboardCopy className="w-3 h-3" strokeWidth={2.4} />
+                          {copyingId === c.pageId ? 'コピー中…' : '招待リンクをコピー'}
+                        </button>
                       ) : (
                         <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                           <Check className="w-3 h-3" strokeWidth={2.4} />

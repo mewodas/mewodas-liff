@@ -15,7 +15,6 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     const unreadCount = notifications.filter((n) => !n.read).length;
     return NextResponse.json({ configured: true, notifications, unreadCount });
   } catch (e) {
-    console.error('[/api/notifications] failed:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
 });
