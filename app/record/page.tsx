@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
@@ -186,7 +187,7 @@ export default function RecordPage() {
       const compressed = await Promise.all(files.slice(0, 2).map((f) => compressImage(f)));
       const form = new FormData();
       compressed.forEach((c) => form.append('photo', c));
-      const res = await fetch('/api/record/nutrition-label', { method: 'POST', body: form });
+      const res = await apiFetch('/api/record/nutrition-label', { method: 'POST', body: form });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `成分表解析失敗（${res.status}）`);
@@ -215,11 +216,10 @@ export default function RecordPage() {
     try {
       const name = edited?.name || labelResult.name;
       const k = edited?.perServing || labelResult.perServing;
-      const res = await fetch('/api/record/manual', {
+      const res = await apiFetch('/api/record/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: userId,
           mealType,
           date: targetDate,
           title: `${name}（${quantity}× ${labelResult.servingLabel}）`,
@@ -277,7 +277,7 @@ export default function RecordPage() {
       photoList.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
-      const res = await fetch('/api/record/analyze', {
+      const res = await apiFetch('/api/record/analyze', {
         method: 'POST',
         body: formData,
       });
@@ -306,7 +306,6 @@ export default function RecordPage() {
     setStage('saving');
     try {
       const formData = new FormData();
-      formData.append('lineUserId', userId);
       formData.append('date', targetDate);
       formData.append('mealType', mealType);
       formData.append('comment', comment);
@@ -314,7 +313,7 @@ export default function RecordPage() {
       photos.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
-      const res = await fetch('/api/record/confirm', {
+      const res = await apiFetch('/api/record/confirm', {
         method: 'POST',
         body: formData,
       });
@@ -351,10 +350,10 @@ export default function RecordPage() {
     setSkipping(true);
     setError(null);
     try {
-      const res = await fetch('/api/record/skip', {
+      const res = await apiFetch('/api/record/skip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineUserId: userId, mealType, date: targetDate }),
+        body: JSON.stringify({ mealType, date: targetDate }),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);

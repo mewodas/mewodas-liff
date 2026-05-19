@@ -8,6 +8,7 @@ import {
   Camera,
   X,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 type Props = {
   customerName: string;
@@ -71,15 +72,21 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
     };
   }, [step]);
 
-  function complete() {
+  async function markOnboarded(): Promise<void> {
+    try {
+      await apiFetch(`/api/customer/onboarding`, {
+        method: 'POST',
+      });
+    } catch {
+      // API失敗でもリダイレクトは続行
+    }
+  }
+
+  async function complete() {
     if (completing) return;
     setCompleting(true);
-    fetch(`/api/customer/onboarding?lineUserId=${encodeURIComponent(lineUserId)}`, {
-      method: 'POST',
-    }).catch(() => {});
-    setTimeout(() => {
-      window.location.href = '/home';
-    }, 100);
+    await markOnboarded();
+    window.location.href = '/home';
   }
 
   function next() {

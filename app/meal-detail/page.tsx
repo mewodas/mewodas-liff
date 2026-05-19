@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 
@@ -188,10 +189,10 @@ function MealDetailInner() {
     setConfirmDelete(null);
     setDeletingId(null);
     // バックグラウンドで Notion archive、キャッシュ invalidate
-    fetch('/api/delete', {
+    apiFetch('/api/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pageId: record.pageId, lineUserId: userId }),
+      body: JSON.stringify({ pageId: record.pageId }),
     })
       .then((res) => {
         if (!res.ok) {
@@ -398,12 +399,11 @@ function PortionSheet({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/record/update', {
+      const res = await apiFetch('/api/record/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pageId: record.pageId,
-          lineUserId,
           kcal: newKcal,
           P: newP,
           F: newF,
@@ -599,12 +599,11 @@ function EditModal({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/record/update', {
+      const res = await apiFetch('/api/record/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pageId: record.pageId,
-          lineUserId,
           kcal: displayKcal,
           P: numOr(P),
           F: numOr(F),

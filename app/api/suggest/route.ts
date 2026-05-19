@@ -4,6 +4,7 @@ import {
   getFoodRecordsByDate,
 } from '@/lib/notion';
 import { suggestMeals, type MealSuggestion } from '@/lib/gemini';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -19,18 +20,13 @@ function jstHour(): number {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })).getHours();
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
-    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
     const date = req.nextUrl.searchParams.get('date') || jstTodayString();
 
-    if (!lineUserId) {
-      return NextResponse.json({ error: 'lineUserId が必要です' }, { status: 400 });
-    }
-
     const [customer, records] = await Promise.all([
-      getCustomerByLineId(lineUserId),
-      getFoodRecordsByDate(lineUserId, date),
+      getCustomerByLineId(verifiedLineUserId),
+      getFoodRecordsByDate(verifiedLineUserId, date),
     ]);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
@@ -84,4 +80,4 @@ export async function GET(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
 import { Footprints, CheckCircle2, Plus } from 'lucide-react';
@@ -87,7 +88,7 @@ export default function ExercisePage() {
   // 顧客の体重を取得してkcal計算に使用
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/today?lineUserId=${encodeURIComponent(userId)}&date=${todayStr}&t=${Date.now()}`, {
+    apiFetch(`/api/today?date=${todayStr}&t=${Date.now()}`, {
       cache: 'no-store',
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -117,11 +118,10 @@ export default function ExercisePage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/exercise-log', {
+      const res = await apiFetch('/api/exercise-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lineUserId: userId,
           date,
           exercise: effectiveExercise,
           category,

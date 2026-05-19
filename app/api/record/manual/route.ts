@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, saveFoodRecord, getTargetDate } from '@/lib/notion';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-// AI解析を経ずに、提示されたPFCをそのまま記録するエンドポイント
-// 「これ食べた」ワンタップ記録用（AI提案/食品DB/バーコード/よく食べる、共通）
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const body = await req.json();
-    const { lineUserId, mealType, title, kcal, P, F, C, day, date, source } = body;
+    const { mealType, title, kcal, P, F, C, day, date, source } = body;
 
-    if (!lineUserId || !mealType || !title) {
+    if (!mealType || !title) {
       return NextResponse.json(
-        { error: 'lineUserId, mealType, title は必須です' },
+        { error: 'mealType, title は必須です' },
         { status: 400 }
       );
     }
@@ -29,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'mealType が不正です' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(lineUserId);
+    const customer = await getCustomerByLineId(verifiedLineUserId);
     if (!customer || customer.foodStatus !== '進行中') {
       return NextResponse.json(
         { error: '食事管理サービス対象外、またはステータスが進行中ではありません' },
@@ -37,7 +36,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // sourceに応じて記録のラベルを切り替える（食事タイトルの末尾に付与）
     const sourceLabel: Record<string, string> = {
       ai_suggest: 'AI提案から登録',
       food_db: '食品DBから登録',
@@ -49,12 +47,10 @@ export async function POST(req: NextRequest) {
     };
     const label = sourceLabel[source] || '手動登録';
 
-    // date が yyyy-MM-dd 形式で指定されていればそれを優先、なければ day（今日/昨日）から算出
     const targetDate =
       typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
         ? date
         : getTargetDate(day || '今日');
-    // 表示用タイトル：食事名 ｜ 登録元
     const displayTitle = `${title} ｜ ${label}`;
     const pfc = {
       kcal: Math.round(kcal),
@@ -66,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     await saveFoodRecord({
       customerName: customer.name,
-      lineUserId,
+      lineUserId: verifiedLineUserId,
       pfc,
       mealType,
       goals: customer.goals,
@@ -79,4 +75,4 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
