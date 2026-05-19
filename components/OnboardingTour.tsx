@@ -38,11 +38,16 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
     // tourResetAt=undefined はAPIロード前の初期状態 → まだ判断しない
     if (tourResetAt === undefined) return;
     const stored = window.localStorage.getItem(storageKey);
+    // Notion DB の「ツアーリセット日時」列が日付のみ (YYYY-MM-DD) で返るケースに対応:
+    // その日の終わり (23:59:59.999Z) として扱い、当日中に完了した stored より新しいと判定
+    const normalizedReset = tourResetAt && tourResetAt.length === 10
+      ? `${tourResetAt}T23:59:59.999Z`
+      : tourResetAt;
     // stored が null → 未表示 → 表示する
     // stored がある場合: tourResetAt が null(リセット未設定) → 表示済みとみなす
-    //                   tourResetAt が ISO文字列 → stored >= tourResetAt なら表示済み
+    //                   tourResetAt が ISO文字列 → stored >= normalizedReset なら表示済み
     const isDone = stored !== null && (
-      tourResetAt === null || stored >= tourResetAt
+      normalizedReset === null || stored >= normalizedReset
     );
     if (!isDone) {
       // 描画完了を少し待ってから表示
