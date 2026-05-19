@@ -11,7 +11,7 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
   // staging で enforce 検証中。問題なければ main にも同じ enforce で展開
   {
-    key: 'Content-Security-Policy',
+    key: 'Content-Security-Policy-Report-Only',
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://va.vercel-scripts.com",
