@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 – 顧客アカウント削除機能 + 非進行中ステータス案内UX
+
+- feat(liff/profile): /profile 最下部にアカウント削除セクション追加。確認ダイアログ→DELETE /api/account→Notion アーカイブ化→LIFF 閉じる
+- feat(api): `DELETE /api/account` エンドポイント新規作成（withLiffTenant wrap、getCustomerByLineId→archiveCustomer）
+- feat(liff/home): foodStatus が '進行中' 以外の顧客は /home でステータス別案内画面を表示（食事記録UI非表示、公式LINE連絡ボタン・アカウント削除導線あり）
+- feat(api): `GET /api/customer/me` レスポンスに `officialLineUrl` を追加（テナント設定から取得）
+- 影響範囲: 顧客側 LIFF /home・/profile、API /api/account・/api/customer/me（staging のみ・main 非マージ）
+
 ## 2026-05-19 – /profile 編集機能 + /goals 進捗表示削除
 
 - feat(liff/profile): 顧客が氏名・性別・身長・体重・生年月日を自己編集→保存できるように変更（店舗・フリガナ・メール・電話は読み取り専用維持）

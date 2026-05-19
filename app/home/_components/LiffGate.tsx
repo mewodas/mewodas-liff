@@ -45,6 +45,9 @@ function LiffGateInner() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [foodStatus, setFoodStatus] = useState<string | null>(null);
+  const [officialLineUrl, setOfficialLineUrl] = useState<string | null>(null);
+  const [customerReady, setCustomerReady] = useState(false);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -87,8 +90,12 @@ function LiffGateInner() {
         }
         const j = await res.json();
         setOnboardingDone(!!j.customer?.onboardingCompletedAt);
+        setFoodStatus(j.customer?.foodStatus ?? null);
+        setOfficialLineUrl(j.officialLineUrl ?? null);
       } catch {
         setOnboardingDone(true);
+      } finally {
+        setCustomerReady(true);
       }
     })();
   }, [userId]);
@@ -200,10 +207,43 @@ function LiffGateInner() {
     })();
   }, [userId, selectedDate]);
 
-  if (!ready) {
+  if (!ready && !(customerReady && foodStatus && foodStatus !== '進行中')) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-stone-100">
         <div className="text-stone-800">読み込み中...</div>
+      </main>
+    );
+  }
+
+  if (customerReady && foodStatus && foodStatus !== '進行中') {
+    const statusMessages: Record<string, string> = {
+      設定中: 'アカウントのセットアップが完了していません。トレーナーまでご連絡ください。',
+      休止中: '現在、食事管理サービスを休止中です。再開はトレーナーへご相談ください。',
+      卒業: 'ご利用ありがとうございました。再開ご希望の場合はトレーナーまでお問い合わせください。',
+    };
+    const message = statusMessages[foodStatus] ?? 'このアカウントは現在ご利用いただけません。トレーナーまでお問い合わせください。';
+
+    return (
+      <main className="min-h-screen bg-stone-100 flex flex-col pb-28">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-6">
+          <p className="text-stone-500 text-sm leading-relaxed max-w-xs">{message}</p>
+          {officialLineUrl && (
+            <a
+              href={officialLineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full max-w-xs bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm py-3.5 rounded-2xl text-center transition-colors"
+            >
+              公式LINE で連絡する
+            </a>
+          )}
+          <Link
+            href="/profile"
+            className="text-xs text-stone-400 underline underline-offset-2"
+          >
+            アカウント削除はこちら（プロフィールページ）
+          </Link>
+        </div>
       </main>
     );
   }

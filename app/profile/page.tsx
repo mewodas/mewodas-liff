@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { initLiff } from '@/lib/liff';
+import { useEffect, useState, useRef } from 'react';
+import { initLiff, closeLiff } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import { User, Save } from 'lucide-react';
@@ -61,6 +61,11 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -91,6 +96,37 @@ export default function ProfilePage() {
       }
     })();
   }, []);
+
+  function openDeleteConfirm() {
+    setDeleteConfirm(true);
+    dialogRef.current?.showModal();
+  }
+
+  function closeDeleteConfirm() {
+    setDeleteConfirm(false);
+    dialogRef.current?.close();
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await apiFetch('/api/account', { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || `削除失敗（${res.status}）`);
+      }
+      setDeleteSuccess(true);
+      dialogRef.current?.close();
+      setTimeout(() => {
+        closeLiff();
+      }, 2500);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : '削除エラー');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     if (!form) return;
@@ -248,7 +284,59 @@ export default function ProfilePage() {
             </button>
           </>
         )}
+
+        <section className="mt-6 border-t border-stone-200 pt-6">
+          <p className="text-xs font-semibold text-rose-700 mb-1">アカウント削除</p>
+          <p className="text-xs text-stone-500 mb-3">
+            LIFFでのアクセスができなくなります。再開希望時はトレーナーにご連絡ください。
+          </p>
+          {deleteSuccess ? (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl">
+              アカウントを削除しました。まもなく画面が閉じます。
+            </div>
+          ) : (
+            <>
+              {deleteError && (
+                <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl mb-2">{deleteError}</div>
+              )}
+              <button
+                onClick={openDeleteConfirm}
+                className="w-full border border-rose-300 text-rose-600 text-sm font-semibold py-3 rounded-2xl hover:bg-rose-50 active:bg-rose-100 transition-colors"
+              >
+                アカウントを削除する
+              </button>
+            </>
+          )}
+        </section>
       </div>
+
+      <dialog
+        ref={dialogRef}
+        className="rounded-2xl shadow-xl p-6 max-w-xs w-full mx-auto backdrop:bg-black/40"
+        onClose={() => setDeleteConfirm(false)}
+      >
+        {deleteConfirm && (
+          <div className="space-y-4">
+            <p className="text-sm font-bold text-stone-800">本当に削除しますか？</p>
+            <p className="text-xs text-stone-500">この操作は取り消せません。</p>
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteConfirm}
+                className="flex-1 border border-stone-300 text-stone-700 text-sm font-semibold py-2.5 rounded-xl hover:bg-stone-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:bg-stone-300 text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
+              >
+                {deleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
     </main>
   );
 }

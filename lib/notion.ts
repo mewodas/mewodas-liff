@@ -372,6 +372,14 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
   invalidate(`${tenantId}:foodRecords:`);
 }
 
+// 顧客レコードをアーカイブ化（アカウント削除）
+export async function archiveCustomer(pageId: string): Promise<void> {
+  await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });
+  const tenantId = getCurrentTenant().id;
+  invalidate(`${tenantId}:customer:`);
+  invalidate(`${tenantId}:customers:`);
+}
+
 // pageId が現テナントの食事DBに属することを確認。不一致なら例外 throw
 export async function assertFoodRecordOwnership(pageId: string): Promise<void> {
   const page = await notionRequest('GET', `/pages/${pageId}`);

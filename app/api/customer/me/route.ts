@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, updateCustomer } from '@/lib/notion';
 import { withLiffTenant } from '@/lib/withTenant';
+import { getCurrentTenant } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,8 @@ export const maxDuration = 30;
 export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   const customer = await getCustomerByLineId(verifiedLineUserId, { force: true });
   if (!customer) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  return NextResponse.json({ customer });
+  const tenant = getCurrentTenant();
+  return NextResponse.json({ customer, officialLineUrl: tenant.officialLineUrl ?? null });
 });
 
 export const PATCH = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
