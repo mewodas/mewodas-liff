@@ -641,8 +641,8 @@ function HomePageInner() {
         <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
       )}
 
-      {/* オンボーディング（アクション誘導型） */}
-      {ready && data && (
+      {/* オンボーディング（アクション誘導型）— OnboardingFlow 表示中は非表示 */}
+      {ready && data && !showOnboarding && (
         <HomeOnboarding hasRecords={today.recordCount > 0} />
       )}
     </main>

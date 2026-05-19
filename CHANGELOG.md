@@ -9,6 +9,14 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 (staging) – オンボーディング追加修正 3点
+
+- fix: OnboardingFlow 表示中に HomeOnboarding（OnboardingTour）が同時起動して背景が濃いグレーになる問題を修正（showOnboarding=true のとき HomeOnboarding をレンダリングしない）
+- fix: ステップ切り替え時のポップ・スポットライトのズレ解消（setTimeout → requestAnimationFrame に変更し同フレームで rect 取得）
+- fix: ステップ2（食事記録スポットライト）右上の浮いた「スキップ」ボタンを削除し、ポップ内の × ボタンのみに統一
+- 影響範囲: 顧客側（新規ユーザーのオンボーディング画面）
+- 変更ファイル: app/home/page.tsx, components/OnboardingFlow.tsx
+
 ## 2026-05-19 (staging) – オンボーディング UX 3点修正
 
 - fix: スキップ/完了ボタン押下後にオンボーディングが再表示されるバグを修正（fetch を await 化して API 完了を待ってからリダイレクト）

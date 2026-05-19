@@ -36,11 +36,10 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         setSpotlightRect(null);
       }
     }
-    updateRect();
-    const id = setTimeout(updateRect, 300);
+    const rafId = requestAnimationFrame(updateRect);
     window.addEventListener('resize', updateRect);
     return () => {
-      clearTimeout(id);
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updateRect);
     };
   }, [step]);
@@ -60,12 +59,11 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         setSpotlightRect(null);
       }
     }
-    updateRect();
-    const id = setTimeout(updateRect, 400);
+    const rafId = requestAnimationFrame(updateRect);
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
     return () => {
-      clearTimeout(id);
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };
@@ -127,14 +125,6 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
             className="absolute rounded-2xl pointer-events-none transition-all duration-300"
             style={spotlightStyle}
           />
-          {/* スキップボタン */}
-          <button
-            type="button"
-            onClick={complete}
-            className="absolute top-4 right-4 z-10 text-white/80 bg-black/30 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
-          >
-            スキップ
-          </button>
         </>
       ) : (
         <div className="absolute inset-0 bg-black/20" />
