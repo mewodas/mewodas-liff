@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { initLiff, getLineProfile } from '@/lib/liff';
+import { initLiff } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import { Target, Calendar, TrendingDown } from 'lucide-react';
 
@@ -65,23 +66,10 @@ export default function GoalsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.location.href = '/home';
-  }, []);
-
-  useEffect(() => {
     (async () => {
       try {
         await initLiff();
-        const lineProfile = await getLineProfile();
-        if (!lineProfile) {
-          setError('LINEプロフィール取得失敗');
-          setReady(true);
-          return;
-        }
-        const res = await fetch(
-          `/api/customer/me?lineUserId=${encodeURIComponent(lineProfile.userId)}`,
-          { cache: 'no-store' }
-        );
+        const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
         const c = j.customer;

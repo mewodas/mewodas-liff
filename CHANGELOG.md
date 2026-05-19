@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-05-19 – 設定中顧客クリーンアップ機能 4点
+
+- feat(admin/page): ステータスフィルタに「招待未送信」追加（foodStatus=設定中かつ lineUserId なし）
+- feat(admin/page): 14日以上未起動の設定中顧客件数バナーを上部に追加（0件時は非表示）
+- feat(api): `POST /api/admin/customers/bulk-cleanup` — 設定中14日経過顧客を Notion アーカイブ
+- feat(admin/page): 一括削除ボタンをバナー内に配置（確認ダイアログ付き）
+- feat(admin/customers/new): 顧客追加成功後に招待リンク主CTA 画面を表示（コピー・LINE送信ボタン付き）
+- fix(lib/notion): Customer 型に `createdTime` フィールド追加、`parseCustomerFromPage` で `page.created_time` を読む
+- fix(lib/notion): `archiveCustomer()` 関数追加（PATCH /pages/:id archived:true）
+- fix(lib/repository/customers): `archiveCustomer()` エクスポート追加
+- 影響範囲: 管理画面のみ（顧客 LIFF 側は無変更）
+
+## 2026-05-19 (staging) – /profile 401 修正・/goals 有効化
+
+- fix(profile): `fetch` を `apiFetch` に差し替え。Authorization ヘッダーが送られず 401 になっていた不具合を修正
+- fix(goals): `window.location.href = '/home'` による即時リダイレクトを削除。`fetch` → `apiFetch` に変更
+- feat(menu): 「目標設定」の `disabled` を解除し `/goals` へのリンクを有効化。読み取り専用（トレーナー設定値の表示のみ）
+- 影響範囲: 顧客側 LIFF `/profile` `/goals` `/menu`（staging のみ）
+
 ## 2026-05-19 (staging) – OnboardingTour リセット後の再表示バグ修正
 
 - fix(OnboardingTour): `tourResetAt=undefined`（APIロード前）の初期状態で `isDone=true` と誤判定し、ツアーが再表示されないバグを修正
