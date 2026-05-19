@@ -171,12 +171,25 @@ function LiffGateInner() {
         if (extrasRes && extrasRes.ok) {
           const extras = await extrasRes.json().catch(() => null);
           if (extras) {
-            json.today.weight = extras.weight || '';
-            json.today.exercised = extras.exercised || '';
-            json.today.exerciseContent = extras.exerciseContent || '';
+            // 空文字は上書きしない (Notion 反映遅延 / テナント不一致対策)
+            if (extras.weight) json.today.weight = extras.weight;
+            if (extras.exercised) json.today.exercised = extras.exercised;
+            if (extras.exerciseContent) json.today.exerciseContent = extras.exerciseContent;
           }
         }
-        setData(json);
+        // prev に運動・体重データがあって json で空ならそれを維持
+        setData((prev) => {
+          if (!prev) return json;
+          return {
+            ...json,
+            today: {
+              ...json.today,
+              weight: json.today.weight || prev.today.weight,
+              exercised: json.today.exercised || prev.today.exercised,
+              exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+            },
+          };
+        });
         setCached(cacheKey, json);
       } catch (e) {
         if (!cached) setError(e instanceof Error ? e.message : '読み込みエラー');
@@ -248,13 +261,15 @@ function LiffGateInner() {
         if (!extras) return;
         setData((prev) => {
           if (!prev) return prev;
+          // サーバー側 (Notion / GAS) が反映遅延 or テナント不一致で空を返した場合、
+          // 楽観的更新済みの値を消さない。明示的な値があるときだけ上書き。
           const updated = {
             ...prev,
             today: {
               ...prev.today,
-              weight: extras.weight || '',
-              exercised: extras.exercised || '',
-              exerciseContent: extras.exerciseContent || '',
+              ...(extras.weight ? { weight: extras.weight } : {}),
+              ...(extras.exercised ? { exercised: extras.exercised } : {}),
+              ...(extras.exerciseContent ? { exerciseContent: extras.exerciseContent } : {}),
             },
           };
           setCached(`today_v2_${userId}_${selectedDate}`, updated);
