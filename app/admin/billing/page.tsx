@@ -44,6 +44,7 @@ type BillingInfo = {
   hasStripeCustomer: boolean;
   seatLimit: number | null;
   currentSeats: number;
+  totalCustomers?: number;
   remaining: number | null;
   isOverLimit: boolean;
   isNearLimit: boolean;
@@ -185,6 +186,11 @@ export default function BillingPage() {
                     </span>
                     <span>使用 {info.currentSeats}名 / 残り {info.remaining !== null ? info.remaining : '—'}名</span>
                   </div>
+                  {typeof info.totalCustomers === 'number' && info.totalCustomers !== info.currentSeats && (
+                    <div className="text-[10px] text-stone-500">
+                      ※ 休止中・卒業の顧客は席数カウント対象外（総顧客 {info.totalCustomers}名）
+                    </div>
+                  )}
                   <div className="w-full bg-stone-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full transition-all ${

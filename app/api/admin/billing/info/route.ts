@@ -33,6 +33,7 @@ export const GET = withAdminTenant(async () => {
     // 席数ステータス
     seatLimit: seatStatus.seatLimit,
     currentSeats: seatStatus.currentSeats,
+    totalCustomers: seatStatus.totalCustomers,
     remaining: seatStatus.remaining,
     isOverLimit: seatStatus.isOverLimit,
     isNearLimit: seatStatus.isNearLimit,

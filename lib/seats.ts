@@ -7,13 +7,19 @@ import type { PlanTier } from './stripe';
 
 export type SeatStatus = {
   seatLimit: number | null;
+  /** アクティブ席数（休止中・卒業は除外） */
   currentSeats: number;
+  /** 総顧客数（参考。全ステータス含む） */
+  totalCustomers: number;
   remaining: number | null;
   isOverLimit: boolean;
   isNearLimit: boolean;
   planTier: PlanTier | null;
   hasContract: boolean;
 };
+
+/** 席数カウント対象から外すステータス */
+const INACTIVE_FOOD_STATUSES = new Set(['休止中', '卒業']);
 
 export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatStatus> {
   const tenantId = getCurrentTenant().id;
@@ -35,7 +41,12 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
     tenantRow?.stripeSubscriptionId &&
     (tenantRow?.paymentStatus === '有効' || tenantRow?.paymentStatus === 'お試し')
   );
-  const currentSeats = customers.length;
+  // 休止中・卒業は seat カウントから除外（アクティブ顧客のみ）
+  const activeCustomers = customers.filter(
+    (c) => !c.foodStatus || !INACTIVE_FOOD_STATUSES.has(c.foodStatus)
+  );
+  const currentSeats = activeCustomers.length;
+  const totalCustomers = customers.length;
   const remaining = seatLimit !== null ? seatLimit - currentSeats : null;
   const isOverLimit = seatLimit !== null ? currentSeats >= seatLimit : false;
   const isNearLimit = remaining !== null ? remaining <= 1 && !isOverLimit : false;
@@ -43,6 +54,7 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
   const status: SeatStatus = {
     seatLimit,
     currentSeats,
+    totalCustomers,
     remaining,
     isOverLimit,
     isNearLimit,
