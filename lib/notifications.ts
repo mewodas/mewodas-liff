@@ -17,7 +17,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { getCached, setCached, invalidate } from '@/lib/cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
-const NOTION_API_VERSION = '2025-09-03';
+const NOTION_API_VERSION = '2022-06-28';
 
 export type NotificationCategory = '前日レポート' | '週次レポート' | 'お知らせ' | 'アドバイス';
 
