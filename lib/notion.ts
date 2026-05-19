@@ -363,6 +363,11 @@ export async function updateCustomer(
       ? { date: null }
       : { date: { start: patch.onboardingCompletedAt } };
   }
+  if (patch.tourResetAt !== undefined) {
+    properties['ツアーリセット日時'] = patch.tourResetAt === null
+      ? { date: null }
+      : { date: { start: patch.tourResetAt } };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
   customerCache.clear();

@@ -18,6 +18,7 @@ import {
   Info,
   Circle,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import {
   LineChart,
@@ -102,6 +103,7 @@ export default function CustomerDetailPage({
   const base = useAdminBase();
   const router = useRouter();
   const [resettingOnboard, setResettingOnboard] = useState(false);
+  const [resettingTour, setResettingTour] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -303,6 +305,22 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : 'リセット失敗');
     } finally {
       setResettingOnboard(false);
+    }
+  }
+
+  async function resetTour() {
+    if (!confirm('この顧客のツアー表示フラグをリセットします。次回 LIFF アクセス時、各メニューの使い方ツアーが再表示されます。よろしいですか？')) {
+      return;
+    }
+    setResettingTour(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/tour-reset`, { method: 'POST' });
+      if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+      alert('ツアー表示フラグをリセットしました。');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'リセット失敗');
+    } finally {
+      setResettingTour(false);
     }
   }
 
@@ -957,20 +975,32 @@ export default function CustomerDetailPage({
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                オンボーディングリセット
+                リセット
               </h3>
               <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
                 顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
                 目標値・体重・性別などの基本情報は保持されます。
               </p>
-              <button
-                type="button"
-                onClick={resetOnboarding}
-                disabled={resettingOnboard}
-                className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50"
-              >
-                {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={resetOnboarding}
+                  disabled={resettingOnboard}
+                  className="flex-1 bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
+                  {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetTour}
+                  disabled={resettingTour}
+                  className="flex-1 bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} />
+                  {resettingTour ? 'リセット中…' : 'ツアーをリセット'}
+                </button>
+              </div>
             </section>
         </div>
       )}

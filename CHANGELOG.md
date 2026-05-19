@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-19 feat: admin/store 顧客詳細画面にツアーリセットボタン追加
+
+- feat: `/admin/customers/[id]` と `/store/customers/[id]` にツアーリセットボタンを追加（オンボーディングリセットと横並び）
+- 影響範囲: 管理画面 / API / DB（Notion `ツアーリセット日時` 列新設予定）
+- 仕組み: `POST /api/admin/customers/[id]/tour-reset` が Notion の `tourResetAt` を現在時刻で更新。LIFF 側（`/record` `/weight` `/exercise`）は起動時に `/api/customer/me` から `tourResetAt` を取得し、localStorage の完了タイムスタンプと比較して古ければツアーを再表示（staging 側で実施）
+
 ## 2026-05-19 Security(Critical): LIFF lineUserId 自己申告なりすまし防止
 
 - security(Critical): LIFF API ルート群が body/query の `lineUserId` を無検証で信頼していたバグを修正。任意の userId を送れば他人の食事記録・体重ログ・通知を読み書き削除できる状態だった
