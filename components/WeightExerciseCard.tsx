@@ -144,30 +144,30 @@ function WeightSheet({
   const [error, setError] = useState<string | null>(null);
   const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
 
-  async function save() {
+  function save() {
     const w = parseFloat(weight);
     if (isNaN(w) || w <= 0 || w > 300) {
       setError('体重を 0〜300 の数値で入力してください');
       return;
     }
-    setSaving(true);
     setError(null);
-    try {
-      const res = await apiFetch('/api/log/weight', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: selectedDate, weight: w }),
+    // 楽観的: シート即時閉じる + UI 即時反映。POST は background で投げる
+    onSaved({ weight: String(w) });
+    apiFetch('/api/log/weight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: selectedDate, weight: w }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          throw new Error(j?.error || `保存失敗（${res.status}）`);
+        }
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-alert
+        alert(`体重保存に失敗しました: ${e instanceof Error ? e.message : '送信エラー'}`);
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || `保存失敗（${res.status}）`);
-      }
-      onSaved({ weight: String(w) });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '送信エラー');
-    } finally {
-      setSaving(false);
-    }
   }
 
   return (
@@ -263,36 +263,36 @@ function ExerciseSheet({
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function save() {
-    setSaving(true);
+  function save() {
     setError(null);
-    try {
-      const pending = draft.trim();
-      const allItems = pending ? [...items, pending] : items;
-      const merged = allItems.join('\n');
-      const exercised = allItems.length > 0;
-      const res = await apiFetch('/api/log/exercise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedDate,
-          exercised,
-          content: merged,
-        }),
+    const pending = draft.trim();
+    const allItems = pending ? [...items, pending] : items;
+    const merged = allItems.join('\n');
+    const exercised = allItems.length > 0;
+    // 楽観的: シート即時閉じる + UI 即時反映。POST は background で投げる
+    onSaved({
+      exercised: exercised ? '✅' : '',
+      exerciseContent: merged,
+    });
+    apiFetch('/api/log/exercise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: selectedDate,
+        exercised,
+        content: merged,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          throw new Error(j?.error || `保存失敗（${res.status}）`);
+        }
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-alert
+        alert(`運動保存に失敗しました: ${e instanceof Error ? e.message : '送信エラー'}`);
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || `保存失敗（${res.status}）`);
-      }
-      onSaved({
-        exercised: exercised ? '✅' : '',
-        exerciseContent: merged,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '送信エラー');
-    } finally {
-      setSaving(false);
-    }
   }
 
   return (
