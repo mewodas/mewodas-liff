@@ -9,16 +9,18 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   // camera needed for meal-photo capture in LIFF
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
-  // Report-Only first — switch to Content-Security-Policy once LIFF SDK compatibility confirmed
+  // staging で enforce 検証中。問題なければ main にも同じ enforce で展開
   {
     key: 'Content-Security-Policy-Report-Only',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://va.vercel-scripts.com",
+      // LIFF SDK: static.line-scdn.net + liffsdk.line-scdn.net 等のサブドメイン許容のため wildcards
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.line-scdn.net https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.line.me https://api.notion.com https://generativelanguage.googleapis.com https://o*.ingest.sentry.io https://va.vercel-scripts.com",
-      "frame-src 'self' https://liff.line.me",
+      // LIFF SDK は api.line.me 以外に access.line.me / liff-subwindow.line.me / uts-front.line-apps.com も叩く
+      "connect-src 'self' https://*.line.me https://*.line-apps.com https://api.notion.com https://generativelanguage.googleapis.com https://o*.ingest.sentry.io https://va.vercel-scripts.com",
+      "frame-src 'self' https://*.line.me",
       "font-src 'self' data:",
     ].join('; '),
   },

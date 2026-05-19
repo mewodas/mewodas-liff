@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { initLiff, getLineProfile } from '@/lib/liff';
+import { initLiff } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import { Target, Calendar, TrendingDown } from 'lucide-react';
 
@@ -29,59 +30,16 @@ function formatDate(dateStr: string | null): string {
   return `${y}年${m}月${d}日`;
 }
 
-function WeightProgressBar({
-  current,
-  target,
-}: {
-  current: number;
-  target: number;
-}) {
-  const startWeight = Math.max(current, target) + Math.abs(current - target) * 0.2;
-  const totalRange = startWeight - Math.min(current, target);
-  const achieved = totalRange > 0
-    ? Math.min(100, Math.max(0, Math.round(((startWeight - current) / (startWeight - target)) * 100)))
-    : 0;
-
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-stone-600 mb-1.5">
-        <span>現在 {current} kg</span>
-        <span>目標 {target} kg</span>
-      </div>
-      <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-emerald-500 transition-all rounded-full"
-          style={{ width: `${achieved}%` }}
-        />
-      </div>
-      <div className="text-right text-[11px] font-bold text-emerald-700 mt-1">{achieved}% 達成</div>
-    </div>
-  );
-}
-
 export default function GoalsPage() {
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<GoalsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.location.href = '/home';
-  }, []);
-
-  useEffect(() => {
     (async () => {
       try {
         await initLiff();
-        const lineProfile = await getLineProfile();
-        if (!lineProfile) {
-          setError('LINEプロフィール取得失敗');
-          setReady(true);
-          return;
-        }
-        const res = await fetch(
-          `/api/customer/me?lineUserId=${encodeURIComponent(lineProfile.userId)}`,
-          { cache: 'no-store' }
-        );
+        const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
         const c = j.customer;
@@ -127,32 +85,28 @@ export default function GoalsPage() {
         {data && (
           <>
             {/* 体重目標 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-              <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
-                <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                体重目標
-              </h2>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <StatCard
-                  label="現在体重"
-                  value={data.currentWeight !== null ? `${data.currentWeight}` : '—'}
-                  unit="kg"
-                  color="sky"
-                />
-                <StatCard
-                  label="目標体重"
-                  value={data.targetWeight !== null ? `${data.targetWeight}` : '—'}
-                  unit="kg"
-                  color="emerald"
-                />
-              </div>
-              {data.currentWeight !== null && data.targetWeight !== null && (
-                <WeightProgressBar
-                  current={data.currentWeight}
-                  target={data.targetWeight}
-                />
-              )}
-            </section>
+            {(data.currentWeight !== null || data.targetWeight !== null) && (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+                <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
+                  <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                  体重目標
+                </h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard
+                    label="開始体重"
+                    value={data.currentWeight !== null ? `${data.currentWeight}` : '—'}
+                    unit="kg"
+                    color="sky"
+                  />
+                  <StatCard
+                    label="目標体重"
+                    value={data.targetWeight !== null ? `${data.targetWeight}` : '—'}
+                    unit="kg"
+                    color="emerald"
+                  />
+                </div>
+              </section>
+            )}
 
             {/* 目標達成日 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">

@@ -283,6 +283,7 @@ export async function updateCustomer(
   pageId: string,
   patch: {
     name?: string;
+    furigana?: string | null;
     goals?: { kcal?: number; P?: number; F?: number; C?: number };
     targetWeight?: number | null;
     targetDate?: string | null;
@@ -290,6 +291,7 @@ export async function updateCustomer(
     gender?: string | null;
     heightCm?: number | null;
     age?: number | null;
+    birthDate?: string | null;
     activityLevel?: string | null;
     plan?: string | null;
     currentWeight?: number | null;
@@ -302,6 +304,11 @@ export async function updateCustomer(
   const properties: Record<string, unknown> = {};
   if (patch.name !== undefined && patch.name.trim()) {
     properties['氏名'] = { title: [{ text: { content: patch.name.trim().slice(0, 100) } }] };
+  }
+  if (patch.furigana !== undefined) {
+    properties['フリガナ'] = patch.furigana === null || patch.furigana === ''
+      ? { rich_text: [] }
+      : { rich_text: [{ type: 'text', text: { content: patch.furigana.slice(0, 100) } }] };
   }
   if (patch.goals) {
     if (typeof patch.goals.kcal === 'number') properties['目標カロリー(kcal)'] = { number: patch.goals.kcal };
@@ -326,6 +333,9 @@ export async function updateCustomer(
   }
   if (patch.age !== undefined) {
     properties['年齢'] = patch.age === null ? { number: null } : { number: patch.age };
+  }
+  if (patch.birthDate !== undefined) {
+    properties['生年月日'] = patch.birthDate === null ? { date: null } : { date: { start: patch.birthDate } };
   }
   if (patch.activityLevel !== undefined) {
     properties['活動レベル'] = patch.activityLevel === null ? { select: null } : { select: { name: patch.activityLevel } };

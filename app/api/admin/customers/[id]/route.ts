@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCustomer, patchCustomer, type CustomerPatch } from '@/lib/repository/customers';
+import { getCustomer, patchCustomer, archiveCustomer, type CustomerPatch } from '@/lib/repository/customers';
 import { withAdminTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -14,6 +14,20 @@ export const GET = withAdminTenant(async (_req, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
     return NextResponse.json({ customer });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+  }
+});
+
+export const DELETE = withAdminTenant(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  try {
+    const { id } = await params;
+    const customer = await getCustomer(id);
+    if (!customer) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    await archiveCustomer(id);
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }

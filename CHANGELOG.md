@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: フリガナ顧客編集 + アカウント削除を管理画面側へ
+
+- feat(liff/profile): フリガナを顧客自身が編集できるように変更（読み取り専用 → 入力フィールド）
+- feat(api): `PATCH /api/customer/me` に `furigana` フィールドのサポートを追加
+- fix(lib/notion): `updateCustomer()` の patch 型に `furigana` を追加
+- remove(liff/profile): プロフィール最下部のアカウント削除セクションを削除（顧客自己削除をやめる）
+- remove(liff/home): 非進行中ステータス案内画面の「アカウント削除はこちら」リンクを削除
+- feat(admin/customers/[id]): 管理画面の顧客詳細最下部に「アカウント削除」セクション追加（赤系UI、確認ダイアログ付き）
+- feat(api): `DELETE /api/admin/customers/[id]` エンドポイント新規（archiveCustomer を呼ぶ）
+- feat(lib/repository/customers): `archiveCustomer()` を Notion 実装からエクスポート
+- feat(liff/home): 非進行中ステータス案内を「食事管理対象外、またはステータスが進行中ではありません」に統一、中央カード型レイアウトに改善
+- fix(liff/goals): 開始体重（currentWeight）表示を復元（進捗バーは非表示維持）
+- 影響範囲: 顧客側 LIFF `/profile` `/home` `/goals`、管理画面 `/admin/customers/[id]`、API 複数
+
 ## 2026-05-19 21:30 (本番) – 設定中14日経過の自動削除 + 「招待未送信」フィルタ削除
 
 - feat(cron): `/api/cron/customers-cleanup` 新規作成。毎日 03:00 (JST) に全テナント横断で 設定中 + LINE未連携 + 14日経過 顧客を自動アーカイブ化
@@ -71,6 +85,20 @@
 - fix(admin/billing): プラン比較カード・サポート費表示・SeatChangeModal の見積もりを税込に統一。「税込」注記追加
 - 影響範囲: 管理画面 `/store/billing` `/admin/billing`、Stripe Checkout 見積もり整合性
 - 関連: 2026-05-19 朝 Stripe Live モード切替後、Checkout で UI 表示(¥17,500)と請求金額(¥19,250)が乖離していた問題への対応
+
+## 2026-05-19 (staging) – /profile 401 修正・/goals 有効化
+
+- fix(profile): `fetch` を `apiFetch` に差し替え。Authorization ヘッダーが送られず 401 になっていた不具合を修正
+- fix(goals): `window.location.href = '/home'` による即時リダイレクトを削除。`fetch` → `apiFetch` に変更
+- feat(menu): 「目標設定」の `disabled` を解除し `/goals` へのリンクを有効化。読み取り専用（トレーナー設定値の表示のみ）
+- 影響範囲: 顧客側 LIFF `/profile` `/goals` `/menu`（staging のみ）
+
+## 2026-05-19 (staging) – OnboardingTour リセット後の再表示バグ修正
+
+- fix(OnboardingTour): `tourResetAt=undefined`（APIロード前）の初期状態で `isDone=true` と誤判定し、ツアーが再表示されないバグを修正
+- fix(OnboardingTour): `useEffect` の早期リターン条件として `tourResetAt === undefined` を追加。API取得完了後（null or ISO文字列確定後）にのみ表示判定を行う
+- fix(OnboardingTour): `isDone` 判定の `tourResetAt === undefined` 分岐を削除（上記ガード後は undefined が到達しないため）
+- 影響範囲: 顧客側 LIFF `/record` `/weight` `/exercise`（staging のみ）
 
 ## 2026-05-19 (staging) – /record オンボツアー全面再構成＋UI配置変更
 

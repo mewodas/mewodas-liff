@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { initLiff, getLineProfile } from '@/lib/liff';
+import { initLiff } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import { User } from 'lucide-react';
+import { User, Save } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
@@ -15,7 +16,19 @@ type CustomerProfile = {
   email: string | null;
   phone: string | null;
   storeId: string | null;
+  currentWeight: number | null;
 };
+
+type EditForm = {
+  name: string;
+  furigana: string;
+  gender: string;
+  heightCm: string;
+  currentWeight: string;
+  birthDate: string;
+};
+
+const GENDER_OPTIONS = ['男性', '女性', 'その他', '回答しない'];
 
 function maskEmail(email: string | null): string {
   if (!email) return '—';
@@ -31,35 +44,35 @@ function maskPhone(phone: string | null): string {
   return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
 }
 
-function formatBirthDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  const [y, m, d] = dateStr.split('-');
-  return `${y}年${Number(m)}月${Number(d)}日`;
+function profileToForm(c: CustomerProfile): EditForm {
+  return {
+    name: c.name,
+    furigana: c.furigana ?? '',
+    gender: c.gender ?? '',
+    heightCm: c.heightCm !== null ? String(c.heightCm) : '',
+    currentWeight: c.currentWeight !== null ? String(c.currentWeight) : '',
+    birthDate: c.birthDate ?? '',
+  };
 }
 
 export default function ProfilePage() {
   const [ready, setReady] = useState(false);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [form, setForm] = useState<EditForm | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         await initLiff();
-        const lineProfile = await getLineProfile();
-        if (!lineProfile) {
-          setError('LINEプロフィール取得失敗');
-          setReady(true);
-          return;
-        }
-        const res = await fetch(
-          `/api/customer/me?lineUserId=${encodeURIComponent(lineProfile.userId)}`,
-          { cache: 'no-store' }
-        );
+        const res = await apiFetch('/api/customer/me', { cache: 'no-store' });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
         const c = j.customer;
-        setProfile({
+        const p: CustomerProfile = {
           name: c.name,
           furigana: c.furigana,
           gender: c.gender,
@@ -69,7 +82,10 @@ export default function ProfilePage() {
           email: c.email,
           phone: c.phone,
           storeId: c.storeId,
-        });
+          currentWeight: c.currentWeight,
+        };
+        setProfile(p);
+        setForm(profileToForm(p));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -77,6 +93,54 @@ export default function ProfilePage() {
       }
     })();
   }, []);
+
+  async function handleSave() {
+    if (!form) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      const body: Record<string, unknown> = {};
+      if (form.name.trim()) body.name = form.name.trim();
+      body.furigana = form.furigana.trim() || null;
+      body.gender = form.gender || null;
+      body.heightCm = form.heightCm ? parseFloat(form.heightCm) : null;
+      body.currentWeight = form.currentWeight ? parseFloat(form.currentWeight) : null;
+      body.birthDate = form.birthDate || null;
+
+      const res = await apiFetch('/api/customer/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || `保存失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      const c = j.customer;
+      const p: CustomerProfile = {
+        name: c.name,
+        furigana: c.furigana,
+        gender: c.gender,
+        age: c.age,
+        heightCm: c.heightCm,
+        birthDate: c.birthDate,
+        email: c.email,
+        phone: c.phone,
+        storeId: c.storeId,
+        currentWeight: c.currentWeight,
+      };
+      setProfile(p);
+      setForm(profileToForm(p));
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '保存エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!ready) {
     return (
@@ -90,38 +154,137 @@ export default function ProfilePage() {
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader title="プロフィール" Icon={User} subtitle="登録情報" back />
       <div className="max-w-md mx-auto px-4 py-4 space-y-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed">
-          トレーナーが管理する情報です。変更が必要な場合はトレーナーにご連絡ください。
-        </div>
-
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
-
-        {profile && (
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-            <ProfileRow label="氏名" value={profile.name} />
-            <ProfileRow label="フリガナ" value={profile.furigana ?? '—'} />
-            <ProfileRow label="性別" value={profile.gender ?? '—'} />
-            <ProfileRow label="年齢" value={profile.age !== null ? `${profile.age}歳` : '—'} />
-            <ProfileRow label="身長" value={profile.heightCm !== null ? `${profile.heightCm} cm` : '—'} />
-            <ProfileRow label="生年月日" value={formatBirthDate(profile.birthDate)} />
-            <ProfileRow label="メールアドレス" value={maskEmail(profile.email)} />
-            <ProfileRow label="電話番号" value={maskPhone(profile.phone)} last />
-          </section>
+        {saveError && (
+          <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{saveError}</div>
+        )}
+        {saveSuccess && (
+          <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs p-3 rounded-xl">保存しました</div>
         )}
 
-        {profile?.storeId && (
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-            <ProfileRow label="所属店舗" value={profile.storeId} last />
-          </section>
+        {form && (
+          <>
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+              <EditRow label="氏名" required>
+                <input
+                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder="氏名を入力"
+                />
+              </EditRow>
+              <EditRow label="フリガナ">
+                <input
+                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
+                  value={form.furigana}
+                  onChange={e => setForm({ ...form, furigana: e.target.value })}
+                  placeholder="ヤマダ ハナコ"
+                />
+              </EditRow>
+              <EditRow label="性別">
+                <select
+                  className="text-sm font-bold text-stone-900 bg-transparent outline-none w-full"
+                  value={form.gender}
+                  onChange={e => setForm({ ...form, gender: e.target.value })}
+                >
+                  <option value="">未設定</option>
+                  {GENDER_OPTIONS.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </EditRow>
+              <EditRow label="身長 (cm)">
+                <input
+                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
+                  type="number"
+                  min={50}
+                  max={250}
+                  step={0.1}
+                  value={form.heightCm}
+                  onChange={e => setForm({ ...form, heightCm: e.target.value })}
+                  placeholder="例: 165.0"
+                />
+              </EditRow>
+              <EditRow label="体重 (kg)">
+                <input
+                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
+                  type="number"
+                  min={20}
+                  max={300}
+                  step={0.1}
+                  value={form.currentWeight}
+                  onChange={e => setForm({ ...form, currentWeight: e.target.value })}
+                  placeholder="例: 65.0"
+                />
+              </EditRow>
+              <EditRow label="生年月日" last>
+                <input
+                  className="w-full text-sm font-bold text-stone-900 bg-transparent outline-none"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={e => setForm({ ...form, birthDate: e.target.value })}
+                />
+              </EditRow>
+            </section>
+
+            {(profile?.email || profile?.phone) && (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                {profile.email && (
+                  <ReadOnlyRow label="メールアドレス" value={maskEmail(profile.email)} />
+                )}
+                {profile.phone && (
+                  <ReadOnlyRow label="電話番号" value={maskPhone(profile.phone)} last />
+                )}
+              </section>
+            )}
+
+            {profile?.storeId && (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <ReadOnlyRow label="所属店舗" value={profile.storeId} last />
+              </section>
+            )}
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-stone-300 text-white font-bold text-sm py-3.5 rounded-2xl transition-colors"
+            >
+              <Save className="w-4 h-4" strokeWidth={2.2} />
+              {saving ? '保存中...' : '保存する'}
+            </button>
+          </>
         )}
+
       </div>
     </main>
   );
 }
 
-function ProfileRow({
+function EditRow({
+  label,
+  required,
+  last = false,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  last?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex items-center px-4 py-3 gap-3 ${last ? '' : 'border-b border-stone-100'}`}>
+      <span className="text-xs text-stone-500 w-28 flex-shrink-0">
+        {label}
+        {required && <span className="text-rose-500 ml-0.5">*</span>}
+      </span>
+      <div className="flex-1">{children}</div>
+    </div>
+  );
+}
+
+function ReadOnlyRow({
   label,
   value,
   last = false,
@@ -132,8 +295,8 @@ function ProfileRow({
 }) {
   return (
     <div className={`flex items-center px-4 py-3 gap-3 ${last ? '' : 'border-b border-stone-100'}`}>
-      <span className="text-xs text-stone-500 w-24 flex-shrink-0">{label}</span>
-      <span className="text-sm font-bold text-stone-900 flex-1">{value}</span>
+      <span className="text-xs text-stone-500 w-28 flex-shrink-0">{label}</span>
+      <span className="text-sm text-stone-400 flex-1">{value}</span>
     </div>
   );
 }

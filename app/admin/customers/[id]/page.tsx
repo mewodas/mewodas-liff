@@ -102,6 +102,7 @@ export default function CustomerDetailPage({
   const base = useAdminBase();
   const router = useRouter();
   const [resettingOnboard, setResettingOnboard] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -303,6 +304,25 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : 'リセット失敗');
     } finally {
       setResettingOnboard(false);
+    }
+  }
+
+  async function deleteAccount() {
+    const customerName = customer?.name || 'この顧客';
+    if (!confirm(`「${customerName}」のアカウントを削除します。\n\n・LIFF からアクセスできなくなります\n・席数カウントから外れます\n・データ（食事記録など）は Notion に残ります\n\n本当に削除しますか？`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `削除失敗（${res.status}）`);
+      }
+      router.push(`${base}?saved=1`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '削除失敗');
+      setDeleting(false);
     }
   }
 
@@ -972,6 +992,26 @@ export default function CustomerDetailPage({
                   <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
                   {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
                 </button>
+            </section>
+
+            {/* アカウント削除（危険操作） */}
+            <section className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+              <h3 className="text-sm font-bold text-rose-900 mb-1">
+                アカウント削除
+              </h3>
+              <p className="text-[11px] text-rose-800 mb-3 leading-relaxed">
+                顧客レコードを Notion でアーカイブ化します。
+                LIFF からのアクセスができなくなり、席数カウントから外れます。
+                食事記録・体重などのデータは Notion に残ります（必要なら別途削除）。
+              </p>
+              <button
+                type="button"
+                onClick={deleteAccount}
+                disabled={deleting}
+                className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl text-sm active:bg-rose-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {deleting ? '削除中…' : 'アカウントを削除する'}
+              </button>
             </section>
         </div>
       )}

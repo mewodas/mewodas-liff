@@ -9,7 +9,7 @@ import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingFlow from '@/components/OnboardingFlow';
-import { UtensilsCrossed, RefreshCw, Bell, MessageCircle, ChefHat } from 'lucide-react';
+import { UtensilsCrossed, RefreshCw, Bell, MessageCircle, ChefHat, AlertCircle } from 'lucide-react';
 import type { TodayData, PredictionData, MealRecord } from './types';
 import { DateStrip } from './DateStrip';
 import { BadgeModal } from './BadgeModal';
@@ -45,6 +45,9 @@ function LiffGateInner() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [foodStatus, setFoodStatus] = useState<string | null>(null);
+  const [officialLineUrl, setOfficialLineUrl] = useState<string | null>(null);
+  const [customerReady, setCustomerReady] = useState(false);
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -87,8 +90,12 @@ function LiffGateInner() {
         }
         const j = await res.json();
         setOnboardingDone(!!j.customer?.onboardingCompletedAt);
+        setFoodStatus(j.customer?.foodStatus ?? null);
+        setOfficialLineUrl(j.officialLineUrl ?? null);
       } catch {
         setOnboardingDone(true);
+      } finally {
+        setCustomerReady(true);
       }
     })();
   }, [userId]);
@@ -200,10 +207,50 @@ function LiffGateInner() {
     })();
   }, [userId, selectedDate]);
 
-  if (!ready) {
+  if (!ready && !(customerReady && foodStatus && foodStatus !== '進行中')) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-stone-100">
         <div className="text-stone-800">読み込み中...</div>
+      </main>
+    );
+  }
+
+  // 「進行中」以外のステータスは食事管理機能を利用できないため、案内画面を表示
+  const isNonActiveStatus = customerReady && foodStatus && foodStatus !== '進行中';
+  // ステータス判定で確実に弾く前に /api/today などが 403 を返すケースのフォールバック
+  const isStatusError =
+    !!error && /進行中|食事管理|対象外/.test(error);
+
+  if (isNonActiveStatus || isStatusError) {
+    return (
+      <main className="min-h-screen bg-stone-100 flex flex-col pb-28">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-6">
+          <div className="w-full max-w-sm bg-white border border-stone-200 rounded-3xl shadow-sm p-8 flex flex-col items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-amber-500" strokeWidth={2.2} />
+            </div>
+            <h1 className="text-base font-bold text-stone-900 leading-relaxed">
+              食事管理対象外、
+              <br />
+              またはステータスが進行中ではありません
+            </h1>
+            <p className="text-xs text-stone-500 leading-relaxed">
+              ご利用にはトレーナーによる設定が必要です。
+              <br />
+              下記からご連絡ください。
+            </p>
+            {officialLineUrl && (
+              <a
+                href={officialLineUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm py-3.5 rounded-2xl text-center transition-colors"
+              >
+                公式LINE で連絡する
+              </a>
+            )}
+          </div>
+        </div>
       </main>
     );
   }
@@ -215,9 +262,6 @@ function LiffGateInner() {
           <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-xl text-sm">
             {error}
           </div>
-          <Link href="/record" className="block mt-4 bg-emerald-500 text-white text-center font-bold py-3 rounded-xl">
-            食事記録へ
-          </Link>
         </div>
       </main>
     );

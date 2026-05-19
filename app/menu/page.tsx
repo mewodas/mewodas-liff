@@ -69,7 +69,7 @@ const sections: Section[] = [
     iconColor: 'text-stone-500',
     items: [
       { href: '/profile', Icon: User, color: 'text-emerald-600', label: 'プロフィール', sub: '登録情報を確認' },
-      { href: '/menu/goals', Icon: Target, color: 'text-stone-500', label: '目標設定', sub: '近日対応', disabled: true },
+      { href: '/goals', Icon: Target, color: 'text-emerald-600', label: '目標設定', sub: '目標・PFC確認' },
       { href: '/menu/sync', Icon: LinkIcon, color: 'text-stone-500', label: 'データ連携', sub: '近日対応', disabled: true },
     ],
   },
