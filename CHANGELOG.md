@@ -9,6 +9,19 @@
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
 
+## 2026-05-19 (staging) – Security 追補: WeightExerciseCard 修正 + apiFetch 401 自動リトライ
+
+- fix: components/WeightExerciseCard.tsx の /api/log/weight・/api/log/exercise を apiFetch に置換（生 fetch のままで Authorization header 欠落 → 体重・運動の保存時に 401 になっていた）
+- enhance: lib/apiFetch.ts に 401 自動リトライ機構を追加。LIFF を再初期化（refreshLiff）して新 IDトークンで再送信。IDトークン1時間期限切れ対策
+- 影響範囲: 顧客側 LIFF（体重・運動入力 / IDトークン期限切れケース全般）
+- 関連: 2026-05-19 (staging) – Security Critical の staging 動作確認指摘
+
+## 2026-05-19 (staging) – onboarding: HomeOnboarding 削除 & markOnboarded apiFetch 修正
+
+- fix(onboarding): markOnboarded() が生 fetch を使い Authorization ヘッダー欠落 → withLiffTenant が 401 で静かに失敗し onboardingCompletedAt が Notion に保存されずオンボ再表示されるバグを修正。apiFetch に変更し IDトークンが付与されるようにした
+- fix(onboarding): HomeOnboarding（アクション誘導型・localStorage ベース）を削除。新 OnboardingFlow がメインのオンボになったため不要
+- 影響範囲: 顧客側 /home（LIFF）、components/OnboardingFlow.tsx
+
 ## 2026-05-19 (staging) – admin/customers/[id]: オンボリセット UI を main に同期
 
 - ui(admin): staging の customers/[id]/page.tsx を main と同一内容に統一
