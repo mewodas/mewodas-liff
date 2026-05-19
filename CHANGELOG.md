@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – /goals 開始体重表示を復元
+
+- fix(liff/goals): 48aa383 で削除された開始体重（currentWeight）の型定義・フェッチ・StatCard を復元
+- 「現在○○kgの○○%達成」進捗バー（WeightProgressBar）は引き続き非表示のまま
+- StatCard ラベルを「開始体重」として表示（Notion フィールド: 現在体重(kg)）
+- 影響範囲: 顧客側 LIFF `/goals`（staging のみ）
+
 ## 2026-05-20 (staging) – 非進行中ステータス案内 UI 改善
 
 - fix(liff/home): 非進行中ステータスの案内文を統一: 「食事管理対象外、またはステータスが進行中ではありません」

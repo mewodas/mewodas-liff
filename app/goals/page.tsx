@@ -8,6 +8,7 @@ import { Target, Calendar, TrendingDown } from 'lucide-react';
 
 type GoalsData = {
   name: string;
+  currentWeight: number | null;
   targetWeight: number | null;
   targetDate: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -44,6 +45,7 @@ export default function GoalsPage() {
         const c = j.customer;
         setData({
           name: c.name,
+          currentWeight: c.currentWeight,
           targetWeight: c.targetWeight,
           targetDate: c.targetDate,
           goals: c.goals,
@@ -83,18 +85,26 @@ export default function GoalsPage() {
         {data && (
           <>
             {/* 体重目標 */}
-            {data.targetWeight !== null && (
+            {(data.currentWeight !== null || data.targetWeight !== null) && (
               <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
                 <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
                   <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
                   体重目標
                 </h2>
-                <StatCard
-                  label="目標体重"
-                  value={`${data.targetWeight}`}
-                  unit="kg"
-                  color="emerald"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard
+                    label="開始体重"
+                    value={data.currentWeight !== null ? `${data.currentWeight}` : '—'}
+                    unit="kg"
+                    color="sky"
+                  />
+                  <StatCard
+                    label="目標体重"
+                    value={data.targetWeight !== null ? `${data.targetWeight}` : '—'}
+                    unit="kg"
+                    color="emerald"
+                  />
+                </div>
               </section>
             )}
 
