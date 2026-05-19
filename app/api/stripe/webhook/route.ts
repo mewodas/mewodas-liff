@@ -194,6 +194,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
     status: '解約',
     seatLimit: null,
     planTier: null,
+    nextBillingDate: null,
   });
 }
 

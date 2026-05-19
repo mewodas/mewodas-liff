@@ -237,27 +237,9 @@ export default function BillingPage() {
               </section>
             ) : (
               <>
-                {/* 未契約 */}
-                {info?.hasStripeCustomer && (
-                  <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
-                    <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                      <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                      現在の契約
-                    </h2>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Stat label="支払いステータス" value={info.paymentStatus || '—'} />
-                      <Stat label="次回請求日" value={info.nextBillingDate || '—'} />
-                    </div>
-                    <button
-                      onClick={openPortal}
-                      disabled={processing}
-                      className="w-full bg-stone-100 text-stone-900 font-bold py-2.5 rounded-xl active:bg-stone-200 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
-                    >
-                      <ExternalLink className="w-4 h-4" strokeWidth={2.2} />
-                      カード変更・解約・請求履歴
-                    </button>
-                  </section>
-                )}
+                {/* 未契約: Stripe Customer ID はあるが支払いステータスが解約済み/期限切れ等の場合
+                    現在の契約セクションは表示せず、新規契約フォームのみ見せる。
+                    過去の請求履歴を確認したい場合は新規契約フォーム下のリンクから Portal へ */}
 
                 {/* プラン比較（席数で自動判定・選択不可） */}
                 <div className="text-[11px] text-stone-600 text-center font-bold">
@@ -365,6 +347,17 @@ export default function BillingPage() {
                     初期費用なし・違約金なし・月払いサブスク
                   </div>
                 </section>
+
+                {/* 過去契約の請求履歴アクセス（過去にカード登録経験がある場合のみ） */}
+                {info?.hasStripeCustomer && (
+                  <button
+                    onClick={openPortal}
+                    disabled={processing}
+                    className="w-full text-[11px] text-stone-500 underline py-2 disabled:opacity-50"
+                  >
+                    過去の請求履歴を見る
+                  </button>
+                )}
               </>
             )}
 

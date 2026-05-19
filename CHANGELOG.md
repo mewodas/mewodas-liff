@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 20:45 (本番) – 解約済み状態の UI 改善
+
+- fix(billing): `hasContract=false` かつ `hasStripeCustomer=true`（過去契約あり）の場合、「現在の契約」セクションを非表示にして新規契約フォームのみ表示
+- feat(billing): 新規契約フォームの下に「過去の請求履歴を見る」リンクを追加（Stripe Portal へ）
+- fix(webhook): `customer.subscription.deleted` で `nextBillingDate` を null クリア
+- 影響範囲: `/store/billing` `/admin/billing` の UI、Stripe Webhook
+- 関連: 解約済みなのに「次回請求日: 2026-06-16」など矛盾表示が出ていた問題
+
 ## 2026-05-19 20:30 (本番) – Stripe Volume Pricing に移行（per-user 単一 Price 化）
 
 - refactor(stripe): per-user 価格を Stripe Volume Pricing 1 つの Price に集約。3-20名/21-50名/51名+ の tier 単価は Stripe 側で自動計算
