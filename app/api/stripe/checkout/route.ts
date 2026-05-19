@@ -1,8 +1,9 @@
-// Stripe Checkout Session 作成 API（新プラン構造）
+// Stripe Checkout Session 作成 API（Volume Pricing 対応）
 //
 // 2 line_item 構造:
 //   Item 1: サポート費 (¥5,500 固定, quantity=1) ※税込
-//   Item 2: per-user (¥2,750/¥2,200/¥1,650 by tier, quantity=seats) ※税込
+//   Item 2: per-user (1 Price, Volume tiers, quantity=seats) ※税込
+//           Stripe が席数に応じて自動的に Tier1/2/3 の単価を適用する
 //
 // 入力: { seats: number }  ※ seats >= 3 必須
 
@@ -14,7 +15,7 @@ import {
   getPlanTierBySeats,
   getMonthlyTotal,
   getMinSeats,
-  getPriceIdForTier,
+  getPerUserPriceId,
   getSupportFeePriceId,
 } from '@/lib/stripe';
 import { listTenantRows } from '@/lib/notion';
@@ -54,12 +55,12 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   const { supportFee, unitPrice } = getMonthlyTotal(seats);
 
   const supportFeePriceId = getSupportFeePriceId();
-  const perUserPriceId = getPriceIdForTier(tier);
+  const perUserPriceId = getPerUserPriceId();
 
   const origin = req.nextUrl.origin;
 
-  // Price ID が設定されていれば既存 Price を使う
-  // 未設定（dev/preview）の場合は price_data inline で動作させる
+  // Price ID が設定されていれば既存 Price を使う（Volume tier は Stripe 側で自動計算）
+  // 未設定（dev/preview）の場合は price_data inline で動作させる（tier 切替なし、フラット単価）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lineItems: any[] =
     supportFeePriceId && perUserPriceId
@@ -80,7 +81,7 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
           {
             price_data: {
               currency: 'jpy',
-              product_data: { name: `FitMeal ${tier} per-user` },
+              product_data: { name: `FitMeal per-user (${tier})` },
               unit_amount: unitPrice,
               recurring: { interval: 'month' },
             },

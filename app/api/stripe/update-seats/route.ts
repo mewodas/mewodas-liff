@@ -10,8 +10,8 @@ import { getCurrentTenant } from '@/lib/tenant';
 import {
   getStripe,
   getPlanTierBySeats,
-  getPriceIdForTier,
   getMinSeats,
+  getPerUserPriceId,
 } from '@/lib/stripe';
 import { listTenantRows } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
@@ -52,21 +52,31 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     expand: ['items.data.price'],
   });
 
+  // per-user item を識別:
+  //   1) 新方式: STRIPE_PRICE_PER_USER と一致
+  //   2) 旧方式: STRIPE_PRICE_STARTER/GROWTH/SCALE のいずれかと一致（移行期）
+  //   3) フォールバック: support fee 以外の item
   const perUserPriceIds = new Set(
     [
+      process.env.STRIPE_PRICE_PER_USER,
       process.env.STRIPE_PRICE_STARTER_PER_USER,
       process.env.STRIPE_PRICE_GROWTH_PER_USER,
       process.env.STRIPE_PRICE_SCALE_PER_USER,
     ].filter(Boolean) as string[]
   );
+  const supportFeePriceId = process.env.STRIPE_PRICE_SUPPORT_FEE;
 
   let perUserItemId: string | null = null;
-  let currentPriceId: string | null = null;
   for (const item of sub.items.data) {
-    if (perUserPriceIds.size === 0 || (item.price?.id && perUserPriceIds.has(item.price.id))) {
+    const priceId = item.price?.id;
+    if (!priceId) continue;
+    if (perUserPriceIds.size > 0 && perUserPriceIds.has(priceId)) {
       perUserItemId = item.id;
-      currentPriceId = item.price?.id ?? null;
       break;
+    }
+    // フォールバック: support fee 以外を per-user とみなす
+    if (supportFeePriceId && priceId !== supportFeePriceId) {
+      perUserItemId = item.id;
     }
   }
 
@@ -75,15 +85,17 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   }
 
   const newTier = getPlanTierBySeats(newSeats);
-  const newPriceId = getPriceIdForTier(newTier);
+  const perUserPriceId = getPerUserPriceId();
 
+  // Volume Pricing: 同じ Price ID のまま quantity だけ更新（Stripe が tier 自動計算）
+  // 旧 subscription（複数 Price）はこのコードでは強制的に新 Price に切替
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const itemUpdate: Record<string, any> = {
     id: perUserItemId,
     quantity: newSeats,
   };
-  if (newPriceId && currentPriceId && newPriceId !== currentPriceId) {
-    itemUpdate.price = newPriceId;
+  if (perUserPriceId) {
+    itemUpdate.price = perUserPriceId;
   }
 
   await stripe.subscriptions.update(tenantRow.stripeSubscriptionId, {

@@ -1,20 +1,19 @@
 // Stripe SDK 初期化 + 料金体系定義
 //
-// FitMeal SaaS 新プラン（2026-05-18 〜、価格は税込）:
-//   サポート費: ¥5,500/月 固定（税込）
-//   Starter (3-20名): ¥2,750/人/月（税込）
-//   Growth (21-50名): ¥2,200/人/月（税込）
-//   Scale (51名+): ¥1,650/人/月（税込）
-//   月払いサブスク（毎月自動更新）、ミニマム3名
+// FitMeal SaaS 新プラン（2026-05-19 〜、価格は税込、Stripe Volume Pricing）:
+//   サポート費: ¥5,500/月 固定（税込・別 line item）
+//   per-user Volume tiers（1 つの Price で席数に応じて自動切替）:
+//     1-20 名: ¥2,750/人/月（税込）
+//     21-50 名: ¥2,200/人/月（税込）
+//     51+ 名: ¥1,650/人/月（税込）
+//   ミニマム 3 名（Portal / アプリ側で担保。Stripe Price 自体は 1 から開始可能）
 //
 // env:
 //   STRIPE_SECRET_KEY: sk_test_... or sk_live_...
 //   STRIPE_WEBHOOK_SECRET: whsec_...
 //   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_... or pk_live_...
 //   STRIPE_PRICE_SUPPORT_FEE: price_... (¥5,500 固定)
-//   STRIPE_PRICE_STARTER_PER_USER: price_... (¥2,750/人)
-//   STRIPE_PRICE_GROWTH_PER_USER: price_... (¥2,200/人)
-//   STRIPE_PRICE_SCALE_PER_USER: price_... (¥1,650/人)
+//   STRIPE_PRICE_PER_USER: price_... (Volume tiered)
 
 import Stripe from 'stripe';
 
@@ -70,14 +69,17 @@ export function getMinSeats(): number {
   return MIN_SEATS;
 }
 
-export function getPriceIdForTier(tier: PlanTier): string | null {
-  if (tier === 'Starter') return process.env.STRIPE_PRICE_STARTER_PER_USER || null;
-  if (tier === 'Growth') return process.env.STRIPE_PRICE_GROWTH_PER_USER || null;
-  return process.env.STRIPE_PRICE_SCALE_PER_USER || null;
+export function getPerUserPriceId(): string | null {
+  return process.env.STRIPE_PRICE_PER_USER || null;
 }
 
 export function getSupportFeePriceId(): string | null {
   return process.env.STRIPE_PRICE_SUPPORT_FEE || null;
+}
+
+/** 後方互換: tier に関係なく単一の per-user Price ID を返す */
+export function getPriceIdForTier(_tier: PlanTier): string | null {
+  return getPerUserPriceId();
 }
 
 export function subscriptionStatusToNotion(

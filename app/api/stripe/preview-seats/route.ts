@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
-import { getStripe, getPlanTierBySeats, getPriceIdForTier, getMinSeats } from '@/lib/stripe';
+import { getStripe, getPlanTierBySeats, getMinSeats, getPerUserPriceId } from '@/lib/stripe';
 import { listTenantRows } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 
@@ -35,19 +35,24 @@ export const GET = withAdminTenant(async (req: NextRequest) => {
 
   const perUserPriceIds = new Set(
     [
+      process.env.STRIPE_PRICE_PER_USER,
       process.env.STRIPE_PRICE_STARTER_PER_USER,
       process.env.STRIPE_PRICE_GROWTH_PER_USER,
       process.env.STRIPE_PRICE_SCALE_PER_USER,
     ].filter(Boolean) as string[]
   );
+  const supportFeePriceId = process.env.STRIPE_PRICE_SUPPORT_FEE;
 
   let perUserItemId: string | null = null;
-  let currentPriceId: string | null = null;
   for (const item of sub.items.data) {
-    if (perUserPriceIds.size === 0 || (item.price?.id && perUserPriceIds.has(item.price.id))) {
+    const priceId = item.price?.id;
+    if (!priceId) continue;
+    if (perUserPriceIds.size > 0 && perUserPriceIds.has(priceId)) {
       perUserItemId = item.id;
-      currentPriceId = item.price?.id ?? null;
       break;
+    }
+    if (supportFeePriceId && priceId !== supportFeePriceId) {
+      perUserItemId = item.id;
     }
   }
 
@@ -56,14 +61,14 @@ export const GET = withAdminTenant(async (req: NextRequest) => {
   }
 
   const newTier = getPlanTierBySeats(newSeats);
-  const newPriceId = getPriceIdForTier(newTier);
+  const newPriceId = getPerUserPriceId();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const itemUpdate: Record<string, any> = {
     id: perUserItemId,
     quantity: newSeats,
   };
-  if (newPriceId && currentPriceId && newPriceId !== currentPriceId) {
+  if (newPriceId) {
     itemUpdate.price = newPriceId;
   }
 

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-19 20:30 (本番) – Stripe Volume Pricing に移行（per-user 単一 Price 化）
+
+- refactor(stripe): per-user 価格を Stripe Volume Pricing 1 つの Price に集約。3-20名/21-50名/51名+ の tier 単価は Stripe 側で自動計算
+- env: `STRIPE_PRICE_STARTER/GROWTH/SCALE_PER_USER` を `STRIPE_PRICE_PER_USER` 1 本に集約。本番 env も更新済み
+- refactor(stripe.ts): `getPerUserPriceId()` 新規追加、`getPriceIdForTier()` は後方互換ラッパーに（tier 無関係に単一 Price を返す）
+- refactor(checkout/update-seats/preview-seats/webhook): 単一 Price 前提に書き換え、旧 tier ベース env は移行期フォールバックとして残す
+- 影響範囲: 顧客側 Stripe Checkout フロー、`/admin/billing` 席数変更モーダル、Stripe Customer Portal での席数変更（同時に有効化予定）
+- 利点: tier 自動切替により Customer Portal で席数変更が完結可能に。アプリ側 SeatChangeModal は保険として維持
+
 ## 2026-05-19 19:15 (本番) – Stripe Webhook イベント順序問題の修正
 
 - fix(stripe/webhook): `customer.subscription.created` が `checkout.session.completed` より先に到着した場合、Notion に Customer ID が未登録のため tenant 解決に失敗し、`支払いステータス` `席数` `プラン種別` が更新されない問題を修正

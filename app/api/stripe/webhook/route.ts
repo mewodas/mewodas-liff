@@ -71,12 +71,14 @@ export async function POST(req: NextRequest) {
 
 function getPerUserPriceIds(): Set<string> {
   const ids = new Set<string>();
-  const env = [
+  if (process.env.STRIPE_PRICE_PER_USER) ids.add(process.env.STRIPE_PRICE_PER_USER);
+  // 後方互換: 旧 tier ベース env も拾う（移行期）
+  const legacy = [
     process.env.STRIPE_PRICE_STARTER_PER_USER,
     process.env.STRIPE_PRICE_GROWTH_PER_USER,
     process.env.STRIPE_PRICE_SCALE_PER_USER,
   ];
-  for (const id of env) {
+  for (const id of legacy) {
     if (id) ids.add(id);
   }
   return ids;
