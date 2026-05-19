@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – Phase 3: /home Server Component化・ファイル分割
+
+- refactor(home): `app/home/page.tsx` を Server Component に変更（`'use client'` 削除）
+- refactor(home): `<Suspense>` で `<LiffGate />` を wrap する構成に変更（`app/home/page.tsx` はシェル、LIFF ロジックは client side に集約）
+- feat(home): `app/home/loading.tsx` を追加（Next.js ルートレベルローディング UI）
+- refactor(home): `app/home/_components/` 以下に 8 コンポーネントを分割
+  - `types.ts`: `MealRecord` / `TodayData` / `PredictionData` 型定義を集約
+  - `LiffGate.tsx`: LIFF init + 全データ fetch + 子 props 渡し（既存 HomePageInner 相当）
+  - `DateStrip.tsx`: 日付横スクロールナビ（client）
+  - `BadgeModal.tsx`: ドラッグシート式バッジモーダル（client）
+  - `NutritionSummaryCard.tsx`: 栄養サマリーカード（pure render）
+  - `PredictionBlock.tsx`: AI体重予測ブロック（client、loading state あり）
+  - `GoalProgressCard.tsx`: 体重目標進捗 + PredictionBlock を内包（pure render）
+  - `MealListSection.tsx`: 食事種別カードリスト（client）
+  - `QuickActions.tsx`: クイックアクション3ボタン（Link のみ）
+  - `StreakCard.tsx`: 連続記録バッジカード（pure render）
+- note: LiffGate 方式のため streaming 効果はなし（LIFF SDK client 専用のため）。Phase 3c の Prediction Suspense island は今後の追加予定
+- note: 外見・操作感・API 呼び出し経路は既存と完全同一
+- 影響範囲: 顧客側 / `app/home/*`
+
 ## 2026-05-19 (staging) – オンボーディング3点修正
 
 - fix(onboarding): `complete()` を `markOnboarded()` + `skip()` に分離し、`await apiFetch(...)` で onboarding API 完了を待ってから遷移するよう修正（fire-and-forget でリクエストキャンセルされていたリグレッション解消）
