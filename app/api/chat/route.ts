@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, getFoodRecordsByDate, getTargetDate } from '@/lib/notion';
 import { chatWithAi, type ChatMessage } from '@/lib/gemini';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -10,18 +11,17 @@ function jstHour(): number {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })).getHours();
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const body = await req.json();
-    const { lineUserId, message, history } = body as {
-      lineUserId?: string;
+    const { message, history } = body as {
       message?: string;
       history?: ChatMessage[];
     };
 
-    if (!lineUserId || !message) {
+    if (!message) {
       return NextResponse.json(
-        { error: 'lineUserId と message は必須です' },
+        { error: 'message は必須です' },
         { status: 400 }
       );
     }
@@ -32,10 +32,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const sanitizedMessage = message.replace(/[\r\n]/g, ' ');
+
     const today = getTargetDate('今日');
     const [customer, records] = await Promise.all([
-      getCustomerByLineId(lineUserId),
-      getFoodRecordsByDate(lineUserId, today),
+      getCustomerByLineId(verifiedLineUserId),
+      getFoodRecordsByDate(verifiedLineUserId, today),
     ]);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     const todayMealTypes = Array.from(new Set(records.map((r) => r.mealType).filter(Boolean)));
 
     const reply = await chatWithAi({
-      message,
+      message: sanitizedMessage,
       history: Array.isArray(history) ? history : [],
       customerContext: {
         name: customer.name,
@@ -76,4 +78,4 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

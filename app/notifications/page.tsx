@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
 import { Bell, FileText, Sparkles, Inbox, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -58,7 +59,7 @@ export default function NotificationsPage() {
     if (!userId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/notifications?lineUserId=${encodeURIComponent(userId)}&t=${Date.now()}`, {
+        const res = await apiFetch(`/api/notifications?t=${Date.now()}`, {
           cache: 'no-store',
         });
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
@@ -78,7 +79,7 @@ export default function NotificationsPage() {
     setOpenId(next);
     if (next === n.id && !n.read) {
       try {
-        await fetch(`/api/notifications/${encodeURIComponent(n.id)}/read`, { method: 'POST' });
+        await apiFetch(`/api/notifications/${encodeURIComponent(n.id)}/read`, { method: 'POST' });
         setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true, readAt: new Date().toISOString() } : x)));
       } catch {
         // ignore

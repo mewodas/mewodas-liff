@@ -5,30 +5,30 @@ import {
   getDailyExtras,
   type FoodRecord,
 } from '@/lib/notion';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(req: NextRequest) {
+export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
-    const lineUserId = req.nextUrl.searchParams.get('lineUserId');
-    const date = req.nextUrl.searchParams.get('date'); // 'yyyy-MM-dd'
+    const date = req.nextUrl.searchParams.get('date');
 
-    if (!lineUserId || !date) {
-      return NextResponse.json({ error: 'lineUserId と date が必要です' }, { status: 400 });
+    if (!date) {
+      return NextResponse.json({ error: 'date が必要です' }, { status: 400 });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
 
-    const customer = await getCustomerByLineId(lineUserId);
+    const customer = await getCustomerByLineId(verifiedLineUserId);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
     }
 
-    const records = await getFoodRecordsByDate(lineUserId, date);
+    const records = await getFoodRecordsByDate(verifiedLineUserId, date);
     const mealTypes: Array<'朝食' | '昼食' | '夕食' | '間食'> = ['朝食', '昼食', '夕食', '間食'];
     const mealsByType: Record<string, FoodRecord[]> = {};
     for (const t of mealTypes) {
@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    // 体重・運動データを取得（個人シート）
     let weight = '';
     let exercised = '';
     let exerciseContent = '';
@@ -73,4 +72,4 @@ export async function GET(req: NextRequest) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

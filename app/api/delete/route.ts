@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
-import { deleteFoodRecord } from '@/lib/notion';
+import { deleteFoodRecord, assertFoodRecordOwnership } from '@/lib/notion';
+import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, _verifiedLineUserId: string) => {
   try {
     const body = await req.json();
-    const { pageId, lineUserId } = body;
-    if (!pageId || !lineUserId) {
-      return NextResponse.json({ error: 'pageId と lineUserId は必須です' }, { status: 400 });
+    const { pageId } = body;
+    if (!pageId) {
+      return NextResponse.json({ error: 'pageId は必須です' }, { status: 400 });
     }
     if (typeof pageId !== 'string' || pageId.length < 16) {
       return NextResponse.json({ error: 'pageId が不正です' }, { status: 400 });
     }
-    // Notion archive はバックグラウンドで実行、レスポンスは即返す
+    await assertFoodRecordOwnership(pageId);
     waitUntil(deleteFoodRecord(pageId).catch((err) => console.error('deleteFoodRecord failed:', err)));
     return NextResponse.json({ ok: true });
   } catch (e) {
+    if (e instanceof Error && e.message.startsWith('forbidden:')) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
