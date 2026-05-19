@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-19 – /profile 編集機能 + /goals 進捗表示削除
+
+- feat(liff/profile): 顧客が氏名・性別・身長・体重・生年月日を自己編集→保存できるように変更（店舗・フリガナ・メール・電話は読み取り専用維持）
+- feat(api): `PATCH /api/customer/me` エンドポイント追加（withLiffTenant wrap、tenant分離保証、身長50-250cm・体重20-300kgのバリデーション）
+- fix(lib/notion): `updateCustomer()` の patch 型に `birthDate` フィールド追加
+- fix(liff/goals): 「現在○○kg」表示・進捗バー・％達成 を削除（目標体重・PFC目標・目標達成日のみ残存）
+- 影響範囲: 顧客側 LIFF /profile・/goals、API /api/customer/me（staging のみ・main 非マージ）
+
 ## 2026-05-19 – 設定中顧客クリーンアップ機能 4点
 
 - feat(admin/page): ステータスフィルタに「招待未送信」追加（foodStatus=設定中かつ lineUserId なし）

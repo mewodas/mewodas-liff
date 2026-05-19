@@ -288,6 +288,7 @@ export async function updateCustomer(
     gender?: string | null;
     heightCm?: number | null;
     age?: number | null;
+    birthDate?: string | null;
     activityLevel?: string | null;
     plan?: string | null;
     currentWeight?: number | null;
@@ -324,6 +325,9 @@ export async function updateCustomer(
   }
   if (patch.age !== undefined) {
     properties['年齢'] = patch.age === null ? { number: null } : { number: patch.age };
+  }
+  if (patch.birthDate !== undefined) {
+    properties['生年月日'] = patch.birthDate === null ? { date: null } : { date: { start: patch.birthDate } };
   }
   if (patch.activityLevel !== undefined) {
     properties['活動レベル'] = patch.activityLevel === null ? { select: null } : { select: { name: patch.activityLevel } };

@@ -8,7 +8,6 @@ import { Target, Calendar, TrendingDown } from 'lucide-react';
 
 type GoalsData = {
   name: string;
-  currentWeight: number | null;
   targetWeight: number | null;
   targetDate: string | null;
   goals: { kcal: number; P: number; F: number; C: number };
@@ -30,36 +29,6 @@ function formatDate(dateStr: string | null): string {
   return `${y}年${m}月${d}日`;
 }
 
-function WeightProgressBar({
-  current,
-  target,
-}: {
-  current: number;
-  target: number;
-}) {
-  const startWeight = Math.max(current, target) + Math.abs(current - target) * 0.2;
-  const totalRange = startWeight - Math.min(current, target);
-  const achieved = totalRange > 0
-    ? Math.min(100, Math.max(0, Math.round(((startWeight - current) / (startWeight - target)) * 100)))
-    : 0;
-
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-stone-600 mb-1.5">
-        <span>現在 {current} kg</span>
-        <span>目標 {target} kg</span>
-      </div>
-      <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-emerald-500 transition-all rounded-full"
-          style={{ width: `${achieved}%` }}
-        />
-      </div>
-      <div className="text-right text-[11px] font-bold text-emerald-700 mt-1">{achieved}% 達成</div>
-    </div>
-  );
-}
-
 export default function GoalsPage() {
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<GoalsData | null>(null);
@@ -75,7 +44,6 @@ export default function GoalsPage() {
         const c = j.customer;
         setData({
           name: c.name,
-          currentWeight: c.currentWeight,
           targetWeight: c.targetWeight,
           targetDate: c.targetDate,
           goals: c.goals,
@@ -115,32 +83,20 @@ export default function GoalsPage() {
         {data && (
           <>
             {/* 体重目標 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-              <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
-                <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                体重目標
-              </h2>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <StatCard
-                  label="現在体重"
-                  value={data.currentWeight !== null ? `${data.currentWeight}` : '—'}
-                  unit="kg"
-                  color="sky"
-                />
+            {data.targetWeight !== null && (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+                <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
+                  <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                  体重目標
+                </h2>
                 <StatCard
                   label="目標体重"
-                  value={data.targetWeight !== null ? `${data.targetWeight}` : '—'}
+                  value={`${data.targetWeight}`}
                   unit="kg"
                   color="emerald"
                 />
-              </div>
-              {data.currentWeight !== null && data.targetWeight !== null && (
-                <WeightProgressBar
-                  current={data.currentWeight}
-                  target={data.targetWeight}
-                />
-              )}
-            </section>
+              </section>
+            )}
 
             {/* 目標達成日 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
