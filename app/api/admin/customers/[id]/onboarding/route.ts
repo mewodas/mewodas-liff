@@ -8,6 +8,6 @@ export const maxDuration = 30;
 
 export const DELETE = withAdminTenant(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
-  await patchCustomer(id, { onboardingCompletedAt: null });
+  await patchCustomer(id, { onboardingCompletedAt: null, tourResetAt: new Date().toISOString() });
   return NextResponse.json({ ok: true });
 });

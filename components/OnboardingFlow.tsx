@@ -150,13 +150,6 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
             className="absolute rounded-2xl pointer-events-none transition-all duration-300"
             style={spotlightStyle}
           />
-          <button
-            type="button"
-            onClick={skip}
-            className="absolute top-4 right-4 z-10 text-white/80 bg-black/30 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
-          >
-            スキップ
-          </button>
         </>
       ) : (
         <div className="absolute inset-0 bg-black/50" />
@@ -489,7 +482,7 @@ function StepPhotoHint({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
             onClick={onSkip}
             className="px-4 py-3 rounded-2xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
           >
-            スキップ
+            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
           </button>
         </div>
       </div>

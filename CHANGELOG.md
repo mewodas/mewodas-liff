@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – /record ツアー再表示バグ修正 + スキップボタン削除
+
+- fix(onboarding): オンボリセット API (`DELETE /api/admin/customers/[id]/onboarding`) で `tourResetAt` を現在時刻で更新するよう修正。従来は `onboardingCompletedAt: null` のみで localStorage の `fitmeal_tour_record_done` キーより新しい値がセットされず、ツアーが再起動しなかった。
+- fix(onboarding): `OnboardingFlow.tsx` のスポットライト表示時（step 2/3/5/6）に右上に絶対配置していた「スキップ」ボタンを削除。ポップ内の `×` ボタンで閉じる動線のみ残す。
+- fix(onboarding): `StepPhotoHint` (step 4) のボタン行の「スキップ」テキストを `×` アイコンに統一。
+- 影響範囲: 顧客側 `/record` ツアー・`OnboardingFlow.tsx` / API `admin/customers/[id]/onboarding`
+
 ## 2026-05-19 (staging) – Phase 3: /home Server Component化・ファイル分割
 
 - refactor(home): `app/home/page.tsx` を Server Component に変更（`'use client'` 削除）
