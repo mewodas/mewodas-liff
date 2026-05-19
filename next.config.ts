@@ -14,11 +14,13 @@ const securityHeaders = [
     key: 'Content-Security-Policy-Report-Only',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://va.vercel-scripts.com",
+      // LIFF SDK: static.line-scdn.net + liffsdk.line-scdn.net 等のサブドメイン許容のため wildcards
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.line-scdn.net https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.line.me https://api.notion.com https://generativelanguage.googleapis.com https://o*.ingest.sentry.io https://va.vercel-scripts.com",
-      "frame-src 'self' https://liff.line.me",
+      // LIFF SDK は api.line.me 以外に access.line.me / liff-subwindow.line.me / uts-front.line-apps.com も叩く
+      "connect-src 'self' https://*.line.me https://*.line-apps.com https://api.notion.com https://generativelanguage.googleapis.com https://o*.ingest.sentry.io https://va.vercel-scripts.com",
+      "frame-src 'self' https://*.line.me",
       "font-src 'self' data:",
     ].join('; '),
   },

@@ -32,11 +32,45 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Simple in-memory rate limit: 1 IP につき 1 分間に 3 件まで。
+// Vercel function instance ごとに別 Map なので完璧ではないが、基本的な DoS / spam 対策。
+type RateRecord = { count: number; windowStart: number };
+const rateMap = new Map<string, RateRecord>();
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 3;
+
+function checkRateLimit(ip: string): { ok: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const rec = rateMap.get(ip);
+  if (!rec || now - rec.windowStart > RATE_WINDOW_MS) {
+    rateMap.set(ip, { count: 1, windowStart: now });
+    return { ok: true };
+  }
+  if (rec.count >= RATE_MAX) {
+    return { ok: false, retryAfter: Math.ceil((rec.windowStart + RATE_WINDOW_MS - now) / 1000) };
+  }
+  rec.count++;
+  return { ok: true };
+}
+
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
+  // レートリミット (IP ベース)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const limit = checkRateLimit(ip);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'リクエストが多すぎます。少し待ってから再度お試しください' },
+      {
+        status: 429,
+        headers: { ...CORS_HEADERS, 'Retry-After': String(limit.retryAfter || 60) },
+      }
+    );
+  }
+
   try {
     const body = await req.json();
     const name = String(body.name || '').trim();
