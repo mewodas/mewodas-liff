@@ -8,6 +8,7 @@ import { compressImage } from '@/lib/imageCompress';
 import { invalidate } from '@/lib/clientCache';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import PageHeader from '@/components/PageHeader';
+import OnboardingTour from '@/components/OnboardingTour';
 import {
   Camera,
   Image as ImageIcon,
@@ -28,6 +29,33 @@ import {
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
 type DayLabel = '今日' | '昨日';
+
+const RECORD_TOUR_STEPS = [
+  {
+    target: 'record-photo',
+    title: '写真で記録する',
+    description: '食事の写真を撮ると、AIが料理を識別してカロリーとPFCを自動計算します。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'record-text',
+    title: 'テキストでも記録できます',
+    description: '食材名と分量を入力するだけでもAIが栄養素を推定します。カメラが使えないときに便利です。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'record-fooddb',
+    title: '食品DBから検索',
+    description: 'コンビニ食品や市販品はDBで検索して登録できます。素早く正確に記録できます。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'record-save',
+    title: '最後に保存します',
+    description: '写真を選んだら「解析する」をタップ。AIが分析後に保存ボタンが表示されます。',
+    placement: 'top' as const,
+  },
+];
 
 type AnalyzedItem = {
   index: number;
@@ -891,7 +919,7 @@ export default function RecordPage() {
       </div>
 
       {/* 最下部固定アクションバー：写真があるときは解析する、無いときは食べなかった */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
+      <div data-tour="record-save" className="fixed bottom-16 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-40 shadow-lg">
         <div className="max-w-md mx-auto">
           {previews.length > 0 ? (
             <button
@@ -923,6 +951,10 @@ export default function RecordPage() {
           onClose={() => setLabelResult(null)}
           onSave={(q, edited) => saveLabel(q, edited)}
         />
+      )}
+
+      {ready && stage === 'hub' && (
+        <OnboardingTour storageKey="fitmeal_tour_record_done" steps={RECORD_TOUR_STEPS} />
       )}
     </main>
   );

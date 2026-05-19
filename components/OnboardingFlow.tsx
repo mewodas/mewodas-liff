@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronRight,
   UtensilsCrossed,
   CheckCircle2,
   Camera,
   X,
+  Scale,
+  Footprints,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/apiFetch';
 
@@ -15,15 +17,14 @@ type Props = {
   lineUserId: string;
 };
 
-type Step = 1 | 2 | 3 | 4 | 5;
-const TOTAL = 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+const TOTAL = 7;
 
 export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   const [step, setStep] = useState<Step>(1);
   const [completing, setCompleting] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
-  // ステップ2でフッターの「食事記録」ボタンをスポットライト
   useEffect(() => {
     if (step !== 2) {
       setSpotlightRect(null);
@@ -37,18 +38,18 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         setSpotlightRect(null);
       }
     }
-    const rafId = requestAnimationFrame(updateRect);
+    updateRect();
+    const id = setTimeout(updateRect, 300);
     window.addEventListener('resize', updateRect);
     return () => {
-      cancelAnimationFrame(rafId);
+      clearTimeout(id);
       window.removeEventListener('resize', updateRect);
     };
   }, [step]);
 
-  // ステップ3でホームの食事記録カード（朝食〜間食）をスポットライト
   useEffect(() => {
     if (step !== 3) {
-      setSpotlightRect(null);
+      if (step !== 2) setSpotlightRect(null);
       return;
     }
     function updateRect() {
@@ -60,38 +61,58 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         setSpotlightRect(null);
       }
     }
-    const rafId = requestAnimationFrame(updateRect);
+    updateRect();
+    const id = setTimeout(updateRect, 400);
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
     return () => {
-      cancelAnimationFrame(rafId);
+      clearTimeout(id);
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };
   }, [step]);
 
-  async function markOnboarded(): Promise<void> {
-    try {
-      await apiFetch(`/api/customer/onboarding`, {
-        method: 'POST',
-      });
-    } catch {
-      // API失敗でもリダイレクトは続行
+  useEffect(() => {
+    if (step !== 5 && step !== 6) {
+      if (step !== 2 && step !== 3) setSpotlightRect(null);
+      return;
     }
-  }
+    function updateRect() {
+      const el = document.querySelector('[data-tour="today-record-card"]');
+      if (el) {
+        setSpotlightRect(el.getBoundingClientRect());
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } else {
+        setSpotlightRect(null);
+      }
+    }
+    updateRect();
+    const id = setTimeout(updateRect, 400);
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [step]);
 
-  async function complete() {
+  function complete() {
     if (completing) return;
     setCompleting(true);
-    await markOnboarded();
-    window.location.href = '/home';
+    apiFetch(`/api/customer/onboarding`, {
+      method: 'POST',
+    }).catch(() => {});
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 100);
   }
 
-  async function next() {
-    if (step < TOTAL - 1) {
+  function next() {
+    if (step < TOTAL) {
       setStep((s) => (s + 1) as Step);
     } else {
-      await complete();
+      complete();
     }
   }
 
@@ -106,25 +127,29 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
       }
     : null;
 
-  const showSpotlight = (step === 2 || step === 3) && spotlightStyle;
+  const showSpotlight = (step === 2 || step === 3 || step === 5 || step === 6) && spotlightStyle;
 
   return (
     <div className="fixed inset-0 z-[200]" aria-modal="true">
-      {/* オーバーレイ: スポットライト使用時は透明、step1 は背景パススルー、それ以外は半透明 */}
       {showSpotlight ? (
         <>
-          {/* スポットライト矩形（周囲を暗く、要素をくり抜く） */}
           <div
             aria-hidden
             className="absolute rounded-2xl pointer-events-none transition-all duration-300"
             style={spotlightStyle}
           />
+          <button
+            type="button"
+            onClick={complete}
+            className="absolute top-4 right-4 z-10 text-white/80 bg-black/30 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
+          >
+            スキップ
+          </button>
         </>
       ) : (
-        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-black/50" />
       )}
 
-      {/* ステップ別コンテンツ */}
       {step === 1 && (
         <StepWelcome name={customerName} onNext={next} onSkip={complete} />
       )}
@@ -138,10 +163,15 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         <StepPhotoHint onNext={next} onSkip={complete} />
       )}
       {step === 5 && (
+        <StepWeightIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+      )}
+      {step === 6 && (
+        <StepExerciseIntro spotlightRect={spotlightRect} onNext={next} onSkip={complete} />
+      )}
+      {step === 7 && (
         <StepComplete onNext={complete} completing={completing} />
       )}
 
-      {/* ページ進捗バー（中央下部） */}
       {!showSpotlight && (
         <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+72px)] left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
           {Array.from({ length: TOTAL }, (_, i) => (
@@ -158,15 +188,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   );
 }
 
-function StepWelcome({
-  name,
-  onNext,
-  onSkip,
-}: {
-  name: string;
-  onNext: () => void;
-  onSkip: () => void;
-}) {
+function StepWelcome({ name, onNext, onSkip }: { name: string; onNext: () => void; onSkip: () => void }) {
   return (
     <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 max-w-sm mx-auto">
       <div className="bg-white rounded-3xl shadow-2xl px-6 py-8 flex flex-col items-center text-center gap-5">
@@ -178,6 +200,7 @@ function StepWelcome({
           <div className="text-sm text-stone-600 leading-relaxed space-y-1">
             <p>食事を写真で記録するだけで、</p>
             <p>AIが栄養バランスを自動計算します。</p>
+            <p>まずは使い方をご案内します。</p>
           </div>
         </div>
         <button
@@ -224,7 +247,6 @@ function StepFooterRecord({
   return (
     <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
       <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
-        {/* 吹き出し矢印（下向き = フッターを指す） */}
         {spotlightRect && isTop && (
           <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
         )}
@@ -289,6 +311,110 @@ function StepMealCards({
         </div>
         <p className="text-xs text-stone-600 leading-relaxed mb-4">
           朝食・昼食・夕食・間食のカードをタップして、写真またはテキストで記録しましょう。
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onNext}
+            className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
+          >
+            次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
+          >
+            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepWeightIntro({
+  spotlightRect,
+  onNext,
+  onSkip,
+}: {
+  spotlightRect: DOMRect | null;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
+  const calloutStyle: React.CSSProperties = spotlightRect
+    ? {
+        position: 'fixed',
+        top: spotlightRect.top - 16,
+        left: '50%',
+        transform: 'translate(-50%, -100%)',
+      }
+    : { position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)' };
+
+  return (
+    <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
+      <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
+        {spotlightRect && (
+          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
+        )}
+        <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
+          <Scale className="w-4 h-4 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
+          体重も記録できます
+        </div>
+        <p className="text-xs text-stone-600 leading-relaxed mb-4">
+          毎日の体重も記録すると、食事と一緒にグラフで推移が見えます。こちらのカードから手軽に入力できます。
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onNext}
+            className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
+          >
+            次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
+          >
+            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepExerciseIntro({
+  spotlightRect,
+  onNext,
+  onSkip,
+}: {
+  spotlightRect: DOMRect | null;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
+  const calloutStyle: React.CSSProperties = spotlightRect
+    ? {
+        position: 'fixed',
+        top: spotlightRect.top - 16,
+        left: '50%',
+        transform: 'translate(-50%, -100%)',
+      }
+    : { position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)' };
+
+  return (
+    <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
+      <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
+        {spotlightRect && (
+          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
+        )}
+        <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
+          <Footprints className="w-4 h-4 text-amber-600 flex-shrink-0" strokeWidth={2.2} />
+          運動も記録できます
+        </div>
+        <p className="text-xs text-stone-600 leading-relaxed mb-4">
+          ジムでのトレーニングや有酸素運動も記録して、消費カロリーを合わせて把握できます。同じカードから入力できます。
         </p>
         <div className="flex gap-2">
           <button

@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-05-19 (staging) – Security Critical 再着手 + 漏れ修正 + onboarding tour 拡張
+
+- security(Critical): LIFF lineUserId 自己申告なりすまし防止を staging に再適用（前回 revert 後の漏れ追補込み）
+  - lib/withTenant.ts に LINE Verify API 検証組込み（aud検証 / 5分LRUキャッシュ / 503・401分岐 / channel ID は `NEXT_PUBLIC_LIFF_ID` プレフィックス抽出）
+  - LIFF API 全 20 ルートを `withLiffTenant` でラップ、`lineUserId` 自己申告排除（検証済み `sub` を使用）
+  - `/api/delete` `/api/record/update` に pageId テナント境界チェック追加（Notion 親 DB 照合）
+  - `lib/apiFetch.ts` 新規 + 401 自動リトライ（`refreshLiff` で IDトークン期限切れ対策）
+  - LIFF 全 13 page + `components/OnboardingFlow.tsx` + `components/WeightExerciseCard.tsx` で `apiFetch` 化
+  - 前回 staging 検証で社長検出した追加漏れの修正:
+    - `app/meal-detail/page.tsx:131` の `fetchData()` の `/api/today` 呼び出し (= **「食事編集 401」の真の原因**、編集後の再読み込み)
+    - `app/prediction/page.tsx:58, 82` の `/api/today` と `/api/predict-weight`
+    - `app/home/page.tsx:245` の `/api/predict-weight`
+    - `components/OnboardingFlow.tsx:102` の `/api/customer/onboarding`
+- onboarding(ui): 同時に staging 上で onboarding tour 拡張作業を含む（社長作業）
+  - `OnboardingFlow.tsx` に step 5（体重）・step 6（運動）を追加し全 7 ステップ化、スポットライト対応
+  - `app/exercise/page.tsx` に `OnboardingTour` 統合（運動入力ガイド）
+  - `app/record/page.tsx` に `OnboardingTour` 統合（食事記録ガイド）
+  - `app/weight/page.tsx` に `OnboardingTour` 統合（体重入力ガイド）
+- 影響範囲: 顧客側 LIFF 全般 / 管理画面への影響なし
+- 関連: 2026-05-19 staging revert (`0d781e8 → 0cc8bdc force update`) からの再着手
+- 既知の残課題: `/api/extras` 経由で「運動表示が消える」（テナント切替で個人シート読み取り失敗の可能性）— staging テナントの Notion 設定と GAS 連携先を別途確認要
+
 機能追加・バグ修正・ロールバックなどの履歴を記録する。
 
 形式:
@@ -8,6 +30,14 @@
 - カテゴリ: 内容
 - ⚠️ ロールバック: 戻した先 と 理由
 ```
+
+## 2026-05-19 (staging) – ハイブリッドオンボーディング実装（A+B）
+
+- feat(onboarding): ホームオンボ（OnboardingFlow）を5→7ステップに拡張。食事紹介後に「体重も記録できます」「運動も記録できます」ステップを追加し、WeightExerciseCard（data-tour="today-record-card"）をスポットライト
+- feat(onboarding): 食事記録ページ（/record）に初回ツアー（OnboardingTour）を追加。写真・テキスト・食品DB・保存バーの4ステップ。localStorage `fitmeal_tour_record_done` で制御
+- feat(onboarding): 体重記録ページ（/weight）に初回ツアーを追加。体重入力欄・保存ボタンの2ステップ。localStorage `fitmeal_tour_weight_done` で制御
+- feat(onboarding): 運動記録ページ（/exercise）に初回ツアーを追加。種目・時間と強度・保存ボタンの3ステップ。localStorage `fitmeal_tour_exercise_done` で制御
+- 影響範囲: 顧客側 LIFF（新規ユーザーのオンボーディング画面・各記録ページ初回表示）
 
 ## 2026-05-19 (staging) – Security 追補: WeightExerciseCard 修正 + apiFetch 401 自動リトライ
 

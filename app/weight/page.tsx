@@ -6,7 +6,23 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
+import OnboardingTour from '@/components/OnboardingTour';
 import { Scale, CheckCircle2 } from 'lucide-react';
+
+const WEIGHT_TOUR_STEPS = [
+  {
+    target: 'weight-input',
+    title: '体重を入力します',
+    description: '毎朝起床後・食事前の体重を入力してください。毎日記録するとグラフで推移が確認できます。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'weight-save',
+    title: '記録するボタンで保存',
+    description: '入力後にこのボタンをタップすると体重が記録されます。ホームの体重カードからでも入力できます。',
+    placement: 'top' as const,
+  },
+];
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -140,7 +156,7 @@ export default function WeightPage() {
           />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200">
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-stone-200" data-tour="weight-input">
           <div className="text-base font-bold text-stone-900 mb-3">② 体重（kg）</div>
           <input
             type="number"
@@ -157,12 +173,17 @@ export default function WeightPage() {
         </div>
 
         <button
+          data-tour="weight-save"
           onClick={handleSubmit}
           disabled={!weight || submitting}
           className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
           {submitting ? '保存中…' : '記録する'}
         </button>
+
+        {ready && (
+          <OnboardingTour storageKey="fitmeal_tour_weight_done" steps={WEIGHT_TOUR_STEPS} />
+        )}
       </div>
     </main>
   );

@@ -6,7 +6,29 @@ import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
 import PageHeader from '@/components/PageHeader';
+import OnboardingTour from '@/components/OnboardingTour';
 import { Footprints, CheckCircle2, Plus } from 'lucide-react';
+
+const EXERCISE_TOUR_STEPS = [
+  {
+    target: 'exercise-type',
+    title: '運動の種目を選びます',
+    description: 'ランニング・筋トレ・ウォーキングなど、種目ボタンをタップして選択してください。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'exercise-duration',
+    title: '時間と強度を設定',
+    description: '運動した時間（分）と強度を設定すると、消費カロリーが自動で推定されます。',
+    placement: 'bottom' as const,
+  },
+  {
+    target: 'exercise-save',
+    title: '記録するで保存',
+    description: 'このボタンをタップすると運動記録が保存されます。ホームのカードからでも入力できます。',
+    placement: 'top' as const,
+  },
+];
 
 function jstTodayString(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -231,7 +253,7 @@ export default function ExercisePage() {
         </div>
 
         {/* 種目 */}
-        <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200" data-tour="exercise-type">
           <div className="text-base font-bold text-stone-900 mb-3">種目</div>
           <div className="flex flex-wrap gap-2 mb-3">
             {EXERCISE_OPTIONS.map((opt) => (
@@ -282,7 +304,7 @@ export default function ExercisePage() {
         </div>
 
         {/* 時間 + 強度 */}
-        <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200">
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-stone-200" data-tour="exercise-duration">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-sm font-bold text-stone-900 mb-2">時間（分）</div>
@@ -342,6 +364,7 @@ export default function ExercisePage() {
         </div>
 
         <button
+          data-tour="exercise-save"
           onClick={handleSubmit}
           disabled={submitting}
           className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
@@ -353,6 +376,10 @@ export default function ExercisePage() {
             </span>
           )}
         </button>
+
+        {ready && (
+          <OnboardingTour storageKey="fitmeal_tour_exercise_done" steps={EXERCISE_TOUR_STEPS} />
+        )}
       </div>
     </main>
   );
