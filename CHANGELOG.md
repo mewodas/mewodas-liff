@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – Notion フィールドリネーム完了: 書き込み側を新名に切り替え
+
+- fix(lib/notion): `createCustomer` の書き込みを「開始体重(kg)」に切り替え（旧名「現在体重(kg)」を廃止）
+- fix(lib/notion): `updateCustomer` の書き込みを「開始体重(kg)」に切り替え
+- 前提: 本番 Notion 顧客 DB のカラム名を「現在体重(kg)」→「開始体重(kg)」にリネーム済み（2026-05-20）
+- 影響範囲: API 経由の顧客新規登録／プロフィール体重更新。読み込みは引き続きフォールバック実装で旧名にも対応中（後日削除予定）
+- 関連: `FOLLOWUP_RENAME_NOTION.md`（このコミットで完了）
+
 ## 2026-05-20 (staging) – フリガナ機能を全削除
 
 - remove(liff/profile): プロフィール画面のフリガナ入力フィールド削除
