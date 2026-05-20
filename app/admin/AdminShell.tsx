@@ -69,6 +69,11 @@ type Me = {
   availableTenants: { id: string; name: string }[];
 };
 
+// AdminShell はページごとに個別マウントされるため、ページ遷移のたびに me が
+// null へリセットされ右上要素がちらつく。module スコープにキャッシュして
+// 再マウント時は即座に前回値で描画する。
+let cachedMe: Me | null = null;
+
 export default function AdminShell({
   title,
   back,
@@ -82,14 +87,19 @@ export default function AdminShell({
   const pathname = usePathname() || '';
   const base = useAdminBase();
   const isStore = base === '/store';
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMe] = useState<Me | null>(cachedMe);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setMe(j))
+      .then((j) => {
+        if (j) {
+          cachedMe = j;
+          setMe(j);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -147,9 +157,9 @@ export default function AdminShell({
             <h1 className="text-sm font-bold text-stone-900 truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {!isStore && me?.role === 'master' && (
+            {!isStore && (
               <span className="hidden sm:inline text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                マスタ
+                アドミン
               </span>
             )}
             {isStore && (
@@ -240,9 +250,9 @@ export default function AdminShell({
             </nav>
             <div className="border-t border-stone-100 px-3 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {!isStore && me?.role === 'master' && (
+                {!isStore && (
                   <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                    マスタ
+                    アドミン
                   </span>
                 )}
                 {isStore && (

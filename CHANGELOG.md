@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 管理画面ヘッダー右上のちらつき + 「アドミン」表記に統一
+
+- fix(admin/AdminShell): ページ遷移のたびに右上のロールバッジが一瞬消えるちらつきを修正。AdminShell はページ毎に個別マウントされ `me` が毎回 null リセットされていたため、module スコープにキャッシュして再マウント時に即描画
+- change(admin/AdminShell): `/admin` 右上のバッジを「マスタ」→「アドミン」に変更し、認証フェッチ非依存（`isStore` のみ）で常時表示。`/store` 側は「店舗」のまま
+- 影響範囲: 管理画面 `/admin` 全ページのヘッダー
+
 ## 2026-05-20 (staging) – fix: 日付ピッカーで開始日変更時に終了日が連動するバグ
 
 - fix(admin/DateRangePicker): 単日状態（from===to）で開始日を変更すると `isSingleDay` 分岐で終了日も同じ日に連動し、単日→範囲に広げられなかったバグを修正
