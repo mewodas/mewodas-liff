@@ -11,6 +11,13 @@
 - feat(admin/analysis): 食事一覧の各行に食事画像のサムネ（Google Drive サムネ）を表示。画像なしは食事区分アイコンのプレースホルダ
 - 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`。社長指示により本番直接修正
 
+## 2026-05-20 (staging) – change: 認証オンボーディング画面でフッターナビを非表示（プロダクト直行導線を塞ぐ）
+
+- change(components/FooterNav): `/onboard`・`/home/onboard` 配下でフッターナビ（ホーム/食事記録/AI相談/メニュー）を非表示に
+- 背景: 招待リンクの LINE 認証完了後の `/home/onboard` 成功画面に共通フッターが出ており、「公式LINE 友だち追加」をせずフッターからプロダクトへ直行できてしまっていた
+- 意図する導線: 認証完了 → 公式LINE 友だち追加 → 公式LINE リッチメニューからプロダクトへアクセス。認証後ページの友だち追加ボタンは既存のまま維持
+- 影響範囲: 顧客側（`/onboard`・`/home/onboard` のみ。`/home` 等プロダクト本体のフッターは従来どおり表示）
+
 ## 2026-05-20 (本番) – fix: 食事記録取得のページネーション欠落（最新日が漏れ集計が不正確になる）
 
 - fix(lib/notion): `getFoodRecordsByDateRange` が 100件で打ち切られ `has_more` を処理していなかったのを、`has_more`/`next_cursor` ループ（最大20ページ）で全件取得するよう修正
