@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: 日別カロリー修正・運動セクション・食事管理件数・日付ピッカー修正
+
+- staging で社長確認済み
+- マージ commit: 5bf71bc
+- 内容: 日別カロリーグラフのずれ修正 / 体重・運動セクション分離・運動ログ表示 / 食事管理の顧客セレクトに記録件数併記 / 日付ピッカーの開始日連動バグ修正
+- 影響範囲: 管理画面 `/admin/analysis`・`/admin/meals`（と `/store/*`）、API `/api/admin/meals`、共通コンポーネント `DateRangePicker`
+
 ## 2026-05-20 (staging) – fix: 日付ピッカーで開始日変更時に終了日が連動するバグ
 
 - fix(admin/DateRangePicker): 単日状態（from===to）で開始日を変更すると `isSingleDay` 分岐で終了日も同じ日に連動し、単日→範囲に広げられなかったバグを修正
