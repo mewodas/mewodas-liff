@@ -63,7 +63,7 @@ type Stats = {
 
 type Daily = { date: string; kcal: number | null; P: number | null; F: number | null; C: number | null; count: number };
 type Goals = { kcal: number; P: number; F: number; C: number };
-type TargetInfo = { currentWeight: number | null; targetWeight: number | null; targetDate: string | null };
+type TargetInfo = { currentWeight: number | null; targetWeight: number | null; targetDate: string | null; startDate: string | null };
 
 type WeightLog = {
   id: string;
@@ -463,7 +463,7 @@ function Inner() {
 
         {/* ---- ④ 体重 ---- */}
         {hasData && weightLogs.length > 0 && (
-          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} />
+          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
         )}
 
         {/* ---- ⑤ 運動記録 ---- */}
@@ -598,12 +598,32 @@ function Inner() {
 
 // ---- 体重・運動セクション ----
 
+function calcGoalWeight(
+  dateStr: string,
+  startDate: string,
+  targetDate: string,
+  startWeight: number,
+  targetWeight: number,
+): number {
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ty, tm, td] = targetDate.split('-').map(Number);
+  const [dy, dm, dd] = dateStr.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd).getTime();
+  const end = new Date(ty, tm - 1, td).getTime();
+  const cur = new Date(dy, dm - 1, dd).getTime();
+  if (end <= start) return startWeight;
+  const ratio = Math.min(1, Math.max(0, (cur - start) / (end - start)));
+  return Math.round((startWeight + (targetWeight - startWeight) * ratio) * 10) / 10;
+}
+
 function WeightSection({
   isSingleDay,
   weightLogs,
+  target,
 }: {
   isSingleDay: boolean;
   weightLogs: WeightLog[];
+  target: TargetInfo | null;
 }) {
   if (weightLogs.length === 0) return null;
 
@@ -629,10 +649,28 @@ function WeightSection({
     );
   }
 
-  const weightData = weightLogs
-    .slice()
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
-    .map((w) => ({ fullDate: w.date, weight: w.weightKg }));
+  const showGoalLine =
+    target !== null &&
+    target.startDate !== null &&
+    target.targetDate !== null &&
+    target.currentWeight !== null &&
+    target.targetWeight !== null &&
+    target.startDate < target.targetDate;
+
+  const sortedLogs = weightLogs.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  const weightData = sortedLogs.map((w) => {
+    const goalWeight = showGoalLine
+      ? calcGoalWeight(
+          w.date,
+          target!.startDate!,
+          target!.targetDate!,
+          target!.currentWeight!,
+          target!.targetWeight!,
+        )
+      : undefined;
+    return { fullDate: w.date, weight: w.weightKg, goalWeight };
+  });
 
   return (
     <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
@@ -640,14 +678,33 @@ function WeightSection({
         <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
         体重推移
       </h3>
+      {showGoalLine && (
+        <div className="flex items-center gap-4 text-[10px] text-stone-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block w-4 h-0.5 bg-sky-400" />
+            実体重
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
+            目標
+          </span>
+        </div>
+      )}
       <div className="w-full h-36">
         <ResponsiveContainer>
           <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
             <XAxis dataKey="fullDate" tickFormatter={shortDate} interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
-            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} labelFormatter={(l) => shortDate(String(l))} formatter={(v) => [`${v} kg`, '']} />
-            <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} isAnimationActive={false} />
+            <Tooltip
+              contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+              labelFormatter={(l) => shortDate(String(l))}
+              formatter={(v, name) => [`${v} kg`, name === 'goalWeight' ? '目標' : '実体重']}
+            />
+            <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} isAnimationActive={false} name="weight" />
+            {showGoalLine && (
+              <Line type="monotone" dataKey="goalWeight" stroke="#10b981" strokeWidth={1.5} strokeDasharray="5 3" dot={false} isAnimationActive={false} name="goalWeight" />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

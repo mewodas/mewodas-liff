@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – feat: 体重推移グラフに目標ラインを追加
+
+- feat(admin/analysis): 期間表示の体重推移グラフ（WeightSection）に「目標ライン」を追加。オンボーディング完了日の開始体重から目標達成日の目標体重へ線形補間した理想ペースを点線で描画
+- feat(api/admin/customers/[id]/analysis/data): target オブジェクトに startDate（onboardingCompletedAt の日付部分）を追加
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`（体重グラフ期間表示のみ）、API `/api/admin/customers/[id]/analysis/data`
+
 ## 2026-05-20 (staging) – change: PFC チップの目標値を数値の右に配置
 
 - change(admin/analysis): MacroChip の目標値を `{avg}g` の下段から右隣（「28.3g / 目標 128.5g」）へ移動。% は下段に残す
