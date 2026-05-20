@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – feat: 顧客分析に食事一覧ボタン追加・体重グラフ目標ライン起点を初回記録日に変更
+
+- feat(admin/analysis): 「食事一覧を見る」ボタンを追加。押下で対象期間の食事記録を日付別グルーピングして一覧表示（食事区分・食事名・kcal・PFC）。ロード中/ゼロ件/エラー状態ハンドリング含む
+- fix(admin/analysis): 体重グラフ目標ライン（理想ペース点線）の起点を「オンボーディング完了日＋currentWeight」→「初回体重記録日＋その日の体重」に変更
+- change(api/customers/[id]/analysis/data): 全期間体重ログ（`listWeightLogsByLineUser` 引数なし）を追加取得し `target.startDate`・`target.startWeight` を初回体重記録から算出。記録ゼロ時は両フィールド null
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`（体重グラフ目標ライン）、API `GET /api/admin/customers/[id]/analysis/data`
+
 ## 2026-05-20 (staging) – fix: 食事区分別カロリーを「1食あたり」平均に修正
 
 - fix(lib/analysisAggregate): `mealTypeCount` を食材レコード数 → 食事区分ごとの記録日数に変更

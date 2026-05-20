@@ -30,9 +30,10 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
     if (!customer.lineUserId) return NextResponse.json({ error: 'lineUserId 未登録' }, { status: 400 });
 
-    const [records, weightLogs, exerciseLogs] = await Promise.all([
+    const [records, weightLogs, allWeightLogs, exerciseLogs] = await Promise.all([
       listRecordsInRange(customer.lineUserId, from, to),
       listWeightLogsByLineUser(customer.lineUserId, from, to),
+      listWeightLogsByLineUser(customer.lineUserId),
       listExerciseLogsByLineUser(customer.lineUserId, from, to),
     ]);
 
@@ -42,13 +43,17 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
       ? `${from}（1日）`
       : `${from} 〜 ${to}（${days}日間）`;
 
+    const sortedAllWeightLogs = allWeightLogs
+      .filter((w) => !!w.date)
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    const firstWeightLog = sortedAllWeightLogs[0] ?? null;
+
     const target = {
       currentWeight: customer.currentWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
-      startDate: customer.onboardingCompletedAt
-        ? customer.onboardingCompletedAt.slice(0, 10)
-        : null,
+      startDate: firstWeightLog ? firstWeightLog.date : null,
+      startWeight: firstWeightLog ? firstWeightLog.weightKg : null,
     };
 
     return NextResponse.json({
