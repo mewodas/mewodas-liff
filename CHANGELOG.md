@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – change: 認証完了画面の文言調整
+
+- change(app/home/onboard): 認証成功画面から「最後にあと1ステップだけお願いします」の一文を削除
+- change(app/home/onboard): 友だち追加案内文を「…友だち追加していただくと、」の後で改行（「リッチメニューから…」を次行へ）
+- 影響範囲: 顧客側（`/home/onboard` 認証完了画面のみ）
+
 ## 2026-05-21 (staging 待ち) – fix: AI献立フォローアップ修正（遷移先・ヘッダー被り・生成中表示）
 
 - change(app/meal-plan/page.tsx): 記録後の遷移先を `/menu` → `/home`（ホーム）に変更（前回修正3のフィードバック反映）

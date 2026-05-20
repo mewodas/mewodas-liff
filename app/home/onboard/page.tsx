@@ -84,7 +84,6 @@ function OnboardInner() {
           <p className="text-lg font-bold text-stone-900">
             {customerName ? `${customerName}様` : ''}　登録が完了しました
           </p>
-          <p className="text-sm text-stone-600 mt-1">最後にあと1ステップだけお願いします</p>
         </div>
 
         {officialLineUrl ? (
@@ -92,7 +91,9 @@ function OnboardInner() {
             <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-sm space-y-2">
               <p className="text-sm font-bold text-stone-900">📱 公式LINEを友だち追加してください</p>
               <p className="text-xs text-stone-600 leading-relaxed">
-                下のボタンから公式LINEを友だち追加していただくと、リッチメニューから食事管理のURLにアクセス可能です。
+                下のボタンから公式LINEを友だち追加していただくと、
+                <br />
+                リッチメニューから食事管理のURLにアクセス可能です。
               </p>
             </div>
             <a
