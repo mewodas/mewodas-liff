@@ -20,6 +20,12 @@ import {
   Hourglass,
   Scale,
   Dumbbell,
+  UtensilsCrossed,
+  Sunrise,
+  Sun,
+  Moon,
+  Cookie,
+  type LucideIcon,
 } from 'lucide-react';
 import { daysUntil } from '@/lib/goalCalc';
 import {
@@ -63,7 +69,7 @@ type Stats = {
 
 type Daily = { date: string; kcal: number | null; P: number | null; F: number | null; C: number | null; count: number };
 type Goals = { kcal: number; P: number; F: number; C: number };
-type TargetInfo = { currentWeight: number | null; targetWeight: number | null; targetDate: string | null; startDate: string | null };
+type TargetInfo = { currentWeight: number | null; targetWeight: number | null; targetDate: string | null; startDate: string | null; startWeight: number | null };
 
 type WeightLog = {
   id: string;
@@ -82,6 +88,42 @@ type ExerciseLog = {
   estimatedKcal: number;
   memo: string;
 };
+
+type MealRecord = {
+  pageId: string;
+  date: string;
+  mealType: string;
+  title: string;
+  memo: string;
+  kcal: number;
+  P: number;
+  F: number;
+  C: number;
+  recordedAt: string;
+  imageUrl: string | null;
+};
+
+const ANALYSIS_MEAL_ICON: Record<string, LucideIcon> = {
+  朝食: Sunrise,
+  昼食: Sun,
+  夕食: Moon,
+  間食: Cookie,
+};
+const ANALYSIS_MEAL_COLOR: Record<string, string> = {
+  朝食: 'text-orange-500',
+  昼食: 'text-amber-500',
+  夕食: 'text-indigo-500',
+  間食: 'text-pink-500',
+};
+
+function extractFoodLine(m: { title: string; memo: string }): string {
+  const memo = (m.memo || '').trim();
+  if (memo) {
+    const beforeAi = memo.split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
+    if (beforeAi) return beforeAi;
+  }
+  return m.title || '食事';
+}
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -145,6 +187,11 @@ function Inner() {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(true);
 
+  // 食事一覧
+  const [mealList, setMealList] = useState<MealRecord[] | null>(null);
+  const [mealListLoading, setMealListLoading] = useState(false);
+  const [mealListError, setMealListError] = useState<string | null>(null);
+
   const [loadingCustomers, setLoadingCustomers] = useState(true);
 
   // データフェッチのデバウンス用 + 進行中リクエストの中断用
@@ -161,6 +208,8 @@ function Inner() {
     setAnalysis(null);
     setAiError(null);
     setAiMessage(null);
+    setMealList(null);
+    setMealListError(null);
     try {
       const res = await fetch(`/api/admin/customers/${cid}/analysis/data?from=${f}&to=${t}`, {
         cache: 'no-store',
@@ -245,6 +294,8 @@ function Inner() {
     setAnalysis(null);
     setAiError(null);
     setAiMessage(null);
+    setMealList(null);
+    setMealListError(null);
   }, []);
 
   // 顧客または日付が変わったら data API を自動フェッチ（デバウンス 300ms）
@@ -287,6 +338,26 @@ function Inner() {
       setAiError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function fetchMealList() {
+    if (!customerId) return;
+    setMealListLoading(true);
+    setMealListError(null);
+    try {
+      const sp = new URLSearchParams({ customerId, from, to });
+      const res = await fetch(`/api/admin/meals?${sp.toString()}`, { cache: 'no-store' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `取得失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      setMealList(j.meals || []);
+    } catch (e) {
+      setMealListError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setMealListLoading(false);
     }
   }
 
@@ -471,26 +542,54 @@ function Inner() {
           <ExerciseSection exerciseLogs={exerciseLogs} />
         )}
 
-        {/* ---- ⑤ AI サマリ作成ボタン ---- */}
+        {/* ---- ⑤ 食事一覧ボタン + AI サマリ作成ボタン ---- */}
         {hasData && (
-          <button
-            type="button"
-            onClick={runAi}
-            disabled={aiLoading || !customerId}
-            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-          >
-            {aiLoading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
-                サマリ生成中…（10〜20秒）
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
-                AI でサマリ作成
-              </>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={fetchMealList}
+              disabled={mealListLoading || !customerId}
+              className="flex-1 bg-sky-500 text-white font-bold py-3 rounded-xl active:bg-sky-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+            >
+              {mealListLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+                  取得中…
+                </>
+              ) : (
+                <>
+                  <UtensilsCrossed className="w-4 h-4" strokeWidth={2.2} />
+                  食事一覧を見る
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={runAi}
+              disabled={aiLoading || !customerId}
+              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+            >
+              {aiLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+                  生成中…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+                  AI でサマリ作成
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ---- ⑤-b 食事一覧 ---- */}
+        {mealListError && (
+          <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{mealListError}</div>
+        )}
+        {mealList !== null && (
+          <MealListSection meals={mealList} />
         )}
 
         {aiError && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{aiError}</div>}
@@ -616,6 +715,14 @@ function calcGoalWeight(
   return Math.round((startWeight + (targetWeight - startWeight) * ratio) * 10) / 10;
 }
 
+// 初回記録日（startDate）を起点に、対象日が何週目かを返す（7日ごと、0始まり）
+function weekIndexOf(dateStr: string, startDate: string): number {
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [dy, dm, dd] = dateStr.split('-').map(Number);
+  const diffMs = new Date(dy, dm - 1, dd).getTime() - new Date(sy, sm - 1, sd).getTime();
+  return Math.floor(Math.floor(diffMs / 86_400_000) / 7);
+}
+
 function WeightSection({
   isSingleDay,
   weightLogs,
@@ -652,12 +759,27 @@ function WeightSection({
   const showGoalLine =
     target !== null &&
     target.startDate !== null &&
+    target.startWeight !== null &&
     target.targetDate !== null &&
-    target.currentWeight !== null &&
     target.targetWeight !== null &&
     target.startDate < target.targetDate;
 
   const sortedLogs = weightLogs.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  // 週平均（初回記録日を起点に7日ごと。初回記録日が無ければ期間内最古を起点）
+  const weekStart = target?.startDate ?? sortedLogs[0].date;
+  const weekAgg = new Map<number, { sum: number; count: number }>();
+  for (const w of sortedLogs) {
+    const wi = weekIndexOf(w.date, weekStart);
+    const cur = weekAgg.get(wi) ?? { sum: 0, count: 0 };
+    cur.sum += w.weightKg;
+    cur.count += 1;
+    weekAgg.set(wi, cur);
+  }
+  const weekAvg = new Map<number, number>();
+  for (const [wi, v] of weekAgg) {
+    weekAvg.set(wi, Math.round((v.sum / v.count) * 10) / 10);
+  }
 
   const weightData = sortedLogs.map((w) => {
     const goalWeight = showGoalLine
@@ -665,11 +787,16 @@ function WeightSection({
           w.date,
           target!.startDate!,
           target!.targetDate!,
-          target!.currentWeight!,
+          target!.startWeight!,
           target!.targetWeight!,
         )
       : undefined;
-    return { fullDate: w.date, weight: w.weightKg, goalWeight };
+    return {
+      fullDate: w.date,
+      weight: w.weightKg,
+      goalWeight,
+      weeklyAvg: weekAvg.get(weekIndexOf(w.date, weekStart)),
+    };
   });
 
   return (
@@ -678,18 +805,22 @@ function WeightSection({
         <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
         体重推移
       </h3>
-      {showGoalLine && (
-        <div className="flex items-center gap-4 text-[10px] text-stone-500">
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block w-4 h-0.5 bg-sky-400" />
-            実体重
-          </span>
+      <div className="flex items-center gap-4 text-[10px] text-stone-500 flex-wrap">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-4 h-0.5 bg-sky-400" />
+          実体重
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-4 h-0.5 bg-amber-500" />
+          週平均
+        </span>
+        {showGoalLine && (
           <span className="inline-flex items-center gap-1">
             <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
             目標
           </span>
-        </div>
-      )}
+        )}
+      </div>
       <div className="w-full h-36">
         <ResponsiveContainer>
           <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -699,9 +830,10 @@ function WeightSection({
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
               labelFormatter={(l) => shortDate(String(l))}
-              formatter={(v, name) => [`${v} kg`, name === 'goalWeight' ? '目標' : '実体重']}
+              formatter={(v, name) => [`${v} kg`, name === 'goalWeight' ? '目標' : name === 'weeklyAvg' ? '週平均' : '実体重']}
             />
             <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} isAnimationActive={false} name="weight" />
+            <Line type="stepAfter" dataKey="weeklyAvg" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} name="weeklyAvg" />
             {showGoalLine && (
               <Line type="monotone" dataKey="goalWeight" stroke="#10b981" strokeWidth={1.5} strokeDasharray="5 3" dot={false} isAnimationActive={false} name="goalWeight" />
             )}
@@ -787,6 +919,57 @@ function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function MealListSection({ meals }: { meals: MealRecord[] }) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, MealRecord[]>();
+    for (const m of meals) {
+      const arr = map.get(m.date) || [];
+      arr.push(m);
+      map.set(m.date, arr);
+    }
+    return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  }, [meals]);
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+      <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+        <UtensilsCrossed className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+        食事一覧
+        <span className="text-[11px] font-medium text-stone-500">（{meals.length}件）</span>
+      </h3>
+      {meals.length === 0 ? (
+        <div className="text-xs text-stone-500 text-center py-4">この期間の食事記録はありません</div>
+      ) : (
+        <div className="space-y-2">
+          {grouped.map(([date, list]) => (
+            <div key={date}>
+              <div className="text-[11px] font-bold text-stone-600 mb-1">{shortDate(date)}</div>
+              <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
+                {list.map((m) => {
+                  const Icon = ANALYSIS_MEAL_ICON[m.mealType] || UtensilsCrossed;
+                  const color = ANALYSIS_MEAL_COLOR[m.mealType] || 'text-stone-500';
+                  return (
+                    <div key={m.pageId} className="px-3 py-2 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} strokeWidth={2.2} />
+                        <span className="text-stone-600 flex-shrink-0">{m.mealType || '未分類'}</span>
+                        <span className="font-bold text-stone-900 flex-1 truncate">{extractFoodLine(m)}</span>
+                      </div>
+                      <div className="text-stone-500 mt-0.5 ml-5">
+                        {Math.round(m.kcal)} kcal ・ P{Math.round(m.P * 10) / 10} F{Math.round(m.F * 10) / 10} C{Math.round(m.C * 10) / 10}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

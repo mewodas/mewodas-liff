@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 体重目標ラインの起点体重を「開始体重(kg)」に修正
+
+- fix(api/admin/customers/[id]/analysis/data): 目標ラインの起点体重を「初回体重記録の実測値」→「顧客プロフィールの開始体重(kg)」に変更
+- 背景: 初回体重記録の実測値と開始体重フィールドがズレているケースで、目標ラインが実体重・目標設定（「あと N kg 減量」）と食い違って見えた。起点日は初回体重記録日のまま、起点体重のみ開始体重フィールドに統一
+- 補足: 線形補間の計算式自体は正しく、変更なし
+- 影響範囲: 顧客分析の体重推移グラフ 目標ライン（`/admin/analysis`・`/store/analysis`）
+
+## 2026-05-20 (staging) – feat: 体重推移グラフに週平均ライン（週間ラップ）を追加
+
+- feat(admin/analysis): 体重推移グラフに、初回記録日を起点に7日ごとに区切った週平均体重のライン（amber, 階段状）を追加。日々の水分変動でギザギザになる生データに対し週単位のトレンドが見える
+- 凡例に「週平均」を追加（実体重・週平均・目標）
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis` の体重推移グラフ（期間表示）
+
+## 2026-05-20 (staging) – feat: 顧客分析に食事一覧ボタン追加・体重グラフ目標ライン起点を初回記録日に変更
+
+- feat(admin/analysis): 「食事一覧を見る」ボタンを追加。押下で対象期間の食事記録を日付別グルーピングして一覧表示（食事区分・食事名・kcal・PFC）。ロード中/ゼロ件/エラー状態ハンドリング含む
+- fix(admin/analysis): 体重グラフ目標ライン（理想ペース点線）の起点を「オンボーディング完了日＋currentWeight」→「初回体重記録日＋その日の体重」に変更
+- change(api/customers/[id]/analysis/data): 全期間体重ログ（`listWeightLogsByLineUser` 引数なし）を追加取得し `target.startDate`・`target.startWeight` を初回体重記録から算出。記録ゼロ時は両フィールド null
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`（体重グラフ目標ライン）、API `GET /api/admin/customers/[id]/analysis/data`
+
+## 2026-05-20 (staging) – fix: 食事区分別カロリーを「1食あたり」平均に修正
+
+- fix(lib/analysisAggregate): `mealTypeCount` を食材レコード数 → 食事区分ごとの記録日数に変更
+- 背景: 1食を複数品目に分けて記録するとレコード数が膨らみ、「1品目あたり平均」になって値が過小だった（例: 朝食 96kcal/回）。記録日数を分母にして「1食あたり平均」にする
+- 影響範囲: 顧客分析の食事バランス「食事区分別カロリー」（`/admin/analysis`・`/store/analysis`）
+
 ## 2026-05-20 (本番) – staging→main マージ: 顧客分析の表示改善ほか一式
 
 - staging で社長確認済み

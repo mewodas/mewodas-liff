@@ -30,9 +30,10 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
     if (!customer.lineUserId) return NextResponse.json({ error: 'lineUserId 未登録' }, { status: 400 });
 
-    const [records, weightLogs, exerciseLogs] = await Promise.all([
+    const [records, weightLogs, allWeightLogs, exerciseLogs] = await Promise.all([
       listRecordsInRange(customer.lineUserId, from, to),
       listWeightLogsByLineUser(customer.lineUserId, from, to),
+      listWeightLogsByLineUser(customer.lineUserId),
       listExerciseLogsByLineUser(customer.lineUserId, from, to),
     ]);
 
@@ -42,13 +43,19 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
       ? `${from}（1日）`
       : `${from} 〜 ${to}（${days}日間）`;
 
+    const sortedAllWeightLogs = allWeightLogs
+      .filter((w) => !!w.date)
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    const firstWeightLog = sortedAllWeightLogs[0] ?? null;
+
     const target = {
       currentWeight: customer.currentWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
-      startDate: customer.onboardingCompletedAt
-        ? customer.onboardingCompletedAt.slice(0, 10)
-        : null,
+      // 目標ラインの起点: 日付は初回体重記録日、体重は顧客プロフィールの「開始体重(kg)」
+      // （目標設定の「あと N kg 減量」と同じ基準にそろえる）
+      startDate: firstWeightLog ? firstWeightLog.date : null,
+      startWeight: customer.currentWeight,
     };
 
     return NextResponse.json({
