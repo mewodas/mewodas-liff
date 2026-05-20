@@ -715,6 +715,14 @@ function calcGoalWeight(
   return Math.round((startWeight + (targetWeight - startWeight) * ratio) * 10) / 10;
 }
 
+// 初回記録日（startDate）を起点に、対象日が何週目かを返す（7日ごと、0始まり）
+function weekIndexOf(dateStr: string, startDate: string): number {
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [dy, dm, dd] = dateStr.split('-').map(Number);
+  const diffMs = new Date(dy, dm - 1, dd).getTime() - new Date(sy, sm - 1, sd).getTime();
+  return Math.floor(Math.floor(diffMs / 86_400_000) / 7);
+}
+
 function WeightSection({
   isSingleDay,
   weightLogs,
@@ -758,6 +766,21 @@ function WeightSection({
 
   const sortedLogs = weightLogs.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
 
+  // 週平均（初回記録日を起点に7日ごと。初回記録日が無ければ期間内最古を起点）
+  const weekStart = target?.startDate ?? sortedLogs[0].date;
+  const weekAgg = new Map<number, { sum: number; count: number }>();
+  for (const w of sortedLogs) {
+    const wi = weekIndexOf(w.date, weekStart);
+    const cur = weekAgg.get(wi) ?? { sum: 0, count: 0 };
+    cur.sum += w.weightKg;
+    cur.count += 1;
+    weekAgg.set(wi, cur);
+  }
+  const weekAvg = new Map<number, number>();
+  for (const [wi, v] of weekAgg) {
+    weekAvg.set(wi, Math.round((v.sum / v.count) * 10) / 10);
+  }
+
   const weightData = sortedLogs.map((w) => {
     const goalWeight = showGoalLine
       ? calcGoalWeight(
@@ -768,7 +791,12 @@ function WeightSection({
           target!.targetWeight!,
         )
       : undefined;
-    return { fullDate: w.date, weight: w.weightKg, goalWeight };
+    return {
+      fullDate: w.date,
+      weight: w.weightKg,
+      goalWeight,
+      weeklyAvg: weekAvg.get(weekIndexOf(w.date, weekStart)),
+    };
   });
 
   return (
@@ -777,18 +805,22 @@ function WeightSection({
         <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
         体重推移
       </h3>
-      {showGoalLine && (
-        <div className="flex items-center gap-4 text-[10px] text-stone-500">
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block w-4 h-0.5 bg-sky-400" />
-            実体重
-          </span>
+      <div className="flex items-center gap-4 text-[10px] text-stone-500 flex-wrap">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-4 h-0.5 bg-sky-400" />
+          実体重
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-4 h-0.5 bg-amber-500" />
+          週平均
+        </span>
+        {showGoalLine && (
           <span className="inline-flex items-center gap-1">
             <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
             目標
           </span>
-        </div>
-      )}
+        )}
+      </div>
       <div className="w-full h-36">
         <ResponsiveContainer>
           <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -798,9 +830,10 @@ function WeightSection({
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
               labelFormatter={(l) => shortDate(String(l))}
-              formatter={(v, name) => [`${v} kg`, name === 'goalWeight' ? '目標' : '実体重']}
+              formatter={(v, name) => [`${v} kg`, name === 'goalWeight' ? '目標' : name === 'weeklyAvg' ? '週平均' : '実体重']}
             />
             <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} isAnimationActive={false} name="weight" />
+            <Line type="stepAfter" dataKey="weeklyAvg" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} name="weeklyAvg" />
             {showGoalLine && (
               <Line type="monotone" dataKey="goalWeight" stroke="#10b981" strokeWidth={1.5} strokeDasharray="5 3" dot={false} isAnimationActive={false} name="goalWeight" />
             )}
