@@ -806,12 +806,10 @@ function KcalGauge({ avg, target }: { avg: number; target: number }) {
           <Flame className="w-3 h-3 text-orange-500" strokeWidth={2.4} />
           平均カロリー
         </div>
-        <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
-          <div className="text-3xl font-bold text-stone-900 leading-none">
-            {avg}
-            <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
-          </div>
-          <div className="text-[10px] text-stone-500">目標 {target} kcal</div>
+        <div className="text-3xl font-bold text-stone-900 mt-0.5 leading-none">
+          {avg}
+          <span className="text-lg font-medium text-stone-400"> / {target}</span>
+          <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
         </div>
       </div>
       <div className="mt-2 relative h-2 rounded-full bg-stone-100 overflow-hidden">
@@ -884,15 +882,14 @@ function MacroChip({
         {macro}
       </div>
       <div className="text-base font-bold mt-0.5 leading-none">
-        <span className="text-[9px] font-medium opacity-60 mr-0.5">摂取</span>
         {avg}
+        {target !== undefined && target > 0 && (
+          <span className="text-[10px] font-medium opacity-50"> / {target}</span>
+        )}
         <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
       </div>
-      {target !== undefined && target > 0 && (
-        <div className="text-[9px] opacity-70 mt-0.5">目標 {target}g</div>
-      )}
       {pct !== null && (
-        <div className="text-[9px] opacity-70 mt-0.5">達成 {pct}%</div>
+        <div className="text-[9px] opacity-70 mt-0.5">{pct}%</div>
       )}
     </div>
   );
