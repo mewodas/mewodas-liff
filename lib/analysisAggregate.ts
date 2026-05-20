@@ -46,6 +46,7 @@ export type AggregateResult = {
   sum: { kcal: number; P: number; F: number; C: number };
   daily: DailyEntry[];
   mealTypeKcal: Record<string, number>;
+  mealTypeCount: Record<string, number>;
   recordsSummary: string;
   top20Foods: string;
 };
@@ -56,6 +57,7 @@ export function aggregateRecords(
   to: string
 ): AggregateResult {
   const mealTypeKcal: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+  const mealTypeCount: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
   const foodCount = new Map<string, number>();
 
   const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
@@ -72,6 +74,7 @@ export function aggregateRecords(
 
     if (r.mealType in mealTypeKcal) {
       mealTypeKcal[r.mealType] += r.kcal;
+      mealTypeCount[r.mealType] += 1;
     }
     const rawItem = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
     if (rawItem) {
@@ -145,5 +148,5 @@ export function aggregateRecords(
     .map(([name, cnt]) => `${name}(${cnt}回)`)
     .join('、');
 
-  return { totalDays, avg, sum, daily, mealTypeKcal, recordsSummary, top20Foods };
+  return { totalDays, avg, sum, daily, mealTypeKcal, mealTypeCount, recordsSummary, top20Foods };
 }

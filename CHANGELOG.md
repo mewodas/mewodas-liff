@@ -1,5 +1,54 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – change: PFC・平均カロリーを「実績 / 目標」形式に統一
+
+- change(admin/analysis): PFC チップを「実績 / 目標 g」形式に（例「28.3 / 128.5 g」）。「摂取」「目標」「達成」のラベルを削除し % のみ残す
+- change(admin/analysis): 平均カロリーを「実績 / 目標 kcal」形式に（例「1080 / 1500 kcal」）。「目標」ラベルを削除
+- 同日先行の「ラベル明示型」から、ラベルなしの分数形式へ再調整
+
+## 2026-05-20 (staging) – change: 顧客分析の数値表記を分かりやすく
+
+- change(admin/analysis): PFC チップを「摂取 28.3g / 目標 128.5g / 達成 22%」のラベル明示型に変更
+- change(admin/analysis): 記録日の表記を「3 /20日」→「3日 / 20日間」に変更
+- change(admin/analysis): 平均カロリーの目標値（目標 N kcal）を数値の右横に配置
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis` の数値ハイライト
+
+## 2026-05-20 (staging) – feat: 体重推移グラフに目標ラインを追加
+
+- feat(admin/analysis): 期間表示の体重推移グラフ（WeightSection）に「目標ライン」を追加。オンボーディング完了日の開始体重から目標達成日の目標体重へ線形補間した理想ペースを点線で描画
+- feat(api/admin/customers/[id]/analysis/data): target オブジェクトに startDate（onboardingCompletedAt の日付部分）を追加
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`（体重グラフ期間表示のみ）、API `/api/admin/customers/[id]/analysis/data`
+
+## 2026-05-20 (staging) – change: PFC チップの目標値を数値の右に配置
+
+- change(admin/analysis): MacroChip の目標値を `{avg}g` の下段から右隣（「28.3g / 目標 128.5g」）へ移動。% は下段に残す
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis` の数値ハイライト
+
+## 2026-05-20 (staging) – fix: 顧客の所属店舗 select に旧値フォールバックと「店舗未設定」ラベルを追加
+
+- fix(admin/customers/[id]): 編集画面で顧客の storeId が stores マスタに存在しない旧値（表記ゆれ等）だった場合、「旧値（旧値）」として select に選択肢を追加し、保存操作で意図せず storeId が消えないように対応
+- fix(admin/customers/new, [id]): 所属店舗 select の空値選択肢ラベルを「—」→「店舗未設定」に変更し、未選択状態を明示
+- 影響範囲: 管理画面 `/admin/customers/new`・`/admin/customers/[id]`（UI のみ、API 変更なし）
+
+## 2026-05-20 (staging) – feat: 顧客分析UIを3点調整
+
+- feat(admin/analysis): 食事区分別パイチャートを「期間合計kcal」から「1回あたり平均kcal/回」表示に変更。`lib/analysisAggregate.ts` に `mealTypeCount` 集計を追加しAPIレスポンスにも含める。`MealTypePie` が区分別平均を算出し構成比・リスト表示ともに平均ベースに
+- feat(admin/analysis): 平均カロリーカード（KcalGauge）から `{pct}%` と判定ラベル（「目標範囲内」「不足ぎみ」「オーバー」）を削除。プログレスバーは残す
+- feat(admin/analysis): PFCチップ（MacroChip）に目標絶対値「目標 Ng」を追記（avg・target・%の3段表示）
+- 影響範囲: 管理画面 `/admin/analysis`、API `/api/admin/customers/[id]/analysis/data`、`lib/analysisAggregate.ts`
+
+## 2026-05-20 (staging) – fix: 日別カロリーグラフが顧客切替でずれる問題の再修正
+
+- fix(admin/analysis): 日別カロリーグラフの再マウント key に `customerId` を追加
+- 背景: 前回修正で key を `rangeLabel`（日付範囲のみ）にしたが、期間が同じまま顧客だけ切り替えると key が変わらず、recharts が前の顧客のグラフ状態（Cell の色対応）を引きずってずれていた
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`
+
+## 2026-05-20 (staging) – fix: 管理画面ヘッダー右上のちらつき + 「アドミン」表記に統一
+
+- fix(admin/AdminShell): ページ遷移のたびに右上のロールバッジが一瞬消えるちらつきを修正。AdminShell はページ毎に個別マウントされ `me` が毎回 null リセットされていたため、module スコープにキャッシュして再マウント時に即描画
+- change(admin/AdminShell): `/admin` 右上のバッジを「マスタ」→「アドミン」に変更し、認証フェッチ非依存（`isStore` のみ）で常時表示。`/store` 側は「店舗」のまま
+- 影響範囲: 管理画面 `/admin` 全ページのヘッダー
+
 ## 2026-05-20 (本番) – staging→main マージ: 日別カロリー修正・運動セクション・食事管理件数・日付ピッカー修正
 
 - staging で社長確認済み

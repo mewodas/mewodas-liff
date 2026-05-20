@@ -46,12 +46,16 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
       currentWeight: customer.currentWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
+      startDate: customer.onboardingCompletedAt
+        ? customer.onboardingCompletedAt.slice(0, 10)
+        : null,
     };
 
     return NextResponse.json({
       stats: { totalDays: agg.totalDays, avg: agg.avg, sum: agg.sum },
       daily: agg.daily,
       mealTypeKcal: agg.mealTypeKcal,
+      mealTypeCount: agg.mealTypeCount,
       goals: customer.goals,
       target,
       weightLogs,
