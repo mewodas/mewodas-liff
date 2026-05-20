@@ -57,7 +57,11 @@ export function aggregateRecords(
   to: string
 ): AggregateResult {
   const mealTypeKcal: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
-  const mealTypeCount: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+  // 食事区分ごとに「記録した日」を集合で保持。1食あたり平均の分母は食事日数とする
+  // （1食を複数品目に分けて記録するとレコード数では過大になり1品目あたりになってしまうため）
+  const mealTypeDates: Record<string, Set<string>> = {
+    朝食: new Set(), 昼食: new Set(), 夕食: new Set(), 間食: new Set(),
+  };
   const foodCount = new Map<string, number>();
 
   const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
@@ -74,7 +78,7 @@ export function aggregateRecords(
 
     if (r.mealType in mealTypeKcal) {
       mealTypeKcal[r.mealType] += r.kcal;
-      mealTypeCount[r.mealType] += 1;
+      mealTypeDates[r.mealType].add(r.date);
     }
     const rawItem = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
     if (rawItem) {
@@ -147,6 +151,14 @@ export function aggregateRecords(
     .slice(0, 20)
     .map(([name, cnt]) => `${name}(${cnt}回)`)
     .join('、');
+
+  // 1食あたり平均の分母 = 食事区分ごとの記録日数
+  const mealTypeCount: Record<string, number> = {
+    朝食: mealTypeDates.朝食.size,
+    昼食: mealTypeDates.昼食.size,
+    夕食: mealTypeDates.夕食.size,
+    間食: mealTypeDates.間食.size,
+  };
 
   return { totalDays, avg, sum, daily, mealTypeKcal, mealTypeCount, recordsSummary, top20Foods };
 }
