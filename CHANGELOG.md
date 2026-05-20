@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番 hotfix) – 解約予約判定に `cancel_at` も含める
+
+- fix(api/admin/billing/info): `cancelAtPeriodEnd` を `sub.cancel_at_period_end || !!sub.cancel_at` に変更
+- 背景: Stripe Customer Portal でトライアル中に解約予約すると `cancel_at_period_end` は false のまま `cancel_at` に解約日が入るだけ。`cancel_at_period_end` だけで判定していたため本番で解約予約バナーが表示されなかった
+- 影響範囲: 管理画面 `/admin/billing`・`/store/billing`（社長のみアクセス）。CLAUDE.md ルール 4 に基づき main 直 push
+- 動作確認: 修正後、本番 `/api/admin/billing/info` のレスポンスで `cancelAtPeriodEnd: true` になること、画面に解約予約バナーが出ること
+
 ## 2026-05-20 (本番) – staging→main マージ: 契約画面に解約予約状態を表示 + プロフィール画面を読み取り専用へ戻し
 
 - staging で社長確認済み（解約予約バナー / 「解約予定日」表示 / プロフィール読み取り専用化）

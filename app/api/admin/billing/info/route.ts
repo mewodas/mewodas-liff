@@ -22,14 +22,17 @@ export const GET = withAdminTenant(async () => {
     return NextResponse.json({ error: 'テナント未登録' }, { status: 404 });
   }
 
-  // Stripe Subscription を直接照会して解約予約 (cancel_at_period_end) を取得。
-  // Webhook はトライアル中の予約では status 変化を受けないため、最新状態は API 経由が確実。
+  // Stripe Subscription を直接照会して解約予約を取得。
+  // Stripe は予約解約を 2 通りで表現する:
+  //   (a) cancel_at_period_end=true（期間末で解約）
+  //   (b) cancel_at に Unix 秒（特定日で解約。Portal でのトライアル中キャンセルはこちら）
+  // どちらか入っていれば「解約予約中」とみなす。Webhook では状態変化を取れないため API 経由が確実。
   let cancelAtPeriodEnd = false;
   let cancelAt: string | null = null;
   if (t.stripeSubscriptionId) {
     try {
       const sub = await getStripe().subscriptions.retrieve(t.stripeSubscriptionId);
-      cancelAtPeriodEnd = !!sub.cancel_at_period_end;
+      cancelAtPeriodEnd = !!sub.cancel_at_period_end || !!sub.cancel_at;
       const ts =
         sub.cancel_at ??
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
