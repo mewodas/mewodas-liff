@@ -1079,12 +1079,12 @@ function MacroChip({
 }
 
 function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: number }) {
-  // XAxis の dataKey はユニークな YYYY-MM-DD を使う。
-  // shortDate (M/D) は長期間で重複し recharts のカテゴリ軸・Cell 対応が崩れるため。
+  // XAxis の dataKey はユニークな YYYY-MM-DD を使う（shortDate は長期間で重複するため）。
+  // 棒ごとの色分け (<Cell>) は長期間データで recharts の内部データ順とずれ、
+  // 高さ・色・ツールチップが食い違うため使わず、単色 + 目標線で表現する。
   const data = daily.map((d) => ({
     fullDate: d.date,
     kcal: d.kcal ?? 0,
-    has: d.kcal !== null,
   }));
   return (
     <div className="w-full h-44">
@@ -1113,19 +1113,7 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
               label={{ value: `目標 ${targetKcal}`, fontSize: 9, fill: '#10b981', position: 'insideTopRight' }}
             />
           )}
-          <Bar dataKey="kcal" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-            {data.map((d) => (
-              <Cell
-                key={d.fullDate}
-                fill={
-                  !d.has ? '#e7e5e4'
-                  : targetKcal > 0 && d.kcal > targetKcal * 1.15 ? '#fb7185'
-                  : targetKcal > 0 && d.kcal < targetKcal * 0.85 ? '#7dd3fc'
-                  : '#10b981'
-                }
-              />
-            ))}
-          </Bar>
+          <Bar dataKey="kcal" radius={[4, 4, 0, 0]} fill="#10b981" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>
