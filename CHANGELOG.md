@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – change: 日別カロリーの目標ラベル削除 + 食事一覧にサムネ表示
+
+- change(admin/analysis): 日別カロリーグラフの「目標 N」固定ラベルを削除し、ホバー時のツールチップに「目標 Nkcal」を表示するよう変更（目標線の点線は残す）
+- feat(admin/analysis): 食事一覧の各行に食事画像のサムネ（Google Drive サムネ）を表示。画像なしは食事区分アイコンのプレースホルダ
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`。社長指示により本番直接修正
+
 ## 2026-05-20 (本番) – fix: 食事記録取得のページネーション欠落（最新日が漏れ集計が不正確になる）
 
 - fix(lib/notion): `getFoodRecordsByDateRange` が 100件で打ち切られ `has_more` を処理していなかったのを、`has_more`/`next_cursor` ループ（最大20ページ）で全件取得するよう修正

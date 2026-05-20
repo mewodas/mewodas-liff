@@ -46,6 +46,7 @@ import {
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
+import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 
@@ -953,14 +954,28 @@ function MealListSection({ meals }: { meals: MealRecord[] }) {
                   const Icon = ANALYSIS_MEAL_ICON[m.mealType] || UtensilsCrossed;
                   const color = ANALYSIS_MEAL_COLOR[m.mealType] || 'text-stone-500';
                   return (
-                    <div key={m.pageId} className="px-3 py-2 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} strokeWidth={2.2} />
-                        <span className="text-stone-600 flex-shrink-0">{m.mealType || '未分類'}</span>
-                        <span className="font-bold text-stone-900 flex-1 truncate">{extractFoodLine(m)}</span>
-                      </div>
-                      <div className="text-stone-500 mt-0.5 ml-5">
-                        {Math.round(m.kcal)} kcal ・ P{Math.round(m.P * 10) / 10} F{Math.round(m.F * 10) / 10} C{Math.round(m.C * 10) / 10}
+                    <div key={m.pageId} className="px-3 py-2 text-xs flex items-center gap-2">
+                      {m.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={toDriveThumbnailUrl(m.imageUrl)}
+                          alt=""
+                          className="w-11 h-11 rounded-lg object-cover flex-shrink-0 bg-stone-100"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+                          <Icon className={`w-4 h-4 ${color}`} strokeWidth={2.2} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} strokeWidth={2.2} />
+                          <span className="text-stone-600 flex-shrink-0">{m.mealType || '未分類'}</span>
+                          <span className="font-bold text-stone-900 flex-1 truncate">{extractFoodLine(m)}</span>
+                        </div>
+                        <div className="text-stone-500 mt-0.5">
+                          {Math.round(m.kcal)} kcal ・ P{Math.round(m.P * 10) / 10} F{Math.round(m.F * 10) / 10} C{Math.round(m.C * 10) / 10}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1102,16 +1117,15 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
           <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-            labelFormatter={(l) => shortDate(String(l))}
+            labelFormatter={(l) =>
+              targetKcal > 0
+                ? `${shortDate(String(l))} ・ 目標 ${targetKcal}kcal`
+                : shortDate(String(l))
+            }
             formatter={(v) => [`${v} kcal`, '']}
           />
           {targetKcal > 0 && (
-            <ReferenceLine
-              y={targetKcal}
-              stroke="#10b981"
-              strokeDasharray="4 4"
-              label={{ value: `目標 ${targetKcal}`, fontSize: 9, fill: '#10b981', position: 'insideTopRight' }}
-            />
+            <ReferenceLine y={targetKcal} stroke="#10b981" strokeDasharray="4 4" />
           )}
           <Bar dataKey="kcal" radius={[4, 4, 0, 0]} fill="#10b981" isAnimationActive={false} />
         </BarChart>
