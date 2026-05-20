@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-21 (staging 待ち) – fix: AI献立フォローアップ修正（遷移先・ヘッダー被り・生成中表示）
+
+- change(app/meal-plan/page.tsx): 記録後の遷移先を `/menu` → `/home`（ホーム）に変更（前回修正3のフィードバック反映）
+- fix(app/meal-plan/page.tsx): 結果へのスクロール時に案1カード上端が sticky な PageHeader に潜り込む問題を `scroll-mt-24` で解消
+- change(app/meal-plan/page.tsx): 献立生成中はフォームを隠し、レシピ生成と同じイメージのローディングカード（「AI が献立を考えています…」）を表示。結果がいきなり差し替わる違和感を解消。結果表示時のスクロールも `instant` → `smooth` に変更
+- 影響範囲: 顧客側（`/meal-plan`）
+
 ## 2026-05-21 (staging 待ち) – fix(security): レシピ生成 API を認証必須化
 
 - fix(app/api/meal-plan/recipe/route.ts): `withLiffTenant` でラップし、検証済み LINE ID トークンが無いリクエストを 401 で拒否。従来は認証なしで誰でも叩け、Gemini API コストを外部から無制限に消費可能だった

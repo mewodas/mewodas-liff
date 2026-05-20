@@ -219,9 +219,17 @@ function MealPlanInner() {
     }
   }
 
+  // 生成開始時：ページ最上部へ。フォームがローディングカードに切り替わるのを明確に見せる
+  useEffect(() => {
+    if (loading) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [loading]);
+
+  // 結果表示時：案1の先頭へ滑らかにスクロール（ローディングカードからの自然な切り替え）
   useEffect(() => {
     if (result) {
-      resultTopRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      resultTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
   }, [result]);
 
@@ -253,7 +261,7 @@ function MealPlanInner() {
           </div>
         )}
 
-        {!result && (
+        {!result && !loading && (
           <>
             <Section title="いつの食事を作る？">
               <input
@@ -578,23 +586,26 @@ function MealPlanInner() {
               disabled={loading}
               className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
             >
-              {loading ? (
-                <span className="inline-flex items-center justify-center gap-1.5"><Bot className="w-4 h-4" strokeWidth={2.2}/>献立作成中…</span>
-              ) : (
-                <span className="inline-flex items-center justify-center gap-1.5"><Sparkles className="w-5 h-5" strokeWidth={2}/>献立を作る</span>
-              )}
+              <span className="inline-flex items-center justify-center gap-1.5"><Sparkles className="w-5 h-5" strokeWidth={2}/>献立を作る</span>
             </button>
-            {loading && (
-              <p className="text-xs text-stone-700 text-center mt-2">
-                約10〜20秒かかります。
-              </p>
-            )}
           </>
+        )}
+
+        {/* 生成中：フォームを隠し、レシピ生成と同じイメージのローディングカードを表示。
+            結果がいきなり差し替わる違和感を無くすための中間状態 */}
+        {loading && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center shadow-sm">
+            <Bot className="w-12 h-12 text-emerald-500 mx-auto mb-3 animate-pulse" strokeWidth={2} />
+            <div className="text-base font-bold text-stone-800 mb-1">AI が献立を考えています…</div>
+            <div className="text-xs text-stone-500">3つの献立案を作成中 ・ 約10〜20秒</div>
+          </div>
         )}
 
         {result && (
           <>
-            <div ref={resultTopRef} />
+            {/* scroll-mt は sticky な PageHeader（緑ヘッダー ~80px）の高さ分。
+                これが無いと scrollIntoView 後に結果カード上端がヘッダーに潜り込む */}
+            <div ref={resultTopRef} className="scroll-mt-24" />
             {/* 今日の摂取・運動・残りサマリー */}
             <div className="bg-white border border-stone-200 rounded-2xl p-4">
               <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2}/>今日の状況</div>
@@ -723,7 +734,7 @@ function MealPlanInner() {
             invalidate('weekly_');
             invalidate('history_');
             setRecipeMeal(null);
-            router.push('/menu');
+            router.push('/home');
           }}
         />
       )}
