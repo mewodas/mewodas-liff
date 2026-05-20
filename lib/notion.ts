@@ -115,7 +115,7 @@ function parseCustomerFromPage(
       F: p['目標F(g)']?.number ?? defaultGoals.F,
       C: p['目標C(g)']?.number ?? defaultGoals.C,
     },
-    currentWeight: (p['開始体重(kg)'] ?? p['現在体重(kg)'])?.number ?? null,
+    currentWeight: p['開始体重(kg)']?.number ?? null,
     targetWeight: p['目標体重(kg)']?.number ?? null,
     targetDate: p['目標達成日']?.date?.start ?? null,
     foodSheetPageId: (() => {

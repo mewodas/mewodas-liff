@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – Notion 開始体重リネーム Phase 4: 読み込みフォールバック削除
+
+- chore(lib/notion): `parseCustomerFromPage` の読み込みを `p['開始体重(kg)']?.number ?? null` に単純化（旧名「現在体重(kg)」フォールバックを削除）
+- 前提: 本番/staging 双方の Notion 顧客 DB で「開始体重(kg)」リネーム済み、書き込みも新名に切り替え済み・運用安定確認済み
+- 影響範囲: バックエンド読み込みのみ。動作変化なし（同じ DB に対してフォールバック側が呼ばれることはもう無い）
+
 ## 2026-05-20 (本番 hotfix) – 解約予約判定に `cancel_at` も含める
 
 - fix(api/admin/billing/info): `cancelAtPeriodEnd` を `sub.cancel_at_period_end || !!sub.cancel_at` に変更
