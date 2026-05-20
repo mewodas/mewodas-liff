@@ -47,19 +47,19 @@ const RECORD_TOUR_STEPS = [
     target: 'record-fooddb',
     title: '食品DBから検索',
     description: '食品名で検索して、登録済みの栄養情報からすばやく正確に記録できます。',
-    placement: 'bottom' as const,
+    placement: 'top' as const,
   },
   {
     target: 'record-mymenu',
     title: 'マイメニュー',
     description: 'よく食べるメニューを登録しておけば、ワンタップで記録できます。',
-    placement: 'bottom' as const,
+    placement: 'top' as const,
   },
   {
     target: 'record-text',
     title: 'テキストで記録',
     description: '食事内容をテキストで入力すれば、AIが栄養素を推定します。カメラが使えないときに便利です。',
-    placement: 'bottom' as const,
+    placement: 'top' as const,
   },
   {
     target: 'record-no-meal',
