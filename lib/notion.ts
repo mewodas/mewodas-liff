@@ -934,21 +934,33 @@ export async function getFoodRecordsByDateRange(
   const cacheKey = `${tenantId}:foodRecords:range:${lineUserId}:${startDate}:${endDate}`;
   const hit = getCached<FoodRecord[]>(cacheKey);
   if (hit !== undefined) return hit;
-  const res = await notionRequest('POST', `/databases/${t.foodDbId}/query`, {
-    filter: {
-      and: [
-        { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
-        { property: '日付', date: { on_or_after: startDate } },
-        { property: '日付', date: { on_or_before: endDate } },
+  // ページネーション: 100件で打ち切ると記録の多い顧客で最新日が漏れるため全件取得する
+  // （日付 昇順ソートのため、打ち切ると新しい日付ほど切り捨てられていた）
+  const records: FoodRecord[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < 20; i++) {
+    const body: Record<string, unknown> = {
+      filter: {
+        and: [
+          { property: 'LINE_UserID', rich_text: { equals: lineUserId } },
+          { property: '日付', date: { on_or_after: startDate } },
+          { property: '日付', date: { on_or_before: endDate } },
+        ],
+      },
+      sorts: [
+        { property: '日付', direction: 'ascending' },
+        { timestamp: 'created_time', direction: 'ascending' },
       ],
-    },
-    sorts: [
-      { property: '日付', direction: 'ascending' },
-      { timestamp: 'created_time', direction: 'ascending' },
-    ],
-    page_size: 100,
-  });
-  const records = (res.results || []).map(notionPageToFoodRecord);
+      page_size: 100,
+    };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionRequest('POST', `/databases/${t.foodDbId}/query`, body);
+    for (const page of res.results || []) {
+      records.push(notionPageToFoodRecord(page));
+    }
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
   setCached(cacheKey, records, FOOD_RECORDS_CACHE_TTL_MS);
   return records;
 }
