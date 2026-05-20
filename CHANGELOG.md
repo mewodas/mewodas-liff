@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – 顧客分析ページ大改修
+
+- change(admin/AdminShell): タブ label「AI 分析」→「顧客分析」
+- feat(admin/analysis/page): グラフ常時表示（顧客+日付確定で data API 自動フェッチ）・AI サマリ分離（「AI でサマリ作成」ボタン）
+- feat(admin/analysis/page): 店舗フィルタ追加（顧客 select の上に店舗 select、絞り込み連動）
+- change(admin/analysis/page): 初期表示を単日（today）に変更
+- feat(admin/analysis/page): 体重・運動記録セクション追加（単日=詳細リスト、期間=折れ線/棒グラフ）
+- fix(admin/analysis/page): MealTypePie のサイズを w-32/innerRadius 32/outerRadius 56 に統一（PfcPie と対称化）
+- feat(lib/analysisAggregate): 集計ロジックを共通モジュールとして抽出（from/to 日付範囲対応）
+- feat(api/admin/customers/[id]/analysis/data): 新 GET API（DB データのみ返却、AI 呼び出しなし）
+- change(api/admin/customers/[id]/analysis): POST API を AI サマリ専用に縮小、from/to パラメータ対応追加
+- fix(lib/analysisAggregate): `normalizeRange` で期間を最大366日にクランプ＋不正日付フォールバック（Notion レート制限・タイムアウト対策）
+- fix(admin/analysis/page): data フェッチに AbortController を導入し、日付シフト連打時の古いレスポンス上書き（race condition）を解消
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`、API 2本（新規1本・既存縮小1本）
+- レビュー: code-reviewer 実施。残課題=運動DB (`lib/repository/exerciseLogs.ts`) がテナント非スコープ（既存問題・現状シングルテナントで実害なし・別途対応）
+
 ## 2026-05-20 (staging) – /admin UI ラベル「現在体重」→「開始体重」統一
 
 - change(admin/page): 顧客リストの体重表記 `現在 78kg → 目標 58.4kg` を `開始 78kg → 目標 58.4kg` に変更

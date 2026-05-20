@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -18,6 +18,8 @@ import {
   Target as TargetIcon,
   CalendarCheck,
   Hourglass,
+  Scale,
+  Dumbbell,
 } from 'lucide-react';
 import { daysUntil } from '@/lib/goalCalc';
 import {
@@ -32,12 +34,14 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from 'recharts';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null };
+type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 
 type Analysis = {
   summary: string;
@@ -60,6 +64,24 @@ type Stats = {
 type Daily = { date: string; kcal: number | null; P: number | null; F: number | null; C: number | null; count: number };
 type Goals = { kcal: number; P: number; F: number; C: number };
 type TargetInfo = { currentWeight: number | null; targetWeight: number | null; targetDate: string | null };
+
+type WeightLog = {
+  id: string;
+  date: string;
+  weightKg: number;
+  memo: string;
+};
+
+type ExerciseLog = {
+  id: string;
+  date: string;
+  exercise: string;
+  category: string;
+  durationMin: number;
+  intensity: string;
+  estimatedKcal: number;
+  memo: string;
+};
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -96,22 +118,74 @@ function Inner() {
   const base = useAdminBase();
   const initialCustomerId = sp.get('customerId') || '';
   const today = jstToday();
+
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedStore, setSelectedStore] = useState<string>('');
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
-  const [from, setFrom] = useState<string>(addDaysStr(today, -29));
+  const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+
+  // グラフ用データ（data API）
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<Daily[]>([]);
   const [mealTypeKcal, setMealTypeKcal] = useState<Record<string, number> | null>(null);
   const [goals, setGoals] = useState<Goals | null>(null);
   const [target, setTarget] = useState<TargetInfo | null>(null);
   const [rangeLabel, setRangeLabel] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
+  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  // AI サマリ
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(true);
+
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
+
+  // データフェッチのデバウンス用 + 進行中リクエストの中断用
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchData = useCallback(async (cid: string, f: string, t: string) => {
+    // 先行リクエストが in-flight なら中断し、古いレスポンスでの上書きを防ぐ
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setDataLoading(true);
+    setDataError(null);
+    setAnalysis(null);
+    setAiError(null);
+    setAiMessage(null);
+    try {
+      const res = await fetch(`/api/admin/customers/${cid}/analysis/data?from=${f}&to=${t}`, {
+        cache: 'no-store',
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `データ取得失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      setStats(j.stats);
+      setDaily(j.daily || []);
+      setMealTypeKcal(j.mealTypeKcal || null);
+      setGoals(j.goals || null);
+      setTarget(j.target || null);
+      setWeightLogs(j.weightLogs || []);
+      setExerciseLogs(j.exerciseLogs || []);
+      setRangeLabel(j.rangeLabel || '');
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return; // 中断は無視
+      setDataError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      // 中断済みなら後続リクエストが loading を管理しているので触らない
+      if (!ac.signal.aborted) setDataLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -121,42 +195,83 @@ function Inner() {
         const j = await res.json();
         setCustomers((j.customers || []).filter((c: Customer) => !!c.foodStatus));
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'エラー');
+        setDataError(e instanceof Error ? e.message : 'エラー');
       } finally {
         setLoadingCustomers(false);
       }
     })();
   }, []);
 
-  const startDate = from;
-  const endDate = to;
+  // 店舗一覧（ユニーク）
+  const storeOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'すべての店舗' }];
+    for (const c of customers) {
+      const key = c.storeId ?? '';
+      if (!seen.has(key)) {
+        seen.add(key);
+        opts.push({ value: key, label: key === '' ? '店舗未設定' : key });
+      }
+    }
+    return opts;
+  }, [customers]);
+
+  // 絞り込み済み顧客一覧
+  const filteredCustomers = useMemo(() => {
+    if (selectedStore === '') return customers;
+    return customers.filter((c) => (c.storeId ?? '') === selectedStore);
+  }, [customers, selectedStore]);
+
   const isSingleDay = from === to;
-  const periodDays = useMemo(() => diffDays(startDate, endDate), [startDate, endDate]);
+  const periodDays = useMemo(() => diffDays(from, to), [from, to]);
 
   function shiftRange(delta: number) {
     setFrom(addDaysStr(from, delta));
     setTo(addDaysStr(to, delta));
   }
 
-  async function run() {
-    if (!customerId) {
-      setError('顧客を選択してください');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-    setAnalysis(null);
+  const clearData = useCallback(() => {
     setStats(null);
     setDaily([]);
     setMealTypeKcal(null);
     setGoals(null);
     setTarget(null);
+    setWeightLogs([]);
+    setExerciseLogs([]);
+    setRangeLabel('');
+    setAnalysis(null);
+    setAiError(null);
+    setAiMessage(null);
+  }, []);
+
+  // 顧客または日付が変わったら data API を自動フェッチ（デバウンス 300ms）
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!customerId) {
+      debounceRef.current = setTimeout(clearData, 0);
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchData(customerId, from, to);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [customerId, from, to, fetchData, clearData]);
+
+  async function runAi() {
+    if (!customerId) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiMessage(null);
+    setAnalysis(null);
     try {
       const res = await fetch(`/api/admin/customers/${customerId}/analysis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days: periodDays }),
+        body: JSON.stringify({ from, to }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -164,39 +279,62 @@ function Inner() {
       }
       const j = await res.json();
       setAnalysis(j.analysis);
-      setStats(j.stats);
-      setDaily(j.daily || []);
-      setMealTypeKcal(j.mealTypeKcal || null);
-      setGoals(j.goals || null);
-      setTarget(j.target || null);
-      setRangeLabel(j.rangeLabel || '');
-      if (j.message) setMessage(j.message);
+      if (j.message) setAiMessage(j.message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'エラー');
+      setAiError(e instanceof Error ? e.message : 'エラー');
     } finally {
-      setLoading(false);
+      setAiLoading(false);
     }
   }
 
+  const hasData = !!stats;
+
   return (
-    <AdminShell title="AI 分析">
+    <AdminShell title="顧客分析">
       <div className="space-y-3">
-        {/* 顧客選択 */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-          <label className="text-xs font-bold text-stone-700 mb-1 block">顧客</label>
-          <select
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="">選択してください</option>
-            {customers.map((c) => (
-              <option key={c.pageId} value={c.pageId}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {loadingCustomers && <div className="text-[11px] text-stone-500 mt-1">顧客読み込み中…</div>}
+        {/* 店舗フィルタ */}
+        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">店舗</label>
+            <select
+              value={selectedStore}
+              onChange={(e) => {
+                setSelectedStore(e.target.value);
+                // 絞り込みで現在の顧客が外れたらクリア
+                const newFiltered = customers.filter((c) =>
+                  e.target.value === '' ? true : (c.storeId ?? '') === e.target.value
+                );
+                if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
+                  setCustomerId('');
+                }
+              }}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {storeOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 顧客選択 */}
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">顧客</label>
+            <select
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">選択してください</option>
+              {filteredCustomers.map((c) => (
+                <option key={c.pageId} value={c.pageId}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {loadingCustomers && <div className="text-[11px] text-stone-500 mt-1">顧客読み込み中…</div>}
+          </div>
         </section>
 
         {/* 期間 */}
@@ -212,27 +350,15 @@ function Inner() {
           />
         </section>
 
-        <button
-          type="button"
-          onClick={run}
-          disabled={loading || !customerId}
-          className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
-              分析中…（10〜20秒）
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" strokeWidth={2.2} />
-              AI で分析する
-            </>
-          )}
-        </button>
+        {/* データ読み込み中インジケータ */}
+        {dataLoading && (
+          <div className="flex items-center justify-center gap-2 py-2 text-stone-500 text-sm">
+            <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+            データ取得中…
+          </div>
+        )}
 
-        {error && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>}
-        {message && <div className="bg-amber-100 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl">{message}</div>}
+        {dataError && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{dataError}</div>}
 
         {/* ---- 目標達成までの残日数 ---- */}
         {target?.targetDate && (() => {
@@ -262,12 +388,11 @@ function Inner() {
           );
         })()}
 
-        {/* ---- ① 数値ハイライト（先に見える） ---- */}
-        {stats && (
+        {/* ---- ① 数値ハイライト ---- */}
+        {hasData && stats && (
           <section className="bg-gradient-to-br from-emerald-50 to-sky-50 rounded-2xl border border-emerald-200 shadow-sm p-4 space-y-3">
             <div className="text-[11px] font-bold text-stone-600">{rangeLabel}</div>
 
-            {/* 平均カロリー vs 目標 */}
             {goals && goals.kcal > 0 ? (
               <KcalGauge avg={stats.avg.kcal} target={goals.kcal} />
             ) : (
@@ -283,7 +408,6 @@ function Inner() {
               </div>
             )}
 
-            {/* 記録率 + PFC ミニカード */}
             <div className="grid grid-cols-4 gap-2">
               <MiniStat
                 icon={<CalendarCheck className="w-3 h-3 text-sky-600" strokeWidth={2.4} />}
@@ -299,8 +423,8 @@ function Inner() {
           </section>
         )}
 
-        {/* ---- ② 日別カロリー推移 ---- */}
-        {daily.length > 1 && (
+        {/* ---- ② 日別カロリー推移（期間のみ表示） ---- */}
+        {!isSingleDay && daily.length > 1 && (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
             <h3 className="text-sm font-bold text-stone-900 mb-2 inline-flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
@@ -310,8 +434,8 @@ function Inner() {
           </section>
         )}
 
-        {/* ---- ③ 食事区分別カロリー + PFC バランス ---- */}
-        {(stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0)) || mealTypeKcal ? (
+        {/* ---- ③ 食事バランスグラフ ---- */}
+        {hasData && ((stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0)) || mealTypeKcal) ? (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
             <h3 className="text-sm font-bold text-stone-900 mb-2 inline-flex items-center gap-1.5">
               <TargetIcon className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
@@ -334,7 +458,41 @@ function Inner() {
           </section>
         ) : null}
 
-        {/* ---- ④ AIテキスト分析（折りたたみ可・グラフより下） ---- */}
+        {/* ---- ④ 体重・運動記録 ---- */}
+        {hasData && (weightLogs.length > 0 || exerciseLogs.length > 0) && (
+          <WeightExerciseSection
+            isSingleDay={isSingleDay}
+            weightLogs={weightLogs}
+            exerciseLogs={exerciseLogs}
+          />
+        )}
+
+        {/* ---- ⑤ AI サマリ作成ボタン ---- */}
+        {hasData && (
+          <button
+            type="button"
+            onClick={runAi}
+            disabled={aiLoading || !customerId}
+            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+          >
+            {aiLoading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={2.2} />
+                サマリ生成中…（10〜20秒）
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+                AI でサマリ作成
+              </>
+            )}
+          </button>
+        )}
+
+        {aiError && <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{aiError}</div>}
+        {aiMessage && <div className="bg-amber-100 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl">{aiMessage}</div>}
+
+        {/* ---- ⑥ AI コメント ---- */}
         {analysis && (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
             <button
@@ -399,7 +557,7 @@ function Inner() {
           </section>
         )}
 
-        {/* ---- ⑤ 顧客送信用ドラフト ---- */}
+        {/* ---- ⑦ 顧客送信用ドラフト ---- */}
         {analysis?.reportDraft && (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5 mb-2">
@@ -434,6 +592,133 @@ function Inner() {
   );
 }
 
+// ---- 体重・運動セクション ----
+
+function WeightExerciseSection({
+  isSingleDay,
+  weightLogs,
+  exerciseLogs,
+}: {
+  isSingleDay: boolean;
+  weightLogs: WeightLog[];
+  exerciseLogs: ExerciseLog[];
+}) {
+  if (isSingleDay) {
+    const w = weightLogs[0] ?? null;
+    return (
+      <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
+        <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+          <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+          体重・運動（当日）
+        </h3>
+        {/* 体重 */}
+        {w ? (
+          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
+            <Scale className="w-5 h-5 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
+            <div>
+              <div className="text-2xl font-bold text-sky-900">{w.weightKg}<span className="text-sm font-medium text-sky-700 ml-1">kg</span></div>
+              {w.memo && <div className="text-xs text-sky-700 mt-0.5">{w.memo}</div>}
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-stone-400">体重記録なし</div>
+        )}
+        {/* 運動 */}
+        {exerciseLogs.length > 0 ? (
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-stone-600 inline-flex items-center gap-1">
+              <Dumbbell className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+              運動記録
+            </div>
+            {exerciseLogs.map((ex) => (
+              <div key={ex.id} className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs">
+                <div className="font-bold text-emerald-900">{ex.exercise}</div>
+                <div className="text-emerald-700 mt-0.5 flex flex-wrap gap-2">
+                  <span>{ex.durationMin}分</span>
+                  {ex.intensity && <span>強度: {ex.intensity}</span>}
+                  {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
+                  {ex.category && <span className="text-emerald-500">{ex.category}</span>}
+                </div>
+                {ex.memo && <div className="text-stone-500 mt-0.5">{ex.memo}</div>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-stone-400">運動記録なし</div>
+        )}
+      </section>
+    );
+  }
+
+  // 期間: 折れ線グラフ + 運動棒グラフ
+  const weightData = weightLogs
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .map((w) => ({ date: shortDate(w.date), weight: w.weightKg }));
+
+  // 運動: 日別消費kcal集計
+  const exByDay = new Map<string, number>();
+  for (const ex of exerciseLogs) {
+    exByDay.set(ex.date, (exByDay.get(ex.date) || 0) + ex.estimatedKcal);
+  }
+  const exerciseData = Array.from(exByDay.entries())
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, kcal]) => ({ date: shortDate(date), kcal }));
+
+  const totalExerciseKcal = Array.from(exByDay.values()).reduce((a, b) => a + b, 0);
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
+      <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+        <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+        体重・運動（期間）
+      </h3>
+
+      {weightData.length > 0 ? (
+        <div>
+          <div className="text-[10px] font-bold text-stone-500 mb-1">体重推移 (kg)</div>
+          <div className="w-full h-36">
+            <ResponsiveContainer>
+              <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+                <XAxis dataKey="date" interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(v) => [`${v} kg`, '']} />
+                <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs text-stone-400">体重記録なし</div>
+      )}
+
+      {exerciseData.length > 0 ? (
+        <div>
+          <div className="text-[10px] font-bold text-stone-500 mb-1">
+            運動消費 kcal（日別・計 {Math.round(totalExerciseKcal)} kcal）
+          </div>
+          <div className="w-full h-32">
+            <ResponsiveContainer>
+              <BarChart data={exerciseData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+                <XAxis dataKey="date" interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(v) => [`${v} kcal`, '']} />
+                <Bar dataKey="kcal" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs text-stone-400">運動記録なし</div>
+      )}
+    </section>
+  );
+}
+
+// ---- グラフコンポーネント群 ----
+
 function KcalGauge({ avg, target }: { avg: number; target: number }) {
   const pct = Math.min(150, Math.round((avg / target) * 100));
   const tone =
@@ -464,7 +749,6 @@ function KcalGauge({ avg, target }: { avg: number; target: number }) {
           className={`absolute left-0 top-0 h-full ${tone.fg} rounded-full transition-all`}
           style={{ width: `${Math.min(100, pct)}%` }}
         />
-        {/* 目標ライン（100%）— 目盛 */}
         <div className="absolute left-[66.6%] top-0 w-px h-full bg-stone-400/50" />
       </div>
     </div>
@@ -597,7 +881,6 @@ function PfcPie({
   avg: { P: number; F: number; C: number };
   target: Goals | null;
 }) {
-  // kcal 換算: P×4, F×9, C×4
   const pK = avg.P * 4;
   const fK = avg.F * 9;
   const cK = avg.C * 4;
@@ -651,10 +934,10 @@ function PfcPie({
 }
 
 const MEAL_TYPE_COLORS: Record<string, string> = {
-  朝食: '#f97316', // orange
-  昼食: '#eab308', // yellow
-  夕食: '#8b5cf6', // purple
-  間食: '#ec4899', // pink
+  朝食: '#f97316',
+  昼食: '#eab308',
+  夕食: '#8b5cf6',
+  間食: '#ec4899',
 };
 
 function MealTypePie({ mealTypeKcal }: { mealTypeKcal: Record<string, number> }) {
@@ -671,14 +954,14 @@ function MealTypePie({ mealTypeKcal }: { mealTypeKcal: Record<string, number> })
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-28 h-28 flex-shrink-0">
+      <div className="w-32 h-32 flex-shrink-0">
         <ResponsiveContainer>
           <PieChart>
             <Pie
               data={data}
               dataKey="value"
-              innerRadius={28}
-              outerRadius={52}
+              innerRadius={32}
+              outerRadius={56}
               stroke="none"
               startAngle={90}
               endAngle={-270}

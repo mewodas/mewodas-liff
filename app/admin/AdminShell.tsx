@@ -35,7 +35,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/analysis',
-    label: 'AI 分析',
+    label: '顧客分析',
     Icon: Sparkles,
     match: (p, base) => p.startsWith(`${base}/analysis`),
   },
