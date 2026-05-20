@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 体重ログ取得の Notion フィルタ型エラー
+
+- fix(lib/repository/weightLogs): `listWeightLogsByLineUser` が体重DBの「日付」（Notion title 型）に date 型用フィルタ `on_or_after`/`on_or_before` を指定し Notion API 400 を返していたバグを修正
+- 対応: lineUserId のみで全件取得し、日付範囲は JS 側（文字列比較）で絞り込む方式に変更
+- 背景: 顧客分析ページ大改修の data API が体重ログを日付範囲付きで取得して初めて顕在化した既存バグ。社長の staging 動作確認中に発覚
+- 影響範囲: 顧客分析ページの体重・運動セクション（`/admin/analysis`・`/store/analysis`）
+- 補足: 運動ログ (`exerciseLogs.ts`) は「日付」が date 型で `date:` フィルタを正しく使用しておりバグなし
+
 ## 2026-05-20 (staging) – 顧客分析ページ大改修
 
 - change(admin/AdminShell): タブ label「AI 分析」→「顧客分析」

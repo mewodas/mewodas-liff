@@ -105,21 +105,14 @@ export async function listWeightLogsByLineUser(
   const dbId = getWeightDbId();
   if (!dbId) return [];
 
-  const andFilters: unknown[] = [
-    { property: 'LINEユーザーID', rich_text: { equals: lineUserId } },
-  ];
-  if (startDate) {
-    andFilters.push({ property: '日付', title: { on_or_after: startDate } });
-  }
-  if (endDate) {
-    andFilters.push({ property: '日付', title: { on_or_before: endDate } });
-  }
-
+  // 体重DBの「日付」は Notion の title 型のため、date 型用の範囲フィルタ
+  // (on_or_after / on_or_before) が使えない。lineUserId のみで全件取得し、
+  // 日付範囲は JS 側で絞り込む（体重ログは1顧客あたり最大でも数百件程度）。
   const results: WeightLog[] = [];
   let cursor: string | undefined;
   do {
     const body: Record<string, unknown> = {
-      filter: { and: andFilters },
+      filter: { property: 'LINEユーザーID', rich_text: { equals: lineUserId } },
       sorts: [{ property: '日付', direction: 'descending' }],
       page_size: 100,
     };
@@ -130,7 +123,14 @@ export async function listWeightLogsByLineUser(
     }
     cursor = res.has_more ? res.next_cursor : undefined;
   } while (cursor);
-  return results;
+
+  // 「日付」は YYYY-MM-DD 文字列なので文字列比較で範囲フィルタ可能
+  if (!startDate && !endDate) return results;
+  return results.filter((w) => {
+    if (startDate && (!w.date || w.date < startDate)) return false;
+    if (endDate && (!w.date || w.date > endDate)) return false;
+    return true;
+  });
 }
 
 export async function getLatestWeight(lineUserId: string): Promise<WeightLog | null> {
