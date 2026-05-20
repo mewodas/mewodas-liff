@@ -364,7 +364,7 @@ function Inner() {
                 href={isStore ? '/store/templates' : '/admin/templates'}
                 className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
               >
-                ⚙ レポートテンプレート管理
+                ⚙ テンプレ管理
               </Link>
             </div>
             {selectedTemplate && (

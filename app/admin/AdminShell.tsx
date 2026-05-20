@@ -29,7 +29,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/templates',
-    label: 'テンプレ',
+    label: 'テンプレ管理',
     Icon: FileText,
     match: (p, base) => p.startsWith(`${base}/templates`),
   },

@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – テンプレ管理画面の UI 統一（戻る矢印削除・名称統一）
+
+- fix(admin/templates): ヘッダーの戻る矢印 (`back` prop) を削除し、他の管理画面と UI を統一
+- change(admin/templates): ページタイトル「レポートテンプレート管理」→「テンプレ管理」
+- change(admin/AdminShell): タブナビのラベル「テンプレ」→「テンプレ管理」
+- change(admin/reports): レポート送付ページ内のリンク「⚙ レポートテンプレート管理」→「⚙ テンプレ管理」
+- 影響範囲: 管理画面 `/admin/templates`・`/store/templates`・`/admin/reports`・`/store/reports`（社長のみアクセス）。CLAUDE.md ルール 4 に基づき main 直 push
+
 ## 2026-05-20 (本番 hotfix) – 解約予約判定に `cancel_at` も含める
 
 - fix(api/admin/billing/info): `cancelAtPeriodEnd` を `sub.cancel_at_period_end || !!sub.cancel_at` に変更
