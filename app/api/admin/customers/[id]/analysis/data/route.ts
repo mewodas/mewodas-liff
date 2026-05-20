@@ -52,8 +52,10 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
       currentWeight: customer.currentWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
+      // 目標ラインの起点: 日付は初回体重記録日、体重は顧客プロフィールの「開始体重(kg)」
+      // （目標設定の「あと N kg 減量」と同じ基準にそろえる）
       startDate: firstWeightLog ? firstWeightLog.date : null,
-      startWeight: firstWeightLog ? firstWeightLog.weightKg : null,
+      startWeight: customer.currentWeight,
     };
 
     return NextResponse.json({
