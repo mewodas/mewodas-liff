@@ -107,6 +107,7 @@ export default function AdminMealsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerCounts, setCustomerCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<Meal | null>(null);
@@ -145,6 +146,7 @@ export default function AdminMealsPage() {
         if (cancelled) return;
         setMeals(j.meals || []);
         setCustomers(j.customers || []);
+        setCustomerCounts(j.customerCounts || {});
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -269,11 +271,14 @@ export default function AdminMealsPage() {
             <option value="">すべての顧客</option>
             {customers
               .filter((c) => !storeFilter || c.storeId === storeFilter)
-              .map((c) => (
-                <option key={c.pageId} value={c.pageId}>
-                  {c.name}
-                </option>
-              ))}
+              .map((c) => {
+                const cnt = customerCounts[c.pageId] ?? 0;
+                return (
+                  <option key={c.pageId} value={c.pageId}>
+                    {c.name}（{cnt > 0 ? `${cnt}件` : '記録なし'}）
+                  </option>
+                );
+              })}
           </select>
           <div className="flex gap-1 flex-wrap">
             <button
