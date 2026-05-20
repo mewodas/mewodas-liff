@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 顧客の所属店舗 select に旧値フォールバックと「店舗未設定」ラベルを追加
+
+- fix(admin/customers/[id]): 編集画面で顧客の storeId が stores マスタに存在しない旧値（表記ゆれ等）だった場合、「旧値（旧値）」として select に選択肢を追加し、保存操作で意図せず storeId が消えないように対応
+- fix(admin/customers/new, [id]): 所属店舗 select の空値選択肢ラベルを「—」→「店舗未設定」に変更し、未選択状態を明示
+- 影響範囲: 管理画面 `/admin/customers/new`・`/admin/customers/[id]`（UI のみ、API 変更なし）
+
 ## 2026-05-20 (staging) – feat: 顧客分析UIを3点調整
 
 - feat(admin/analysis): 食事区分別パイチャートを「期間合計kcal」から「1回あたり平均kcal/回」表示に変更。`lib/analysisAggregate.ts` に `mealTypeCount` 集計を追加しAPIレスポンスにも含める。`MealTypePie` が区分別平均を算出し構成比・リスト表示ともに平均ベースに

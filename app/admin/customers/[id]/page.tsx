@@ -411,10 +411,13 @@ export default function CustomerDetailPage({
                 onChange={(e) => setStoreId(e.target.value)}
                 className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">—</option>
+                <option value="">店舗未設定</option>
                 {stores.map((s) => (
                   <option key={s.storeId} value={s.storeId}>{s.name}</option>
                 ))}
+                {storeId && !stores.some((s) => s.storeId === storeId) && (
+                  <option value={storeId}>{storeId}（旧値）</option>
+                )}
               </select>
             </div>
           </section>
