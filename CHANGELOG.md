@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-05-21 (staging 待ち) – fix: AI献立3メニュー一覧の初期スクロール位置・レシピモーダルの記録ボタン位置・記録後の遷移先
+
+- fix(app/meal-plan/page.tsx): 結果表示時に `resultTopRef.scrollIntoView` で案1先頭へスクロール（不具合1）
+- fix(app/meal-plan/page.tsx): RecipeSheet の記録ボタンを `fixed bottom-0`（viewport 基準で手順に重なる）から `sticky bottom-0`（シート内スクロールコンテナ基準）に変更し手順と重なるレイアウト崩れを解消（不具合2）
+- fix(app/meal-plan/page.tsx): 記録完了後に `router.push('/menu')` でメニューページへ遷移（従来は AI献立画面のまま）（不具合3）
+- 影響範囲: 顧客側（`/meal-plan`）
+
+## 2026-05-21 (本番) – change: 認証オンボーディング画面でフッターナビ非表示（staging→main 反映）
+
+- change(components/FooterNav): `/onboard`・`/home/onboard` でフッターナビ（ホーム/食事記録/AI相談/メニュー）を非表示に。staging で QA（GO 判定）・オーナー手動確認を経て本番反映
+- 招待リンクの LINE 認証完了後（`/home/onboard`）の次アクションを「公式LINE 友だち追加」だけに統一し、フッターからプロダクトへ直行する抜け道を塞ぐ
+- 影響範囲: 顧客側（`/onboard`・`/home/onboard` のみ。`/home` 等プロダクト本体のフッターは従来どおり表示）
+
 ## 2026-05-20 (本番) – fix: 日別カロリーのツールチップ項目名を「摂取」に
 
 - fix(admin/analysis): 日別カロリーグラフのツールチップ値行が項目名空で「: 3450 kcal」と先頭コロンだけ浮いていたのを、項目名「摂取」を付けて「摂取: 3450 kcal」に修正（当日の摂取カロリーと分かるように）
