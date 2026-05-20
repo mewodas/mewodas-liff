@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – change: 顧客分析の数値表記を分かりやすく
+
+- change(admin/analysis): PFC チップを「摂取 28.3g / 目標 128.5g / 達成 22%」のラベル明示型に変更
+- change(admin/analysis): 記録日の表記を「3 /20日」→「3日 / 20日間」に変更
+- change(admin/analysis): 平均カロリーの目標値（目標 N kcal）を数値の右横に配置
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis` の数値ハイライト
+
 ## 2026-05-20 (staging) – feat: 体重推移グラフに目標ラインを追加
 
 - feat(admin/analysis): 期間表示の体重推移グラフ（WeightSection）に「目標ライン」を追加。オンボーディング完了日の開始体重から目標達成日の目標体重へ線形補間した理想ペースを点線で描画

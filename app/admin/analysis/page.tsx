@@ -416,7 +416,7 @@ function Inner() {
                 icon={<CalendarCheck className="w-3 h-3 text-sky-600" strokeWidth={2.4} />}
                 label="記録日"
                 value={stats.totalDays}
-                sub={`/${periodDays}日`}
+                sub={`日 / ${periodDays}日間`}
                 tone="sky"
               />
               <MacroChip macro="P" avg={stats.avg.P} target={goals?.P} color="rose" />
@@ -806,11 +806,13 @@ function KcalGauge({ avg, target }: { avg: number; target: number }) {
           <Flame className="w-3 h-3 text-orange-500" strokeWidth={2.4} />
           平均カロリー
         </div>
-        <div className="text-3xl font-bold text-stone-900 mt-0.5 leading-none">
-          {avg}
-          <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
+        <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
+          <div className="text-3xl font-bold text-stone-900 leading-none">
+            {avg}
+            <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
+          </div>
+          <div className="text-[10px] text-stone-500">目標 {target} kcal</div>
         </div>
-        <div className="text-[10px] text-stone-500 mt-0.5">目標 {target} kcal</div>
       </div>
       <div className="mt-2 relative h-2 rounded-full bg-stone-100 overflow-hidden">
         <div
@@ -881,17 +883,16 @@ function MacroChip({
         <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
         {macro}
       </div>
-      <div className="mt-0.5 leading-none flex items-baseline flex-wrap gap-x-1">
-        <span className="text-base font-bold">
-          {avg}
-          <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
-        </span>
-        {target !== undefined && target > 0 && (
-          <span className="text-[9px] font-medium opacity-60">/ 目標 {target}g</span>
-        )}
+      <div className="text-base font-bold mt-0.5 leading-none">
+        <span className="text-[9px] font-medium opacity-60 mr-0.5">摂取</span>
+        {avg}
+        <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
       </div>
+      {target !== undefined && target > 0 && (
+        <div className="text-[9px] opacity-70 mt-0.5">目標 {target}g</div>
+      )}
       {pct !== null && (
-        <div className="text-[9px] opacity-70 mt-0.5">{pct}%</div>
+        <div className="text-[9px] opacity-70 mt-0.5">達成 {pct}%</div>
       )}
     </div>
   );
