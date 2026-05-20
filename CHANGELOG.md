@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – /admin UI ラベル「現在体重」→「開始体重」統一
+
+- change(admin/page): 顧客リストの体重表記 `現在 78kg → 目標 58.4kg` を `開始 78kg → 目標 58.4kg` に変更
+- change(admin/customers/[id]): 編集画面の身体情報セクション、`NumberInput label="現在体重"`・注釈・コメントを「開始体重」に統一
+- change(admin/customers/new): 新規追加画面の身体情報、`NumInput label="現在体重"`・注釈を「開始体重」に統一
+- change(admin/templates): テンプレ変数 `{weight}` の表示ラベルを「現在体重」→「開始体重」に変更
+- 背景: Notion フィールド名を「現在体重(kg)」→「開始体重(kg)」にリネーム済み。UI 表示も意味を揃える
+- 影響範囲: 管理画面のラベル表示のみ。データ・API 動作は変化なし
+
 ## 2026-05-20 (本番) – テンプレ管理画面の UI 統一（戻る矢印削除・名称統一）
 
 - fix(admin/templates): ヘッダーの戻る矢印 (`back` prop) を削除し、他の管理画面と UI を統一

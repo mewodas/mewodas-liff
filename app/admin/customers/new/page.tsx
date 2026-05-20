@@ -434,7 +434,7 @@ export default function NewCustomerPage() {
             </div>
             <NumInput label="年齢" value={age} onChange={setAge} step="1" suffix="歳" />
             <NumInput label="身長" value={heightCm} onChange={setHeightCm} step="0.1" suffix="cm" />
-            <NumInput label="現在体重" value={currentWeight} onChange={setCurrentWeight} step="0.1" suffix="kg" />
+            <NumInput label="開始体重" value={currentWeight} onChange={setCurrentWeight} step="0.1" suffix="kg" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -468,7 +468,7 @@ export default function NewCustomerPage() {
             </div>
           </div>
           <div className="text-xs text-stone-500 leading-snug">
-            ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
+            ※ 性別・年齢・身長・開始体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
           </div>
         </section>
 
