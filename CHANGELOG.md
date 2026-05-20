@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: 顧客分析の表示改善ほか一式
+
+- staging で社長確認済み
+- マージ commit: 0b23f96
+- 内容: 食事区分別カロリーを1回平均に / 平均カロリー・PFC を「実績/目標」形式に / 体重推移グラフに目標ライン追加 / 日別カロリーの顧客切替ずれ再修正 / 数値表記の改善 / 顧客所属店舗 select の旧値フォールバック / AdminShell 右上のちらつき解消・「アドミン」表記
+- 影響範囲: 管理画面 `/admin/analysis`・`/admin/customers`（と `/store/*`）、API `/api/admin/customers/[id]/analysis/data`、`lib/analysisAggregate.ts`、`AdminShell`
+
 ## 2026-05-20 (staging) – change: PFC・平均カロリーを「実績 / 目標」形式に統一
 
 - change(admin/analysis): PFC チップを「実績 / 目標 g」形式に（例「28.3 / 128.5 g」）。「摂取」「目標」「達成」のラベルを削除し % のみ残す
