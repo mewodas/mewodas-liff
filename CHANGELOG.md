@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: 1食平均・体重目標ライン・週間ラップ・食事一覧
+
+- staging で社長確認済み
+- マージ commit: 5a80f8a
+- 内容: 食事区分別カロリーを「1食あたり」平均に修正 / 顧客分析に「食事一覧を見る」ボタン追加 / 体重推移グラフに週平均ライン（週間ラップ）追加 / 体重目標ラインの起点を「初回記録日＋開始体重(kg)」に修正
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`、API `/api/admin/customers/[id]/analysis/data`、`lib/analysisAggregate.ts`
+
 ## 2026-05-20 (staging) – fix: 体重目標ラインの起点体重を「開始体重(kg)」に修正
 
 - fix(api/admin/customers/[id]/analysis/data): 目標ラインの起点体重を「初回体重記録の実測値」→「顧客プロフィールの開始体重(kg)」に変更
