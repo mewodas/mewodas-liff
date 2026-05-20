@@ -430,7 +430,7 @@ function Inner() {
               <Activity className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               日別カロリー
             </h3>
-            <DailyKcalChart daily={daily} targetKcal={goals?.kcal || 0} />
+            <DailyKcalChart key={rangeLabel} daily={daily} targetKcal={goals?.kcal || 0} />
           </section>
         )}
 
@@ -458,13 +458,14 @@ function Inner() {
           </section>
         ) : null}
 
-        {/* ---- ④ 体重・運動記録 ---- */}
-        {hasData && (weightLogs.length > 0 || exerciseLogs.length > 0) && (
-          <WeightExerciseSection
-            isSingleDay={isSingleDay}
-            weightLogs={weightLogs}
-            exerciseLogs={exerciseLogs}
-          />
+        {/* ---- ④ 体重 ---- */}
+        {hasData && weightLogs.length > 0 && (
+          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} />
+        )}
+
+        {/* ---- ⑤ 運動記録 ---- */}
+        {hasData && exerciseLogs.length > 0 && (
+          <ExerciseSection exerciseLogs={exerciseLogs} />
         )}
 
         {/* ---- ⑤ AI サマリ作成ボタン ---- */}
@@ -594,125 +595,138 @@ function Inner() {
 
 // ---- 体重・運動セクション ----
 
-function WeightExerciseSection({
+function WeightSection({
   isSingleDay,
   weightLogs,
-  exerciseLogs,
 }: {
   isSingleDay: boolean;
   weightLogs: WeightLog[];
-  exerciseLogs: ExerciseLog[];
 }) {
+  if (weightLogs.length === 0) return null;
+
   if (isSingleDay) {
-    const w = weightLogs[0] ?? null;
+    const w = weightLogs[0];
     return (
-      <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
+      <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
         <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
           <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
-          体重・運動（当日）
+          体重（当日）
         </h3>
-        {/* 体重 */}
-        {w ? (
-          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
-            <Scale className="w-5 h-5 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
-            <div>
-              <div className="text-2xl font-bold text-sky-900">{w.weightKg}<span className="text-sm font-medium text-sky-700 ml-1">kg</span></div>
-              {w.memo && <div className="text-xs text-sky-700 mt-0.5">{w.memo}</div>}
+        <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
+          <Scale className="w-5 h-5 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
+          <div>
+            <div className="text-2xl font-bold text-sky-900">
+              {w.weightKg}
+              <span className="text-sm font-medium text-sky-700 ml-1">kg</span>
             </div>
+            {w.memo && <div className="text-xs text-sky-700 mt-0.5">{w.memo}</div>}
           </div>
-        ) : (
-          <div className="text-xs text-stone-400">体重記録なし</div>
-        )}
-        {/* 運動 */}
-        {exerciseLogs.length > 0 ? (
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-stone-600 inline-flex items-center gap-1">
-              <Dumbbell className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
-              運動記録
-            </div>
-            {exerciseLogs.map((ex) => (
-              <div key={ex.id} className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs">
-                <div className="font-bold text-emerald-900">{ex.exercise}</div>
-                <div className="text-emerald-700 mt-0.5 flex flex-wrap gap-2">
-                  <span>{ex.durationMin}分</span>
-                  {ex.intensity && <span>強度: {ex.intensity}</span>}
-                  {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
-                  {ex.category && <span className="text-emerald-500">{ex.category}</span>}
-                </div>
-                {ex.memo && <div className="text-stone-500 mt-0.5">{ex.memo}</div>}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-stone-400">運動記録なし</div>
-        )}
+        </div>
       </section>
     );
   }
 
-  // 期間: 折れ線グラフ + 運動棒グラフ
   const weightData = weightLogs
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : 1))
-    .map((w) => ({ date: shortDate(w.date), weight: w.weightKg }));
-
-  // 運動: 日別消費kcal集計
-  const exByDay = new Map<string, number>();
-  for (const ex of exerciseLogs) {
-    exByDay.set(ex.date, (exByDay.get(ex.date) || 0) + ex.estimatedKcal);
-  }
-  const exerciseData = Array.from(exByDay.entries())
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .map(([date, kcal]) => ({ date: shortDate(date), kcal }));
-
-  const totalExerciseKcal = Array.from(exByDay.values()).reduce((a, b) => a + b, 0);
+    .map((w) => ({ fullDate: w.date, weight: w.weightKg }));
 
   return (
-    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-3">
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
       <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
         <Scale className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
-        体重・運動（期間）
+        体重推移
+      </h3>
+      <div className="w-full h-36">
+        <ResponsiveContainer>
+          <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+            <XAxis dataKey="fullDate" tickFormatter={shortDate} interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} labelFormatter={(l) => shortDate(String(l))} formatter={(v) => [`${v} kg`, '']} />
+            <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+const INTENSITY_ORDER: Record<string, number> = { 高: 3, 中: 2, 低: 1 };
+
+function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
+  if (exerciseLogs.length === 0) return null;
+
+  const totalMin = exerciseLogs.reduce((a, b) => a + b.durationMin, 0);
+  const totalKcal = exerciseLogs.reduce((a, b) => a + b.estimatedKcal, 0);
+
+  // 種目別の集計（回数・合計時間・合計消費kcal）
+  const byExercise = new Map<string, { count: number; min: number; kcal: number }>();
+  for (const ex of exerciseLogs) {
+    const key = ex.exercise || '（種目名なし）';
+    const cur = byExercise.get(key) || { count: 0, min: 0, kcal: 0 };
+    cur.count += 1;
+    cur.min += ex.durationMin;
+    cur.kcal += ex.estimatedKcal;
+    byExercise.set(key, cur);
+  }
+  const exerciseSummary = Array.from(byExercise.entries()).sort((a, b) => b[1].count - a[1].count);
+
+  // 日付降順の記録リスト（同日内は強度の高い順）
+  const sorted = exerciseLogs
+    .slice()
+    .sort((a, b) =>
+      a.date !== b.date
+        ? (a.date < b.date ? 1 : -1)
+        : (INTENSITY_ORDER[b.intensity] ?? 0) - (INTENSITY_ORDER[a.intensity] ?? 0)
+    );
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+      <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+        <Dumbbell className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+        運動記録
       </h3>
 
-      {weightData.length > 0 ? (
-        <div>
-          <div className="text-[10px] font-bold text-stone-500 mb-1">体重推移 (kg)</div>
-          <div className="w-full h-36">
-            <ResponsiveContainer>
-              <LineChart data={weightData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                <XAxis dataKey="date" interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(v) => [`${v} kg`, '']} />
-                <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3, fill: '#0ea5e9' }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+      {/* 全体サマリ */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold text-emerald-800 flex flex-wrap gap-x-4 gap-y-1">
+        <span>計 {exerciseLogs.length} 回</span>
+        <span>合計 {totalMin} 分</span>
+        <span>消費 {Math.round(totalKcal)} kcal</span>
+      </div>
+
+      {/* 種目別集計 */}
+      {exerciseSummary.length > 1 && (
+        <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
+          {exerciseSummary.map(([name, v]) => (
+            <div key={name} className="flex items-center justify-between px-3 py-1.5 text-xs">
+              <span className="font-bold text-stone-800">{name}</span>
+              <span className="text-stone-500">
+                {v.count}回 ・ {v.min}分 ・ {Math.round(v.kcal)}kcal
+              </span>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="text-xs text-stone-400">体重記録なし</div>
       )}
 
-      {exerciseData.length > 0 ? (
-        <div>
-          <div className="text-[10px] font-bold text-stone-500 mb-1">
-            運動消費 kcal（日別・計 {Math.round(totalExerciseKcal)} kcal）
+      {/* いつ・何を — 日付順の記録リスト */}
+      <div className="space-y-1.5">
+        {sorted.map((ex) => (
+          <div key={ex.id} className="border border-stone-200 rounded-xl p-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-stone-900">{ex.exercise || '（種目名なし）'}</span>
+              <span className="text-stone-400">{shortDate(ex.date)}</span>
+            </div>
+            <div className="text-stone-600 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+              <span>{ex.durationMin}分</span>
+              {ex.intensity && <span>強度: {ex.intensity}</span>}
+              {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
+              {ex.category && <span className="text-emerald-600">{ex.category}</span>}
+            </div>
+            {ex.memo && <div className="text-stone-400 mt-0.5">{ex.memo}</div>}
           </div>
-          <div className="w-full h-32">
-            <ResponsiveContainer>
-              <BarChart data={exerciseData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                <XAxis dataKey="date" interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(v) => [`${v} kcal`, '']} />
-                <Bar dataKey="kcal" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      ) : (
-        <div className="text-xs text-stone-400">運動記録なし</div>
-      )}
+        ))}
+      </div>
     </section>
   );
 }
@@ -825,8 +839,10 @@ function MacroChip({
 }
 
 function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: number }) {
+  // XAxis の dataKey はユニークな YYYY-MM-DD を使う。
+  // shortDate (M/D) は長期間で重複し recharts のカテゴリ軸・Cell 対応が崩れるため。
   const data = daily.map((d) => ({
-    date: shortDate(d.date),
+    fullDate: d.date,
     kcal: d.kcal ?? 0,
     has: d.kcal !== null,
   }));
@@ -836,7 +852,8 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
         <BarChart data={data} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
           <XAxis
-            dataKey="date"
+            dataKey="fullDate"
+            tickFormatter={shortDate}
             interval="preserveStartEnd"
             tick={{ fontSize: 10, fill: '#78716c' }}
             axisLine={false}
@@ -845,6 +862,7 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
           <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+            labelFormatter={(l) => shortDate(String(l))}
             formatter={(v) => [`${v} kcal`, '']}
           />
           {targetKcal > 0 && (
@@ -855,10 +873,10 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
               label={{ value: `目標 ${targetKcal}`, fontSize: 9, fill: '#10b981', position: 'insideTopRight' }}
             />
           )}
-          <Bar dataKey="kcal" radius={[4, 4, 0, 0]}>
-            {data.map((d, i) => (
+          <Bar dataKey="kcal" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+            {data.map((d) => (
               <Cell
-                key={i}
+                key={d.fullDate}
                 fill={
                   !d.has ? '#e7e5e4'
                   : targetKcal > 0 && d.kcal > targetKcal * 1.15 ? '#fb7185'

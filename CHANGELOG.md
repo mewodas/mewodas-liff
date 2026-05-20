@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – 顧客分析: 日別カロリーグラフ修正 + 体重/運動セクション分離
+
+- fix(admin/analysis): 日別カロリー棒グラフで長期間表示時に棒の高さ・色・ツールチップ値がずれるバグを修正
+  - 原因: XAxis の dataKey が短い `M/D` 文字列で長期間に重複、Cell の key が配列 index でデータ本数変化時に対応がずれていた
+  - 対応: XAxis を一意な `YYYY-MM-DD` キー＋tickFormatter 表示に、Cell の key を日付ベースに、グラフを期間変更で再マウント、アニメーション無効化
+- change(admin/analysis): 体重と運動を別セクションに分離
+- feat(admin/analysis): 運動セクションを「いつ・何を」のログ表示に変更（全体サマリ＋種目別集計＋日付順の記録リスト。旧: 日別消費kcal 棒グラフ）
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`
+
 ## 2026-05-20 (staging) – fix: 体重ログ取得の Notion フィルタ型エラー
 
 - fix(lib/repository/weightLogs): `listWeightLogsByLineUser` が体重DBの「日付」（Notion title 型）に date 型用フィルタ `on_or_after`/`on_or_before` を指定し Notion API 400 を返していたバグを修正
