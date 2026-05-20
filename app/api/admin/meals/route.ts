@@ -167,9 +167,18 @@ export const GET = withAdminTenant(async (req) => {
         goals: c.goals,
       }));
 
+    // 顧客別の記録件数（対象期間内・顧客/食事区分フィルタ前の全件）
+    // 顧客セレクトに「対象期間の記録状況」を併記するために使う
+    const customerCounts: Record<string, number> = {};
+    for (const r of allRecords) {
+      const c = r.lineUserId ? idx.get(r.lineUserId) : undefined;
+      if (c) customerCounts[c.pageId] = (customerCounts[c.pageId] || 0) + 1;
+    }
+
     return NextResponse.json({
       meals: enriched,
       customers: customerList,
+      customerCounts,
       range: { startDate, endDate },
     });
   } catch (e) {

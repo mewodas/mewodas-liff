@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 日付ピッカーで開始日変更時に終了日が連動するバグ
+
+- fix(admin/DateRangePicker): 単日状態（from===to）で開始日を変更すると `isSingleDay` 分岐で終了日も同じ日に連動し、単日→範囲に広げられなかったバグを修正
+- 対応: 開始日変更時は終了日を据え置き、開始日が終了日より後になった場合のみ終了日を合わせる
+- 影響範囲: 顧客分析・食事管理の期間ピッカー（`/admin/analysis`・`/admin/meals` ほか DateRangePicker 利用箇所すべて）
+
+## 2026-05-20 (staging) – 食事管理: 顧客セレクトに対象期間の記録件数を併記
+
+- feat(admin/meals): 顧客選択ドロップダウンに対象期間の記録件数を併記（「氏名（5件）」/ 記録ゼロは「氏名（記録なし）」）。どの顧客が記録できているか一目で把握できるようにした
+- feat(api/admin/meals): レスポンスに `customerCounts`（顧客別の期間内記録件数。顧客・食事区分フィルタ前の全件で集計）を追加
+- 影響範囲: 管理画面 `/admin/meals`・`/store/meals`、API `/api/admin/meals`
+
+## 2026-05-20 (staging) – 顧客分析: 日別カロリーグラフ修正 + 体重/運動セクション分離
+
+- fix(admin/analysis): 日別カロリー棒グラフで長期間表示時に棒の高さ・色・ツールチップ値がずれるバグを修正
+  - 原因: XAxis の dataKey が短い `M/D` 文字列で長期間に重複、Cell の key が配列 index でデータ本数変化時に対応がずれていた
+  - 対応: XAxis を一意な `YYYY-MM-DD` キー＋tickFormatter 表示に、Cell の key を日付ベースに、グラフを期間変更で再マウント、アニメーション無効化
+- change(admin/analysis): 体重と運動を別セクションに分離
+- feat(admin/analysis): 運動セクションを「いつ・何を」のログ表示に変更（全体サマリ＋種目別集計＋日付順の記録リスト。旧: 日別消費kcal 棒グラフ）
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`
+
 ## 2026-05-20 (本番) – staging→main マージ: 顧客分析ページ大改修 + 体重ログフィルタ修正
 
 - staging で社長確認済み（顧客分析ページ6点改修 + 体重ログ 400 エラー修正）
