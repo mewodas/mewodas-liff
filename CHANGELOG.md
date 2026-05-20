@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 体重ログ取得の Notion フィルタ型エラー
+
+- fix(lib/repository/weightLogs): `listWeightLogsByLineUser` が体重DBの「日付」（Notion title 型）に date 型用フィルタ `on_or_after`/`on_or_before` を指定し Notion API 400 を返していたバグを修正
+- 対応: lineUserId のみで全件取得し、日付範囲は JS 側（文字列比較）で絞り込む方式に変更
+- 背景: 顧客分析ページ大改修の data API が体重ログを日付範囲付きで取得して初めて顕在化した既存バグ。社長の staging 動作確認中に発覚
+- 影響範囲: 顧客分析ページの体重・運動セクション（`/admin/analysis`・`/store/analysis`）
+- 補足: 運動ログ (`exerciseLogs.ts`) は「日付」が date 型で `date:` フィルタを正しく使用しておりバグなし
+
+## 2026-05-20 (staging) – 顧客分析ページ大改修
+
+- change(admin/AdminShell): タブ label「AI 分析」→「顧客分析」
+- feat(admin/analysis/page): グラフ常時表示（顧客+日付確定で data API 自動フェッチ）・AI サマリ分離（「AI でサマリ作成」ボタン）
+- feat(admin/analysis/page): 店舗フィルタ追加（顧客 select の上に店舗 select、絞り込み連動）
+- change(admin/analysis/page): 初期表示を単日（today）に変更
+- feat(admin/analysis/page): 体重・運動記録セクション追加（単日=詳細リスト、期間=折れ線/棒グラフ）
+- fix(admin/analysis/page): MealTypePie のサイズを w-32/innerRadius 32/outerRadius 56 に統一（PfcPie と対称化）
+- feat(lib/analysisAggregate): 集計ロジックを共通モジュールとして抽出（from/to 日付範囲対応）
+- feat(api/admin/customers/[id]/analysis/data): 新 GET API（DB データのみ返却、AI 呼び出しなし）
+- change(api/admin/customers/[id]/analysis): POST API を AI サマリ専用に縮小、from/to パラメータ対応追加
+- fix(lib/analysisAggregate): `normalizeRange` で期間を最大366日にクランプ＋不正日付フォールバック（Notion レート制限・タイムアウト対策）
+- fix(admin/analysis/page): data フェッチに AbortController を導入し、日付シフト連打時の古いレスポンス上書き（race condition）を解消
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`、API 2本（新規1本・既存縮小1本）
+- レビュー: code-reviewer 実施。残課題=運動DB (`lib/repository/exerciseLogs.ts`) がテナント非スコープ（既存問題・現状シングルテナントで実害なし・別途対応）
+
 ## 2026-05-20 (本番) – Notion 開始体重リネーム Phase 4: 読み込みフォールバック削除
 
 - chore(lib/notion): `parseCustomerFromPage` の読み込みを `p['開始体重(kg)']?.number ?? null` に単純化（旧名「現在体重(kg)」フォールバックを削除）
@@ -22,6 +46,12 @@
 - change(admin/AdminShell): タブナビのラベル「テンプレ」→「テンプレ管理」
 - change(admin/reports): レポート送付ページ内のリンク「⚙ レポートテンプレート管理」→「⚙ テンプレ管理」
 - 影響範囲: 管理画面 `/admin/templates`・`/store/templates`・`/admin/reports`・`/store/reports`（社長のみアクセス）。CLAUDE.md ルール 4 に基づき main 直 push
+
+## 2026-05-20 (staging) – Notion 開始体重リネーム Phase 4: 読み込みフォールバック削除
+
+- chore(lib/notion): `parseCustomerFromPage` の読み込みを `p['開始体重(kg)']?.number ?? null` に単純化（旧名「現在体重(kg)」フォールバックを削除）
+- 前提: 本番/staging 双方の Notion 顧客 DB で「開始体重(kg)」リネーム済み、書き込みも新名に切り替え済み・運用安定確認済み
+- 影響範囲: バックエンド読み込みのみ。動作変化なし（同じ DB に対してフォールバック側が呼ばれることはもう無い）
 
 ## 2026-05-20 (本番 hotfix) – 解約予約判定に `cancel_at` も含める
 
