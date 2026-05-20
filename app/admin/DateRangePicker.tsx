@@ -69,16 +69,14 @@ export default function DateRangePicker({
             ref={fromRef}
             type="date"
             value={from}
-            max={isSingleDay ? today : to}
+            max={today}
             onChange={(e) => {
               const v = e.target.value;
               if (!v) return;
-              if (isSingleDay) {
-                onChangeFrom(v);
-                onChangeTo(v);
-              } else {
-                onChangeFrom(v);
-              }
+              onChangeFrom(v);
+              // 開始日が終了日より後になった場合のみ終了日を合わせる。
+              // それ以外は終了日を据え置き、単日→範囲に広げられるようにする。
+              if (v > to) onChangeTo(v);
             }}
             className="sr-only"
             tabIndex={-1}
