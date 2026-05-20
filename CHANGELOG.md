@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (本番) – staging→main マージ: 顧客分析ページ大改修 + 体重ログフィルタ修正
+
+- staging で社長確認済み（顧客分析ページ6点改修 + 体重ログ 400 エラー修正）
+- マージ commit: 4bf7dd2
+- 内容: 「AI 分析」→「顧客分析」改称 / グラフ常時表示・AI サマリ分離 / 店舗フィルタ / 単日デフォルト / 体重・運動記録セクション / 食事バランスグラフ修正 / 体重ログ Notion フィルタ型バグ修正
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`、API（新規 `analysis/data` 1本・既存 `analysis` 縮小）、`lib/analysisAggregate.ts`・`lib/repository/weightLogs.ts`
+
 ## 2026-05-20 (staging) – fix: 体重ログ取得の Notion フィルタ型エラー
 
 - fix(lib/repository/weightLogs): `listWeightLogsByLineUser` が体重DBの「日付」（Notion title 型）に date 型用フィルタ `on_or_after`/`on_or_before` を指定し Notion API 400 を返していたバグを修正
