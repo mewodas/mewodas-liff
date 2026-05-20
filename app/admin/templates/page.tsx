@@ -63,7 +63,7 @@ const VARIABLE_GROUPS = [
   {
     title: '体重',
     vars: [
-      { key: '{weight}', label: '現在体重' },
+      { key: '{weight}', label: '開始体重' },
       { key: '{targetWeight}', label: '目標体重' },
       { key: '{daysToGoal}', label: '残り日数' },
     ],

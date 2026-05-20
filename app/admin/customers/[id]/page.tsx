@@ -425,7 +425,7 @@ export default function CustomerDetailPage({
               <Calculator className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
               身体情報
             </h2>
-            {/* 1段目: 性別 / 年齢 / 身長 / 現在体重 */}
+            {/* 1段目: 性別 / 年齢 / 身長 / 開始体重 */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="text-xs font-bold text-stone-700 mb-1 block">
@@ -444,7 +444,7 @@ export default function CustomerDetailPage({
               </div>
               <NumberInput label="年齢" value={age} onChange={setAge} step="1" suffix="歳" />
               <NumberInput label="身長" value={heightCm} onChange={setHeightCm} step="0.1" suffix="cm" />
-              <NumberInput label="現在体重" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" suffix="kg" />
+              <NumberInput label="開始体重" value={currentWeightEdit} onChange={setCurrentWeightEdit} step="0.1" suffix="kg" />
             </div>
             {/* 2段目: 活動レベル / 希望のプラン */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -483,7 +483,7 @@ export default function CustomerDetailPage({
               </div>
             </div>
             <div className="mt-3 text-xs text-stone-500 leading-snug">
-              ※ 性別・年齢・身長・現在体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
+              ※ 性別・年齢・身長・開始体重・活動レベル・希望のプランを入力すると、目標カロリーとPFCが自動計算されます（手動編集可）。
             </div>
           </section>
 

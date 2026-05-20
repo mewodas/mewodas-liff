@@ -347,7 +347,7 @@ export default function AdminCustomersPage() {
                       )}
                     </div>
                     <div className="text-[11px] text-stone-600 mt-0.5 truncate">
-                      {c.currentWeight !== null ? `現在 ${c.currentWeight}kg` : '体重未登録'}
+                      {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
                       {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
