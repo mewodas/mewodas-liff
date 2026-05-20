@@ -1122,7 +1122,7 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
                 ? `${shortDate(String(l))} ・ 目標 ${targetKcal}kcal`
                 : shortDate(String(l))
             }
-            formatter={(v) => [`${v} kcal`, '']}
+            formatter={(v) => [`${v} kcal`, '摂取']}
           />
           {targetKcal > 0 && (
             <ReferenceLine y={targetKcal} stroke="#10b981" strokeDasharray="4 4" />
