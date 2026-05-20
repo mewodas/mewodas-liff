@@ -66,7 +66,11 @@ export function aggregateRecords(
 
   const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
   for (const r of records) {
-    const cur = byDay.get(r.date) || { kcal: 0, P: 0, F: 0, C: 0, count: 0, meals: [] };
+    // r.date が datetime（時刻付き）でも日付部分だけをキーにする。
+    // daily 配列は YYYY-MM-DD で生成するため、ここで揃えないと突き合わせに失敗し
+    // その日が「記録なし」になってしまう（例: 5/19・5/20 が空になる）
+    const dateKey = (r.date || '').slice(0, 10);
+    const cur = byDay.get(dateKey) || { kcal: 0, P: 0, F: 0, C: 0, count: 0, meals: [] };
     cur.kcal += r.kcal;
     cur.P += r.P;
     cur.F += r.F;
@@ -74,11 +78,11 @@ export function aggregateRecords(
     cur.count += 1;
     const item = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim().slice(0, 50);
     if (item) cur.meals.push(`${r.mealType}:${item}`);
-    byDay.set(r.date, cur);
+    byDay.set(dateKey, cur);
 
     if (r.mealType in mealTypeKcal) {
       mealTypeKcal[r.mealType] += r.kcal;
-      mealTypeDates[r.mealType].add(r.date);
+      mealTypeDates[r.mealType].add(dateKey);
     }
     const rawItem = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
     if (rawItem) {
