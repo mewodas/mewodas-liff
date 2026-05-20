@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-21 (staging 待ち) – fix(security): レシピ生成 API を認証必須化
+
+- fix(app/api/meal-plan/recipe/route.ts): `withLiffTenant` でラップし、検証済み LINE ID トークンが無いリクエストを 401 で拒否。従来は認証なしで誰でも叩け、Gemini API コストを外部から無制限に消費可能だった
+- 呼び出し元（`app/meal-plan/page.tsx` の `apiFetch`）は既に Bearer トークンを送信済みのためクライアント側変更なし
+- 影響範囲: API（`/api/meal-plan/recipe`。顧客の正常利用には影響なし）
+- 補足: ログイン済み顧客による連打への rate limit は別タスク（2026-05-19 セキュリティ残タスク）で対応
+
 ## 2026-05-21 (staging 待ち) – fix: AI献立3メニュー一覧の初期スクロール位置・レシピモーダルの記録ボタン位置・記録後の遷移先
 
 - fix(app/meal-plan/page.tsx): 結果表示時に `resultTopRef.scrollIntoView` で案1先頭へスクロール（不具合1）
