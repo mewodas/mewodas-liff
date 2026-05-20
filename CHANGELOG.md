@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – change: PFC チップの目標値を数値の右に配置
+
+- change(admin/analysis): MacroChip の目標値を `{avg}g` の下段から右隣（「28.3g / 目標 128.5g」）へ移動。% は下段に残す
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis` の数値ハイライト
+
 ## 2026-05-20 (staging) – fix: 顧客の所属店舗 select に旧値フォールバックと「店舗未設定」ラベルを追加
 
 - fix(admin/customers/[id]): 編集画面で顧客の storeId が stores マスタに存在しない旧値（表記ゆれ等）だった場合、「旧値（旧値）」として select に選択肢を追加し、保存操作で意図せず storeId が消えないように対応

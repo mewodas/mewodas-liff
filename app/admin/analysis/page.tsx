@@ -824,15 +824,17 @@ function MacroChip({
         <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
         {macro}
       </div>
-      <div className="text-base font-bold mt-0.5 leading-none">
-        {avg}
-        <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
+      <div className="mt-0.5 leading-none flex items-baseline flex-wrap gap-x-1">
+        <span className="text-base font-bold">
+          {avg}
+          <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
+        </span>
+        {target !== undefined && target > 0 && (
+          <span className="text-[9px] font-medium opacity-60">/ 目標 {target}g</span>
+        )}
       </div>
-      {target !== undefined && target > 0 && (
-        <div className="text-[9px] opacity-70 mt-0.5">目標 {target}g</div>
-      )}
       {pct !== null && (
-        <div className="text-[9px] opacity-70">{pct}%</div>
+        <div className="text-[9px] opacity-70 mt-0.5">{pct}%</div>
       )}
     </div>
   );
