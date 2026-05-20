@@ -219,14 +219,7 @@ function MealPlanInner() {
     }
   }
 
-  // 生成開始時：ページ最上部へ。フォームがローディングカードに切り替わるのを明確に見せる
-  useEffect(() => {
-    if (loading) {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    }
-  }, [loading]);
-
-  // 結果表示時：案1の先頭へ滑らかにスクロール（ローディングカードからの自然な切り替え）
+  // 結果表示時：案1の先頭へ滑らかにスクロール（生成シートからの自然な切り替え）
   useEffect(() => {
     if (result) {
       resultTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -261,7 +254,7 @@ function MealPlanInner() {
           </div>
         )}
 
-        {!result && !loading && (
+        {!result && (
           <>
             <Section title="いつの食事を作る？">
               <input
@@ -591,13 +584,20 @@ function MealPlanInner() {
           </>
         )}
 
-        {/* 生成中：フォームを隠し、レシピ生成と同じイメージのローディングカードを表示。
-            結果がいきなり差し替わる違和感を無くすための中間状態 */}
+        {/* 生成中：「作り方を見る」と同じく、画面下からせり上がるボトムシートで
+            ローディングを表示する。生成完了でシートは閉じ、結果が表示される */}
         {loading && (
-          <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center shadow-sm">
-            <Bot className="w-12 h-12 text-emerald-500 mx-auto mb-3 animate-pulse" strokeWidth={2} />
-            <div className="text-base font-bold text-stone-800 mb-1">AI が献立を考えています…</div>
-            <div className="text-xs text-stone-500">3つの献立案を作成中 ・ 約10〜20秒</div>
+          <div className="fixed inset-0 bg-black/40 z-[70] flex items-end">
+            <div className="bg-stone-50 shadow-2xl w-full rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1" />
+              <div className="p-4">
+                <div className="bg-white rounded-2xl p-8 text-center">
+                  <Bot className="w-12 h-12 text-emerald-500 mx-auto mb-3 animate-pulse" strokeWidth={2} />
+                  <div className="text-base font-bold text-stone-800 mb-1">AI が献立を考えています…</div>
+                  <div className="text-xs text-stone-500">3つの献立案を作成中 ・ 約10〜20秒</div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

@@ -10,7 +10,7 @@
 
 - change(app/meal-plan/page.tsx): 記録後の遷移先を `/menu` → `/home`（ホーム）に変更（前回修正3のフィードバック反映）
 - fix(app/meal-plan/page.tsx): 結果へのスクロール時に案1カード上端が sticky な PageHeader に潜り込む問題を `scroll-mt-24` で解消
-- change(app/meal-plan/page.tsx): 献立生成中はフォームを隠し、レシピ生成と同じイメージのローディングカード（「AI が献立を考えています…」）を表示。結果がいきなり差し替わる違和感を解消。結果表示時のスクロールも `instant` → `smooth` に変更
+- change(app/meal-plan/page.tsx): 献立生成中は「作り方を見る」と同じく画面下からのボトムシートでローディング（「AI が献立を考えています…」）を表示。結果がいきなり差し替わる違和感を解消。結果表示時のスクロールも `instant` → `smooth` に変更
 - 影響範囲: 顧客側（`/meal-plan`）
 
 ## 2026-05-21 (staging 待ち) – fix(security): レシピ生成 API を認証必須化
