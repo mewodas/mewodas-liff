@@ -16,6 +16,12 @@
 - 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`、API 2本（新規1本・既存縮小1本）
 - レビュー: code-reviewer 実施。残課題=運動DB (`lib/repository/exerciseLogs.ts`) がテナント非スコープ（既存問題・現状シングルテナントで実害なし・別途対応）
 
+## 2026-05-20 (本番) – Notion 開始体重リネーム Phase 4: 読み込みフォールバック削除
+
+- chore(lib/notion): `parseCustomerFromPage` の読み込みを `p['開始体重(kg)']?.number ?? null` に単純化（旧名「現在体重(kg)」フォールバックを削除）
+- 前提: 本番/staging 双方の Notion 顧客 DB が「開始体重(kg)」にリネーム済み、書き込み・読み込み・UI すべて新名で運用安定確認済み
+- 影響範囲: `lib/notion.ts`（バックエンド読み込みのみ）。CLAUDE.md ルール 4 に基づき main 直 push。動作変化なし
+
 ## 2026-05-20 (staging) – /admin UI ラベル「現在体重」→「開始体重」統一
 
 - change(admin/page): 顧客リストの体重表記 `現在 78kg → 目標 58.4kg` を `開始 78kg → 目標 58.4kg` に変更
