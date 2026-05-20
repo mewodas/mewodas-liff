@@ -129,6 +129,7 @@ function Inner() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<Daily[]>([]);
   const [mealTypeKcal, setMealTypeKcal] = useState<Record<string, number> | null>(null);
+  const [mealTypeCount, setMealTypeCount] = useState<Record<string, number> | null>(null);
   const [goals, setGoals] = useState<Goals | null>(null);
   const [target, setTarget] = useState<TargetInfo | null>(null);
   const [rangeLabel, setRangeLabel] = useState<string>('');
@@ -173,6 +174,7 @@ function Inner() {
       setStats(j.stats);
       setDaily(j.daily || []);
       setMealTypeKcal(j.mealTypeKcal || null);
+      setMealTypeCount(j.mealTypeCount || null);
       setGoals(j.goals || null);
       setTarget(j.target || null);
       setWeightLogs(j.weightLogs || []);
@@ -234,6 +236,7 @@ function Inner() {
     setStats(null);
     setDaily([]);
     setMealTypeKcal(null);
+    setMealTypeCount(null);
     setGoals(null);
     setTarget(null);
     setWeightLogs([]);
@@ -445,7 +448,7 @@ function Inner() {
               {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
                 <div className="flex-1">
                   <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別カロリー</div>
-                  <MealTypePie mealTypeKcal={mealTypeKcal} />
+                  <MealTypePie mealTypeKcal={mealTypeKcal} mealTypeCount={mealTypeCount ?? {}} />
                 </div>
               )}
               {stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0) && (
@@ -736,27 +739,21 @@ function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
 function KcalGauge({ avg, target }: { avg: number; target: number }) {
   const pct = Math.min(150, Math.round((avg / target) * 100));
   const tone =
-    pct < 85 ? { fg: 'bg-sky-500', text: 'text-sky-700', label: '不足ぎみ' }
-    : pct > 115 ? { fg: 'bg-rose-500', text: 'text-rose-700', label: 'オーバー' }
-    : { fg: 'bg-emerald-500', text: 'text-emerald-700', label: '目標範囲内' };
+    pct < 85 ? { fg: 'bg-sky-500' }
+    : pct > 115 ? { fg: 'bg-rose-500' }
+    : { fg: 'bg-emerald-500' };
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-3">
-      <div className="flex items-end justify-between">
-        <div>
-          <div className="text-[10px] font-bold text-stone-500 inline-flex items-center gap-1">
-            <Flame className="w-3 h-3 text-orange-500" strokeWidth={2.4} />
-            平均カロリー
-          </div>
-          <div className="text-3xl font-bold text-stone-900 mt-0.5 leading-none">
-            {avg}
-            <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
-          </div>
-          <div className="text-[10px] text-stone-500 mt-0.5">目標 {target} kcal</div>
+      <div>
+        <div className="text-[10px] font-bold text-stone-500 inline-flex items-center gap-1">
+          <Flame className="w-3 h-3 text-orange-500" strokeWidth={2.4} />
+          平均カロリー
         </div>
-        <div className={`text-right ${tone.text}`}>
-          <div className="text-2xl font-bold leading-none">{pct}%</div>
-          <div className="text-[10px] font-bold mt-0.5">{tone.label}</div>
+        <div className="text-3xl font-bold text-stone-900 mt-0.5 leading-none">
+          {avg}
+          <span className="text-sm font-medium text-stone-500 ml-1">kcal</span>
         </div>
+        <div className="text-[10px] text-stone-500 mt-0.5">目標 {target} kcal</div>
       </div>
       <div className="mt-2 relative h-2 rounded-full bg-stone-100 overflow-hidden">
         <div
@@ -831,8 +828,11 @@ function MacroChip({
         {avg}
         <span className="text-[9px] font-medium opacity-70 ml-0.5">g</span>
       </div>
+      {target !== undefined && target > 0 && (
+        <div className="text-[9px] opacity-70 mt-0.5">目標 {target}g</div>
+      )}
       {pct !== null && (
-        <div className="text-[9px] opacity-70 mt-0.5">{pct}%</div>
+        <div className="text-[9px] opacity-70">{pct}%</div>
       )}
     </div>
   );
@@ -958,14 +958,26 @@ const MEAL_TYPE_COLORS: Record<string, string> = {
   間食: '#ec4899',
 };
 
-function MealTypePie({ mealTypeKcal }: { mealTypeKcal: Record<string, number> }) {
-  const total = Object.values(mealTypeKcal).reduce((a, b) => a + b, 0);
-  const data = total > 0
-    ? Object.entries(mealTypeKcal)
+function MealTypePie({
+  mealTypeKcal,
+  mealTypeCount,
+}: {
+  mealTypeKcal: Record<string, number>;
+  mealTypeCount: Record<string, number>;
+}) {
+  const avgKcal = Object.fromEntries(
+    Object.entries(mealTypeKcal).map(([name, total]) => {
+      const cnt = mealTypeCount[name] ?? 0;
+      return [name, cnt > 0 ? Math.round(total / cnt) : 0];
+    })
+  );
+  const totalAvg = Object.values(avgKcal).reduce((a, b) => a + b, 0);
+  const data = totalAvg > 0
+    ? Object.entries(avgKcal)
         .filter(([, v]) => v > 0)
         .map(([name, value]) => ({
           name,
-          value: Math.round((value / total) * 100),
+          value: Math.round((value / totalAvg) * 100),
           color: MEAL_TYPE_COLORS[name] || '#a8a29e',
         }))
     : [];
@@ -997,7 +1009,7 @@ function MealTypePie({ mealTypeKcal }: { mealTypeKcal: Record<string, number> })
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
             <span className="font-bold text-stone-900 w-6">{d.name.slice(0, 2)}</span>
             <span className="text-stone-600 flex-1">
-              {Math.round(mealTypeKcal[d.name])}kcal
+              {avgKcal[d.name]} kcal/回
             </span>
             <span className="font-bold text-stone-900 text-[11px] w-9 text-right">{d.value}%</span>
           </div>

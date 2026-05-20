@@ -52,6 +52,7 @@ export const GET = withAdminTenant(async (req: NextRequest, { params }: { params
       stats: { totalDays: agg.totalDays, avg: agg.avg, sum: agg.sum },
       daily: agg.daily,
       mealTypeKcal: agg.mealTypeKcal,
+      mealTypeCount: agg.mealTypeCount,
       goals: customer.goals,
       target,
       weightLogs,

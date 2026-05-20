@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – feat: 顧客分析UIを3点調整
+
+- feat(admin/analysis): 食事区分別パイチャートを「期間合計kcal」から「1回あたり平均kcal/回」表示に変更。`lib/analysisAggregate.ts` に `mealTypeCount` 集計を追加しAPIレスポンスにも含める。`MealTypePie` が区分別平均を算出し構成比・リスト表示ともに平均ベースに
+- feat(admin/analysis): 平均カロリーカード（KcalGauge）から `{pct}%` と判定ラベル（「目標範囲内」「不足ぎみ」「オーバー」）を削除。プログレスバーは残す
+- feat(admin/analysis): PFCチップ（MacroChip）に目標絶対値「目標 Ng」を追記（avg・target・%の3段表示）
+- 影響範囲: 管理画面 `/admin/analysis`、API `/api/admin/customers/[id]/analysis/data`、`lib/analysisAggregate.ts`
+
 ## 2026-05-20 (staging) – fix: 日別カロリーグラフが顧客切替でずれる問題の再修正
 
 - fix(admin/analysis): 日別カロリーグラフの再マウント key に `customerId` を追加
