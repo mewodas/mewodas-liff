@@ -430,7 +430,7 @@ function Inner() {
               <Activity className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
               日別カロリー
             </h3>
-            <DailyKcalChart key={rangeLabel} daily={daily} targetKcal={goals?.kcal || 0} />
+            <DailyKcalChart key={`${customerId}|${rangeLabel}`} daily={daily} targetKcal={goals?.kcal || 0} />
           </section>
         )}
 

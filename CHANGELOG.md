@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-20 (staging) – fix: 日別カロリーグラフが顧客切替でずれる問題の再修正
+
+- fix(admin/analysis): 日別カロリーグラフの再マウント key に `customerId` を追加
+- 背景: 前回修正で key を `rangeLabel`（日付範囲のみ）にしたが、期間が同じまま顧客だけ切り替えると key が変わらず、recharts が前の顧客のグラフ状態（Cell の色対応）を引きずってずれていた
+- 影響範囲: 管理画面 `/admin/analysis`・`/store/analysis`
+
 ## 2026-05-20 (staging) – fix: 管理画面ヘッダー右上のちらつき + 「アドミン」表記に統一
 
 - fix(admin/AdminShell): ページ遷移のたびに右上のロールバッジが一瞬消えるちらつきを修正。AdminShell はページ毎に個別マウントされ `me` が毎回 null リセットされていたため、module スコープにキャッシュして再マウント時に即描画
