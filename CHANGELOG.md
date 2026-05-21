@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: 申し込み401ブロッカー根本修正 + 管理画面「新規顧客追加」削除
+
+- fix(app/home/register/page.tsx): IDトークン期限切れ時の401を `liff.login()` による本物の再認証で解消。`refreshLiff()` / `liff.init()` 再呼び出しは新しいトークンを発行しないため廃止。フォーム入力値を sessionStorage に退避（`register_form_draft`）→ `liff.login({ redirectUri: 現URL })` → OAuth戻り後に自動復元。再認証ループはトークン取得できた場合のみリクエストを送る構造で防止
+- fix(lib/withTenant.ts): `verifyLineIdToken` に一時診断ログ追加。LINE /oauth2/v2.1/verify が失敗した場合のステータスとレスポンスボディをサーバーログに出力（失敗原因の確定用）
+- remove(app/admin/customers/new/): 管理画面「新規顧客追加」ページを削除。自己登録フロー一本化のため。手動作成レコードは LINE ID 紐付け不可で孤立・重複の原因になるため不要と判断
+- remove(app/admin/page.tsx): 「新規顧客追加」ボタン・リンクと `UserPlus` import を削除
+- fix(app/admin/stores/page.tsx): 削除した「新規顧客追加」への案内テキストを修正
+- 影響範囲: 顧客側（/home/register）・管理画面（/admin、/admin/customers/new 削除）・lib/withTenant
+
 ## 2026-05-21 (staging) – change: 申し込みフォームの活動レベル「中程度」に説明を追加
 
 - change(home/register): 活動レベルの選択肢「中程度」を「中程度（週2〜3回運動）」に変更（「低い（ほぼ運動なし）」「高い（毎日運動）」と表記を統一）。API 側の活動レベル正規化は `中` を含むかで判定しているため挙動に影響なし

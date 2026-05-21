@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
+import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -189,14 +189,6 @@ export default function AdminCustomersPage() {
             </div>
           </div>
         )}
-
-        <Link
-          href={`${base}/customers/new`}
-          className="block w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
-        >
-          <UserPlus className="w-4 h-4" strokeWidth={2.4} />
-          新規顧客追加
-        </Link>
 
         <button
           type="button"

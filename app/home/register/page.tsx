@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getIdToken, refreshLiff } from '@/lib/liff';
 
 export default function RegisterPage() {
   return (
@@ -25,7 +24,42 @@ const BIRTH_YEARS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
 const TARGET_YEARS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR + i);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
+const FORM_STORAGE_KEY = 'register_form_draft';
+
+type FormDraft = {
+  name: string;
+  gender: string;
+  birthYear: string;
+  birthMonth: string;
+  birthDay: string;
+  heightCm: string;
+  currentWeight: string;
+  targetWeight: string;
+  targetDateYear: string;
+  targetDateMonth: string;
+  targetDateDay: string;
+  activityLevel: string;
+};
+
 type Phase = 'liff-init' | 'form' | 'submitting' | 'done' | 'already-registered' | 'error';
+
+function saveDraft(draft: FormDraft): void {
+  try {
+    sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(draft));
+  } catch { /* ignore */ }
+}
+
+function loadDraft(): FormDraft | null {
+  try {
+    const raw = sessionStorage.getItem(FORM_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FormDraft;
+  } catch { return null; }
+}
+
+function clearDraft(): void {
+  try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch { /* ignore */ }
+}
 
 function RegisterInner() {
   const sp = useSearchParams();
@@ -53,7 +87,6 @@ function RegisterInner() {
   const [customerName, setCustomerName] = useState('');
   const [officialLineUrl, setOfficialLineUrl] = useState('');
 
-  // 選択中の年月に応じた日数（うるう年・月末を考慮）
   const daysInSelectedMonth =
     birthYear && birthMonth
       ? new Date(Number(birthYear), Number(birthMonth), 0).getDate()
@@ -67,6 +100,20 @@ function RegisterInner() {
   const targetDayOptions = Array.from({ length: daysInTargetMonth }, (_, i) => i + 1);
 
   const ran = useRef(false);
+
+  function getRegisterUrl(): string {
+    return `${window.location.origin}/home/register${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ''}`;
+  }
+
+  function triggerReauth(): void {
+    import('@line/liff').then((m) => {
+      const liff = m.default;
+      liff.login({ redirectUri: getRegisterUrl() });
+    }).catch(() => {
+      setSubmitError('LINE再認証ページへのリダイレクトに失敗しました。ページを再読み込みしてください。');
+      setPhase('form');
+    });
+  }
 
   useEffect(() => {
     if (ran.current) return;
@@ -83,17 +130,36 @@ function RegisterInner() {
         setIsInClient(liff.isInClient());
 
         if (!liff.isLoggedIn()) {
-          liff.login({
-            redirectUri: `${window.location.origin}/home/register${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ''}`,
-          });
+          liff.login({ redirectUri: getRegisterUrl() });
           return;
         }
+
+        // liff.login() 再認証後に戻ってきた場合、保存済みドラフトを復元する
+        const draft = loadDraft();
+        if (draft) {
+          setName(draft.name);
+          setGender(draft.gender);
+          setBirthYear(draft.birthYear);
+          setBirthMonth(draft.birthMonth);
+          setBirthDay(draft.birthDay);
+          setHeightCm(draft.heightCm);
+          setCurrentWeight(draft.currentWeight);
+          setTargetWeight(draft.targetWeight);
+          setTargetDateYear(draft.targetDateYear);
+          setTargetDateMonth(draft.targetDateMonth);
+          setTargetDateDay(draft.targetDateDay);
+          setActivityLevel(draft.activityLevel);
+          clearDraft();
+        }
+
         setPhase('form');
       } catch (e) {
         setInitError(e instanceof Error ? e.message : 'LIFF初期化エラー');
         setPhase('error');
       }
     })();
+  // tenantId は URL 由来で mount 時に確定するため deps に入れない（一度だけ実行）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -106,6 +172,21 @@ function RegisterInner() {
     setSubmitError(null);
 
     try {
+      const liffModule = await import('@line/liff');
+      const liff = liffModule.default;
+
+      const idToken = liff.getIDToken();
+      if (!idToken) {
+        // 未ログイン状態: フォームを退避して再認証
+        saveDraft({
+          name, gender, birthYear, birthMonth, birthDay,
+          heightCm, currentWeight, targetWeight,
+          targetDateYear, targetDateMonth, targetDateDay, activityLevel,
+        });
+        triggerReauth();
+        return;
+      }
+
       const birthdate =
         birthYear && birthMonth && birthDay
           ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
@@ -137,18 +218,18 @@ function RegisterInner() {
         return fetch('/api/liff/register', { method: 'POST', headers, body: bodyPayload });
       };
 
-      let idToken = await getIdToken();
-      if (!idToken) throw new Error('LINE IDトークンの取得に失敗しました');
-
       let res = await doRequest(idToken);
 
-      // IDトークン期限切れの場合: refreshLiff で再取得して1回リトライ
+      // 401: IDトークン期限切れ → フォームを退避して liff.login() で本物の再認証
+      // refreshLiff() / liff.init() の再呼び出しは新しいトークンを発行しないため使わない
       if (res.status === 401) {
-        await refreshLiff();
-        const refreshed = await getIdToken();
-        if (refreshed && refreshed !== idToken) {
-          res = await doRequest(refreshed);
-        }
+        saveDraft({
+          name, gender, birthYear, birthMonth, birthDay,
+          heightCm, currentWeight, targetWeight,
+          targetDateYear, targetDateMonth, targetDateDay, activityLevel,
+        });
+        triggerReauth();
+        return;
       }
 
       const j = await res.json();

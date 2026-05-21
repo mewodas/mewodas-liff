@@ -64,7 +64,12 @@ async function verifyLineIdToken(token: string): Promise<{ sub: string }> {
   }
 
   if (res.status >= 500) throw new LineVerifyUnavailableError();
-  if (!res.ok) throw new LineVerifyInvalidTokenError();
+  if (!res.ok) {
+    let errBody = '';
+    try { errBody = await res.text(); } catch { /* ignore */ }
+    console.error('[verifyLineIdToken] LINE verify failed', { status: res.status, body: errBody, channelId });
+    throw new LineVerifyInvalidTokenError();
+  }
 
   const json = await res.json();
   if (json.aud !== channelId) throw new LineVerifyInvalidTokenError('aud mismatch');
