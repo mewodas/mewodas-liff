@@ -17,6 +17,9 @@ export default function HomeOnboardPage() {
 
 type Phase = 'loading' | 'success' | 'error';
 
+// LINE OAuth コールバック後に URL から token が失われるケースに備えた sessionStorage キー
+const SESSION_KEY = 'fitmeal_invite_token';
+
 function OnboardInner() {
   const sp = useSearchParams();
   const token = sp.get('token') || '';
@@ -29,7 +32,15 @@ function OnboardInner() {
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
-    if (!token) {
+
+    // URL の token を優先し、なければ sessionStorage から復元
+    const effectiveToken = token || (typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) || '' : '');
+    if (effectiveToken) {
+      // token を sessionStorage に保存（コールバック後の URL で token が失われても復元できる）
+      sessionStorage.setItem(SESSION_KEY, effectiveToken);
+    }
+
+    if (!effectiveToken) {
       setErrorMsg('招待リンクが無効です。トレーナーに再発行を依頼してください。');
       setPhase('error');
       return;
@@ -42,15 +53,22 @@ function OnboardInner() {
         if (!liffId) throw new Error('LIFF ID 未設定');
         await liff.init({ liffId });
         if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: window.location.href });
+          // redirectUri を /home/onboard（token なし）に設定することで、
+          // LINE が redirect_uri を LIFF Endpoint URL と照合する際に
+          // クエリパラメータの干渉を防ぐ。token は sessionStorage で保持済み。
+          const redirectUri = `${window.location.origin}/home/onboard`;
+          liff.login({ redirectUri });
           return;
         }
+        // ログイン成功後に sessionStorage の token を使って処理継続
+        const resolvedToken = sessionStorage.getItem(SESSION_KEY) || effectiveToken;
+        sessionStorage.removeItem(SESSION_KEY);
         const profile = await liff.getProfile();
         const res = await fetch('/api/onboard/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            token,
+            token: resolvedToken,
             lineUserId: profile.userId,
             displayName: profile.displayName,
           }),

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix(home/onboard): LIFF 認証ループを sessionStorage token 保持で解消
+
+- fix(app/home/onboard/page.tsx): `liff.login()` の `redirectUri` から `?token=...` クエリを排除。token を `sessionStorage` に保持し、LINE OAuth コールバック後（URL に token がない状態）でも復元できるようにした
+- 修正前: `liff.login({ redirectUri: window.location.href })` → `redirectUri` に `?token=TOKEN` が含まれ、LINE が Endpoint URL `/home` にコールバックして `liff.state` で `/home/onboard` へリダイレクトした際に token が失われる可能性があった
+- 修正後: `liff.login({ redirectUri: origin + '/home/onboard' })` + `sessionStorage.setItem('fitmeal_invite_token', token)` の組み合わせで、コールバック後の URL に関わらず token を復元できる
+- ログイン成功後の `resolvedToken = sessionStorage.getItem(SESSION_KEY) || effectiveToken` で確実に token を取得してから redeem へ
+- 影響範囲: 顧客側（`/home/onboard` 招待トークン引き換え画面のみ）
+- 関連: staging 固有の未発見バグ（本番 /home/onboard も同じコードなので本番でも効果あり）
+
 ## 2026-05-21 (staging) – fix: 食事記録オンボーディングの説明カード位置を上に修正
 
 - fix(app/record/page.tsx): オンボーディングツアーの下段ボタン3ステップ（食品DB／マイメニュー／テキストで記録）の説明カードを `placement: 'bottom'` → `'top'` に変更。ボタンの下に表示すると画面最下部（ナビバー際）に押し込まれて見づらかったため、ボタンの上に表示するよう修正
