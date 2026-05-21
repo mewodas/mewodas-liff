@@ -136,7 +136,7 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
           transform: 'translate(-50%, -100%)',
         }
       : {
-          top: rect.bottom + TOOLTIP_GAP + 32, // 矢印分の余白
+          top: rect.bottom + TOOLTIP_GAP,
           left: '50%',
           transform: 'translateX(-50%)',
         }
@@ -146,20 +146,16 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
         transform: 'translate(-50%, -50%)',
       };
 
-  // 矢印位置（targetを指す）
-  const arrowStyle: React.CSSProperties = rect
-    ? placement === 'top'
-      ? {
-          // ターゲット直上、下向き矢印
-          top: rect.top - 28,
-          left: rect.left + rect.width / 2 - 12,
-        }
-      : {
-          // ターゲット直下、上向き矢印
-          top: rect.bottom + 4,
-          left: rect.left + rect.width / 2 - 12,
-        }
-    : { display: 'none' };
+  // 吹き出しの尾（白い三角）の水平位置：ツールチップ内で target 中心を指す
+  const tailLeft = rect
+    ? (() => {
+        const tooltipWidth = Math.min(window.innerWidth * 0.88, 320);
+        const tooltipLeftEdge = window.innerWidth / 2 - tooltipWidth / 2;
+        const center = rect.left + rect.width / 2 - tooltipLeftEdge;
+        // 尾（幅16px）の中心を角に被らないようクランプ、left 指定用に -8
+        return Math.min(Math.max(center, 24), tooltipWidth - 24) - 8;
+      })()
+    : 0;
 
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
@@ -180,24 +176,23 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
         <div className="absolute inset-0 bg-black/65 pointer-events-auto" onClick={finish} />
       )}
 
-      {/* 矢印（ピコピコ） */}
-      {rect && (
-        <div className="absolute pointer-events-none animate-bounce" style={arrowStyle}>
-          <svg viewBox="0 0 24 24" width="24" height="24" className="drop-shadow-lg">
-            {placement === 'top' ? (
-              <path d="M12 20l-7-8h4V4h6v8h4l-7 8z" fill="#fbbf24" stroke="white" strokeWidth="1" />
-            ) : (
-              <path d="M12 4l7 8h-4v8h-6v-8H5l7-8z" fill="#fbbf24" stroke="white" strokeWidth="1" />
-            )}
-          </svg>
-        </div>
-      )}
-
-      {/* ツールチップ */}
+      {/* ツールチップ（ホームのツアーと同じ吹き出し型。黄色い矢印は廃止） */}
       <div
         className="absolute pointer-events-auto bg-white rounded-2xl shadow-2xl p-4 w-[88%] max-w-xs"
         style={tooltipStyle}
       >
+        {/* 吹き出しの尾（白い三角）。ツールチップが target の上なら下向き、下なら上向き */}
+        {rect && (placement === 'top' ? (
+          <div
+            className="absolute -bottom-[11px] w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm"
+            style={{ left: tailLeft }}
+          />
+        ) : (
+          <div
+            className="absolute -top-[11px] w-0 h-0 border-l-8 border-r-8 border-b-[12px] border-l-transparent border-r-transparent border-b-white drop-shadow-sm"
+            style={{ left: tailLeft }}
+          />
+        ))}
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 rounded-full px-2 py-0.5">
             {stepIdx + 1} / {steps.length}
@@ -211,9 +206,7 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
           </button>
         </div>
         <div className="text-sm font-bold text-stone-900 mb-1">{step.title}</div>
-        {/* 説明文エリアに最小高さ＋上下中央揃え。ステップ毎の行数差（2〜3行）があっても
-            コメント欄の高さ・文字位置が揃い、矢印の見え方も統一される */}
-        <p className="text-[12px] text-stone-700 leading-relaxed mb-3 min-h-[3.75rem] flex items-center">{step.description}</p>
+        <p className="text-[12px] text-stone-700 leading-relaxed mb-3">{step.description}</p>
         <div className="flex gap-2">
           {stepIdx > 0 && (
             <button
