@@ -16,8 +16,8 @@ import {
   getStripe,
   subscriptionStatusToNotion,
   getPlanTierBySeats,
-  getMonthlyTotal,
 } from '@/lib/stripe';
+import { listPlans } from '@/lib/notion';
 import { listTenantRows, updateTenantRow } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 
@@ -84,6 +84,19 @@ function getPerUserPriceIds(): Set<string> {
   return ids;
 }
 
+async function getPerUserPriceIdsFromPlans(): Promise<Set<string>> {
+  const ids = getPerUserPriceIds();
+  try {
+    const plans = await listPlans();
+    for (const plan of plans) {
+      if (plan.stripePerUserPriceId) ids.add(plan.stripePerUserPriceId);
+    }
+  } catch {
+    // プラン DB 取得失敗時は env のみで判定
+  }
+  return ids;
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
   const subscriptionId = typeof session.subscription === 'string'
@@ -124,6 +137,9 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   }
   if (!tenant) return;
 
+  // 課金モードガード: Stripe連動 以外は seatLimit/paymentStatus を書き換えない
+  if (tenant.billingMode && tenant.billingMode !== 'Stripe連動') return;
+
   const status = subscriptionStatusToNotion(sub.status);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodEnd = (sub as any).current_period_end || sub.items.data[0]?.current_period_end;
@@ -131,8 +147,8 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
     ? new Date(periodEnd * 1000).toISOString().split('T')[0]
     : null;
 
-  // per-user item を Price ID で識別
-  const perUserPriceIds = getPerUserPriceIds();
+  // per-user item を Price ID で識別（全プラン定義 + env）
+  const perUserPriceIds = await getPerUserPriceIdsFromPlans();
   let seatLimit: number | null = null;
   let perUserUnitAmount = 0;
   let perUserQuantity = 0;
@@ -165,9 +181,9 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   }
 
   const planTier = seatLimit !== null && seatLimit > 0 ? getPlanTierBySeats(seatLimit) : null;
-  const { total: expectedTotal } = seatLimit !== null ? getMonthlyTotal(seatLimit) : { total: 0 };
-  // 月額は計算値を使う（サポート費 + per-user 合計）
-  const monthlyPrice = seatLimit !== null ? expectedTotal : (supportFeeAmount + perUserUnitAmount * perUserQuantity);
+  // 月額は Stripe 実額から算出（プランに依存しない）。
+  // getMonthlyTotal は標準プラン定数を使うため非標準プランで誤った金額になる。
+  const monthlyPrice = supportFeeAmount + perUserUnitAmount * perUserQuantity;
 
   const patch: Parameters<typeof updateTenantRow>[1] = {
     stripeSubscriptionId: sub.id,
@@ -189,6 +205,9 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   const tenant = await findTenantByCustomerId(customerId);
   if (!tenant) return;
 
+  // 課金モードガード: Stripe連動 以外は seatLimit/status を書き換えない
+  if (tenant.billingMode && tenant.billingMode !== 'Stripe連動') return;
+
   await updateTenantRow(tenant.pageId, {
     paymentStatus: '解約済み',
     status: '解約',
@@ -203,6 +222,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   if (!customerId) return;
   const tenant = await findTenantByCustomerId(customerId);
   if (!tenant) return;
+
+  // 課金モードガード: Stripe連動 以外は paymentStatus を書き換えない
+  if (tenant.billingMode && tenant.billingMode !== 'Stripe連動') return;
 
   await updateTenantRow(tenant.pageId, {
     paymentStatus: '未払い',

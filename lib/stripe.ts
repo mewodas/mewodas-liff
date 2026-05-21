@@ -16,6 +16,7 @@
 //   STRIPE_PRICE_PER_USER: price_... (Volume tiered)
 
 import Stripe from 'stripe';
+import type { PlanDef } from './notion';
 
 let stripeInstance: Stripe | null = null;
 
@@ -80,6 +81,90 @@ export function getSupportFeePriceId(): string | null {
 /** 後方互換: tier に関係なく単一の per-user Price ID を返す */
 export function getPriceIdForTier(_tier: PlanTier): string | null {
   return getPerUserPriceId();
+}
+
+/** 標準プランの Volume 段階表 */
+export const STANDARD_VOLUME_TIERS = [
+  { upTo: 20, unitAmount: 2750 },
+  { upTo: 50, unitAmount: 2200 },
+  { upTo: Infinity, unitAmount: 1650 },
+];
+
+/** PlanDef を受け取り月額合計を算出 */
+export function getMonthlyTotalFromPlan(
+  plan: PlanDef,
+  seats: number
+): {
+  supportFee: number;
+  unitPrice: number;
+  perUserSubtotal: number;
+  total: number;
+} {
+  let unitPrice: number;
+  if (plan.volumeApplied) {
+    const tier = STANDARD_VOLUME_TIERS.find((t) => seats <= t.upTo) ?? STANDARD_VOLUME_TIERS[STANDARD_VOLUME_TIERS.length - 1];
+    unitPrice = tier.unitAmount;
+  } else {
+    unitPrice = plan.perUserPrice;
+  }
+  const perUserSubtotal = unitPrice * seats;
+  return {
+    supportFee: plan.supportFee,
+    unitPrice,
+    perUserSubtotal,
+    total: plan.supportFee + perUserSubtotal,
+  };
+}
+
+/** PlanDef + 席数から Stripe line items を生成。
+ *  planCode が 'standard' で Price ID 未設定の場合 env にフォールバック。
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildSubscriptionLineItems(plan: PlanDef, seats: number): any[] {
+  const { supportFee, unitPrice } = getMonthlyTotalFromPlan(plan, seats);
+
+  // Price ID の解決（planCode=standard は env フォールバック）
+  let supportFeePriceId = plan.stripeSupportFeePriceId || null;
+  let perUserPriceId = plan.stripePerUserPriceId || null;
+  if (plan.planCode === 'standard') {
+    supportFeePriceId = supportFeePriceId || process.env.STRIPE_PRICE_SUPPORT_FEE || null;
+    perUserPriceId = perUserPriceId || process.env.STRIPE_PRICE_PER_USER || null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items: any[] = [];
+
+  if (supportFee > 0) {
+    items.push(
+      supportFeePriceId
+        ? { price: supportFeePriceId, quantity: 1 }
+        : {
+            price_data: {
+              currency: 'jpy',
+              product_data: { name: 'FitMeal サポート費' },
+              unit_amount: supportFee,
+              recurring: { interval: 'month' },
+            },
+            quantity: 1,
+          }
+    );
+  }
+
+  items.push(
+    perUserPriceId
+      ? { price: perUserPriceId, quantity: seats }
+      : {
+          price_data: {
+            currency: 'jpy',
+            product_data: { name: `FitMeal per-user (${plan.name})` },
+            unit_amount: unitPrice,
+            recurring: { interval: 'month' },
+          },
+          quantity: seats,
+        }
+  );
+
+  return items;
 }
 
 export function subscriptionStatusToNotion(

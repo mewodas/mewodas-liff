@@ -8,6 +8,10 @@
 export const FITMEAL_TENANTS_DB_ID =
   process.env.FITMEAL_TENANTS_DB_ID || '4468b0213fd04328b93c13e71fd3dde7';
 
+/** FitMeal プラン定義用 Notion DB ID */
+export const FITMEAL_PLANS_DB_ID =
+  process.env.FITMEAL_PLANS_DB_ID || '5962b6528bb04451afdbf54122cffabc';
+
 /** 新規テナント DB の親ページ（🥗 食事管理システム｜メヲダス五反田店） */
 export const FITMEAL_TENANTS_PARENT_PAGE_ID =
   process.env.FITMEAL_TENANTS_PARENT_PAGE_ID || '34ea47a8738d8155a2b1e9f4607e8986';

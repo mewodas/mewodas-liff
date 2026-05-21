@@ -66,5 +66,7 @@ export const GET = withAdminTenant(async () => {
     isNearLimit: seatStatus.isNearLimit,
     planTier: seatStatus.planTier,
     hasContract: seatStatus.hasContract,
+    billingMode: t.billingMode,
+    seatSource: seatStatus.seatSource,
   });
 });

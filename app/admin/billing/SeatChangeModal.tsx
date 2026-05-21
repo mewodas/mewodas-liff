@@ -93,7 +93,7 @@ export default function SeatChangeModal({ currentSeats, currentUseCount, onClose
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-stone-900 inline-flex items-center gap-1.5">
             <Users className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-            席数変更
+            利用可能アカウント数を変更
           </h2>
           <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-600">
             <X className="w-5 h-5" strokeWidth={2.2} />

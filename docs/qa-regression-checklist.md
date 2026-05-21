@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-21（本番スモーク実施・新オンボーディング自己登録フロー反映後）
+最終更新: 2026-05-22（課金制御機能 bcb152f 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -25,7 +25,7 @@
 | L3 | 無認証で API 直叩き → 401 返却 | [A] | CORE |
 | L4 | 偽トークンで API 直叩き → 401 返却 | [A] | CORE |
 
-### 申し込みフォーム認証（/home/register）— 2026-05-21 追加
+### 申し込みフォーム・登録フロー（/home/register）— 2026-05-21 追加・更新
 
 | # | 確認項目 | 方法 | 優先度 |
 |---|---------|------|-------|
@@ -37,6 +37,51 @@
 | REG6 | 既存 LIFF ルート（/api/day 等）が IDトークン方式のまま動作する | [M] | CORE |
 | REG7 | 目標体重・目標達成日を空欄で送信 → 正常登録できること（任意フィールド） | [M] | CORE |
 | REG8 | アクセストークン null 時（LINE 外ブラウザは設計外） → triggerReauth() でログイン遷移・ループしない | [M] | SCOPE |
+
+### オンボーディングツアー（/record・/exercise・/weight）— 2026-05-21 吹き出し化
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| TUR1 | /record を初回起動 → 吹き出し型ツアーが表示される（黄色い矢印なし） | [M] | CORE |
+| TUR2 | /exercise を初回起動 → 吹き出し型ツアーが表示される | [M] | CORE |
+| TUR3 | /weight を初回起動 → 吹き出し型ツアーが表示される | [M] | CORE |
+| TUR4 | ツアーの白い三角の尾（tail）が対象要素を指している | [M] | CORE |
+| TUR5 | ツアー吹き出しの「次へ」「完了」でツアーが進行・終了する | [M] | CORE |
+
+### 廃止ルート・リダイレクト — 2026-05-21 追加
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| DEP1 | POST /api/onboard/redeem → 410 + 廃止案内メッセージ | [A] | CORE |
+| DEP2 | GET /api/onboard/redeem → 405（POSTのみ受け付け） | [A] | CORE |
+| DEP3 | /onboard → 307 → /home/register に最終着地（200） | [A] | CORE |
+| DEP4 | /home/onboard → HTML内 NEXT_REDIRECT で /home/register に遷移（ブラウザで確認） | [M] | SCOPE |
+| DEP5 | /home/register ・/home/onboard・/onboard でフッターナビが非表示 | [M] | CORE |
+
+### 管理画面 追加確認 — 2026-05-21 追加
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| ADM1 | /admin → 「ユーザー招待フォームをコピー」ボタンが存在する | [M] | CORE |
+| ADM2 | 「ユーザー招待フォームをコピー」クリック → URL+テンプレ文がクリップボードにコピーされる | [M] | CORE |
+| ADM3 | /admin/customers/[id] → 顧客詳細に「登録完了日時」フィールドが表示される | [M] | CORE |
+| ADM4 | ステータスセレクトに「設定中」が存在しない（進行中・休止中・卒業のみ） | [M] | CORE |
+
+### 席数上限 UI/UX — 2026-05-21 追加（commit 7d8990a）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| SEAT1 | /admin: 上限未到達時に上限バナーが表示されない（通常状態） | [M] | CORE |
+| SEAT2 | /admin: 上限到達時に「利用可能アカウント数」バナーが全幅で表示される | [M] | SCOPE（上限状態のみ） |
+| SEAT3 | /admin: 上限到達時に招待ボタンがグレーアウト・クリック不可 | [M] | SCOPE（上限状態のみ） |
+| SEAT4 | /admin: 上限未到達時に招待ボタンが通常の青色でクリック可能 | [M] | CORE |
+| SEAT5 | /admin: 残り1席時に amber バナーが表示される | [M] | SCOPE |
+| SEAT6 | /admin/billing: 「利用可能アカウント数」表記でプログレスバーが表示される | [M] | CORE |
+| SEAT7 | /home/register: 上限未到達テナントでフォームが従来どおり表示・送信できる | [M] | CORE |
+| SEAT8 | /home/register: 上限到達テナントで「上限に達しているため、担当トレーナーにお問い合わせください。」の2行案内画面が表示される | [M] | SCOPE（上限状態のみ） |
+| SEAT9 | GET /api/liff/register: 認証なし → 401 | [A] | CORE |
+| SEAT10 | GET /api/liff/register: 偽トークン → 401 | [A] | CORE |
+| SEAT11 | GET /api/liff/register: GET チェックが失敗（サーバエラー等）してもフォームが表示される（フォールスルー） | [M] | CORE |
 
 ### 撮影・食事記録
 
@@ -104,6 +149,30 @@
 | S1 | /store → 店舗ダッシュボード表示 | [M] | CORE |
 | S2 | /admin/tenants → マルチテナント一覧（master のみ） | [M] | CORE |
 
+### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| BL1 | GET /api/admin/plans: 認証なし → 401 | [A] | CORE |
+| BL2 | POST /api/admin/plans: 認証なし → 401 | [A] | CORE |
+| BL3 | PATCH /api/admin/plans/[code]: 認証なし → 401 | [A] | CORE |
+| BL4 | POST /api/admin/tenants/[id]/apply-stripe: 認証なし → 401 | [A] | CORE |
+| BL5 | PATCH /api/admin/tenants/[id]: billingMode='手動' → Stripe連動モードで seatLimit 送信 → 400 | [A] | CORE |
+| BL6 | PATCH /api/admin/tenants/[id]: 不正な billingMode 値 → 400 | [A] | CORE |
+| BL7 | POST /api/stripe/checkout: 無制限テナントで呼ぶ → 403 | [A] | CORE |
+| BL8 | POST /api/stripe/update-seats: 手動テナントで呼ぶ → 403 | [A] | CORE |
+| BL9 | GET /api/admin/plans: master Cookie で呼ぶ → 標準プラン1件含むリスト返却 | [A] | CORE |
+| BL10 | POST /api/admin/plans: PoC プラン新規作成 → 201 + plan 返却 | [A] | CORE |
+| BL11 | PATCH /api/admin/plans/[code]: 作成済みプラン編集 → 200 | [A] | CORE |
+| BL12 | /admin/plans: 標準プランが一覧に表示される（Notion Integration アクセス確認） | [M] | CORE |
+| BL13 | /admin/tenants/[id]: 課金モードドロップダウンが表示される | [M] | CORE |
+| BL14 | /admin/tenants/[id]: 課金モードを「無制限」に変更・保存 → 保存成功メッセージ | [M] | CORE |
+| BL15 | /store/billing（テナント staging）: billingMode=無制限 → 「運営管理プラン」表示・申込みフォームなし | [M] | CORE |
+| BL16 | /store/billing（テナント staging）: billingMode=手動・席数設定済み → 「運営管理プラン」+席数表示 | [M] | SCOPE |
+| BL17 | /store/billing（テナント staging）: billingMode=Stripe連動 → 従来の自己申込みフォームが表示される | [M] | CORE |
+| BL18 | /store/billing（Stripe連動）: 席数選択・月額計算・申込みボタン → Stripe Checkout 画面に到達 | [M] | CORE（回帰） |
+| BL19 | webhook: Stripe連動 以外のテナントへのサブスク更新イベント → seatLimit 書き換えなし（コードガード確認） | [A] コード確認で代替可 | SCOPE |
+
 ---
 
 ## バックエンド・非同期処理
@@ -120,6 +189,10 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-22 | 課金制御フル実装（billingMode 3種・fitmeal-plans DB・webhook ガード・API ガード） | bcb152f | 条件付き GO（社長手動確認 BL12〜BL18 待ち） |
+| 2026-05-21 | lib/notion.ts: createTenantCustomerDb スキーマ補完 + listTenantRows マスタキー分離 | acabbaa | GO（自動検証完全通過・社長手動確認不要） |
+| 2026-05-21 | 席数上限 UI/UX 改修（用語統一・バナー全幅・招待無効・登録フォームガード） | 7d8990a | 条件付き GO（社長手動確認待ち） |
+| 2026-05-21 | オンボツアー吹き出し化・自己登録フォーム・設定中廃止・招待ボタン・登録完了日時 | 3fa0cf4（merge） | 条件付き GO（社長手動確認待ち） |
 | 2026-05-21 | 申し込みフォーム認証方式 IDトークン→アクセストークンに変更 | 61b94a5 | 条件付き GO（社長手動確認待ち） |
 | 2026-05-21 | AI献立 UI 3点修正（スクロール位置・ボタン位置・遷移先） | 602ba9c | 条件付き GO |
 | 2026-05-21 | 認証オンボーディング画面のフッター非表示 | — | GO（前回） |
@@ -135,3 +208,17 @@
 - `liff.getAccessToken()` は LINE 外ブラウザで null を返す。設計外ユースケースのため LINE 内ブラウザのみサポート対象
 - register フォームの 401 リトライは最大 1 回。その後 `liff.login()` でページ離脱するため無限ループしない設計
 - アクセストークンのサーバー側キャッシュは 1 分 TTL（IDトークン側は 5 分 TTL）。高頻度テストでは同じトークンがキャッシュされる場合がある
+- `/home/onboard` は Next.js App Router の都合で HTTP 200 を返しつつ HTML 内に `NEXT_REDIRECT;replace;/home/register;307` を含む。ブラウザでは /home/register に遷移する。curl でのステータスコード確認は 200 が正常
+- `設定中` ステータスは完全廃止。STATUSES / STATUS_OPTIONS から削除済み。管理画面でこの値を持つ顧客がいた場合は要手動更新（DB上は値が残る可能性あり）
+- 「ユーザー招待フォームをコピー」ボタンはコピー内容に URL + テンプレ文を含む。コピー先のテキストにURL以外のテキストが入ることを顧客説明時に注意
+- `登録完了日時` は `/api/liff/register` 成功時に Notion に書き込まれる。既存顧客はこの日時が null になる（以前の登録方式では保存されなかったため）
+- GET `/api/liff/register` のチェックが失敗（ネットワークエラー・500 等）した場合、catch ブロックで無視してフォームが表示される設計。サーバー側 POST でも上限チェックするため二重防止になっている
+- POST `/api/liff/register` で 403（席数上限）が来た場合、over-limit フェーズにはならずフォームに「定員に達しているため…」のエラーメッセージが submitError として表示される（GET チェックをすり抜けた場合の最終防波堤として機能）
+- 招待ボタンの disabled 状態は `seatInfo` が null（billing/info API 失敗）の場合は enabled になる（失敗時はボタンが使えることが優先）
+- 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
+- **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる
+- **billingMode バリデーション**: 許可値は「無制限」「手動」「Stripe連動」の3種のみ。その他の値は Notion の select に新規オプションが作られるのを防ぐため API が 400 を返す
+- **手動モードで seatLimit 未設定（null）**: Admin UI で手動モードを選択すると席数入力フィールドが表示される。未入力で保存した場合、seatLimit=null → getSeatStatus では `seatLimit !== null ? ... : false` なので isOverLimit=false（上限なし扱い）になる。設計書のエッジケースに記載あり
+- **Stripe連動モードでの seatLimit 直接編集禁止**: PATCH /api/admin/tenants/[id] で Stripe連動のまま seatLimit を送信すると 400 になる。UI 側も手動モード以外では seatLimit 入力フィールドを表示しない（save() 関数で明示的に除外）
+- **fitmeal-plans DB の標準プラン**: Stripe PriceID が空の場合は env の STRIPE_PRICE_PER_USER / STRIPE_PRICE_SUPPORT_FEE にフォールバック（planCode=standard のみ）。PoC/エンタープライズで PriceID 未設定の場合は inline price_data が生成される
+- **apply-stripe の Stripe反映セクション**: UI 上は billingMode=Stripe連動 または 未設定（空文字）の場合のみ表示される（無制限・手動では非表示）

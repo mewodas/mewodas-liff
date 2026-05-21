@@ -53,6 +53,8 @@ type BillingInfo = {
   hasContract: boolean;
   cancelAtPeriodEnd: boolean;
   cancelAt: string | null;
+  billingMode: '無制限' | '手動' | 'Stripe連動' | null;
+  seatSource: 'unlimited' | 'manual' | 'stripe';
 };
 
 export default function BillingPage() {
@@ -143,12 +145,35 @@ export default function BillingPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : (
           <>
+            {/* 無制限・手動モードは「運営管理プラン」表示 */}
+            {(info?.billingMode === '無制限' || info?.billingMode === '手動') ? (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+                <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                  プラン情報
+                </h2>
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 text-center space-y-2">
+                  <div className="text-sm font-bold text-stone-900">運営管理プラン</div>
+                  <div className="text-[11px] text-stone-600">
+                    {info.billingMode === '無制限'
+                      ? 'アカウント数の上限なしでご利用いただけます。'
+                      : `管理者が設定した利用可能アカウント数（${info.seatLimit !== null ? `${info.seatLimit}名` : '未設定'}）でご利用いただけます。`}
+                  </div>
+                  {info.billingMode === '手動' && info.seatLimit !== null && (
+                    <div className="text-xs text-stone-700 font-bold">
+                      使用 {info.currentSeats}名 / 利用可能 {info.seatLimit}名
+                    </div>
+                  )}
+                </div>
+              </section>
+            ) : (
+            <>
             {/* 上限到達バナー */}
             {info?.isOverLimit && (
               <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 <div>
-                  <div className="font-bold">席数上限に達しています（{info.seatLimit}名満席）</div>
+                  <div className="font-bold">利用可能アカウント数の上限に達しています（{info.seatLimit}名満席）</div>
                   <div>新規招待・顧客追加には増枠が必要です。</div>
                 </div>
               </div>
@@ -158,7 +183,7 @@ export default function BillingPage() {
             {!info?.isOverLimit && info?.isNearLimit && (
               <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
-                <div>あと1名で席数上限です。早めの増枠をご検討ください。</div>
+                <div>あと1名で利用可能アカウント数の上限です。早めの増枠をご検討ください。</div>
               </div>
             )}
 
@@ -200,13 +225,13 @@ export default function BillingPage() {
                   <div className="flex items-center justify-between text-xs font-bold text-stone-700">
                     <span className="inline-flex items-center gap-1">
                       <Users className="w-3 h-3" strokeWidth={2.4} />
-                      契約席数 {info.seatLimit}名
+                      利用可能アカウント数 {info.seatLimit}名
                     </span>
                     <span>使用 {info.currentSeats}名 / 残り {info.remaining !== null ? info.remaining : '—'}名</span>
                   </div>
                   {typeof info.totalCustomers === 'number' && info.totalCustomers !== info.currentSeats && (
                     <div className="text-[10px] text-stone-500">
-                      ※ 「進行中」の顧客のみ席数カウント対象（休止中・卒業は除外。総顧客 {info.totalCustomers}名）
+                      ※ 「進行中」の顧客のみ利用可能アカウント数としてカウント（休止中・卒業は除外。総顧客 {info.totalCustomers}名）
                     </div>
                   )}
                   <div className="w-full bg-stone-200 rounded-full h-2">
@@ -248,7 +273,7 @@ export default function BillingPage() {
                     className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
                   >
                     <TrendingUp className="w-4 h-4" strokeWidth={2.2} />
-                    席数を変更（増減枠）
+                    利用可能アカウント数を変更
                   </button>
                   <button
                     onClick={openPortal}
@@ -268,7 +293,7 @@ export default function BillingPage() {
 
                 {/* プラン比較（席数で自動判定・選択不可） */}
                 <div className="text-[11px] text-stone-600 text-center font-bold">
-                  プラン一覧（席数によって自動で決まります）
+                  プラン一覧（利用可能アカウント数によって自動で決まります）
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {([
@@ -301,7 +326,7 @@ export default function BillingPage() {
                   ))}
                 </div>
                 <div className="text-[10px] text-stone-500 text-center">
-                  サポート費 ¥5,500/月 + per-user × 席数（すべて税込）
+                  サポート費 ¥5,500/月 + per-user × 利用可能アカウント数（すべて税込）
                 </div>
 
                 {/* 新規契約フォーム */}
@@ -314,7 +339,7 @@ export default function BillingPage() {
                   <div>
                     <label className="text-xs font-bold text-stone-700 mb-1 block inline-flex items-center gap-1">
                       <Users className="w-3 h-3" strokeWidth={2.4} />
-                      席数（ミニマム {MIN_SEATS}名）
+                      利用可能アカウント数（ミニマム {MIN_SEATS}名）
                     </label>
                     <div className="flex items-center gap-2">
                       <button
@@ -386,7 +411,7 @@ export default function BillingPage() {
               </>
             )}
 
-            {/* ステータス系バナー */}
+            {/* ステータス系バナー（Stripe連動モードのみ） */}
             {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (
               <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl inline-flex gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
@@ -398,6 +423,8 @@ export default function BillingPage() {
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 お支払いに失敗しました。カード情報を更新してください。
               </div>
+            )}
+            </>
             )}
           </>
         )}

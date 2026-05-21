@@ -1,6 +1,24 @@
 import { getCached, setCached, invalidate } from './cache';
 import { getCurrentTenant } from './tenant';
+import { FITMEAL_PLANS_DB_ID } from './tenant';
 import type { PlanTier } from './stripe';
+
+export type PlanDef = {
+  pageId: string;
+  name: string;
+  planCode: string;
+  kind: '標準' | 'PoC' | 'エンタープライズ';
+  supportFee: number;
+  perUserPrice: number;
+  volumeApplied: boolean;
+  minSeats: number;
+  billingCycle: '月払い' | '年払い';
+  stripeSupportFeePriceId: string | null;
+  stripePerUserPriceId: string | null;
+  published: boolean;
+  active: boolean;
+  note: string | null;
+};
 
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
@@ -468,6 +486,9 @@ export async function createTenantCustomerDb(
       '目標C(g)': { number: {} },
       所属店舗: { rich_text: {} },
       食事記録リンク: { url: {} },
+      ツアーリセット日時: { date: {} },
+      オンボーディング完了日時: { date: {} },
+      登録完了日時: { date: {} },
     },
   });
   return res.id as string;
@@ -616,6 +637,10 @@ export type TenantRow = {
   seatLimit: number | null;
   /** プラン種別（Starter / Growth / Scale） */
   planTier: PlanTier | null;
+  /** 課金モード */
+  billingMode: '無制限' | '手動' | 'Stripe連動' | null;
+  /** fitmeal-plans の planCode */
+  planCode: string | null;
 };
 
 export async function updateTenantRow(
@@ -644,6 +669,8 @@ export async function updateTenantRow(
     pfcOverrideC?: number | null;
     seatLimit?: number | null;
     planTier?: PlanTier | null;
+    billingMode?: '無制限' | '手動' | 'Stripe連動' | null;
+    planCode?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -719,12 +746,23 @@ export async function updateTenantRow(
   if (patch.planTier !== undefined) {
     properties['プラン種別'] = patch.planTier !== null ? { select: { name: patch.planTier } } : { select: null };
   }
+  if (patch.billingMode !== undefined) {
+    properties['課金モード'] = patch.billingMode !== null
+      ? { select: { name: patch.billingMode } }
+      : { select: null };
+  }
+  if (patch.planCode !== undefined) {
+    properties['プランコード'] = patch.planCode
+      ? { rich_text: [{ type: 'text', text: { content: patch.planCode } }] }
+      : { rich_text: [] };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
 
 export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> {
-  const data = await notionRequest('POST', `/databases/${tenantsDbId}/query`, { page_size: 100 });
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const data = await notionFetch('POST', `/databases/${tenantsDbId}/query`, masterApiKey, { page_size: 100 });
   return (data.results || []).map((page: { id: string; properties: Record<string, any> }) => {
     const p = page.properties;
     return {
@@ -759,8 +797,165 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       pfcOverrideC: p['PFC適用_C']?.number ?? null,
       seatLimit: p['契約席数']?.number ?? null,
       planTier: (p['プラン種別']?.select?.name as PlanTier | undefined) ?? null,
+      billingMode: (p['課金モード']?.select?.name as '無制限' | '手動' | 'Stripe連動' | undefined) ?? null,
+      planCode: p['プランコード']?.rich_text?.[0]?.plain_text || null,
     };
   });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parsePlanFromPage(page: { id: string; properties: Record<string, any> }): PlanDef {
+  const p = page.properties;
+  return {
+    pageId: page.id,
+    name: p['プラン名']?.title?.[0]?.plain_text || '',
+    planCode: p['プランコード']?.rich_text?.[0]?.plain_text || '',
+    kind: (p['種別']?.select?.name as '標準' | 'PoC' | 'エンタープライズ') || '標準',
+    supportFee: p['サポート費']?.number ?? 0,
+    perUserPrice: p['per-user単価']?.number ?? 0,
+    volumeApplied: !!p['Volume適用']?.checkbox,
+    minSeats: p['最低席数']?.number ?? 3,
+    billingCycle: (p['請求サイクル']?.select?.name as '月払い' | '年払い') || '月払い',
+    stripeSupportFeePriceId: p['Stripeサポート費PriceID']?.rich_text?.[0]?.plain_text || null,
+    stripePerUserPriceId: p['Stripe per-user PriceID']?.rich_text?.[0]?.plain_text || null,
+    published: !!p['公開']?.checkbox,
+    active: !!p['有効']?.checkbox,
+    note: p['備考']?.rich_text?.[0]?.plain_text || null,
+  };
+}
+
+export async function listPlans(): Promise<PlanDef[]> {
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const data = await notionFetch('POST', `/databases/${FITMEAL_PLANS_DB_ID}/query`, masterApiKey, {
+    page_size: 100,
+  });
+  return (data.results || []).map(parsePlanFromPage);
+}
+
+export async function getPlanByCode(planCode: string): Promise<PlanDef | null> {
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const data = await notionFetch('POST', `/databases/${FITMEAL_PLANS_DB_ID}/query`, masterApiKey, {
+    filter: {
+      property: 'プランコード',
+      rich_text: { equals: planCode },
+    },
+    page_size: 1,
+  });
+  if (!data.results || data.results.length === 0) return null;
+  return parsePlanFromPage(data.results[0]);
+}
+
+export async function createPlan(input: {
+  name: string;
+  planCode: string;
+  kind: '標準' | 'PoC' | 'エンタープライズ';
+  supportFee: number;
+  perUserPrice: number;
+  volumeApplied: boolean;
+  minSeats: number;
+  billingCycle: '月払い' | '年払い';
+  stripeSupportFeePriceId?: string | null;
+  stripePerUserPriceId?: string | null;
+  published: boolean;
+  active: boolean;
+  note?: string | null;
+}): Promise<PlanDef> {
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const properties: Record<string, unknown> = {
+    'プラン名': { title: [{ type: 'text', text: { content: input.name } }] },
+    'プランコード': { rich_text: [{ type: 'text', text: { content: input.planCode } }] },
+    '種別': { select: { name: input.kind } },
+    'サポート費': { number: input.supportFee },
+    'per-user単価': { number: input.perUserPrice },
+    'Volume適用': { checkbox: input.volumeApplied },
+    '最低席数': { number: input.minSeats },
+    '請求サイクル': { select: { name: input.billingCycle } },
+    '公開': { checkbox: input.published },
+    '有効': { checkbox: input.active },
+  };
+  if (input.stripeSupportFeePriceId) {
+    properties['Stripeサポート費PriceID'] = { rich_text: [{ type: 'text', text: { content: input.stripeSupportFeePriceId } }] };
+  }
+  if (input.stripePerUserPriceId) {
+    properties['Stripe per-user PriceID'] = { rich_text: [{ type: 'text', text: { content: input.stripePerUserPriceId } }] };
+  }
+  if (input.note) {
+    properties['備考'] = { rich_text: [{ type: 'text', text: { content: input.note } }] };
+  }
+  const res = await notionFetch('POST', '/pages', masterApiKey, {
+    parent: { database_id: FITMEAL_PLANS_DB_ID },
+    properties,
+  });
+  return parsePlanFromPage(res);
+}
+
+export async function updatePlan(
+  pageId: string,
+  patch: {
+    name?: string;
+    planCode?: string;
+    kind?: '標準' | 'PoC' | 'エンタープライズ';
+    supportFee?: number;
+    perUserPrice?: number;
+    volumeApplied?: boolean;
+    minSeats?: number;
+    billingCycle?: '月払い' | '年払い';
+    stripeSupportFeePriceId?: string | null;
+    stripePerUserPriceId?: string | null;
+    published?: boolean;
+    active?: boolean;
+    note?: string | null;
+  }
+): Promise<void> {
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const properties: Record<string, unknown> = {};
+  if (patch.name !== undefined) {
+    properties['プラン名'] = { title: [{ type: 'text', text: { content: patch.name } }] };
+  }
+  if (patch.planCode !== undefined) {
+    properties['プランコード'] = { rich_text: [{ type: 'text', text: { content: patch.planCode } }] };
+  }
+  if (patch.kind !== undefined) {
+    properties['種別'] = { select: { name: patch.kind } };
+  }
+  if (patch.supportFee !== undefined) {
+    properties['サポート費'] = { number: patch.supportFee };
+  }
+  if (patch.perUserPrice !== undefined) {
+    properties['per-user単価'] = { number: patch.perUserPrice };
+  }
+  if (patch.volumeApplied !== undefined) {
+    properties['Volume適用'] = { checkbox: patch.volumeApplied };
+  }
+  if (patch.minSeats !== undefined) {
+    properties['最低席数'] = { number: patch.minSeats };
+  }
+  if (patch.billingCycle !== undefined) {
+    properties['請求サイクル'] = { select: { name: patch.billingCycle } };
+  }
+  if (patch.stripeSupportFeePriceId !== undefined) {
+    properties['Stripeサポート費PriceID'] = patch.stripeSupportFeePriceId
+      ? { rich_text: [{ type: 'text', text: { content: patch.stripeSupportFeePriceId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.stripePerUserPriceId !== undefined) {
+    properties['Stripe per-user PriceID'] = patch.stripePerUserPriceId
+      ? { rich_text: [{ type: 'text', text: { content: patch.stripePerUserPriceId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.published !== undefined) {
+    properties['公開'] = { checkbox: patch.published };
+  }
+  if (patch.active !== undefined) {
+    properties['有効'] = { checkbox: patch.active };
+  }
+  if (patch.note !== undefined) {
+    properties['備考'] = patch.note
+      ? { rich_text: [{ type: 'text', text: { content: patch.note } }] }
+      : { rich_text: [] };
+  }
+  if (Object.keys(properties).length === 0) return;
+  await notionFetch('PATCH', `/pages/${pageId}`, masterApiKey, { properties });
 }
 
 /** テナント admin のパスワードハッシュを設定（マスタ専用） */

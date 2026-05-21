@@ -1,5 +1,84 @@
 # CHANGELOG
 
+## 2026-05-22 (本番) – release: 課金制御機能（課金モード3種・プラン管理DB・Stripe反映）staging一括反映
+
+- 本番反映: 社長指示により staging → main マージ。課金制御機能および先行 staging 分（席数上限UI改修・Notion再発防止）を一括反映
+- feat: テナント単位の「課金モード」（無制限/手動/Stripe連動）を導入。無制限=社内テスト無制限・手動=PoC等の席数手動管理・Stripe連動=通常有償
+- feat: プラン定義DB fitmeal-plans 連携。/admin/plans でプラン CRUD（PoC・エンタープライズ対応）
+- feat: /admin/tenants/[id] から Stripe へプラン・席数を反映（apply-stripe）
+- fix: Stripe webhook に課金モードガード（Stripe連動以外のテナントは webhook で書き換えない）
+- 詳細は以下の各 (staging) エントリ参照
+
+## 2026-05-22 (staging) – change(admin): 課金ページの「席数」表記を「利用可能アカウント数」に統一
+
+- 用語統一: /admin/billing 全体の「契約席数」「席数」UI 表記を「利用可能アカウント数」に変更（上限/残り1席バナー・プログレスバー注記・プラン一覧・新規契約フォーム・運営管理プラン表示・「使用 / 契約」→「使用 / 利用可能」）
+- 用語統一: SeatChangeModal の見出し「席数変更」→「利用可能アカウント数を変更」
+- 「現在の契約」「新規契約」など契約そのものを指す表記、コード内コメント、Notion DB プロパティ名「契約席数」は変更なし
+- 影響範囲: 管理画面（/admin/billing）
+
+## 2026-05-22 (staging) – qa: 課金制御機能 QA 完了（bcb152f）・回帰チェックリスト更新
+
+- QA 実施: fitmeal-qa によるリリース前 QA 実施。自動検証 14項目通過・条件付き GO
+- 自動検証: 全新規 API エンドポイントの認証ガード（401/403）確認済み
+- 自動検証: Notion fitmeal-plans DB アクセス確認（listPlans/createPlan/updatePlan）
+- 自動検証: billingMode バリデーション・Stripe連動モードでの seatLimit 編集禁止ガードをコード確認
+- 自動検証: webhook 課金モードガード（Stripe連動以外は早期 return）をコード確認
+- 自動検証: 顧客 LIFF ゴールデンパス API（/api/today・/api/notifications 等）が認証ガード維持
+- 手動確認待ち: BL12〜BL18（/admin/plans 画面・課金モード切替・/store/billing 表示分岐・Stripe Checkout 到達）
+- 更新: docs/qa-regression-checklist.md に BL1〜BL19（課金制御チェック項目）追加
+- 影響範囲: docs/ のみ（コード変更なし）
+
+## 2026-05-21 (staging) – fix(billing): 課金モードの API レベルガード追加（コードレビュー Medium/Low 対応）
+
+- fix(app/api/stripe/checkout/route.ts): 課金モードが Stripe連動 以外（無制限・手動）のテナントは課金画面からの自己申込みを 403 で拒否。UI 非表示に加え API レベルの防御を追加
+- fix(app/api/stripe/update-seats/route.ts): 同上、Stripe連動 以外のテナントは席数変更 API を 403 で拒否
+- fix(app/api/admin/tenants/[id]/route.ts): billingMode を許可値（無制限/手動/Stripe連動）でバリデーション。Stripe連動モードでの seatLimit 直接編集を 400 で拒否（席数は Stripe が真実）
+- 影響範囲: API
+- ビルド確認: npm run build 成功
+
+## 2026-05-21 (staging) – fix(billing): コードレビュー指摘修正（webhook monthlyPrice・update-seats dead code）
+
+- fix(app/api/stripe/webhook/route.ts): handleSubscriptionUpdate の monthlyPrice 計算を Stripe 実額ベースに変更。旧実装は getMonthlyTotal(seatLimit) を使っており、非標準プラン（PoC・エンタープライズ）で SUPPORT_FEE=¥5,500 を誤加算していた。実際の supportFeeAmount + perUserUnitAmount * perUserQuantity から算出するよう修正。getMonthlyTotal インポートも削除
+- fix(app/api/stripe/update-seats/route.ts): 全 items 削除→置換方式への移行に伴い不要になった perUserItemId 検索ロジック（旧 item 識別ループ・エラーガード）を削除。inline price_data サブスクリプションで誤って 400 を返すリスクを解消。不要な listPlans インポートも削除
+- 影響範囲: API / Stripe webhook
+- ビルド確認: npm run build 成功
+
+## 2026-05-21 (staging) – feat: 課金制御フル実装（課金モード3種・プラン管理DB・Stripe反映・webhook ガード）
+
+- feat(lib/tenant.ts): `FITMEAL_PLANS_DB_ID` 定数追加（`5962b6528bb04451afdbf54122cffabc`）
+- feat(lib/notion.ts): `PlanDef` 型定義。`TenantRow` に `billingMode`/`planCode` 追加。`listPlans`/`getPlanByCode`/`createPlan`/`updatePlan` を新規追加。`listTenantRows`/`updateTenantRow` を `billingMode`/`planCode` 対応
+- feat(lib/stripe.ts): `STANDARD_VOLUME_TIERS` 定数、`getMonthlyTotalFromPlan(plan, seats)`、`buildSubscriptionLineItems(plan, seats)` を追加。planCode=standard は env フォールバック
+- feat(lib/seats.ts): `getSeatStatus` を課金モード（無制限/手動/Stripe連動）で分岐。戻り値に `seatSource` 追加。無制限→isOverLimit常にfalse
+- feat(app/api/stripe/webhook/route.ts): handleSubscriptionUpdate/Deleted/InvoicePaymentFailed に課金モードガード追加（Stripe連動以外は早期return）。per-user Price ID 識別を全プラン定義 + env ベースに拡張
+- feat(app/api/admin/plans/route.ts): プラン一覧GET/作成POST（withMasterOnly）新規
+- feat(app/api/admin/plans/[code]/route.ts): プラン編集PATCH（withMasterOnly）新規
+- feat(app/api/admin/tenants/[id]/route.ts): PATCH に billingMode/seatLimit/planCode を追加
+- feat(app/api/admin/tenants/[id]/apply-stripe/route.ts): テナントのプラン・席数をStripeに反映（未契約→Checkout URL発行 / 契約済み→subscription.update）
+- feat(app/api/stripe/checkout/route.ts): planCode 受取・getPlanByCode でプラン解決・buildSubscriptionLineItems 使用・metadata に planCode 付与
+- feat(app/api/stripe/update-seats/route.ts): プラン変更（価格入替）対応、全プラン定義から per-user Price ID 集合を構築
+- feat(app/api/admin/billing/info/route.ts): billingMode/seatSource をレスポンスに追加
+- feat(app/admin/plans/page.tsx): プラン管理画面新規（一覧・作成・編集）
+- feat(app/admin/AdminShell.tsx): ナビに「プラン管理」タブ追加（masterOnly）
+- feat(app/admin/tenants/[id]/page.tsx): 課金モード切替・手動席数入力・プランコード選択・Stripe反映ボタンを追加
+- feat(app/admin/billing/page.tsx): 課金モード 無制限/手動 のテナントは「運営管理プラン」表示、自己申込みUI非表示。解約済み/未払いバナーも非表示
+- 影響範囲: 管理画面（master専用）/ API / billing UI（顧客側）
+
+## 2026-05-21 (staging) – feat: 席数上限 UI/UX 改修（用語統一・バナー全幅・招待ボタン無効・登録フォーム上限ガード）
+
+- change(admin/page.tsx): 上限到達バナー・残り1席バナーを `inline-flex` → `flex w-full` で全幅化。上限バナー本文を2行（太字 + リンク inline）構成に変更
+- change(admin/page.tsx): 「契約席数」→「利用可能アカウント数」（UI表示のみ。`lib/notion.ts` の Notion プロパティ名は変更なし）
+- change(admin/page.tsx): `copyApplyLink` を `seatInfo?.isOverLimit` 時に早期 return するよう修正。招待ボタンを `disabled` + グレー配色に
+- change(admin/billing/page.tsx): 席数プログレスバーの「契約席数」ラベルを「利用可能アカウント数」に変更（UI表示のみ）
+- feat(api/liff/register/route.ts): GET ハンドラを追加（`withLiffTenantAccessToken` でラップ）。`{ alreadyRegistered, overLimit }` を返す
+- feat(api/liff/register/route.ts): POST に席数上限チェックを追加（既存顧客 early return の後）。上限時は 403 を返す
+- feat(home/register/page.tsx): Phase 型に `'over-limit'` を追加。LIFF init 後に GET `/api/liff/register` で上限チェックし、`overLimit && !alreadyRegistered` なら上限案内画面を表示
+- 影響範囲: 管理画面（/admin・/admin/billing）、顧客側 LIFF（/home/register）、API（/api/liff/register）
+
+## 2026-05-21 (staging) – fix: Notion API エラー再発防止（createTenantCustomerDb スキーマ補完 + メタDB マスタキー分離）
+
+- fix(A): `createTenantCustomerDb` に `ツアーリセット日時` / `オンボーディング完了日時` / `登録完了日時` (date) を追加。新テナント作成時のスキーマ差分に起因する 400 validation_error を解消
+- fix(B): `listTenantRows`（FitMeal テナント管理メタDB アクセス）を `NOTION_MASTER_API_KEY ?? NOTION_API_KEY` で呼ぶよう変更。`NOTION_MASTER_API_KEY` 未設定時は従来と同一挙動。新テナント追加時の 404 object_not_found 再発防止
+- 影響範囲: API / テナントプロビジョニング（管理画面）。既存テナントの顧客DB・食事DB へのキー解決は変更なし
 ## 2026-05-21 (本番) – release: オンボツアー修正・登録完了日時・設定中整理・招待フォーム改善 staging一括反映
 
 - fix: 自己登録顧客に食事記録オンボーディングツアーが表示されない不具合を修正（登録時 `onboardingCompletedAt` の防御クリア）

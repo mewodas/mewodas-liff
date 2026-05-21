@@ -16,6 +16,7 @@ export type SeatStatus = {
   isNearLimit: boolean;
   planTier: PlanTier | null;
   hasContract: boolean;
+  seatSource: 'unlimited' | 'manual' | 'stripe';
 };
 
 /** 席数カウント対象のステータス（進行中のみ）
@@ -37,7 +38,7 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
   ]);
 
   const tenantRow = rows.find((r) => r.tenantId === tenantId);
-  const seatLimit = tenantRow?.seatLimit ?? null;
+  const billingMode = tenantRow?.billingMode ?? null;
   const planTier = tenantRow?.planTier ?? null;
   const hasContract = !!(
     tenantRow?.stripeSubscriptionId &&
@@ -47,8 +48,27 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
   const activeCustomers = customers.filter((c) => c.foodStatus === ACTIVE_FOOD_STATUS);
   const currentSeats = activeCustomers.length;
   const totalCustomers = customers.length;
+
+  let seatLimit: number | null;
+  let seatSource: SeatStatus['seatSource'];
+  let isOverLimit: boolean;
+
+  if (billingMode === '無制限') {
+    seatLimit = null;
+    seatSource = 'unlimited';
+    isOverLimit = false;
+  } else if (billingMode === '手動') {
+    seatLimit = tenantRow?.seatLimit ?? null;
+    seatSource = 'manual';
+    isOverLimit = seatLimit !== null ? currentSeats >= seatLimit : false;
+  } else {
+    // 'Stripe連動' または billingMode 未設定（後方互換）
+    seatLimit = tenantRow?.seatLimit ?? null;
+    seatSource = 'stripe';
+    isOverLimit = seatLimit !== null ? currentSeats >= seatLimit : false;
+  }
+
   const remaining = seatLimit !== null ? seatLimit - currentSeats : null;
-  const isOverLimit = seatLimit !== null ? currentSeats >= seatLimit : false;
   const isNearLimit = remaining !== null ? remaining <= 1 && !isOverLimit : false;
 
   const status: SeatStatus = {
@@ -60,6 +80,7 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
     isNearLimit,
     planTier,
     hasContract,
+    seatSource,
   };
 
   setCached(key, status, 60_000);
