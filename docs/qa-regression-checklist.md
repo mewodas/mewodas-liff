@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-21（lib/notion.ts スキーマ補完・マスタキー分離 acabbaa 追加）
+最終更新: 2026-05-22（課金制御機能 bcb152f 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -149,6 +149,30 @@
 | S1 | /store → 店舗ダッシュボード表示 | [M] | CORE |
 | S2 | /admin/tenants → マルチテナント一覧（master のみ） | [M] | CORE |
 
+### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| BL1 | GET /api/admin/plans: 認証なし → 401 | [A] | CORE |
+| BL2 | POST /api/admin/plans: 認証なし → 401 | [A] | CORE |
+| BL3 | PATCH /api/admin/plans/[code]: 認証なし → 401 | [A] | CORE |
+| BL4 | POST /api/admin/tenants/[id]/apply-stripe: 認証なし → 401 | [A] | CORE |
+| BL5 | PATCH /api/admin/tenants/[id]: billingMode='手動' → Stripe連動モードで seatLimit 送信 → 400 | [A] | CORE |
+| BL6 | PATCH /api/admin/tenants/[id]: 不正な billingMode 値 → 400 | [A] | CORE |
+| BL7 | POST /api/stripe/checkout: 無制限テナントで呼ぶ → 403 | [A] | CORE |
+| BL8 | POST /api/stripe/update-seats: 手動テナントで呼ぶ → 403 | [A] | CORE |
+| BL9 | GET /api/admin/plans: master Cookie で呼ぶ → 標準プラン1件含むリスト返却 | [A] | CORE |
+| BL10 | POST /api/admin/plans: PoC プラン新規作成 → 201 + plan 返却 | [A] | CORE |
+| BL11 | PATCH /api/admin/plans/[code]: 作成済みプラン編集 → 200 | [A] | CORE |
+| BL12 | /admin/plans: 標準プランが一覧に表示される（Notion Integration アクセス確認） | [M] | CORE |
+| BL13 | /admin/tenants/[id]: 課金モードドロップダウンが表示される | [M] | CORE |
+| BL14 | /admin/tenants/[id]: 課金モードを「無制限」に変更・保存 → 保存成功メッセージ | [M] | CORE |
+| BL15 | /store/billing（テナント staging）: billingMode=無制限 → 「運営管理プラン」表示・申込みフォームなし | [M] | CORE |
+| BL16 | /store/billing（テナント staging）: billingMode=手動・席数設定済み → 「運営管理プラン」+席数表示 | [M] | SCOPE |
+| BL17 | /store/billing（テナント staging）: billingMode=Stripe連動 → 従来の自己申込みフォームが表示される | [M] | CORE |
+| BL18 | /store/billing（Stripe連動）: 席数選択・月額計算・申込みボタン → Stripe Checkout 画面に到達 | [M] | CORE（回帰） |
+| BL19 | webhook: Stripe連動 以外のテナントへのサブスク更新イベント → seatLimit 書き換えなし（コードガード確認） | [A] コード確認で代替可 | SCOPE |
+
 ---
 
 ## バックエンド・非同期処理
@@ -165,6 +189,7 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-22 | 課金制御フル実装（billingMode 3種・fitmeal-plans DB・webhook ガード・API ガード） | bcb152f | 条件付き GO（社長手動確認 BL12〜BL18 待ち） |
 | 2026-05-21 | lib/notion.ts: createTenantCustomerDb スキーマ補完 + listTenantRows マスタキー分離 | acabbaa | GO（自動検証完全通過・社長手動確認不要） |
 | 2026-05-21 | 席数上限 UI/UX 改修（用語統一・バナー全幅・招待無効・登録フォームガード） | 7d8990a | 条件付き GO（社長手動確認待ち） |
 | 2026-05-21 | オンボツアー吹き出し化・自己登録フォーム・設定中廃止・招待ボタン・登録完了日時 | 3fa0cf4（merge） | 条件付き GO（社長手動確認待ち） |
@@ -191,3 +216,9 @@
 - POST `/api/liff/register` で 403（席数上限）が来た場合、over-limit フェーズにはならずフォームに「定員に達しているため…」のエラーメッセージが submitError として表示される（GET チェックをすり抜けた場合の最終防波堤として機能）
 - 招待ボタンの disabled 状態は `seatInfo` が null（billing/info API 失敗）の場合は enabled になる（失敗時はボタンが使えることが優先）
 - 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
+- **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる
+- **billingMode バリデーション**: 許可値は「無制限」「手動」「Stripe連動」の3種のみ。その他の値は Notion の select に新規オプションが作られるのを防ぐため API が 400 を返す
+- **手動モードで seatLimit 未設定（null）**: Admin UI で手動モードを選択すると席数入力フィールドが表示される。未入力で保存した場合、seatLimit=null → getSeatStatus では `seatLimit !== null ? ... : false` なので isOverLimit=false（上限なし扱い）になる。設計書のエッジケースに記載あり
+- **Stripe連動モードでの seatLimit 直接編集禁止**: PATCH /api/admin/tenants/[id] で Stripe連動のまま seatLimit を送信すると 400 になる。UI 側も手動モード以外では seatLimit 入力フィールドを表示しない（save() 関数で明示的に除外）
+- **fitmeal-plans DB の標準プラン**: Stripe PriceID が空の場合は env の STRIPE_PRICE_PER_USER / STRIPE_PRICE_SUPPORT_FEE にフォールバック（planCode=standard のみ）。PoC/エンタープライズで PriceID 未設定の場合は inline price_data が生成される
+- **apply-stripe の Stripe反映セクション**: UI 上は billingMode=Stripe連動 または 未設定（空文字）の場合のみ表示される（無制限・手動では非表示）

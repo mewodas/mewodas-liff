@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-22 (staging) – qa: 課金制御機能 QA 完了（bcb152f）・回帰チェックリスト更新
+
+- QA 実施: fitmeal-qa によるリリース前 QA 実施。自動検証 14項目通過・条件付き GO
+- 自動検証: 全新規 API エンドポイントの認証ガード（401/403）確認済み
+- 自動検証: Notion fitmeal-plans DB アクセス確認（listPlans/createPlan/updatePlan）
+- 自動検証: billingMode バリデーション・Stripe連動モードでの seatLimit 編集禁止ガードをコード確認
+- 自動検証: webhook 課金モードガード（Stripe連動以外は早期 return）をコード確認
+- 自動検証: 顧客 LIFF ゴールデンパス API（/api/today・/api/notifications 等）が認証ガード維持
+- 手動確認待ち: BL12〜BL18（/admin/plans 画面・課金モード切替・/store/billing 表示分岐・Stripe Checkout 到達）
+- 更新: docs/qa-regression-checklist.md に BL1〜BL19（課金制御チェック項目）追加
+- 影響範囲: docs/ のみ（コード変更なし）
+
 ## 2026-05-21 (staging) – fix(billing): 課金モードの API レベルガード追加（コードレビュー Medium/Low 対応）
 
 - fix(app/api/stripe/checkout/route.ts): 課金モードが Stripe連動 以外（無制限・手動）のテナントは課金画面からの自己申込みを 403 で拒否。UI 非表示に加え API レベルの防御を追加
