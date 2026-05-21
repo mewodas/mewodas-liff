@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – refactor: 「設定中」ステータス整理・dead code 削除
+
+- change(app/admin/page.tsx): `STATUSES` 配列から「設定中」削除。`StatusBadge` の「設定中」色分け分岐削除
+- change(app/admin/customers/[id]/page.tsx): `STATUS_OPTIONS`・`STATUS_BADGE_CLASSES`・`STATUS_DESCRIPTIONS` から「設定中」削除
+- change(app/api/admin/customers/route.ts): POST の `foodStatus` デフォルトを「設定中」→「進行中」に変更（呼び出し元UIは存在しないが整合のため）
+- change(app/api/public/apply/route.ts): `createCustomer` の `foodStatus: '設定中'` を「進行中」に変更。`/apply` ページは `app/apply/page.tsx` が存在するが管理画面・LIFF 双方からリンクなし（招待フローは `/home/register` に移行済み）。API 本体は CORS 公開 API のため即削除せず書き込みのみ是正
+- delete(app/api/cron/customers-cleanup/route.ts): 「設定中」顧客の自動 cron 削除 route を廃止。新フローでは「設定中」が生まれないため恒久 no-op だった
+- delete(app/api/admin/customers/bulk-cleanup/route.ts): 「設定中」顧客の一括削除 API を廃止。呼び出し元 UI（14日バナー）は既に撤去済み
+- change(vercel.json): `customers-cleanup` cron エントリを削除
+- change(lib/notion.ts): 新テナント顧客 DB プロビジョニングテンプレートの `食事管理ステータス` select から「設定中」オプション削除
+- change(lib/seats.ts, app/admin/billing/page.tsx): コメント・説明文の「設定中」文言を整合（実害なし）
+- 影響範囲: 管理画面（/admin、/admin/customers/[id]、/admin/billing）、API（/api/admin/customers、/api/public/apply）、cron削除、lib/notion.ts
+
 ## 2026-05-21 (staging) – feat: ユーザー招待フォーム文言統一・定型文コピー・登録完了日時保存と表示
 
 - change(app/admin/page.tsx): 「申し込みフォームのリンクをコピー」ボタン文言を「ユーザー招待フォーム」に変更（T1）

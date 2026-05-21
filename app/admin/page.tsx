@@ -29,7 +29,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
 function SavedSnackbar() {
   const router = useRouter();
@@ -320,8 +320,6 @@ function StatusBadge({ status }: { status: string | null }) {
   const cls =
     status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
-      : status === '設定中'
-      ? 'bg-violet-100 text-violet-700 border-violet-300'
       : status === '休止中'
       ? 'bg-amber-100 text-amber-800 border-amber-300'
       : status === '卒業'

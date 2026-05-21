@@ -64,18 +64,16 @@ type Notification = {
   createdAt: string;
 };
 
-const STATUS_OPTIONS = ['設定中', '進行中', '休止中', '卒業'];
+const STATUS_OPTIONS = ['進行中', '休止中', '卒業'];
 
 // バッジ色は app/admin/page.tsx の StatusBadge と同期させること
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   進行中: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  設定中: 'bg-violet-100 text-violet-700 border-violet-300',
   休止中: 'bg-amber-100 text-amber-800 border-amber-300',
   卒業: 'bg-sky-100 text-sky-700 border-sky-300',
 };
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
-  設定中: '作成中・LINE未連携',
   進行中: '通常運用中。記録・レポート対象',
   休止中: '一時停止中',
   卒業: 'サービス終了',
