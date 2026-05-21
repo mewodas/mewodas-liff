@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, AlertTriangle, Trash2 } from 'lucide-react';
+import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -29,14 +29,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STALE_DAYS = 14;
 const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
-
-function isStale(c: Customer): boolean {
-  if (c.foodStatus !== '設定中' || c.lineUserId) return false;
-  if (!c.createdTime) return false;
-  return Date.now() - new Date(c.createdTime).getTime() > STALE_DAYS * 24 * 60 * 60 * 1000;
-}
 
 function SavedSnackbar() {
   const router = useRouter();
@@ -83,9 +76,7 @@ export default function AdminCustomersPage() {
   const [storeFilter, setStoreFilter] = useState<string>('');
   const [stores, setStores] = useState<Store[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [copyingId, setCopyingId] = useState<string | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
-  const [cleaning, setCleaning] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -124,8 +115,6 @@ export default function AdminCustomersPage() {
     loadCustomers();
   }, [loadCustomers]);
 
-  const staleCount = useMemo(() => customers.filter(isStale).length, [customers]);
-
   const filtered = useMemo(() => {
     const qn = q.trim();
     return customers.filter((c) => {
@@ -142,43 +131,19 @@ export default function AdminCustomersPage() {
     return m;
   }, [stores]);
 
-  async function copyInviteLink(e: React.MouseEvent, customerId: string) {
+  async function copyApplyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    setCopyingId(customerId);
     try {
-      const res = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
-      if (!res.ok) throw new Error('リンク生成失敗');
-      const j = await res.json();
-      await navigator.clipboard.writeText(j.shareText || j.url);
-      showToast('招待リンク（案内文付き）をコピーしました');
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
+      const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
+      const meJ = meRes.ok ? await meRes.json() : null;
+      const tenantId: string = meJ?.currentTenantId || '';
+      const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
+      await navigator.clipboard.writeText(url);
+      showToast('申し込みフォームのリンクをコピーしました');
     } catch {
       showToast('コピーに失敗しました');
-    } finally {
-      setCopyingId(null);
-    }
-  }
-
-  async function bulkCleanup() {
-    if (staleCount === 0) return;
-    const ok = window.confirm(
-      `${staleCount}名の「設定中」顧客（14日以上未起動）を削除します。よろしいですか？\n\n対象: ${customers
-        .filter(isStale)
-        .map((c) => c.name)
-        .join('、')}`
-    );
-    if (!ok) return;
-    setCleaning(true);
-    try {
-      const res = await fetch('/api/admin/customers/bulk-cleanup', { method: 'POST' });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || '削除失敗');
-      showToast(`${j.deleted}名削除しました`);
-      await loadCustomers();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : '削除に失敗しました');
-    } finally {
-      setCleaning(false);
     }
   }
 
@@ -225,37 +190,14 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        {/* 14日経過バナー */}
-        {staleCount > 0 && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex gap-2 items-start">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" strokeWidth={2.2} />
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">
-                14日以上未起動の顧客が {staleCount} 名います。
-              </div>
-              <div className="mt-0.5 text-[11px]">
-                毎日 03:00 (JST) に自動削除されます。今すぐ手動でクリーンアップする場合は下のボタンから。
-              </div>
-              <button
-                type="button"
-                onClick={bulkCleanup}
-                disabled={cleaning}
-                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold bg-rose-600 text-white px-2.5 py-1 rounded-lg disabled:opacity-50"
-              >
-                <Trash2 className="w-3 h-3" strokeWidth={2.4} />
-                {cleaning ? '削除中…' : `今すぐ一括削除（${staleCount}名）`}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <Link
-          href={`${base}/customers/new`}
-          className="block w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
+        <button
+          type="button"
+          onClick={copyApplyLink}
+          className="block w-full bg-sky-100 text-sky-700 border border-sky-300 font-bold py-3 rounded-xl active:bg-sky-200 inline-flex items-center justify-center gap-2 text-sm"
         >
-          <UserPlus className="w-4 h-4" strokeWidth={2.4} />
-          新規顧客追加
-        </Link>
+          <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+          申し込みフォームのリンクをコピー
+        </button>
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
@@ -340,11 +282,6 @@ export default function AdminCustomersPage() {
                           {storeNameById.get(c.storeId)}
                         </span>
                       )}
-                      {isStale(c) && (
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded-full">
-                          14日超
-                        </span>
-                      )}
                     </div>
                     <div className="text-[11px] text-stone-600 mt-0.5 truncate">
                       {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
@@ -352,30 +289,12 @@ export default function AdminCustomersPage() {
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
                     <div className="mt-1.5 flex gap-2 flex-wrap">
-                      {!c.lineUserId ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => copyInviteLink(e, c.pageId)}
-                            disabled={copyingId === c.pageId || !!seatInfo?.isOverLimit}
-                            className="text-[11px] font-bold bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg active:bg-sky-200 disabled:opacity-50 inline-flex items-center gap-1"
-                          >
-                            <ClipboardCopy className="w-3 h-3" strokeWidth={2.4} />
-                            {copyingId === c.pageId ? 'コピー中…' : '招待リンクをコピー'}
-                          </button>
-                          {seatInfo?.isOverLimit && (
-                            <span className="text-[10px] text-rose-600 font-bold inline-flex items-center gap-0.5">
-                              <AlertTriangle className="w-3 h-3" strokeWidth={2.2} />
-                              席数上限のため招待停止中
-                            </span>
-                          )}
-                        </>
-                      ) : (
+                      {c.lineUserId ? (
                         <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                           <Check className="w-3 h-3" strokeWidth={2.4} />
                           LINE 連携済み
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />

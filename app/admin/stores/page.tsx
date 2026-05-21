@@ -113,7 +113,7 @@ export default function AdminStoresPage() {
         )}
 
         <div className="text-[10px] text-stone-500 text-center py-2">
-          店舗を追加後、顧客詳細または新規顧客追加時に「所属店舗」を選択して紐付けてください
+          店舗を追加後、顧客詳細の「所属店舗」から紐付けてください
         </div>
       </div>
     </AdminShell>

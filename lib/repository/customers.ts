@@ -63,6 +63,7 @@ export type CustomerCreateInput = {
   gender?: string;
   heightCm?: number;
   age?: number;
+  birthdate?: string;
   activityLevel?: string;
   plan?: string;
   currentWeight?: number;

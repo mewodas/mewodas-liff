@@ -1,5 +1,111 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: 申し込みフォーム401を認証方式変更で根本解決（IDトークン→アクセストークン）
+
+- fix(lib/withTenant.ts): `verifyLineAccessToken` 関数と `withLiffTenantAccessToken` ラッパーを追加。LINE `/v2/profile` API でアクセストークンを検証し userId を取得。IDトークン（`/oauth2/v2.1/verify`）と完全に独立したコードパス。アクセストークンキャッシュ（TTL 1分・最大100件）でレートリミット対応
+- fix(app/api/liff/register/route.ts): `withLiffTenant`（IDトークン検証）→ `withLiffTenantAccessToken`（アクセストークン検証）に切り替え。テナント解決ロジックは同一
+- fix(app/home/register/page.tsx): `liff.getIDToken()` → `liff.getAccessToken()` に変更。アクセストークンは LINE アプリが数時間管理するためフォーム入力中に期限切れにならない。401時は `liff.init()` 再実行でトークン更新を試み1回リトライ（無限ループ防止）。それでも401なら `liff.login()` でセッション一新
+- fix(lib/withTenant.ts): `verifyLineIdToken` の診断用 `console.error` 詳細ログを削除（原因確定済み）
+- 影響範囲: 顧客側（/home/register）・API（/api/liff/register）・lib/withTenant
+- 背景: IDトークンは有効期限10分。フォーム入力時間が超えると `{"error":"invalid_request","error_description":"IdToken expired."}` で必ず401。`liff.login()` 再認証後も LIFF SDK が期限切れトークンをキャッシュし続けるため旧方式では解決不可
+
+## 2026-05-21 (staging) – fix: 申し込み401ブロッカー根本修正 + 管理画面「新規顧客追加」削除
+
+- fix(app/home/register/page.tsx): IDトークン期限切れ時の401を `liff.login()` による本物の再認証で解消。`refreshLiff()` / `liff.init()` 再呼び出しは新しいトークンを発行しないため廃止。フォーム入力値を sessionStorage に退避（`register_form_draft`）→ `liff.login({ redirectUri: 現URL })` → OAuth戻り後に自動復元。再認証ループはトークン取得できた場合のみリクエストを送る構造で防止
+- fix(lib/withTenant.ts): `verifyLineIdToken` に一時診断ログ追加。LINE /oauth2/v2.1/verify が失敗した場合のステータスとレスポンスボディをサーバーログに出力（失敗原因の確定用）
+- remove(app/admin/customers/new/): 管理画面「新規顧客追加」ページを削除。自己登録フロー一本化のため。手動作成レコードは LINE ID 紐付け不可で孤立・重複の原因になるため不要と判断
+- remove(app/admin/page.tsx): 「新規顧客追加」ボタン・リンクと `UserPlus` import を削除
+- fix(app/admin/stores/page.tsx): 削除した「新規顧客追加」への案内テキストを修正
+- 影響範囲: 顧客側（/home/register）・管理画面（/admin、/admin/customers/new 削除）・lib/withTenant
+
+## 2026-05-21 (staging) – change: 申し込みフォームの活動レベル「中程度」に説明を追加
+
+- change(home/register): 活動レベルの選択肢「中程度」を「中程度（週2〜3回運動）」に変更（「低い（ほぼ運動なし）」「高い（毎日運動）」と表記を統一）。API 側の活動レベル正規化は `中` を含むかで判定しているため挙動に影響なし
+- 影響範囲: 顧客側（`/home/register` 自己登録フォーム）
+
+## 2026-05-21 (staging) – fix: 申し込みフォームQA3点（401リトライ・目標体重任意化・目標達成日追加）
+
+- fix(app/home/register/page.tsx): ID トークン期限切れ時に `refreshLiff()` で再取得して1回リトライする実装を追加。raw fetch + getIdToken() のみだったため 401 が返ったまま登録失敗していた根本原因を解消
+- fix(app/home/register/page.tsx, app/api/liff/register/route.ts): 「目標体重」を任意項目に変更。フロント側 required 属性・バリデーション撤去、API 側必須チェックから targetWeight を除外。未指定時は currentWeight をフォールバックとして calcGoals に渡す（現状維持として計算）
+- feat(app/home/register/page.tsx, app/api/liff/register/route.ts): 「目標達成日」を任意項目として追加。生年月日と同様の 年/月/日 プルダウン方式（当年〜+3年）。YYYY-MM-DD 形式で API に送り Notion「目標達成日」date プロパティに保存（lib/notion.ts createCustomer・CustomerCreateInput はいずれも対応済みにつき変更なし）
+- 影響範囲: 顧客側（/home/register）・API（/api/liff/register）
+
+## 2026-05-21 (staging) – fix: オンボーディングQA指摘3点（tenantId引き継ぎ・InvitePanel廃止API撤去・生年月日Notion保存）
+
+- fix(app/home/register/page.tsx): liff.login() の redirectUri に tenantId クエリを引き継ぐ。LINE未ログイン時に /home/register?tenantId=X を開くとログイン往復後 tenantId が失われ x-tenant-id ヘッダーが空になる不具合を解消
+- fix(app/admin/customers/new/page.tsx): InvitePanel が廃止済みエンドポイント /api/admin/customers/[id]/invite-link を呼び続けていた問題を修正。廃止APIの呼び出しを削除し「申し込みフォームURLをLINEで送ってください」案内（/home/register?tenantId=…のコピーボタン付き）に置き換え。14日ルール文言も削除
+- fix(lib/notion.ts, lib/repository/customers.ts, app/api/liff/register/route.ts): 自己登録時に生年月日が Notion に保存されない不具合を修正。CustomerCreateInput と createCustomer に birthdate フィールドを追加し、Notion「生年月日」date プロパティへ書き込むよう対応。/api/liff/register も birthdate を createCustomer に渡すよう変更
+- 影響範囲: 顧客側（/home/register）・管理画面（/admin/customers/new）・lib/notion・lib/repository/customers・API（/api/liff/register）
+
+## 2026-05-21 (staging) – fix: 登録フォームの不具合2点（フッター誤タップ・生年月日入力）
+
+- fix(FooterNav): `/home/register`（自己登録フォーム）でフッターナビを非表示に。送信ボタンとフッターが重なり「申し込む」を押したつもりがフッターの「AI相談」を踏んで `/chat` に飛ぶ（＝登録未完了・完了画面が出ない）不具合を解消。オンボーディング画面はフッター非表示が正
+- change(home/register): 生年月日入力をネイティブ日付ピッカー（`<input type="date">`）から 年／月／日 のプルダウン3つに変更。年を直接選べる・「設定/キャンセル/削除」の混乱を解消。日数は選択中の年月に応じて算出（うるう年・月末考慮）
+- 影響範囲: 顧客側（`/home/register` 自己登録フロー）
+
+## 2026-05-21 (staging) – fix: 自己登録フロー残課題4点（アレルギー削除・inviteToken削除・14日バナー削除・tenantId対応）
+
+- fix(app/home/register/page.tsx): 「食事制限・アレルギー」セクション・state・送信ボディを完全削除
+- fix(app/api/liff/register/route.ts): allergies 受け取り・ログ処理を削除
+- fix(lib/withTenant.ts): `withLiffTenant` のテナント解決に `x-tenant-id` ヘッダーを追加。優先順位: 非本番=FITMEAL_TENANT_ID_OVERRIDE最優先（staging隔離維持）、本番=x-tenant-id→x-liff-id→デフォルト
+- fix(app/admin/page.tsx): 14日未起動バナー・staleCount・isStale・bulkCleanup・cleaning state・Trash2 import を削除。リストカードの「14日超」バッジも削除
+- fix(app/admin/page.tsx): 「申し込みフォームのリンクをコピー」が /api/admin/auth/me から currentTenantId を取得し、`?tenantId=<id>` 付きURLを生成するよう変更
+- fix(lib/inviteToken.ts): 未使用ファイルを削除（全コードベースで参照なし確認済み）
+- 影響範囲: 顧客側（/home/register）・管理画面（顧客一覧）・API（/api/liff/register）・lib/withTenant
+
+## 2026-05-21 (staging) – feat: 招待トークン方式を廃止し LINE 内自己登録フォームに移行
+
+- feat(app/home/register/page.tsx): 新規 LIFF 対応登録フォーム。LINE内（LIFF文脈）で開くと liff.login() 往復なしで LINE ID を取得しフォームを表示。外部ブラウザはエラー案内
+- feat(app/api/liff/register/route.ts): 新規登録 API。withLiffTenant でラップ（LINE IDトークン検証+テナント解決）。LINE ID 重複チェック→createCustomer（lineUserId付き、foodStatus=進行中）→officialLineUrl 返却
+- feat(app/home/_components/LiffGate.tsx): /api/customer/me が 404 を返した場合（顧客レコードなし）に /home/register へリダイレクト
+- change(app/admin/page.tsx): 顧客ごとの「招待リンクをコピー」ボタン廃止。代わりにテナント共通「申し込みフォームのリンクをコピー」ボタンを追加（/home/register）
+- deprecated(app/api/onboard/redeem/route.ts): 410 Gone スタブに差し替え
+- deprecated(app/api/admin/customers/[id]/invite-link/route.ts): 410 Gone スタブに差し替え
+- deprecated(app/home/onboard/page.tsx): /home/register へリダイレクト
+- deprecated(app/onboard/page.tsx): /home/register へリダイレクト（後方互換）
+- 影響範囲: 顧客側（/home, /home/register 新規）・管理画面（顧客一覧ボタン変更）・API
+
+## 2026-05-21 (staging) – fix(home/onboard): LIFF 認証ループを sessionStorage token 保持で解消
+
+- fix(app/home/onboard/page.tsx): `liff.login()` の `redirectUri` から `?token=...` クエリを排除。token を `sessionStorage` に保持し、LINE OAuth コールバック後（URL に token がない状態）でも復元できるようにした
+- 修正前: `liff.login({ redirectUri: window.location.href })` → `redirectUri` に `?token=TOKEN` が含まれ、LINE が Endpoint URL `/home` にコールバックして `liff.state` で `/home/onboard` へリダイレクトした際に token が失われる可能性があった
+- 修正後: `liff.login({ redirectUri: origin + '/home/onboard' })` + `sessionStorage.setItem('fitmeal_invite_token', token)` の組み合わせで、コールバック後の URL に関わらず token を復元できる
+- ログイン成功後の `resolvedToken = sessionStorage.getItem(SESSION_KEY) || effectiveToken` で確実に token を取得してから redeem へ
+- 影響範囲: 顧客側（`/home/onboard` 招待トークン引き換え画面のみ）
+- 関連: staging 固有の未発見バグ（本番 /home/onboard も同じコードなので本番でも効果あり）
+
+## 2026-05-21 (staging) – fix: 食事記録オンボーディングの説明カード位置を上に修正
+
+- fix(app/record/page.tsx): オンボーディングツアーの下段ボタン3ステップ（食品DB／マイメニュー／テキストで記録）の説明カードを `placement: 'bottom'` → `'top'` に変更。ボタンの下に表示すると画面最下部（ナビバー際）に押し込まれて見づらかったため、ボタンの上に表示するよう修正
+- 影響範囲: 顧客側（`/record` オンボーディングツアーのみ）
+
+## 2026-05-21 (staging) – change: 認証完了画面の文言調整
+
+- change(app/home/onboard): 認証成功画面から「最後にあと1ステップだけお願いします」の一文を削除
+- change(app/home/onboard): 友だち追加案内文を「…友だち追加していただくと、」の後で改行（「リッチメニューから…」を次行へ）
+- 影響範囲: 顧客側（`/home/onboard` 認証完了画面のみ）
+
+## 2026-05-21 (staging 待ち) – fix: AI献立フォローアップ修正（遷移先・ヘッダー被り・生成中表示）
+
+- change(app/meal-plan/page.tsx): 記録後の遷移先を `/menu` → `/home`（ホーム）に変更（前回修正3のフィードバック反映）
+- fix(app/meal-plan/page.tsx): 結果へのスクロール時に案1カード上端が sticky な PageHeader に潜り込む問題を `scroll-mt-24` で解消
+- change(app/meal-plan/page.tsx): 献立生成中は「作り方を見る」と同じく画面下からのボトムシートでローディング（「AI が献立を考えています…」）を表示。結果がいきなり差し替わる違和感を解消。結果表示時のスクロールも `instant` → `smooth` に変更
+- 影響範囲: 顧客側（`/meal-plan`）
+
+## 2026-05-21 (staging 待ち) – fix(security): レシピ生成 API を認証必須化
+
+- fix(app/api/meal-plan/recipe/route.ts): `withLiffTenant` でラップし、検証済み LINE ID トークンが無いリクエストを 401 で拒否。従来は認証なしで誰でも叩け、Gemini API コストを外部から無制限に消費可能だった
+- 呼び出し元（`app/meal-plan/page.tsx` の `apiFetch`）は既に Bearer トークンを送信済みのためクライアント側変更なし
+- 影響範囲: API（`/api/meal-plan/recipe`。顧客の正常利用には影響なし）
+- 補足: ログイン済み顧客による連打への rate limit は別タスク（2026-05-19 セキュリティ残タスク）で対応
+
+## 2026-05-21 (staging 待ち) – fix: AI献立3メニュー一覧の初期スクロール位置・レシピモーダルの記録ボタン位置・記録後の遷移先
+
+- fix(app/meal-plan/page.tsx): 結果表示時に `resultTopRef.scrollIntoView` で案1先頭へスクロール（不具合1）
+- fix(app/meal-plan/page.tsx): RecipeSheet の記録ボタンを `fixed bottom-0`（viewport 基準で手順に重なる）から `sticky bottom-0`（シート内スクロールコンテナ基準）に変更し手順と重なるレイアウト崩れを解消（不具合2）
+- fix(app/meal-plan/page.tsx): 記録完了後に `router.push('/menu')` でメニューページへ遷移（従来は AI献立画面のまま）（不具合3）
+- 影響範囲: 顧客側（`/meal-plan`）
+
 ## 2026-05-21 (本番) – change: 認証オンボーディング画面でフッターナビ非表示（staging→main 反映）
 
 - change(components/FooterNav): `/onboard`・`/home/onboard` でフッターナビ（ホーム/食事記録/AI相談/メニュー）を非表示に。staging で QA（GO 判定）・オーナー手動確認を経て本番反映

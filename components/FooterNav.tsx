@@ -50,10 +50,16 @@ export default function FooterNav() {
   // 管理者画面・店舗側画面ではフッターナビを非表示
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/store')) return null;
-  // 招待トークン引き換え（LINE認証オンボーディング）画面ではフッターナビを非表示。
-  // 認証完了後は「公式LINE 友だち追加」だけを次のアクションにし、
-  // フッターからプロダクトへ直行できる導線を塞ぐ。
-  if (pathname === '/onboard' || pathname.startsWith('/home/onboard')) return null;
+  // オンボーディング（自己登録フォーム・旧招待トークン引き換え）画面ではフッターナビを非表示。
+  // 登録完了までフッターからプロダクトへ抜ける導線を塞ぎ、送信ボタンとの重なりによる
+  // 誤タップ（「申し込む」を押したつもりがフッターの「AI相談」等を踏む）も防ぐ。
+  if (
+    pathname === '/onboard' ||
+    pathname.startsWith('/home/onboard') ||
+    pathname.startsWith('/home/register')
+  ) {
+    return null;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-50">

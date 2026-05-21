@@ -1,11 +1,11 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { ChefHat, Calendar as CalendarIcon, CheckCircle2, Search, Bot, Sparkles, BarChart3, Utensils, Lightbulb, CookingPot, Target, Home, ClipboardList } from 'lucide-react';
+import { ChefHat, Calendar as CalendarIcon, CheckCircle2, Search, Bot, Sparkles, BarChart3, Lightbulb, CookingPot, Target, Home } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { loadMyMenu, type MyMenuItem } from '@/lib/myMenu';
@@ -97,6 +97,7 @@ export default function MealPlanPage() {
 }
 
 function MealPlanInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');
   const todayStr = jstTodayString();
@@ -104,6 +105,7 @@ function MealPlanInner() {
     dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
 
   const [targetDate, setTargetDate] = useState(initialDate);
+  const resultTopRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [dietType, setDietType] = useState('通常');
@@ -216,6 +218,13 @@ function MealPlanInner() {
       setLoading(false);
     }
   }
+
+  // 結果表示時：案1の先頭へ滑らかにスクロール（生成シートからの自然な切り替え）
+  useEffect(() => {
+    if (result) {
+      resultTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [result]);
 
   if (!ready) {
     return (
@@ -570,22 +579,33 @@ function MealPlanInner() {
               disabled={loading}
               className="w-full bg-emerald-500 text-white text-lg font-bold py-4 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500"
             >
-              {loading ? (
-                <span className="inline-flex items-center justify-center gap-1.5"><Bot className="w-4 h-4" strokeWidth={2.2}/>献立作成中…</span>
-              ) : (
-                <span className="inline-flex items-center justify-center gap-1.5"><Sparkles className="w-5 h-5" strokeWidth={2}/>献立を作る</span>
-              )}
+              <span className="inline-flex items-center justify-center gap-1.5"><Sparkles className="w-5 h-5" strokeWidth={2}/>献立を作る</span>
             </button>
-            {loading && (
-              <p className="text-xs text-stone-700 text-center mt-2">
-                約10〜20秒かかります。
-              </p>
-            )}
           </>
+        )}
+
+        {/* 生成中：「作り方を見る」と同じく、画面下からせり上がるボトムシートで
+            ローディングを表示する。生成完了でシートは閉じ、結果が表示される */}
+        {loading && (
+          <div className="fixed inset-0 bg-black/40 z-[70] flex items-end">
+            <div className="bg-stone-50 shadow-2xl w-full rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1" />
+              <div className="p-4">
+                <div className="bg-white rounded-2xl p-8 text-center">
+                  <Bot className="w-12 h-12 text-emerald-500 mx-auto mb-3 animate-pulse" strokeWidth={2} />
+                  <div className="text-base font-bold text-stone-800 mb-1">AI が献立を考えています…</div>
+                  <div className="text-xs text-stone-500">3つの献立案を作成中 ・ 約10〜20秒</div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {result && (
           <>
+            {/* scroll-mt は sticky な PageHeader（緑ヘッダー ~80px）の高さ分。
+                これが無いと scrollIntoView 後に結果カード上端がヘッダーに潜り込む */}
+            <div ref={resultTopRef} className="scroll-mt-24" />
             {/* 今日の摂取・運動・残りサマリー */}
             <div className="bg-white border border-stone-200 rounded-2xl p-4">
               <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2}/>今日の状況</div>
@@ -714,6 +734,7 @@ function MealPlanInner() {
             invalidate('weekly_');
             invalidate('history_');
             setRecipeMeal(null);
+            router.push('/home');
           }}
         />
       )}
@@ -819,7 +840,7 @@ function RecipeSheet({
           </div>
         </div>
 
-        <div className="p-4 space-y-4 pb-32">
+        <div className="p-4 space-y-4">
           {loading && (
             <div className="bg-white rounded-2xl p-6 text-center">
               <Bot className="w-10 h-10 text-purple-500 mx-auto mb-2" strokeWidth={2}/>
@@ -868,29 +889,20 @@ function RecipeSheet({
                   <p className="text-xs text-stone-800 leading-relaxed">{recipe.tips}</p>
                 </div>
               )}
-
-              <div className="bg-white rounded-2xl p-4 border border-stone-200">
-                <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5 text-stone-700" strokeWidth={2.2}/>完了したら記録します</div>
-                <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2 text-sm font-bold text-emerald-800 text-center">
-                  {formatJpDateShort(targetDate)} の {meal.type}
-                </div>
-              </div>
             </>
           )}
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-50 shadow-lg pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="max-w-md mx-auto">
-            <button
-              onClick={handleComplete}
-              disabled={loading || recording}
-              className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
-            >
-              {recording ? '記録中…' : (
-                <span className="inline-flex items-center justify-center gap-1.5"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{formatJpDateShort(targetDate)} の {meal.type} に記録</span>
-              )}
-            </button>
-          </div>
+        <div className="sticky bottom-0 bg-white border-t border-stone-200 px-4 py-3 shadow-lg pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button
+            onClick={handleComplete}
+            disabled={loading || recording}
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-md active:bg-emerald-700 disabled:bg-stone-300"
+          >
+            {recording ? '記録中…' : (
+              <span className="inline-flex items-center justify-center gap-1.5"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2}/>{formatJpDateShort(targetDate)} の {meal.type} に記録</span>
+            )}
+          </button>
         </div>
       </div>
     </div>

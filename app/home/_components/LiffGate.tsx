@@ -84,6 +84,11 @@ function LiffGateInner() {
     (async () => {
       try {
         const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
+        if (res.status === 404) {
+          // 顧客レコードなし → 申し込みフォームへ誘導
+          router.replace('/home/register');
+          return;
+        }
         if (!res.ok) {
           setOnboardingDone(true);
           return;
