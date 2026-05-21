@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-21 (本番) – release: オンボツアー修正・登録完了日時・設定中整理・招待フォーム改善 staging一括反映
+
+- fix: 自己登録顧客に食事記録オンボーディングツアーが表示されない不具合を修正（登録時 `onboardingCompletedAt` の防御クリア）
+- feat: 顧客の「登録完了日時」を Notion 顧客DBに保存し、管理画面の顧客詳細に表示
+- change: 管理画面の招待ボタンを「ユーザー招待フォームをコピー」に文言変更、コピー時に案内定型文を付与
+- refactor: 新フローで未使用の「設定中」ステータスをコード・Notion顧客DBから整理。設定中前提の dead code（customers-cleanup cron・bulk-cleanup）を削除
+- change: /record・/exercise・/weight のオンボーディングツアーをホームと同じ吹き出し型に統一（黄色い矢印を廃止）
+- 本番反映: QA 条件付きGO ＋ 社長確認を経て、社長指示によりマージ。詳細は以下の各 (staging) エントリ参照
+
 ## 2026-05-21 (staging) – change: オンボーディングツアーを吹き出し型に統一（黄色い矢印を廃止）
 
 - change(OnboardingTour): /record・/exercise・/weight のツアーを、ホームのツアー（OnboardingFlow）と同じ**吹き出し型**に変更。黄色いアニメーション矢印を廃止し、ツールチップに白い三角の尾を付けて target を指す形に。尾の水平位置は target 中心を指すよう算出（角に被らないようクランプ）
