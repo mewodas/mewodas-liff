@@ -149,6 +149,11 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
     }
 
     // --- テナント解決 ---
+    // 優先順位:
+    //   1. 非本番: FITMEAL_TENANT_ID_OVERRIDE (staging 隔離・最優先)
+    //   2. 本番: x-tenant-id ヘッダー（公開フォームから tenantId 付き URL 経由）
+    //   3. 本番: x-liff-id ヘッダー（既存 LIFF ID 解決フロー）
+    //   4. フォールバック: defaultTenant
     const overrideId =
       process.env.VERCEL_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
     if (overrideId) {
@@ -159,13 +164,23 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
         // override 解決失敗時は通常フローへフォールバック
       }
     }
-    const liffId = req.headers.get('x-liff-id') || '';
+    const tenantIdHeader = req.headers.get('x-tenant-id') || '';
     let tenant = null;
-    if (liffId) {
+    if (tenantIdHeader) {
       try {
-        tenant = await resolveTenantByLiffId(liffId);
+        tenant = await getTenantByIdAsync(tenantIdHeader);
       } catch {
         tenant = null;
+      }
+    }
+    if (!tenant) {
+      const liffId = req.headers.get('x-liff-id') || '';
+      if (liffId) {
+        try {
+          tenant = await resolveTenantByLiffId(liffId);
+        } catch {
+          tenant = null;
+        }
       }
     }
     if (!tenant) tenant = getDefaultTenant();

@@ -68,7 +68,6 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
   const birthdate = String(body.birthdate || '').trim() || undefined;
   const age = birthdate ? ageFromBirthdate(birthdate) : undefined;
   const activityLevel = String(body.activityLevel || '').trim() || undefined;
-  const allergies = String(body.allergies || '').trim() || undefined;
   const today = jstToday();
 
   let activityLevelNormalized: string | undefined;
@@ -105,13 +104,6 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       ? { kcal: calc.goalKcal, P: calc.goalP, F: calc.goalF, C: calc.goalC }
       : undefined,
   });
-
-  // アレルギー情報は現状 Notion DB に専用フィールドがないため、
-  // メモとして保存するカラムが追加されるまでロギングのみ
-  if (allergies) {
-    // eslint-disable-next-line no-console
-    console.log(`[liff/register] allergies for ${customer.pageId}: ${allergies}`);
-  }
 
   const tenant = getCurrentTenant();
   let officialLineUrl = tenant.officialLineUrl || '';

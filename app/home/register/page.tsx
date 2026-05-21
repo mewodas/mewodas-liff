@@ -39,7 +39,6 @@ function RegisterInner() {
   const [currentWeight, setCurrentWeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
-  const [allergies, setAllergies] = useState('');
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
@@ -104,7 +103,6 @@ function RegisterInner() {
           currentWeight: parseFloat(currentWeight),
           targetWeight: parseFloat(targetWeight),
           activityLevel: activityLevel || undefined,
-          allergies: allergies.trim() || undefined,
         }),
       });
 
@@ -312,18 +310,6 @@ function RegisterInner() {
               <option value="">—</option>
               {ACTIVITY_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-          </Field>
-        </Section>
-
-        <Section title="食事・アレルギー（任意）">
-          <Field label="食事制限・アレルギー">
-            <textarea
-              value={allergies}
-              onChange={(e) => setAllergies(e.target.value)}
-              rows={3}
-              placeholder="例：卵アレルギー、乳製品不可など"
-              className={`${inputCls} resize-none`}
-            />
           </Field>
         </Section>
 

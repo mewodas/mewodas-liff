@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: 自己登録フロー残課題4点（アレルギー削除・inviteToken削除・14日バナー削除・tenantId対応）
+
+- fix(app/home/register/page.tsx): 「食事制限・アレルギー」セクション・state・送信ボディを完全削除
+- fix(app/api/liff/register/route.ts): allergies 受け取り・ログ処理を削除
+- fix(lib/withTenant.ts): `withLiffTenant` のテナント解決に `x-tenant-id` ヘッダーを追加。優先順位: 非本番=FITMEAL_TENANT_ID_OVERRIDE最優先（staging隔離維持）、本番=x-tenant-id→x-liff-id→デフォルト
+- fix(app/admin/page.tsx): 14日未起動バナー・staleCount・isStale・bulkCleanup・cleaning state・Trash2 import を削除。リストカードの「14日超」バッジも削除
+- fix(app/admin/page.tsx): 「申し込みフォームのリンクをコピー」が /api/admin/auth/me から currentTenantId を取得し、`?tenantId=<id>` 付きURLを生成するよう変更
+- fix(lib/inviteToken.ts): 未使用ファイルを削除（全コードベースで参照なし確認済み）
+- 影響範囲: 顧客側（/home/register）・管理画面（顧客一覧）・API（/api/liff/register）・lib/withTenant
+
 ## 2026-05-21 (staging) – feat: 招待トークン方式を廃止し LINE 内自己登録フォームに移行
 
 - feat(app/home/register/page.tsx): 新規 LIFF 対応登録フォーム。LINE内（LIFF文脈）で開くと liff.login() 往復なしで LINE ID を取得しフォームを表示。外部ブラウザはエラー案内

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, AlertTriangle, Trash2 } from 'lucide-react';
+import { Search, Circle, ChevronRight, UserPlus, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -29,14 +29,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STALE_DAYS = 14;
 const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
-
-function isStale(c: Customer): boolean {
-  if (c.foodStatus !== '設定中' || c.lineUserId) return false;
-  if (!c.createdTime) return false;
-  return Date.now() - new Date(c.createdTime).getTime() > STALE_DAYS * 24 * 60 * 60 * 1000;
-}
 
 function SavedSnackbar() {
   const router = useRouter();
@@ -84,7 +77,6 @@ export default function AdminCustomersPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
-  const [cleaning, setCleaning] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -123,8 +115,6 @@ export default function AdminCustomersPage() {
     loadCustomers();
   }, [loadCustomers]);
 
-  const staleCount = useMemo(() => customers.filter(isStale).length, [customers]);
-
   const filtered = useMemo(() => {
     const qn = q.trim();
     return customers.filter((c) => {
@@ -145,39 +135,15 @@ export default function AdminCustomersPage() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const base = process.env.NEXT_PUBLIC_APP_URL
-        ? `https://${process.env.NEXT_PUBLIC_APP_URL}`
-        : typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://app.fitmeal.jp';
-      const url = `${base}/home/register`;
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
+      const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
+      const meJ = meRes.ok ? await meRes.json() : null;
+      const tenantId: string = meJ?.currentTenantId || '';
+      const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
       await navigator.clipboard.writeText(url);
       showToast('申し込みフォームのリンクをコピーしました');
     } catch {
       showToast('コピーに失敗しました');
-    }
-  }
-
-  async function bulkCleanup() {
-    if (staleCount === 0) return;
-    const ok = window.confirm(
-      `${staleCount}名の「設定中」顧客（14日以上未起動）を削除します。よろしいですか？\n\n対象: ${customers
-        .filter(isStale)
-        .map((c) => c.name)
-        .join('、')}`
-    );
-    if (!ok) return;
-    setCleaning(true);
-    try {
-      const res = await fetch('/api/admin/customers/bulk-cleanup', { method: 'POST' });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || '削除失敗');
-      showToast(`${j.deleted}名削除しました`);
-      await loadCustomers();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : '削除に失敗しました');
-    } finally {
-      setCleaning(false);
     }
   }
 
@@ -220,30 +186,6 @@ export default function AdminCustomersPage() {
               <Link href={`${base}/billing`} className="text-amber-800 font-bold underline ml-1">
                 プランを確認する →
               </Link>
-            </div>
-          </div>
-        )}
-
-        {/* 14日経過バナー */}
-        {staleCount > 0 && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex gap-2 items-start">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" strokeWidth={2.2} />
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">
-                14日以上未起動の顧客が {staleCount} 名います。
-              </div>
-              <div className="mt-0.5 text-[11px]">
-                毎日 03:00 (JST) に自動削除されます。今すぐ手動でクリーンアップする場合は下のボタンから。
-              </div>
-              <button
-                type="button"
-                onClick={bulkCleanup}
-                disabled={cleaning}
-                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold bg-rose-600 text-white px-2.5 py-1 rounded-lg disabled:opacity-50"
-              >
-                <Trash2 className="w-3 h-3" strokeWidth={2.4} />
-                {cleaning ? '削除中…' : `今すぐ一括削除（${staleCount}名）`}
-              </button>
             </div>
           </div>
         )}
@@ -346,11 +288,6 @@ export default function AdminCustomersPage() {
                       {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
                         <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
                           {storeNameById.get(c.storeId)}
-                        </span>
-                      )}
-                      {isStale(c) && (
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded-full">
-                          14日超
                         </span>
                       )}
                     </div>
