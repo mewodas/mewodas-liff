@@ -32,30 +32,27 @@ function jstToday(): string {
 function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustomer; base: string; seatBlocked: boolean }) {
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [shareText, setShareText] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [registerUrl, setRegisterUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (seatBlocked) return;
     (async () => {
       try {
-        const res = await fetch(`/api/admin/customers/${customer.pageId}/invite-link`, { method: 'POST' });
-        if (!res.ok) throw new Error('リンク生成失敗');
-        const j = await res.json();
-        setInviteUrl(j.url);
-        setShareText(j.shareText || j.url);
-      } catch (e) {
-        setLoadError(e instanceof Error ? e.message : 'エラー');
+        const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
+        const meJ = meRes.ok ? await meRes.json() : null;
+        const tenantId: string = meJ?.currentTenantId || '';
+        const origin = window.location.origin;
+        setRegisterUrl(tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`);
+      } catch {
+        setRegisterUrl(`${window.location.origin}/home/register`);
       }
     })();
-  }, [customer.pageId, seatBlocked]);
+  }, []);
 
   async function copyLink() {
-    if (!shareText) return;
+    if (!registerUrl) return;
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(shareText);
+      await navigator.clipboard.writeText(registerUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     } catch {
@@ -65,8 +62,6 @@ function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustome
     }
   }
 
-  const lineUrl = inviteUrl ? `https://line.me/R/msg/text/?${encodeURIComponent(shareText || inviteUrl)}` : null;
-
   return (
     <div className="space-y-3">
       <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-2">
@@ -74,7 +69,7 @@ function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustome
           {customer.name} 様の登録が完了しました
         </div>
         <p className="text-xs text-emerald-800 leading-relaxed">
-          次のステップ: 招待リンクを LINE で送信してください。顧客が初回アクセスすると LINE アカウントが自動で紐付けられます。
+          次のステップ: 申し込みフォームのURLをLINEで送ってください。顧客がフォームに入力すると LINE アカウントが自動で紐付けられます。
         </p>
       </div>
 
@@ -82,7 +77,7 @@ function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustome
         <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
           <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
           <div>
-            <div className="font-bold">席数上限のため招待リンクを発行できません</div>
+            <div className="font-bold">席数上限のため追加できません</div>
             <Link href={`${base}/billing`} className="text-rose-700 font-bold underline mt-1 inline-block">
               増枠する →
             </Link>
@@ -90,71 +85,44 @@ function InvitePanel({ customer, base, seatBlocked }: { customer: CreatedCustome
         </div>
       )}
 
-      {loadError && (
-        <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{loadError}</div>
-      )}
+      <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3">
+        <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+          <ClipboardCopy className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
+          申し込みフォームURLを送る
+        </h3>
 
-      {!seatBlocked && (
-        <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3">
-          <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-            <ClipboardCopy className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
-            招待リンクを送る
-          </h3>
+        {!registerUrl && (
+          <div className="text-xs text-stone-500">URL生成中…</div>
+        )}
 
-          {!inviteUrl && !loadError && (
-            <div className="text-xs text-stone-500">リンク生成中…</div>
-          )}
+        {registerUrl && (
+          <>
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+              <p className="text-[11px] text-stone-500 mb-1">申し込みフォームURL</p>
+              <p className="text-xs text-stone-700 break-all leading-relaxed">{registerUrl}</p>
+            </div>
 
-          {inviteUrl && (
-            <>
-              <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-                <p className="text-[11px] text-stone-500 mb-1">送信テキスト（案内文込み）</p>
-                <pre className="text-xs text-stone-700 whitespace-pre-wrap font-sans leading-relaxed">{shareText}</pre>
-              </div>
-
-              <button
-                type="button"
-                onClick={copyLink}
-                disabled={copying}
-                className="w-full bg-sky-500 text-white font-bold py-3 rounded-xl active:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4" strokeWidth={2.4} />
-                    コピーしました
-                  </>
-                ) : (
-                  <>
-                    <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-                    {copying ? 'コピー中…' : '招待リンクをコピー（案内文付き）'}
-                  </>
-                )}
-              </button>
-
-              {lineUrl && (
-                <a
-                  href={lineUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#06C755] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm"
-                >
-                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.477 2 2 6.033 2 11c0 3.491 2.115 6.532 5.29 8.255-.073.694-.278 2.202-.319 2.542-.05.408.15.405.316.295.13-.088 1.7-1.137 2.393-1.6.753.103 1.525.158 2.32.158 5.523 0 10-4.033 10-9 0-4.967-4.477-9-10-9z" />
-                  </svg>
-                  LINE で送る
-                </a>
+            <button
+              type="button"
+              onClick={copyLink}
+              disabled={copying}
+              className="w-full bg-sky-500 text-white font-bold py-3 rounded-xl active:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" strokeWidth={2.4} />
+                  コピーしました
+                </>
+              ) : (
+                <>
+                  <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+                  {copying ? 'コピー中…' : 'URLをコピー'}
+                </>
               )}
-
-              <p className="text-[11px] text-stone-500 leading-relaxed">
-                ※ 招待リンクの有効期限は30日間です。期限切れの場合は顧客詳細画面から再発行できます。
-              </p>
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-[11px] p-2.5 rounded-lg leading-relaxed">
-                <span className="font-bold">⚠ 14日ルール:</span> 招待リンクが利用されないまま「設定中」が <strong>14日経過</strong>すると、毎日 03:00 (JST) の自動クリーンアップで <strong>削除</strong>されます。早めに送付してください。
-              </div>
-            </>
-          )}
-        </div>
-      )}
+            </button>
+          </>
+        )}
+      </div>
 
       <Link
         href={`${base}/customers/${customer.pageId}`}

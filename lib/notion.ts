@@ -219,6 +219,7 @@ export async function createCustomer(input: {
   gender?: string;
   heightCm?: number;
   age?: number;
+  birthdate?: string;
   activityLevel?: string;
   plan?: string;
   currentWeight?: number;
@@ -245,6 +246,9 @@ export async function createCustomer(input: {
   }
   if (typeof input.age === 'number') {
     properties['年齢'] = { number: input.age };
+  }
+  if (input.birthdate) {
+    properties['生年月日'] = { date: { start: input.birthdate } };
   }
   if (input.activityLevel) {
     properties['活動レベル'] = { select: { name: input.activityLevel } };

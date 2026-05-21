@@ -97,6 +97,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     gender,
     heightCm,
     age,
+    birthdate,
     activityLevel: activityLevelNormalized,
     currentWeight,
     targetWeight,

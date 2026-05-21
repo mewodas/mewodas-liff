@@ -73,7 +73,9 @@ function RegisterInner() {
         setIsInClient(liff.isInClient());
 
         if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: `${window.location.origin}/home/register` });
+          liff.login({
+            redirectUri: `${window.location.origin}/home/register${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ''}`,
+          });
           return;
         }
         setPhase('form');

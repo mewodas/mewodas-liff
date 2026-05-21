@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: オンボーディングQA指摘3点（tenantId引き継ぎ・InvitePanel廃止API撤去・生年月日Notion保存）
+
+- fix(app/home/register/page.tsx): liff.login() の redirectUri に tenantId クエリを引き継ぐ。LINE未ログイン時に /home/register?tenantId=X を開くとログイン往復後 tenantId が失われ x-tenant-id ヘッダーが空になる不具合を解消
+- fix(app/admin/customers/new/page.tsx): InvitePanel が廃止済みエンドポイント /api/admin/customers/[id]/invite-link を呼び続けていた問題を修正。廃止APIの呼び出しを削除し「申し込みフォームURLをLINEで送ってください」案内（/home/register?tenantId=…のコピーボタン付き）に置き換え。14日ルール文言も削除
+- fix(lib/notion.ts, lib/repository/customers.ts, app/api/liff/register/route.ts): 自己登録時に生年月日が Notion に保存されない不具合を修正。CustomerCreateInput と createCustomer に birthdate フィールドを追加し、Notion「生年月日」date プロパティへ書き込むよう対応。/api/liff/register も birthdate を createCustomer に渡すよう変更
+- 影響範囲: 顧客側（/home/register）・管理画面（/admin/customers/new）・lib/notion・lib/repository/customers・API（/api/liff/register）
+
 ## 2026-05-21 (staging) – fix: 登録フォームの不具合2点（フッター誤タップ・生年月日入力）
 
 - fix(FooterNav): `/home/register`（自己登録フォーム）でフッターナビを非表示に。送信ボタンとフッターが重なり「申し込む」を押したつもりがフッターの「AI相談」を踏んで `/chat` に飛ぶ（＝登録未完了・完了画面が出ない）不具合を解消。オンボーディング画面はフッター非表示が正
