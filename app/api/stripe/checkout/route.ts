@@ -40,6 +40,15 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     return NextResponse.json({ error: 'テナント未登録' }, { status: 404 });
   }
 
+  // 課金モードガード: Stripe連動 以外（無制限・手動）は運営管理プランのため自己申込み不可。
+  // billingMode 未設定（null）は後方互換で Stripe連動 扱い。
+  if (tenantRow.billingMode && tenantRow.billingMode !== 'Stripe連動') {
+    return NextResponse.json(
+      { error: 'このテナントは運営管理プランのため、課金画面からの申込みはできません' },
+      { status: 403 }
+    );
+  }
+
   let stripeCustomerId = tenantRow.stripeCustomerId;
   if (!stripeCustomerId) {
     const customer = await stripe.customers.create({

@@ -32,6 +32,15 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     return NextResponse.json({ error: '契約なし' }, { status: 400 });
   }
 
+  // 課金モードガード: Stripe連動 以外（無制限・手動）は席数を Stripe 経由で変更できない。
+  // billingMode 未設定（null）は後方互換で Stripe連動 扱い。
+  if (tenantRow.billingMode && tenantRow.billingMode !== 'Stripe連動') {
+    return NextResponse.json(
+      { error: 'このテナントは運営管理プランのため、課金画面からの席数変更はできません' },
+      { status: 403 }
+    );
+  }
+
   // プラン解決: 指定 planCode → テナントの planCode → 'standard'
   const effectivePlanCode = planCodeInput || tenantRow.planCode || 'standard';
   const plan = await getPlanByCode(effectivePlanCode);

@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix(billing): 課金モードの API レベルガード追加（コードレビュー Medium/Low 対応）
+
+- fix(app/api/stripe/checkout/route.ts): 課金モードが Stripe連動 以外（無制限・手動）のテナントは課金画面からの自己申込みを 403 で拒否。UI 非表示に加え API レベルの防御を追加
+- fix(app/api/stripe/update-seats/route.ts): 同上、Stripe連動 以外のテナントは席数変更 API を 403 で拒否
+- fix(app/api/admin/tenants/[id]/route.ts): billingMode を許可値（無制限/手動/Stripe連動）でバリデーション。Stripe連動モードでの seatLimit 直接編集を 400 で拒否（席数は Stripe が真実）
+- 影響範囲: API
+- ビルド確認: npm run build 成功
+
 ## 2026-05-21 (staging) – fix(billing): コードレビュー指摘修正（webhook monthlyPrice・update-seats dead code）
 
 - fix(app/api/stripe/webhook/route.ts): handleSubscriptionUpdate の monthlyPrice 計算を Stripe 実額ベースに変更。旧実装は getMonthlyTotal(seatLimit) を使っており、非標準プラン（PoC・エンタープライズ）で SUPPORT_FEE=¥5,500 を誤加算していた。実際の supportFeeAmount + perUserUnitAmount * perUserQuantity から算出するよう修正。getMonthlyTotal インポートも削除
