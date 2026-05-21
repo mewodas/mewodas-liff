@@ -55,11 +55,12 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
   const name = String(body.name || '').trim();
   const heightCm = body.heightCm ? parseFloat(String(body.heightCm)) : NaN;
   const currentWeight = body.currentWeight ? parseFloat(String(body.currentWeight)) : NaN;
-  const targetWeight = body.targetWeight ? parseFloat(String(body.targetWeight)) : NaN;
+  const targetWeightRaw = body.targetWeight != null ? parseFloat(String(body.targetWeight)) : NaN;
+  const targetWeight = isNaN(targetWeightRaw) ? undefined : targetWeightRaw;
 
-  if (!name || isNaN(heightCm) || isNaN(currentWeight) || isNaN(targetWeight)) {
+  if (!name || isNaN(heightCm) || isNaN(currentWeight)) {
     return NextResponse.json(
-      { error: '名前・身長・現在体重・目標体重は必須です' },
+      { error: '名前・身長・現在体重は必須です' },
       { status: 400 }
     );
   }
@@ -68,6 +69,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
   const birthdate = String(body.birthdate || '').trim() || undefined;
   const age = birthdate ? ageFromBirthdate(birthdate) : undefined;
   const activityLevel = String(body.activityLevel || '').trim() || undefined;
+  const targetDate = String(body.targetDate || '').trim() || undefined;
   const today = jstToday();
 
   let activityLevelNormalized: string | undefined;
@@ -78,15 +80,17 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     else activityLevelNormalized = activityLevel;
   }
 
+  // targetWeight 未指定時は currentWeight を目標として計算（現状維持）
+  const effectiveTargetWeight = targetWeight ?? currentWeight;
   const calc = calcGoals({
     gender: gender || null,
     heightCm,
     age: age ?? null,
     activityLevel: activityLevelNormalized || null,
-    plan: targetWeight < currentWeight ? '減量' : targetWeight > currentWeight ? '増量' : '現状維持',
+    plan: effectiveTargetWeight < currentWeight ? '減量' : effectiveTargetWeight > currentWeight ? '増量' : '現状維持',
     currentWeight,
-    targetWeight,
-    targetDate: null,
+    targetWeight: effectiveTargetWeight,
+    targetDate: targetDate || null,
     today,
   });
 
@@ -101,6 +105,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     activityLevel: activityLevelNormalized,
     currentWeight,
     targetWeight,
+    targetDate,
     goals: calc
       ? { kcal: calc.goalKcal, P: calc.goalP, F: calc.goalF, C: calc.goalC }
       : undefined,

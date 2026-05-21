@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { initLiff, getIdToken } from '@/lib/liff';
+import { getIdToken, refreshLiff } from '@/lib/liff';
 
 export default function RegisterPage() {
   return (
@@ -22,6 +22,7 @@ const ACTIVITY_OPTIONS = ['低い（ほぼ運動なし）', '中程度', '高い
 const GENDER_OPTIONS = ['男性', '女性', 'その他'];
 const CURRENT_YEAR = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
+const TARGET_YEARS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR + i);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 type Phase = 'liff-init' | 'form' | 'submitting' | 'done' | 'already-registered' | 'error';
@@ -43,6 +44,9 @@ function RegisterInner() {
   const [heightCm, setHeightCm] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
+  const [targetDateYear, setTargetDateYear] = useState('');
+  const [targetDateMonth, setTargetDateMonth] = useState('');
+  const [targetDateDay, setTargetDateDay] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -55,6 +59,12 @@ function RegisterInner() {
       ? new Date(Number(birthYear), Number(birthMonth), 0).getDate()
       : 31;
   const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1);
+
+  const daysInTargetMonth =
+    targetDateYear && targetDateMonth
+      ? new Date(Number(targetDateYear), Number(targetDateMonth), 0).getDate()
+      : 31;
+  const targetDayOptions = Array.from({ length: daysInTargetMonth }, (_, i) => i + 1);
 
   const ran = useRef(false);
 
@@ -88,7 +98,7 @@ function RegisterInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !heightCm || !currentWeight || !targetWeight) {
+    if (!name.trim() || !heightCm || !currentWeight) {
       setSubmitError('必須項目を入力してください');
       return;
     }
@@ -96,34 +106,50 @@ function RegisterInner() {
     setSubmitError(null);
 
     try {
-      const idToken = await getIdToken();
-      if (!idToken) throw new Error('LINE IDトークンの取得に失敗しました');
-
       const birthdate =
         birthYear && birthMonth && birthDay
           ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
           : undefined;
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${idToken}`,
-      };
-      if (liffId) headers['x-liff-id'] = liffId;
-      if (tenantId) headers['x-tenant-id'] = tenantId;
+      const targetDate =
+        targetDateYear && targetDateMonth && targetDateDay
+          ? `${targetDateYear}-${String(targetDateMonth).padStart(2, '0')}-${String(targetDateDay).padStart(2, '0')}`
+          : undefined;
 
-      const res = await fetch('/api/liff/register', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: name.trim(),
-          gender: gender || undefined,
-          birthdate,
-          heightCm: parseFloat(heightCm),
-          currentWeight: parseFloat(currentWeight),
-          targetWeight: parseFloat(targetWeight),
-          activityLevel: activityLevel || undefined,
-        }),
+      const bodyPayload = JSON.stringify({
+        name: name.trim(),
+        gender: gender || undefined,
+        birthdate,
+        heightCm: parseFloat(heightCm),
+        currentWeight: parseFloat(currentWeight),
+        targetWeight: targetWeight ? parseFloat(targetWeight) : undefined,
+        targetDate,
+        activityLevel: activityLevel || undefined,
       });
+
+      const doRequest = async (token: string): Promise<Response> => {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        };
+        if (liffId) headers['x-liff-id'] = liffId;
+        if (tenantId) headers['x-tenant-id'] = tenantId;
+        return fetch('/api/liff/register', { method: 'POST', headers, body: bodyPayload });
+      };
+
+      let idToken = await getIdToken();
+      if (!idToken) throw new Error('LINE IDトークンの取得に失敗しました');
+
+      let res = await doRequest(idToken);
+
+      // IDトークン期限切れの場合: refreshLiff で再取得して1回リトライ
+      if (res.status === 401) {
+        await refreshLiff();
+        const refreshed = await getIdToken();
+        if (refreshed && refreshed !== idToken) {
+          res = await doRequest(refreshed);
+        }
+      }
 
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '登録に失敗しました');
@@ -339,7 +365,7 @@ function RegisterInner() {
               className={inputCls}
             />
           </Field>
-          <Field label="目標体重 (kg)" required>
+          <Field label="目標体重 (kg)">
             <input
               type="number"
               inputMode="decimal"
@@ -349,9 +375,45 @@ function RegisterInner() {
               value={targetWeight}
               onChange={(e) => setTargetWeight(e.target.value)}
               placeholder="65.0"
-              required
               className={inputCls}
             />
+          </Field>
+          <Field label="目標達成日">
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={targetDateYear}
+                onChange={(e) => setTargetDateYear(e.target.value)}
+                className={inputCls}
+                aria-label="目標達成年"
+              >
+                <option value="">年</option>
+                {TARGET_YEARS.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <select
+                value={targetDateMonth}
+                onChange={(e) => setTargetDateMonth(e.target.value)}
+                className={inputCls}
+                aria-label="目標達成月"
+              >
+                <option value="">月</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={targetDateDay}
+                onChange={(e) => setTargetDateDay(e.target.value)}
+                className={inputCls}
+                aria-label="目標達成日"
+              >
+                <option value="">日</option>
+                {targetDayOptions.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
           </Field>
           <Field label="活動レベル">
             <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)} className={inputCls}>

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: 申し込みフォームQA3点（401リトライ・目標体重任意化・目標達成日追加）
+
+- fix(app/home/register/page.tsx): ID トークン期限切れ時に `refreshLiff()` で再取得して1回リトライする実装を追加。raw fetch + getIdToken() のみだったため 401 が返ったまま登録失敗していた根本原因を解消
+- fix(app/home/register/page.tsx, app/api/liff/register/route.ts): 「目標体重」を任意項目に変更。フロント側 required 属性・バリデーション撤去、API 側必須チェックから targetWeight を除外。未指定時は currentWeight をフォールバックとして calcGoals に渡す（現状維持として計算）
+- feat(app/home/register/page.tsx, app/api/liff/register/route.ts): 「目標達成日」を任意項目として追加。生年月日と同様の 年/月/日 プルダウン方式（当年〜+3年）。YYYY-MM-DD 形式で API に送り Notion「目標達成日」date プロパティに保存（lib/notion.ts createCustomer・CustomerCreateInput はいずれも対応済みにつき変更なし）
+- 影響範囲: 顧客側（/home/register）・API（/api/liff/register）
+
 ## 2026-05-21 (staging) – fix: オンボーディングQA指摘3点（tenantId引き継ぎ・InvitePanel廃止API撤去・生年月日Notion保存）
 
 - fix(app/home/register/page.tsx): liff.login() の redirectUri に tenantId クエリを引き継ぐ。LINE未ログイン時に /home/register?tenantId=X を開くとログイン往復後 tenantId が失われ x-tenant-id ヘッダーが空になる不具合を解消
