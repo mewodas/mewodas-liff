@@ -20,6 +20,9 @@ export default function RegisterPage() {
 
 const ACTIVITY_OPTIONS = ['低い（ほぼ運動なし）', '中程度', '高い（毎日運動）'];
 const GENDER_OPTIONS = ['男性', '女性', 'その他'];
+const CURRENT_YEAR = new Date().getFullYear();
+const BIRTH_YEARS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 type Phase = 'liff-init' | 'form' | 'submitting' | 'done' | 'already-registered' | 'error';
 
@@ -34,7 +37,9 @@ function RegisterInner() {
 
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
-  const [birthdate, setBirthdate] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthDay, setBirthDay] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
@@ -43,6 +48,13 @@ function RegisterInner() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [officialLineUrl, setOfficialLineUrl] = useState('');
+
+  // 選択中の年月に応じた日数（うるう年・月末を考慮）
+  const daysInSelectedMonth =
+    birthYear && birthMonth
+      ? new Date(Number(birthYear), Number(birthMonth), 0).getDate()
+      : 31;
+  const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1);
 
   const ran = useRef(false);
 
@@ -85,6 +97,11 @@ function RegisterInner() {
       const idToken = await getIdToken();
       if (!idToken) throw new Error('LINE IDトークンの取得に失敗しました');
 
+      const birthdate =
+        birthYear && birthMonth && birthDay
+          ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
+          : undefined;
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${idToken}`,
@@ -98,7 +115,7 @@ function RegisterInner() {
         body: JSON.stringify({
           name: name.trim(),
           gender: gender || undefined,
-          birthdate: birthdate || undefined,
+          birthdate,
           heightCm: parseFloat(heightCm),
           currentWeight: parseFloat(currentWeight),
           targetWeight: parseFloat(targetWeight),
@@ -253,12 +270,41 @@ function RegisterInner() {
             </select>
           </Field>
           <Field label="生年月日">
-            <input
-              type="date"
-              value={birthdate}
-              onChange={(e) => setBirthdate(e.target.value)}
-              className={inputCls}
-            />
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className={inputCls}
+                aria-label="生まれ年"
+              >
+                <option value="">年</option>
+                {BIRTH_YEARS.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <select
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className={inputCls}
+                aria-label="生まれ月"
+              >
+                <option value="">月</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+                className={inputCls}
+                aria-label="生まれ日"
+              >
+                <option value="">日</option>
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
           </Field>
         </Section>
 
