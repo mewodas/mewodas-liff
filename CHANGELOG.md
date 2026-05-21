@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – feat: 招待トークン方式を廃止し LINE 内自己登録フォームに移行
+
+- feat(app/home/register/page.tsx): 新規 LIFF 対応登録フォーム。LINE内（LIFF文脈）で開くと liff.login() 往復なしで LINE ID を取得しフォームを表示。外部ブラウザはエラー案内
+- feat(app/api/liff/register/route.ts): 新規登録 API。withLiffTenant でラップ（LINE IDトークン検証+テナント解決）。LINE ID 重複チェック→createCustomer（lineUserId付き、foodStatus=進行中）→officialLineUrl 返却
+- feat(app/home/_components/LiffGate.tsx): /api/customer/me が 404 を返した場合（顧客レコードなし）に /home/register へリダイレクト
+- change(app/admin/page.tsx): 顧客ごとの「招待リンクをコピー」ボタン廃止。代わりにテナント共通「申し込みフォームのリンクをコピー」ボタンを追加（/home/register）
+- deprecated(app/api/onboard/redeem/route.ts): 410 Gone スタブに差し替え
+- deprecated(app/api/admin/customers/[id]/invite-link/route.ts): 410 Gone スタブに差し替え
+- deprecated(app/home/onboard/page.tsx): /home/register へリダイレクト
+- deprecated(app/onboard/page.tsx): /home/register へリダイレクト（後方互換）
+- 影響範囲: 顧客側（/home, /home/register 新規）・管理画面（顧客一覧ボタン変更）・API
+
 ## 2026-05-21 (staging) – fix(home/onboard): LIFF 認証ループを sessionStorage token 保持で解消
 
 - fix(app/home/onboard/page.tsx): `liff.login()` の `redirectUri` から `?token=...` クエリを排除。token を `sessionStorage` に保持し、LINE OAuth コールバック後（URL に token がない状態）でも復元できるようにした

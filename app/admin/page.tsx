@@ -83,7 +83,6 @@ export default function AdminCustomersPage() {
   const [storeFilter, setStoreFilter] = useState<string>('');
   const [stores, setStores] = useState<Store[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [copyingId, setCopyingId] = useState<string | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
   const [cleaning, setCleaning] = useState(false);
 
@@ -142,20 +141,20 @@ export default function AdminCustomersPage() {
     return m;
   }, [stores]);
 
-  async function copyInviteLink(e: React.MouseEvent, customerId: string) {
+  async function copyApplyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    setCopyingId(customerId);
     try {
-      const res = await fetch(`/api/admin/customers/${customerId}/invite-link`, { method: 'POST' });
-      if (!res.ok) throw new Error('リンク生成失敗');
-      const j = await res.json();
-      await navigator.clipboard.writeText(j.shareText || j.url);
-      showToast('招待リンク（案内文付き）をコピーしました');
+      const base = process.env.NEXT_PUBLIC_APP_URL
+        ? `https://${process.env.NEXT_PUBLIC_APP_URL}`
+        : typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://app.fitmeal.jp';
+      const url = `${base}/home/register`;
+      await navigator.clipboard.writeText(url);
+      showToast('申し込みフォームのリンクをコピーしました');
     } catch {
       showToast('コピーに失敗しました');
-    } finally {
-      setCopyingId(null);
     }
   }
 
@@ -257,6 +256,15 @@ export default function AdminCustomersPage() {
           新規顧客追加
         </Link>
 
+        <button
+          type="button"
+          onClick={copyApplyLink}
+          className="block w-full bg-sky-100 text-sky-700 border border-sky-300 font-bold py-3 rounded-xl active:bg-sky-200 inline-flex items-center justify-center gap-2 text-sm"
+        >
+          <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+          申し込みフォームのリンクをコピー
+        </button>
+
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />
@@ -352,30 +360,12 @@ export default function AdminCustomersPage() {
                       {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
                     </div>
                     <div className="mt-1.5 flex gap-2 flex-wrap">
-                      {!c.lineUserId ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => copyInviteLink(e, c.pageId)}
-                            disabled={copyingId === c.pageId || !!seatInfo?.isOverLimit}
-                            className="text-[11px] font-bold bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg active:bg-sky-200 disabled:opacity-50 inline-flex items-center gap-1"
-                          >
-                            <ClipboardCopy className="w-3 h-3" strokeWidth={2.4} />
-                            {copyingId === c.pageId ? 'コピー中…' : '招待リンクをコピー'}
-                          </button>
-                          {seatInfo?.isOverLimit && (
-                            <span className="text-[10px] text-rose-600 font-bold inline-flex items-center gap-0.5">
-                              <AlertTriangle className="w-3 h-3" strokeWidth={2.2} />
-                              席数上限のため招待停止中
-                            </span>
-                          )}
-                        </>
-                      ) : (
+                      {c.lineUserId ? (
                         <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                           <Check className="w-3 h-3" strokeWidth={2.4} />
                           LINE 連携済み
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
