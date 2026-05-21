@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – change: オンボーディングツアーを吹き出し型に統一（黄色い矢印を廃止）
+
+- change(OnboardingTour): /record・/exercise・/weight のツアーを、ホームのツアー（OnboardingFlow）と同じ**吹き出し型**に変更。黄色いアニメーション矢印を廃止し、ツールチップに白い三角の尾を付けて target を指す形に。尾の水平位置は target 中心を指すよう算出（角に被らないようクランプ）
+- ステップ毎に説明文の行数が違ってもコメント欄の高さ差が気にならなくなる（尾がツールチップに固定されているため）。説明文の `min-h`/中央揃えは不要になり撤去
+- 影響範囲: 顧客側（/record・/exercise・/weight のオンボーディングツアー）
+
+## 2026-05-21 (staging) – change: 招待ボタン文言を「ユーザー招待フォームをコピー」に
+
+- change(admin): 顧客一覧の招待ボタン文言を「ユーザー招待フォーム」→「ユーザー招待フォームをコピー」（コピー操作であることを明確化）
+- 影響範囲: 管理画面 /admin・/store
+
+## 2026-05-21 (staging) – refactor: 「設定中」ステータス整理・dead code 削除
+
+- change(app/admin/page.tsx): `STATUSES` 配列から「設定中」削除。`StatusBadge` の「設定中」色分け分岐削除
+- change(app/admin/customers/[id]/page.tsx): `STATUS_OPTIONS`・`STATUS_BADGE_CLASSES`・`STATUS_DESCRIPTIONS` から「設定中」削除
+- change(app/api/admin/customers/route.ts): POST の `foodStatus` デフォルトを「設定中」→「進行中」に変更（呼び出し元UIは存在しないが整合のため）
+- change(app/api/public/apply/route.ts): `createCustomer` の `foodStatus: '設定中'` を「進行中」に変更。`/apply` ページは `app/apply/page.tsx` が存在するが管理画面・LIFF 双方からリンクなし（招待フローは `/home/register` に移行済み）。API 本体は CORS 公開 API のため即削除せず書き込みのみ是正
+- delete(app/api/cron/customers-cleanup/route.ts): 「設定中」顧客の自動 cron 削除 route を廃止。新フローでは「設定中」が生まれないため恒久 no-op だった
+- delete(app/api/admin/customers/bulk-cleanup/route.ts): 「設定中」顧客の一括削除 API を廃止。呼び出し元 UI（14日バナー）は既に撤去済み
+- change(vercel.json): `customers-cleanup` cron エントリを削除
+- change(lib/notion.ts): 新テナント顧客 DB プロビジョニングテンプレートの `食事管理ステータス` select から「設定中」オプション削除
+- change(lib/seats.ts, app/admin/billing/page.tsx): コメント・説明文の「設定中」文言を整合（実害なし）
+- 影響範囲: 管理画面（/admin、/admin/customers/[id]、/admin/billing）、API（/api/admin/customers、/api/public/apply）、cron削除、lib/notion.ts
+
+## 2026-05-21 (staging) – feat: ユーザー招待フォーム文言統一・定型文コピー・登録完了日時保存と表示
+
+- change(app/admin/page.tsx): 「申し込みフォームのリンクをコピー」ボタン文言を「ユーザー招待フォーム」に変更（T1）
+- change(app/admin/page.tsx): コピー内容をURLのみ→定型案内テキスト付きに変更（「食事管理プログラムへのご登録をお願いします。\n\n{URL}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。」）。トースト文言も「ユーザー招待フォームのリンクをコピーしました」に整合（T2）
+- feat(lib/notion.ts): Customer 型・parseCustomerFromPage・createCustomer・updateCustomer に `registrationCompletedAt`（Notion「登録完了日時」date プロパティ）を追加（T4）
+- feat(lib/repository/customers.ts): CustomerPatch・CustomerCreateInput に `registrationCompletedAt` を追加（T4）
+- feat(app/api/liff/register/route.ts): 顧客作成時に `registrationCompletedAt: nowJst()`（JST ISO 8601）を付与し Notion「登録完了日時」に書き込む（T4）
+- feat(app/admin/customers/[id]/page.tsx): 顧客詳細の基本情報セクションに「登録完了日時」を表示（T4）
+- 影響範囲: 管理画面（/admin、/admin/customers/[id]）、API（/api/liff/register）、lib/notion、lib/repository/customers
+
+## 2026-05-21 (staging) – fix: /store 申し込みフォームボタン確認 + 自己登録時 onboardingCompletedAt クリア
+
+- fix(app/api/liff/register/route.ts): `createCustomer` 後に `customer.onboardingCompletedAt` が設定されていた場合に即座に null にリセット。Notion DB 側のデフォルト値等で意図せず設定されても初回 /home 起動でオンボーディングツアーが正常に表示されるよう防御。`patchCustomer` を import 追加
+- confirm(app/store/page.tsx): `/store` 顧客一覧は `admin/page` を re-export 済みのため「申し込みフォームのリンクをコピー」ボタン・旧フロー撤去・`useAdminBase` による URL 切り替えが既に動作していることを確認。追加変更なし
+- 影響範囲: API（/api/liff/register）、顧客側オンボーディングツアー表示
+
 ## 2026-05-21 (本番) – release: 新オンボーディング（LINE内自己登録フォーム）＋AI献立UI修正ほか staging一括反映
 
 - feat: オンボーディングを招待トークン方式から「LINE内・申し込みフォーム自己登録」方式へ全面移行。`/home/register`（LIFF登録フォーム）＋`/api/liff/register`（LINE ID取得・重複チェック・PFC自動計算・進行中で作成）。`/home` LiffGate が未登録LINEユーザーを `/home/register` へ誘導。管理画面はテナント共通「申し込みフォームのリンクをコピー」に。旧 `/home/onboard`・`/onboard`・redeem API・招待リンクAPI・手動「新規顧客追加」を廃止

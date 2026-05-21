@@ -37,6 +37,7 @@ export type Customer = {
   storeId: string | null;
   onboardingCompletedAt: string | null;
   tourResetAt: string | null;
+  registrationCompletedAt: string | null;
   createdTime: string | null;
 };
 
@@ -135,6 +136,7 @@ function parseCustomerFromPage(
     storeId: p['所属店舗']?.rich_text?.[0]?.plain_text ?? null,
     onboardingCompletedAt: p['オンボーディング完了日時']?.date?.start ?? null,
     tourResetAt: p['ツアーリセット日時']?.date?.start ?? null,
+    registrationCompletedAt: p['登録完了日時']?.date?.start ?? null,
     createdTime: page.created_time ?? null,
   };
 }
@@ -227,6 +229,7 @@ export async function createCustomer(input: {
   targetDate?: string;
   goals?: { kcal?: number; P?: number; F?: number; C?: number };
   storeId?: string;
+  registrationCompletedAt?: string;
 }): Promise<Customer> {
   const tenant = getTenantNotion();
   const properties: Record<string, unknown> = {
@@ -274,6 +277,9 @@ export async function createCustomer(input: {
   if (input.storeId) {
     properties['所属店舗'] = { rich_text: [{ text: { content: input.storeId } }] };
   }
+  if (input.registrationCompletedAt) {
+    properties['登録完了日時'] = { date: { start: input.registrationCompletedAt } };
+  }
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: tenant.customerDbId },
     properties,
@@ -300,6 +306,7 @@ export async function updateCustomer(
     lineUserId?: string | null;
     onboardingCompletedAt?: string | null;
     tourResetAt?: string | null;
+    registrationCompletedAt?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -362,6 +369,11 @@ export async function updateCustomer(
       ? { date: null }
       : { date: { start: patch.tourResetAt } };
   }
+  if (patch.registrationCompletedAt !== undefined) {
+    properties['登録完了日時'] = patch.registrationCompletedAt === null
+      ? { date: null }
+      : { date: { start: patch.registrationCompletedAt } };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
   const tenantId = getCurrentTenant().id;
@@ -411,7 +423,6 @@ export async function createTenantCustomerDb(
       食事管理ステータス: {
         select: {
           options: [
-            { name: '設定中', color: 'purple' },
             { name: '進行中', color: 'green' },
             { name: '休止中', color: 'orange' },
             { name: '卒業', color: 'blue' },

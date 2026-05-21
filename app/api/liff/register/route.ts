@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withLiffTenantAccessToken } from '@/lib/withTenant';
 import { getCustomerByLineId } from '@/lib/notion';
-import { createCustomer } from '@/lib/repository/customers';
+import { createCustomer, patchCustomer } from '@/lib/repository/customers';
 import { getCurrentTenant } from '@/lib/tenant';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
 import { calcGoals } from '@/lib/goalCalc';
@@ -12,6 +12,10 @@ export const dynamic = 'force-dynamic';
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function nowJst(): string {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).replace(' ', 'T') + '+09:00';
 }
 
 function ageFromBirthdate(birthdate: string): number | undefined {
@@ -109,7 +113,12 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
     goals: calc
       ? { kcal: calc.goalKcal, P: calc.goalP, F: calc.goalF, C: calc.goalC }
       : undefined,
+    registrationCompletedAt: nowJst(),
   });
+
+  if (customer.onboardingCompletedAt) {
+    await patchCustomer(customer.pageId, { onboardingCompletedAt: null });
+  }
 
   const tenant = getCurrentTenant();
   let officialLineUrl = tenant.officialLineUrl || '';

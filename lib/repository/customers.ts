@@ -32,6 +32,7 @@ export type CustomerPatch = {
   lineUserId?: string | null;
   onboardingCompletedAt?: string | null;
   tourResetAt?: string | null;
+  registrationCompletedAt?: string | null;
 };
 
 export async function listCustomers(opts?: { noCache?: boolean }): Promise<Customer[]> {
@@ -71,6 +72,7 @@ export type CustomerCreateInput = {
   targetDate?: string;
   goals?: { kcal?: number; P?: number; F?: number; C?: number };
   storeId?: string;
+  registrationCompletedAt?: string;
 };
 
 export async function createCustomer(input: CustomerCreateInput): Promise<Customer> {

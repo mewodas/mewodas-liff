@@ -29,7 +29,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '設定中', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
 function SavedSnackbar() {
   const router = useRouter();
@@ -140,8 +140,9 @@ export default function AdminCustomersPage() {
       const meJ = meRes.ok ? await meRes.json() : null;
       const tenantId: string = meJ?.currentTenantId || '';
       const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
-      await navigator.clipboard.writeText(url);
-      showToast('申し込みフォームのリンクをコピーしました');
+      const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。`;
+      await navigator.clipboard.writeText(text);
+      showToast('ユーザー招待フォームのリンクをコピーしました');
     } catch {
       showToast('コピーに失敗しました');
     }
@@ -196,7 +197,7 @@ export default function AdminCustomersPage() {
           className="block w-full bg-sky-100 text-sky-700 border border-sky-300 font-bold py-3 rounded-xl active:bg-sky-200 inline-flex items-center justify-center gap-2 text-sm"
         >
           <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          申し込みフォームのリンクをコピー
+          ユーザー招待フォームをコピー
         </button>
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
@@ -319,8 +320,6 @@ function StatusBadge({ status }: { status: string | null }) {
   const cls =
     status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
-      : status === '設定中'
-      ? 'bg-violet-100 text-violet-700 border-violet-300'
       : status === '休止中'
       ? 'bg-amber-100 text-amber-800 border-amber-300'
       : status === '卒業'

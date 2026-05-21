@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     return await runInTenantContext(tenant, async () => {
       const customer = await createCustomer({
         name,
-        foodStatus: '設定中',
+        foodStatus: '進行中',
         gender: gender || undefined,
         heightCm,
         age,
