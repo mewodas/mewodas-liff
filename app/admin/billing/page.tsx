@@ -200,7 +200,7 @@ export default function BillingPage() {
                   <div className="flex items-center justify-between text-xs font-bold text-stone-700">
                     <span className="inline-flex items-center gap-1">
                       <Users className="w-3 h-3" strokeWidth={2.4} />
-                      契約席数 {info.seatLimit}名
+                      利用可能アカウント数 {info.seatLimit}名
                     </span>
                     <span>使用 {info.currentSeats}名 / 残り {info.remaining !== null ? info.remaining : '—'}名</span>
                   </div>

@@ -5,6 +5,7 @@ import { createCustomer, patchCustomer } from '@/lib/repository/customers';
 import { getCurrentTenant } from '@/lib/tenant';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
 import { calcGoals } from '@/lib/goalCalc';
+import { getSeatStatus } from '@/lib/seats';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,17 @@ function ageFromBirthdate(birthdate: string): number | undefined {
   }
 }
 
+export const GET = withLiffTenantAccessToken(async (_req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+  const [existing, seatStatus] = await Promise.all([
+    getCustomerByLineId(verifiedLineUserId, { force: true }),
+    getSeatStatus(),
+  ]);
+  return NextResponse.json({
+    alreadyRegistered: !!existing,
+    overLimit: seatStatus.isOverLimit,
+  });
+});
+
 export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   // 重複チェック: 同じ LINE ID の顧客が既にいれば二重作成しない
   const existing = await getCustomerByLineId(verifiedLineUserId, { force: true });
@@ -47,6 +59,15 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
       customerName: existing.name,
       officialLineUrl,
     });
+  }
+
+  // 席数上限チェック（登録済み顧客はブロックしない）
+  const seatStatus = await getSeatStatus();
+  if (seatStatus.isOverLimit) {
+    return NextResponse.json(
+      { error: '定員に達しているため登録できません。担当トレーナーにお問い合わせください。' },
+      { status: 403 }
+    );
   }
 
   let body: Record<string, unknown>;

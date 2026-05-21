@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – feat: 席数上限 UI/UX 改修（用語統一・バナー全幅・招待ボタン無効・登録フォーム上限ガード）
+
+- change(admin/page.tsx): 上限到達バナー・残り1席バナーを `inline-flex` → `flex w-full` で全幅化。上限バナー本文を2行（太字 + リンク inline）構成に変更
+- change(admin/page.tsx): 「契約席数」→「利用可能アカウント数」（UI表示のみ。`lib/notion.ts` の Notion プロパティ名は変更なし）
+- change(admin/page.tsx): `copyApplyLink` を `seatInfo?.isOverLimit` 時に早期 return するよう修正。招待ボタンを `disabled` + グレー配色に
+- change(admin/billing/page.tsx): 席数プログレスバーの「契約席数」ラベルを「利用可能アカウント数」に変更（UI表示のみ）
+- feat(api/liff/register/route.ts): GET ハンドラを追加（`withLiffTenantAccessToken` でラップ）。`{ alreadyRegistered, overLimit }` を返す
+- feat(api/liff/register/route.ts): POST に席数上限チェックを追加（既存顧客 early return の後）。上限時は 403 を返す
+- feat(home/register/page.tsx): Phase 型に `'over-limit'` を追加。LIFF init 後に GET `/api/liff/register` で上限チェックし、`overLimit && !alreadyRegistered` なら上限案内画面を表示
+- 影響範囲: 管理画面（/admin・/admin/billing）、顧客側 LIFF（/home/register）、API（/api/liff/register）
+
 ## 2026-05-21 (staging) – fix: Notion API エラー再発防止（createTenantCustomerDb スキーマ補完 + メタDB マスタキー分離）
 
 - fix(A): `createTenantCustomerDb` に `ツアーリセット日時` / `オンボーディング完了日時` / `登録完了日時` (date) を追加。新テナント作成時のスキーマ差分に起因する 400 validation_error を解消

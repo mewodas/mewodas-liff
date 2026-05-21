@@ -41,7 +41,7 @@ type FormDraft = {
   activityLevel: string;
 };
 
-type Phase = 'liff-init' | 'form' | 'submitting' | 'done' | 'already-registered' | 'error';
+type Phase = 'liff-init' | 'form' | 'submitting' | 'done' | 'already-registered' | 'error' | 'over-limit';
 
 function saveDraft(draft: FormDraft): void {
   try {
@@ -151,6 +151,25 @@ function RegisterInner() {
           setActivityLevel(draft.activityLevel);
           clearDraft();
         }
+
+        // 席数上限チェック（未登録ユーザーのみフォームをブロック）
+        try {
+          const accessToken = liff.getAccessToken();
+          if (accessToken) {
+            const checkHeaders: Record<string, string> = {
+              Authorization: `Bearer ${accessToken}`,
+            };
+            if (tenantId) checkHeaders['x-tenant-id'] = tenantId;
+            const checkRes = await fetch('/api/liff/register', { headers: checkHeaders });
+            if (checkRes.ok) {
+              const checkJ = await checkRes.json() as { alreadyRegistered: boolean; overLimit: boolean };
+              if (checkJ.overLimit && !checkJ.alreadyRegistered) {
+                setPhase('over-limit');
+                return;
+              }
+            }
+          }
+        } catch { /* チェック失敗時は通常フローへ（サーバ側でも弾く） */ }
 
         setPhase('form');
       } catch (e) {
@@ -263,6 +282,15 @@ function RegisterInner() {
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-stone-600 font-bold">LINE認証中…</p>
+      </div>
+    );
+  }
+
+  if (phase === 'over-limit') {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col items-start p-6 pt-12 gap-2">
+        <p className="text-base font-bold text-stone-900">上限に達しているため、</p>
+        <p className="text-base font-bold text-stone-900">担当トレーナーにお問い合わせください。</p>
       </div>
     );
   }
