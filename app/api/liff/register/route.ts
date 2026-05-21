@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withLiffTenantAccessToken } from '@/lib/withTenant';
 import { getCustomerByLineId } from '@/lib/notion';
-import { createCustomer } from '@/lib/repository/customers';
+import { createCustomer, patchCustomer } from '@/lib/repository/customers';
 import { getCurrentTenant } from '@/lib/tenant';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
 import { calcGoals } from '@/lib/goalCalc';
@@ -110,6 +110,10 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
       ? { kcal: calc.goalKcal, P: calc.goalP, F: calc.goalF, C: calc.goalC }
       : undefined,
   });
+
+  if (customer.onboardingCompletedAt) {
+    await patchCustomer(customer.pageId, { onboardingCompletedAt: null });
+  }
 
   const tenant = getCurrentTenant();
   let officialLineUrl = tenant.officialLineUrl || '';

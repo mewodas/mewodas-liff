@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: /store 申し込みフォームボタン確認 + 自己登録時 onboardingCompletedAt クリア
+
+- fix(app/api/liff/register/route.ts): `createCustomer` 後に `customer.onboardingCompletedAt` が設定されていた場合に即座に null にリセット。Notion DB 側のデフォルト値等で意図せず設定されても初回 /home 起動でオンボーディングツアーが正常に表示されるよう防御。`patchCustomer` を import 追加
+- confirm(app/store/page.tsx): `/store` 顧客一覧は `admin/page` を re-export 済みのため「申し込みフォームのリンクをコピー」ボタン・旧フロー撤去・`useAdminBase` による URL 切り替えが既に動作していることを確認。追加変更なし
+- 影響範囲: API（/api/liff/register）、顧客側オンボーディングツアー表示
+
 ## 2026-05-21 (本番) – release: 新オンボーディング（LINE内自己登録フォーム）＋AI献立UI修正ほか staging一括反映
 
 - feat: オンボーディングを招待トークン方式から「LINE内・申し込みフォーム自己登録」方式へ全面移行。`/home/register`（LIFF登録フォーム）＋`/api/liff/register`（LINE ID取得・重複チェック・PFC自動計算・進行中で作成）。`/home` LiffGate が未登録LINEユーザーを `/home/register` へ誘導。管理画面はテナント共通「申し込みフォームのリンクをコピー」に。旧 `/home/onboard`・`/onboard`・redeem API・招待リンクAPI・手動「新規顧客追加」を廃止
