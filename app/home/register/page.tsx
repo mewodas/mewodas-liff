@@ -18,7 +18,7 @@ export default function RegisterPage() {
   );
 }
 
-const ACTIVITY_OPTIONS = ['低い（ほぼ運動なし）', '中程度', '高い（毎日運動）'];
+const ACTIVITY_OPTIONS = ['低い（ほぼ運動なし）', '中程度（週2〜3回運動）', '高い（毎日運動）'];
 const GENDER_OPTIONS = ['男性', '女性', 'その他'];
 const CURRENT_YEAR = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
