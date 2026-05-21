@@ -175,9 +175,9 @@ function RegisterInner() {
       const liffModule = await import('@line/liff');
       const liff = liffModule.default;
 
-      const idToken = liff.getIDToken();
-      if (!idToken) {
-        // 未ログイン状態: フォームを退避して再認証
+      // getAccessToken() はフォーム入力中でも有効（IDトークンと異なり数時間有効）
+      let accessToken = liff.getAccessToken();
+      if (!accessToken) {
         saveDraft({
           name, gender, birthYear, birthMonth, birthDay,
           heightCm, currentWeight, targetWeight,
@@ -218,10 +218,24 @@ function RegisterInner() {
         return fetch('/api/liff/register', { method: 'POST', headers, body: bodyPayload });
       };
 
-      let res = await doRequest(idToken);
+      let res = await doRequest(accessToken);
 
-      // 401: IDトークン期限切れ → フォームを退避して liff.login() で本物の再認証
-      // refreshLiff() / liff.init() の再呼び出しは新しいトークンを発行しないため使わない
+      // 401: アクセストークンが無効（失効・環境不整合）→ liff.init() 再実行でトークン更新を試みて1回リトライ
+      // リトライは1回のみ（無限ループ防止）
+      if (res.status === 401) {
+        const liffId2 = process.env.NEXT_PUBLIC_LIFF_ID;
+        if (liffId2) {
+          try {
+            await liff.init({ liffId: liffId2 });
+            accessToken = liff.getAccessToken();
+          } catch { /* 再init失敗時は以下のエラーハンドリングへ */ }
+        }
+        if (accessToken) {
+          res = await doRequest(accessToken);
+        }
+      }
+
+      // それでも 401 なら liff.login() でセッションを一新（ページ離脱）
       if (res.status === 401) {
         saveDraft({
           name, gender, birthYear, birthMonth, birthDay,

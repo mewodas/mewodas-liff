@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: 申し込みフォーム401を認証方式変更で根本解決（IDトークン→アクセストークン）
+
+- fix(lib/withTenant.ts): `verifyLineAccessToken` 関数と `withLiffTenantAccessToken` ラッパーを追加。LINE `/v2/profile` API でアクセストークンを検証し userId を取得。IDトークン（`/oauth2/v2.1/verify`）と完全に独立したコードパス。アクセストークンキャッシュ（TTL 1分・最大100件）でレートリミット対応
+- fix(app/api/liff/register/route.ts): `withLiffTenant`（IDトークン検証）→ `withLiffTenantAccessToken`（アクセストークン検証）に切り替え。テナント解決ロジックは同一
+- fix(app/home/register/page.tsx): `liff.getIDToken()` → `liff.getAccessToken()` に変更。アクセストークンは LINE アプリが数時間管理するためフォーム入力中に期限切れにならない。401時は `liff.init()` 再実行でトークン更新を試み1回リトライ（無限ループ防止）。それでも401なら `liff.login()` でセッション一新
+- fix(lib/withTenant.ts): `verifyLineIdToken` の診断用 `console.error` 詳細ログを削除（原因確定済み）
+- 影響範囲: 顧客側（/home/register）・API（/api/liff/register）・lib/withTenant
+- 背景: IDトークンは有効期限10分。フォーム入力時間が超えると `{"error":"invalid_request","error_description":"IdToken expired."}` で必ず401。`liff.login()` 再認証後も LIFF SDK が期限切れトークンをキャッシュし続けるため旧方式では解決不可
+
 ## 2026-05-21 (staging) – fix: 申し込み401ブロッカー根本修正 + 管理画面「新規顧客追加」削除
 
 - fix(app/home/register/page.tsx): IDトークン期限切れ時の401を `liff.login()` による本物の再認証で解消。`refreshLiff()` / `liff.init()` 再呼び出しは新しいトークンを発行しないため廃止。フォーム入力値を sessionStorage に退避（`register_form_draft`）→ `liff.login({ redirectUri: 現URL })` → OAuth戻り後に自動復元。再認証ループはトークン取得できた場合のみリクエストを送る構造で防止

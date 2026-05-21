@@ -3,6 +3,7 @@
 // 使い方:
 //   export const GET = withAdminTenant(async (req, ctx) => { ... });
 //   export const POST = withLiffTenant(async (req, ctx, verifiedLineUserId) => { ... });
+//   export const POST = withLiffTenantAccessToken(async (req, ctx, verifiedLineUserId) => { ... });
 
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
@@ -65,9 +66,6 @@ async function verifyLineIdToken(token: string): Promise<{ sub: string }> {
 
   if (res.status >= 500) throw new LineVerifyUnavailableError();
   if (!res.ok) {
-    let errBody = '';
-    try { errBody = await res.text(); } catch { /* ignore */ }
-    console.error('[verifyLineIdToken] LINE verify failed', { status: res.status, body: errBody, channelId });
     throw new LineVerifyInvalidTokenError();
   }
 
@@ -197,6 +195,132 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
           scope.setTag('tenant_id', tenant!.id);
           scope.setTag('tenant_name', tenant!.name);
           scope.setTag('error_source', 'withLiffTenant');
+          Sentry.captureException(e);
+        });
+      }
+      throw e;
+    }
+  };
+}
+
+// --- LINE アクセストークン検証キャッシュ ---
+type AccessCacheEntry = { userId: string; expiresAt: number };
+const accessTokenCache = new Map<string, AccessCacheEntry>();
+const ACCESS_TOKEN_CACHE_TTL_MS = 60 * 1000; // 1分（アクセストークンは数時間有効だが短めにキャッシュ）
+const ACCESS_TOKEN_CACHE_MAX = 100;
+
+function accessTokenCacheKey(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function evictAccessTokens(): void {
+  const now = Date.now();
+  for (const [k, v] of accessTokenCache) {
+    if (now > v.expiresAt) accessTokenCache.delete(k);
+  }
+  while (accessTokenCache.size >= ACCESS_TOKEN_CACHE_MAX) {
+    const firstKey = accessTokenCache.keys().next().value;
+    if (firstKey === undefined) break;
+    accessTokenCache.delete(firstKey);
+  }
+}
+
+async function verifyLineAccessToken(token: string): Promise<{ userId: string }> {
+  const cacheKey = accessTokenCacheKey(token);
+  const now = Date.now();
+  const cached = accessTokenCache.get(cacheKey);
+  if (cached && now < cached.expiresAt) {
+    return { userId: cached.userId };
+  }
+
+  let res: globalThis.Response;
+  try {
+    res = await fetch('https://api.line.me/v2/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new LineVerifyUnavailableError();
+  }
+
+  if (res.status >= 500) throw new LineVerifyUnavailableError();
+  if (res.status === 401) throw new LineVerifyInvalidTokenError();
+  if (!res.ok) throw new LineVerifyInvalidTokenError();
+
+  const json = await res.json();
+  const userId: string = json.userId;
+  if (!userId) throw new LineVerifyInvalidTokenError();
+
+  if (accessTokenCache.size >= ACCESS_TOKEN_CACHE_MAX) evictAccessTokens();
+  accessTokenCache.set(cacheKey, { userId, expiresAt: now + ACCESS_TOKEN_CACHE_TTL_MS });
+  return { userId };
+}
+
+/** LIFF 申し込みフォーム用ラッパー。LINE アクセストークン（有効期限が長い）で検証する。
+ *  IDトークン（liff.getIDToken()）はフォーム入力中に期限切れになるため、
+ *  このラッパーはアクセストークン（liff.getAccessToken()）を使う。
+ *  テナント解決ロジックは withLiffTenant と同一。
+ */
+export function withLiffTenantAccessToken(handler: LiffRouteHandler | RouteHandler): RouteHandler {
+  return async (req, ctx) => {
+    const authHeader = req.headers.get('authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authorization header required' }, { status: 401 });
+    }
+    const accessToken = authHeader.slice(7).trim();
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Authorization header required' }, { status: 401 });
+    }
+
+    let verifiedLineUserId: string;
+    try {
+      const result = await verifyLineAccessToken(accessToken);
+      verifiedLineUserId = result.userId;
+    } catch (e) {
+      if (e instanceof LineVerifyUnavailableError) {
+        return NextResponse.json({ error: 'LINE verification service unavailable' }, { status: 503 });
+      }
+      return NextResponse.json({ error: 'Invalid or expired LINE access token' }, { status: 401 });
+    }
+
+    // --- テナント解決（withLiffTenant と同一ロジック）---
+    const overrideId =
+      process.env.VERCEL_ENV !== 'production' ? process.env.FITMEAL_TENANT_ID_OVERRIDE : undefined;
+    if (overrideId) {
+      try {
+        const tenant = (await getTenantByIdAsync(overrideId)) || getDefaultTenant();
+        return runInTenantContext(tenant, () => (handler as LiffRouteHandler)(req, ctx, verifiedLineUserId));
+      } catch {
+        // override 解決失敗時は通常フローへフォールバック
+      }
+    }
+    const tenantIdHeader = req.headers.get('x-tenant-id') || '';
+    let tenant = null;
+    if (tenantIdHeader) {
+      try {
+        tenant = await getTenantByIdAsync(tenantIdHeader);
+      } catch {
+        tenant = null;
+      }
+    }
+    if (!tenant) {
+      const liffId = req.headers.get('x-liff-id') || '';
+      if (liffId) {
+        try {
+          tenant = await resolveTenantByLiffId(liffId);
+        } catch {
+          tenant = null;
+        }
+      }
+    }
+    if (!tenant) tenant = getDefaultTenant();
+    try {
+      return await runInTenantContext(tenant, () => (handler as LiffRouteHandler)(req, ctx, verifiedLineUserId));
+    } catch (e) {
+      if (process.env.SENTRY_DSN) {
+        Sentry.withScope((scope) => {
+          scope.setTag('tenant_id', tenant!.id);
+          scope.setTag('tenant_name', tenant!.name);
+          scope.setTag('error_source', 'withLiffTenantAccessToken');
           Sentry.captureException(e);
         });
       }

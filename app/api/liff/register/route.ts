@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withLiffTenant } from '@/lib/withTenant';
+import { withLiffTenantAccessToken } from '@/lib/withTenant';
 import { getCustomerByLineId } from '@/lib/notion';
 import { createCustomer } from '@/lib/repository/customers';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -26,7 +26,7 @@ function ageFromBirthdate(birthdate: string): number | undefined {
   }
 }
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
+export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   // 重複チェック: 同じ LINE ID の顧客が既にいれば二重作成しない
   const existing = await getCustomerByLineId(verifiedLineUserId, { force: true });
   if (existing) {
