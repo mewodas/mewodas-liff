@@ -53,6 +53,8 @@ type BillingInfo = {
   hasContract: boolean;
   cancelAtPeriodEnd: boolean;
   cancelAt: string | null;
+  billingMode: '無制限' | '手動' | 'Stripe連動' | null;
+  seatSource: 'unlimited' | 'manual' | 'stripe';
 };
 
 export default function BillingPage() {
@@ -143,6 +145,29 @@ export default function BillingPage() {
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : (
           <>
+            {/* 無制限・手動モードは「運営管理プラン」表示 */}
+            {(info?.billingMode === '無制限' || info?.billingMode === '手動') ? (
+              <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+                <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                  プラン情報
+                </h2>
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 text-center space-y-2">
+                  <div className="text-sm font-bold text-stone-900">運営管理プラン</div>
+                  <div className="text-[11px] text-stone-600">
+                    {info.billingMode === '無制限'
+                      ? '席数上限なしでご利用いただけます。'
+                      : `管理者が設定した席数（${info.seatLimit !== null ? `${info.seatLimit}名` : '未設定'}）でご利用いただけます。`}
+                  </div>
+                  {info.billingMode === '手動' && info.seatLimit !== null && (
+                    <div className="text-xs text-stone-700 font-bold">
+                      使用 {info.currentSeats}名 / 契約 {info.seatLimit}名
+                    </div>
+                  )}
+                </div>
+              </section>
+            ) : (
+            <>
             {/* 上限到達バナー */}
             {info?.isOverLimit && (
               <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
@@ -386,7 +411,7 @@ export default function BillingPage() {
               </>
             )}
 
-            {/* ステータス系バナー */}
+            {/* ステータス系バナー（Stripe連動モードのみ） */}
             {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (
               <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl inline-flex gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
@@ -398,6 +423,8 @@ export default function BillingPage() {
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 お支払いに失敗しました。カード情報を更新してください。
               </div>
+            )}
+            </>
             )}
           </>
         )}

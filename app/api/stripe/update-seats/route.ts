@@ -1,19 +1,17 @@
-// 席数変更確定 API
+// 席数・プラン変更確定 API
 //
 // POST /api/stripe/update-seats
-// body: { seats: number }
-// Stripe Subscription の per-user item quantity を更新する
+// body: { seats: number, planCode?: string }
+// Stripe Subscription の per-user item quantity / price を更新する
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   getStripe,
-  getPlanTierBySeats,
-  getMinSeats,
-  getPerUserPriceId,
+  buildSubscriptionLineItems,
 } from '@/lib/stripe';
-import { listTenantRows } from '@/lib/notion';
+import { listTenantRows, getPlanByCode, listPlans } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { getSeatStatus } from '@/lib/seats';
 
@@ -23,9 +21,7 @@ export const dynamic = 'force-dynamic';
 export const POST = withAdminTenant(async (req: NextRequest) => {
   const body = await req.json();
   const newSeats = Number(body.seats);
-  if (!newSeats || newSeats < getMinSeats()) {
-    return NextResponse.json({ error: `席数は${getMinSeats()}名以上必須` }, { status: 400 });
-  }
+  const planCodeInput = body.planCode as string | undefined;
 
   const tenant = getCurrentTenant();
   const stripe = getStripe();
@@ -34,6 +30,17 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   const tenantRow = rows.find((r) => r.tenantId === tenant.id);
   if (!tenantRow?.stripeSubscriptionId) {
     return NextResponse.json({ error: '契約なし' }, { status: 400 });
+  }
+
+  // プラン解決: 指定 planCode → テナントの planCode → 'standard'
+  const effectivePlanCode = planCodeInput || tenantRow.planCode || 'standard';
+  const plan = await getPlanByCode(effectivePlanCode);
+  if (!plan) {
+    return NextResponse.json({ error: `プラン '${effectivePlanCode}' が見つかりません` }, { status: 404 });
+  }
+
+  if (!newSeats || newSeats < plan.minSeats) {
+    return NextResponse.json({ error: `席数は${plan.minSeats}名以上必須` }, { status: 400 });
   }
 
   // 減枠ガード: 現使用席数より少ない枠は不可
@@ -52,10 +59,7 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     expand: ['items.data.price'],
   });
 
-  // per-user item を識別:
-  //   1) 新方式: STRIPE_PRICE_PER_USER と一致
-  //   2) 旧方式: STRIPE_PRICE_STARTER/GROWTH/SCALE のいずれかと一致（移行期）
-  //   3) フォールバック: support fee 以外の item
+  // 全プラン定義 + env からの per-user Price ID 集合
   const perUserPriceIds = new Set(
     [
       process.env.STRIPE_PRICE_PER_USER,
@@ -64,6 +68,15 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
       process.env.STRIPE_PRICE_SCALE_PER_USER,
     ].filter(Boolean) as string[]
   );
+  try {
+    const allPlans = await listPlans();
+    for (const p of allPlans) {
+      if (p.stripePerUserPriceId) perUserPriceIds.add(p.stripePerUserPriceId);
+    }
+  } catch {
+    // 取得失敗時は env のみで判定
+  }
+
   const supportFeePriceId = process.env.STRIPE_PRICE_SUPPORT_FEE;
 
   let perUserItemId: string | null = null;
@@ -84,25 +97,15 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     return NextResponse.json({ error: 'per-user item が見つかりません' }, { status: 400 });
   }
 
-  const newTier = getPlanTierBySeats(newSeats);
-  const perUserPriceId = getPerUserPriceId();
-
-  // Volume Pricing: 同じ Price ID のまま quantity だけ更新（Stripe が tier 自動計算）
-  // 旧 subscription（複数 Price）はこのコードでは強制的に新 Price に切替
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const itemUpdate: Record<string, any> = {
-    id: perUserItemId,
-    quantity: newSeats,
-  };
-  if (perUserPriceId) {
-    itemUpdate.price = perUserPriceId;
-  }
+  // 新しい line items を生成し、既存 items を削除して置換
+  const newLineItems = buildSubscriptionLineItems(plan, newSeats);
+  const deleteItems = sub.items.data.map((item) => ({ id: item.id, deleted: true }));
 
   await stripe.subscriptions.update(tenantRow.stripeSubscriptionId, {
-    items: [itemUpdate],
+    items: [...deleteItems, ...newLineItems],
     proration_behavior: 'create_prorations',
-    metadata: { seats: String(newSeats), planTier: newTier },
+    metadata: { seats: String(newSeats), planCode: effectivePlanCode },
   });
 
-  return NextResponse.json({ ok: true, newSeats, newTier });
+  return NextResponse.json({ ok: true, newSeats, planCode: effectivePlanCode });
 });

@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – feat: 課金制御フル実装（課金モード3種・プラン管理DB・Stripe反映・webhook ガード）
+
+- feat(lib/tenant.ts): `FITMEAL_PLANS_DB_ID` 定数追加（`5962b6528bb04451afdbf54122cffabc`）
+- feat(lib/notion.ts): `PlanDef` 型定義。`TenantRow` に `billingMode`/`planCode` 追加。`listPlans`/`getPlanByCode`/`createPlan`/`updatePlan` を新規追加。`listTenantRows`/`updateTenantRow` を `billingMode`/`planCode` 対応
+- feat(lib/stripe.ts): `STANDARD_VOLUME_TIERS` 定数、`getMonthlyTotalFromPlan(plan, seats)`、`buildSubscriptionLineItems(plan, seats)` を追加。planCode=standard は env フォールバック
+- feat(lib/seats.ts): `getSeatStatus` を課金モード（無制限/手動/Stripe連動）で分岐。戻り値に `seatSource` 追加。無制限→isOverLimit常にfalse
+- feat(app/api/stripe/webhook/route.ts): handleSubscriptionUpdate/Deleted/InvoicePaymentFailed に課金モードガード追加（Stripe連動以外は早期return）。per-user Price ID 識別を全プラン定義 + env ベースに拡張
+- feat(app/api/admin/plans/route.ts): プラン一覧GET/作成POST（withMasterOnly）新規
+- feat(app/api/admin/plans/[code]/route.ts): プラン編集PATCH（withMasterOnly）新規
+- feat(app/api/admin/tenants/[id]/route.ts): PATCH に billingMode/seatLimit/planCode を追加
+- feat(app/api/admin/tenants/[id]/apply-stripe/route.ts): テナントのプラン・席数をStripeに反映（未契約→Checkout URL発行 / 契約済み→subscription.update）
+- feat(app/api/stripe/checkout/route.ts): planCode 受取・getPlanByCode でプラン解決・buildSubscriptionLineItems 使用・metadata に planCode 付与
+- feat(app/api/stripe/update-seats/route.ts): プラン変更（価格入替）対応、全プラン定義から per-user Price ID 集合を構築
+- feat(app/api/admin/billing/info/route.ts): billingMode/seatSource をレスポンスに追加
+- feat(app/admin/plans/page.tsx): プラン管理画面新規（一覧・作成・編集）
+- feat(app/admin/AdminShell.tsx): ナビに「プラン管理」タブ追加（masterOnly）
+- feat(app/admin/tenants/[id]/page.tsx): 課金モード切替・手動席数入力・プランコード選択・Stripe反映ボタンを追加
+- feat(app/admin/billing/page.tsx): 課金モード 無制限/手動 のテナントは「運営管理プラン」表示、自己申込みUI非表示。解約済み/未払いバナーも非表示
+- 影響範囲: 管理画面（master専用）/ API / billing UI（顧客側）
+
 ## 2026-05-21 (staging) – feat: 席数上限 UI/UX 改修（用語統一・バナー全幅・招待ボタン無効・登録フォーム上限ガード）
 
 - change(admin/page.tsx): 上限到達バナー・残り1席バナーを `inline-flex` → `flex w-full` で全幅化。上限バナー本文を2行（太字 + リンク inline）構成に変更

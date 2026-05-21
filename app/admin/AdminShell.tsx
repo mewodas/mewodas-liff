@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
@@ -57,6 +57,14 @@ const TABS: Tab[] = [
     label: 'テナント',
     Icon: Building2,
     match: (p, base) => p.startsWith(`${base}/tenants`),
+    masterOnly: true,
+    storeHidden: true,
+  },
+  {
+    suffix: '/plans',
+    label: 'プラン管理',
+    Icon: ListChecks,
+    match: (p, base) => p.startsWith(`${base}/plans`),
     masterOnly: true,
     storeHidden: true,
   },

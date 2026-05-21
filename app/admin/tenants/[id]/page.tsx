@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw, MessageCircle, Clock } from 'lucide-react';
+import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw, MessageCircle, Clock, CreditCard, Zap } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 
 type Tenant = {
@@ -19,10 +19,25 @@ type Tenant = {
   lineChannelToken: string | null;
   lineAutoSendEnabled: boolean;
   autoSendTime: string | null;
+  billingMode: '無制限' | '手動' | 'Stripe連動' | null;
+  seatLimit: number | null;
+  planCode: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+type PlanDef = {
+  pageId: string;
+  planCode: string;
+  name: string;
+  kind: '標準' | 'PoC' | 'エンタープライズ';
+  minSeats: number;
+  published: boolean;
+  active: boolean;
 };
 
 const PLANS = ['5-10名', '11-20名', '21名+', 'モニター', '無料'];
 const STATUSES = ['アクティブ', '休止', '解約', '商談中'];
+const BILLING_MODES = ['無制限', '手動', 'Stripe連動'] as const;
 
 type Store = {
   pageId: string;
@@ -52,6 +67,13 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [lineChannelToken, setLineChannelToken] = useState('');
   const [lineAutoSendEnabled, setLineAutoSendEnabled] = useState(false);
   const [autoSendTime, setAutoSendTime] = useState('06:00');
+  const [billingMode, setBillingMode] = useState<'無制限' | '手動' | 'Stripe連動' | ''>('');
+  const [seatLimit, setSeatLimit] = useState<number | ''>('');
+  const [planCode, setPlanCode] = useState('');
+  const [plans, setPlans] = useState<PlanDef[]>([]);
+  const [applyStripeSeats, setApplyStripeSeats] = useState<number>(3);
+  const [applyStripeLoading, setApplyStripeLoading] = useState(false);
+  const [applyStripeMsg, setApplyStripeMsg] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [storeFormOpen, setStoreFormOpen] = useState(false);
   const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
@@ -62,6 +84,18 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       if (res.ok) {
         const j = await res.json();
         setStores(j.stores || []);
+      }
+    } catch {
+      // 失敗時は空のまま
+    }
+  }
+
+  async function loadPlans() {
+    try {
+      const res = await fetch('/api/admin/plans', { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        setPlans((j.plans || []).filter((p: PlanDef) => p.active));
       }
     } catch {
       // 失敗時は空のまま
@@ -83,6 +117,12 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         setLineChannelToken(t.lineChannelToken || '');
         setLineAutoSendEnabled(!!t.lineAutoSendEnabled);
         setAutoSendTime(t.autoSendTime || '06:00');
+        setBillingMode(t.billingMode || '');
+        setSeatLimit(t.seatLimit !== null && t.seatLimit !== undefined ? t.seatLimit : '');
+        setPlanCode(t.planCode || '');
+        const selectedPlanCode = t.planCode || 'standard';
+        const foundPlan = plans.find((p) => p.planCode === selectedPlanCode);
+        setApplyStripeSeats(t.seatLimit ?? foundPlan?.minSeats ?? 3);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -90,6 +130,8 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       }
     })();
     loadStores();
+    loadPlans();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function save() {
@@ -98,18 +140,24 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
     setSaveMsg(null);
     setError(null);
     try {
+      const patchBody: Record<string, unknown> = {
+        liffId: liffId || null,
+        plan,
+        ownerEmail,
+        status,
+        lineChannelToken: lineChannelToken || null,
+        lineAutoSendEnabled,
+        autoSendTime: autoSendTime || null,
+        billingMode: billingMode || null,
+        planCode: planCode || null,
+      };
+      if (billingMode === '手動') {
+        patchBody.seatLimit = seatLimit !== '' ? Number(seatLimit) : null;
+      }
       const res = await fetch(`/api/admin/tenants/${tenant.pageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          liffId: liffId || null,
-          plan,
-          ownerEmail,
-          status,
-          lineChannelToken: lineChannelToken || null,
-          lineAutoSendEnabled,
-          autoSendTime: autoSendTime || null,
-        }),
+        body: JSON.stringify(patchBody),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -124,6 +172,32 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function applyStripe() {
+    if (!tenant) return;
+    setApplyStripeLoading(true);
+    setApplyStripeMsg(null);
+    setError(null);
+    const effectivePlanCode = planCode || 'standard';
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.pageId}/apply-stripe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seats: applyStripeSeats, planCode: effectivePlanCode }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || `${res.status}`);
+      if (j.action === 'checkout' && j.url) {
+        setApplyStripeMsg(`Checkout URL を発行しました。顧客に送付してください:\n${j.url}`);
+      } else if (j.action === 'updated') {
+        setApplyStripeMsg('Stripe のサブスクリプションを更新しました');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setApplyStripeLoading(false);
     }
   }
 
@@ -394,6 +468,97 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               />
             </div>
           </section>
+
+          {/* 課金モード・プラン・Stripe反映 */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+            <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              課金制御
+            </h2>
+            <div>
+              <label className="text-xs font-bold text-stone-700 mb-1 block">課金モード</label>
+              <select
+                value={billingMode}
+                onChange={(e) => setBillingMode(e.target.value as typeof billingMode)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">—（未設定）</option>
+                {BILLING_MODES.map((m) => (<option key={m} value={m}>{m}</option>))}
+              </select>
+              <div className="text-[10px] text-stone-500 mt-1 space-y-0.5">
+                <div>無制限: 席数ゲートなし（社内テスト・デモ）</div>
+                <div>手動: 下の席数入力が真実（PoC・特例契約）</div>
+                <div>Stripe連動: Stripe webhook が席数を同期（通常有償）</div>
+              </div>
+            </div>
+
+            {billingMode === '手動' && (
+              <div>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">契約席数（手動モード必須）</label>
+                <input
+                  type="number"
+                  value={seatLimit}
+                  onChange={(e) => setSeatLimit(e.target.value === '' ? '' : Number(e.target.value))}
+                  min={1}
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="例: 10"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-bold text-stone-700 mb-1 block">プランコード</label>
+              <select
+                value={planCode}
+                onChange={(e) => setPlanCode(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">—（未設定 = standard）</option>
+                {plans.map((p) => (
+                  <option key={p.planCode} value={p.planCode}>{p.name}（{p.planCode}）</option>
+                ))}
+              </select>
+            </div>
+          </section>
+
+          {/* Stripe反映 */}
+          {(billingMode === 'Stripe連動' || billingMode === '') && (
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+              <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-amber-500" strokeWidth={2.2} />
+                Stripe 反映
+              </h2>
+              <div className="text-[11px] text-stone-600 bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1">
+                <div>未契約 → Checkout Session URL を発行して顧客に送付</div>
+                <div>契約済み → Subscription を更新（プラン変更・席数変更）</div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">席数</label>
+                <input
+                  type="number"
+                  value={applyStripeSeats}
+                  onChange={(e) => setApplyStripeSeats(Number(e.target.value))}
+                  min={1}
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              {applyStripeMsg && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl whitespace-pre-wrap break-all">{applyStripeMsg}</div>
+              )}
+              <button
+                type="button"
+                onClick={applyStripe}
+                disabled={applyStripeLoading}
+                className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+              >
+                <Zap className="w-4 h-4" strokeWidth={2.2} />
+                {applyStripeLoading ? '処理中…' : 'Stripe に反映'}
+              </button>
+              <div className="text-[10px] text-stone-500 text-center">
+                ※ 先に「変更を保存」でプランコードを保存してから反映すると確実です
+              </div>
+            </section>
+          )}
 
           <button
             type="button"
