@@ -25,6 +25,19 @@
 | L3 | 無認証で API 直叩き → 401 返却 | [A] | CORE |
 | L4 | 偽トークンで API 直叩き → 401 返却 | [A] | CORE |
 
+### 申し込みフォーム認証（/home/register）— 2026-05-21 追加
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| REG1 | /api/liff/register: Authorization ヘッダーなし → 401 | [A] | CORE |
+| REG2 | /api/liff/register: 偽アクセストークン → 401 | [A] | CORE |
+| REG3 | /api/liff/register: LINE 無効トークン（失効済み） → 401 | [A] | CORE |
+| REG4 | LINE 内ブラウザでフォームを開き、全項目入力 → 登録完了画面に遷移 | [M] | CORE |
+| REG5 | 登録済み LINE ID で再送信 → alreadyRegistered: true の完了画面表示 | [M] | CORE |
+| REG6 | 既存 LIFF ルート（/api/day 等）が IDトークン方式のまま動作する | [M] | CORE |
+| REG7 | 目標体重・目標達成日を空欄で送信 → 正常登録できること（任意フィールド） | [M] | CORE |
+| REG8 | アクセストークン null 時（LINE 外ブラウザは設計外） → triggerReauth() でログイン遷移・ループしない | [M] | SCOPE |
+
 ### 撮影・食事記録
 
 | # | 確認項目 | 方法 | 優先度 |
@@ -107,6 +120,7 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-21 | 申し込みフォーム認証方式 IDトークン→アクセストークンに変更 | 61b94a5 | 条件付き GO（社長手動確認待ち） |
 | 2026-05-21 | AI献立 UI 3点修正（スクロール位置・ボタン位置・遷移先） | 602ba9c | 条件付き GO |
 | 2026-05-21 | 認証オンボーディング画面のフッター非表示 | — | GO（前回） |
 
@@ -117,3 +131,7 @@
 - **staging テスト顧客の LINE ID 重複**: 食事一覧が 0 件になる症状。グラフは出るが一覧だけ空の場合はこれを疑う
 - `/api/meal-plan/recipe` は設計上認証不要（Gemini API 直叩き、顧客 DB へのアクセスなし）
 - `resultTopRef.scrollIntoView` は LIFF 内の iframe スクロールに依存するため、LINE アプリ内ブラウザでの確認が必須
+- `/api/liff/register` のみアクセストークン方式（withLiffTenantAccessToken）。他の LIFF ルートは引き続き IDトークン方式（withLiffTenant）。混同注意
+- `liff.getAccessToken()` は LINE 外ブラウザで null を返す。設計外ユースケースのため LINE 内ブラウザのみサポート対象
+- register フォームの 401 リトライは最大 1 回。その後 `liff.login()` でページ離脱するため無限ループしない設計
+- アクセストークンのサーバー側キャッシュは 1 分 TTL（IDトークン側は 5 分 TTL）。高頻度テストでは同じトークンがキャッシュされる場合がある
