@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix: Notion API エラー再発防止（createTenantCustomerDb スキーマ補完 + メタDB マスタキー分離）
+
+- fix(A): `createTenantCustomerDb` に `ツアーリセット日時` / `オンボーディング完了日時` / `登録完了日時` (date) を追加。新テナント作成時のスキーマ差分に起因する 400 validation_error を解消
+- fix(B): `listTenantRows`（FitMeal テナント管理メタDB アクセス）を `NOTION_MASTER_API_KEY ?? NOTION_API_KEY` で呼ぶよう変更。`NOTION_MASTER_API_KEY` 未設定時は従来と同一挙動。新テナント追加時の 404 object_not_found 再発防止
+- 影響範囲: API / テナントプロビジョニング（管理画面）。既存テナントの顧客DB・食事DB へのキー解決は変更なし
+
 ## 2026-05-21 (staging) – change: オンボーディングツアーを吹き出し型に統一（黄色い矢印を廃止）
 
 - change(OnboardingTour): /record・/exercise・/weight のツアーを、ホームのツアー（OnboardingFlow）と同じ**吹き出し型**に変更。黄色いアニメーション矢印を廃止し、ツールチップに白い三角の尾を付けて target を指す形に。尾の水平位置は target 中心を指すよう算出（角に被らないようクランプ）

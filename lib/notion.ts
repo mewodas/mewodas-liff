@@ -468,6 +468,9 @@ export async function createTenantCustomerDb(
       '目標C(g)': { number: {} },
       所属店舗: { rich_text: {} },
       食事記録リンク: { url: {} },
+      ツアーリセット日時: { date: {} },
+      オンボーディング完了日時: { date: {} },
+      登録完了日時: { date: {} },
     },
   });
   return res.id as string;
@@ -724,7 +727,8 @@ export async function updateTenantRow(
 }
 
 export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> {
-  const data = await notionRequest('POST', `/databases/${tenantsDbId}/query`, { page_size: 100 });
+  const masterApiKey = process.env.NOTION_MASTER_API_KEY ?? process.env.NOTION_API_KEY ?? '';
+  const data = await notionFetch('POST', `/databases/${tenantsDbId}/query`, masterApiKey, { page_size: 100 });
   return (data.results || []).map((page: { id: string; properties: Record<string, any> }) => {
     const p = page.properties;
     return {
