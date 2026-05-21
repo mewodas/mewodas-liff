@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – change: 招待ボタン文言を「ユーザー招待フォームをコピー」に
+
+- change(admin): 顧客一覧の招待ボタン文言を「ユーザー招待フォーム」→「ユーザー招待フォームをコピー」（コピー操作であることを明確化）
+- 影響範囲: 管理画面 /admin・/store
+
 ## 2026-05-21 (staging) – refactor: 「設定中」ステータス整理・dead code 削除
 
 - change(app/admin/page.tsx): `STATUSES` 配列から「設定中」削除。`StatusBadge` の「設定中」色分け分岐削除

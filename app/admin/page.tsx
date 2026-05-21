@@ -197,7 +197,7 @@ export default function AdminCustomersPage() {
           className="block w-full bg-sky-100 text-sky-700 border border-sky-300 font-bold py-3 rounded-xl active:bg-sky-200 inline-flex items-center justify-center gap-2 text-sm"
         >
           <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          ユーザー招待フォーム
+          ユーザー招待フォームをコピー
         </button>
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
