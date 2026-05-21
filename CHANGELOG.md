@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-21 (本番) – release: 新オンボーディング（LINE内自己登録フォーム）＋AI献立UI修正ほか staging一括反映
+
+- feat: オンボーディングを招待トークン方式から「LINE内・申し込みフォーム自己登録」方式へ全面移行。`/home/register`（LIFF登録フォーム）＋`/api/liff/register`（LINE ID取得・重複チェック・PFC自動計算・進行中で作成）。`/home` LiffGate が未登録LINEユーザーを `/home/register` へ誘導。管理画面はテナント共通「申し込みフォームのリンクをコピー」に。旧 `/home/onboard`・`/onboard`・redeem API・招待リンクAPI・手動「新規顧客追加」を廃止
+- fix(register): 申し込み認証の 401「IdToken expired」をアクセストークン方式で根本解決。生年月日を年/月/日プルダウン化、目標体重を任意化、目標達成日を追加、フッター誤タップ防止
+- change: AI献立UIの3点修正・献立生成中ローディングのボトムシート化、レシピ生成APIの認証必須化、record オンボツアーの説明カード位置調整
+- 本番反映: QA 条件付きGO ＋ 社長 staging 手動確認（A/B/C/D）通過済み。社長指示によりマージ
+- 影響範囲: 顧客側オンボーディング全般・管理画面・AI献立・API。詳細は以下の各 (staging) エントリ参照
+
 ## 2026-05-21 (staging) – fix: 申し込みフォーム401を認証方式変更で根本解決（IDトークン→アクセストークン）
 
 - fix(lib/withTenant.ts): `verifyLineAccessToken` 関数と `withLiffTenantAccessToken` ラッパーを追加。LINE `/v2/profile` API でアクセストークンを検証し userId を取得。IDトークン（`/oauth2/v2.1/verify`）と完全に独立したコードパス。アクセストークンキャッシュ（TTL 1分・最大100件）でレートリミット対応
