@@ -211,8 +211,9 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
           </button>
         </div>
         <div className="text-sm font-bold text-stone-900 mb-1">{step.title}</div>
-        {/* 説明文に最小高さを設定し、ステップ間でコメント欄の高さを揃える（矢印の見え方の不揃い防止） */}
-        <p className="text-[12px] text-stone-700 leading-relaxed mb-3 min-h-[3.75rem]">{step.description}</p>
+        {/* 説明文エリアに最小高さ＋上下中央揃え。ステップ毎の行数差（2〜3行）があっても
+            コメント欄の高さ・文字位置が揃い、矢印の見え方も統一される */}
+        <p className="text-[12px] text-stone-700 leading-relaxed mb-3 min-h-[3.75rem] flex items-center">{step.description}</p>
         <div className="flex gap-2">
           {stepIdx > 0 && (
             <button
