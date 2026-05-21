@@ -14,6 +14,10 @@ function jstToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+function nowJst(): string {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).replace(' ', 'T') + '+09:00';
+}
+
 function ageFromBirthdate(birthdate: string): number | undefined {
   try {
     const [y, m, d] = birthdate.split('-').map(Number);
@@ -109,6 +113,7 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
     goals: calc
       ? { kcal: calc.goalKcal, P: calc.goalP, F: calc.goalF, C: calc.goalC }
       : undefined,
+    registrationCompletedAt: nowJst(),
   });
 
   if (customer.onboardingCompletedAt) {

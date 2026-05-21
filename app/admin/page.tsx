@@ -140,8 +140,9 @@ export default function AdminCustomersPage() {
       const meJ = meRes.ok ? await meRes.json() : null;
       const tenantId: string = meJ?.currentTenantId || '';
       const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
-      await navigator.clipboard.writeText(url);
-      showToast('申し込みフォームのリンクをコピーしました');
+      const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。`;
+      await navigator.clipboard.writeText(text);
+      showToast('ユーザー招待フォームのリンクをコピーしました');
     } catch {
       showToast('コピーに失敗しました');
     }
@@ -196,7 +197,7 @@ export default function AdminCustomersPage() {
           className="block w-full bg-sky-100 text-sky-700 border border-sky-300 font-bold py-3 rounded-xl active:bg-sky-200 inline-flex items-center justify-center gap-2 text-sm"
         >
           <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          申し込みフォームのリンクをコピー
+          ユーザー招待フォーム
         </button>
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">

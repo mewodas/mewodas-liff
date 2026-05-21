@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – feat: ユーザー招待フォーム文言統一・定型文コピー・登録完了日時保存と表示
+
+- change(app/admin/page.tsx): 「申し込みフォームのリンクをコピー」ボタン文言を「ユーザー招待フォーム」に変更（T1）
+- change(app/admin/page.tsx): コピー内容をURLのみ→定型案内テキスト付きに変更（「食事管理プログラムへのご登録をお願いします。\n\n{URL}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。」）。トースト文言も「ユーザー招待フォームのリンクをコピーしました」に整合（T2）
+- feat(lib/notion.ts): Customer 型・parseCustomerFromPage・createCustomer・updateCustomer に `registrationCompletedAt`（Notion「登録完了日時」date プロパティ）を追加（T4）
+- feat(lib/repository/customers.ts): CustomerPatch・CustomerCreateInput に `registrationCompletedAt` を追加（T4）
+- feat(app/api/liff/register/route.ts): 顧客作成時に `registrationCompletedAt: nowJst()`（JST ISO 8601）を付与し Notion「登録完了日時」に書き込む（T4）
+- feat(app/admin/customers/[id]/page.tsx): 顧客詳細の基本情報セクションに「登録完了日時」を表示（T4）
+- 影響範囲: 管理画面（/admin、/admin/customers/[id]）、API（/api/liff/register）、lib/notion、lib/repository/customers
+
 ## 2026-05-21 (staging) – fix: /store 申し込みフォームボタン確認 + 自己登録時 onboardingCompletedAt クリア
 
 - fix(app/api/liff/register/route.ts): `createCustomer` 後に `customer.onboardingCompletedAt` が設定されていた場合に即座に null にリセット。Notion DB 側のデフォルト値等で意図せず設定されても初回 /home 起動でオンボーディングツアーが正常に表示されるよう防御。`patchCustomer` を import 追加

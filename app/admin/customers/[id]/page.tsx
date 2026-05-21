@@ -50,6 +50,7 @@ type Customer = {
   activityLevel: string | null;
   plan: string | null;
   storeId: string | null;
+  registrationCompletedAt: string | null;
 };
 
 type StoreItem = { pageId: string; storeId: string; name: string };
@@ -385,6 +386,21 @@ export default function CustomerDetailPage({
               />
             </div>
             <Field label="LINEユーザーID" value={customer.lineUserId || '未設定'} />
+            <Field
+              label="登録完了日時"
+              value={
+                customer.registrationCompletedAt
+                  ? new Date(customer.registrationCompletedAt).toLocaleString('ja-JP', {
+                      timeZone: 'Asia/Tokyo',
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '—'
+              }
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
                 <div className="flex items-center gap-1 mb-1">
