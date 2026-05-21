@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-21 (staging) – fix(billing): コードレビュー指摘修正（webhook monthlyPrice・update-seats dead code）
+
+- fix(app/api/stripe/webhook/route.ts): handleSubscriptionUpdate の monthlyPrice 計算を Stripe 実額ベースに変更。旧実装は getMonthlyTotal(seatLimit) を使っており、非標準プラン（PoC・エンタープライズ）で SUPPORT_FEE=¥5,500 を誤加算していた。実際の supportFeeAmount + perUserUnitAmount * perUserQuantity から算出するよう修正。getMonthlyTotal インポートも削除
+- fix(app/api/stripe/update-seats/route.ts): 全 items 削除→置換方式への移行に伴い不要になった perUserItemId 検索ロジック（旧 item 識別ループ・エラーガード）を削除。inline price_data サブスクリプションで誤って 400 を返すリスクを解消。不要な listPlans インポートも削除
+- 影響範囲: API / Stripe webhook
+- ビルド確認: npm run build 成功
+
 ## 2026-05-21 (staging) – feat: 課金制御フル実装（課金モード3種・プラン管理DB・Stripe反映・webhook ガード）
 
 - feat(lib/tenant.ts): `FITMEAL_PLANS_DB_ID` 定数追加（`5962b6528bb04451afdbf54122cffabc`）

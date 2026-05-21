@@ -11,7 +11,7 @@ import {
   getStripe,
   buildSubscriptionLineItems,
 } from '@/lib/stripe';
-import { listTenantRows, getPlanByCode, listPlans } from '@/lib/notion';
+import { listTenantRows, getPlanByCode } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { getSeatStatus } from '@/lib/seats';
 
@@ -59,45 +59,11 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     expand: ['items.data.price'],
   });
 
-  // 全プラン定義 + env からの per-user Price ID 集合
-  const perUserPriceIds = new Set(
-    [
-      process.env.STRIPE_PRICE_PER_USER,
-      process.env.STRIPE_PRICE_STARTER_PER_USER,
-      process.env.STRIPE_PRICE_GROWTH_PER_USER,
-      process.env.STRIPE_PRICE_SCALE_PER_USER,
-    ].filter(Boolean) as string[]
-  );
-  try {
-    const allPlans = await listPlans();
-    for (const p of allPlans) {
-      if (p.stripePerUserPriceId) perUserPriceIds.add(p.stripePerUserPriceId);
-    }
-  } catch {
-    // 取得失敗時は env のみで判定
+  if (sub.items.data.length === 0) {
+    return NextResponse.json({ error: 'サブスクリプション items が空です' }, { status: 400 });
   }
 
-  const supportFeePriceId = process.env.STRIPE_PRICE_SUPPORT_FEE;
-
-  let perUserItemId: string | null = null;
-  for (const item of sub.items.data) {
-    const priceId = item.price?.id;
-    if (!priceId) continue;
-    if (perUserPriceIds.size > 0 && perUserPriceIds.has(priceId)) {
-      perUserItemId = item.id;
-      break;
-    }
-    // フォールバック: support fee 以外を per-user とみなす
-    if (supportFeePriceId && priceId !== supportFeePriceId) {
-      perUserItemId = item.id;
-    }
-  }
-
-  if (!perUserItemId) {
-    return NextResponse.json({ error: 'per-user item が見つかりません' }, { status: 400 });
-  }
-
-  // 新しい line items を生成し、既存 items を削除して置換
+  // 全 items を削除して新しい line items（buildSubscriptionLineItems）で置換する
   const newLineItems = buildSubscriptionLineItems(plan, newSeats);
   const deleteItems = sub.items.data.map((item) => ({ id: item.id, deleted: true }));
 

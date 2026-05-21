@@ -16,7 +16,6 @@ import {
   getStripe,
   subscriptionStatusToNotion,
   getPlanTierBySeats,
-  getMonthlyTotal,
 } from '@/lib/stripe';
 import { listPlans } from '@/lib/notion';
 import { listTenantRows, updateTenantRow } from '@/lib/notion';
@@ -182,9 +181,9 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   }
 
   const planTier = seatLimit !== null && seatLimit > 0 ? getPlanTierBySeats(seatLimit) : null;
-  const { total: expectedTotal } = seatLimit !== null ? getMonthlyTotal(seatLimit) : { total: 0 };
-  // 月額は計算値を使う（サポート費 + per-user 合計）
-  const monthlyPrice = seatLimit !== null ? expectedTotal : (supportFeeAmount + perUserUnitAmount * perUserQuantity);
+  // 月額は Stripe 実額から算出（プランに依存しない）。
+  // getMonthlyTotal は標準プラン定数を使うため非標準プランで誤った金額になる。
+  const monthlyPrice = supportFeeAmount + perUserUnitAmount * perUserQuantity;
 
   const patch: Parameters<typeof updateTenantRow>[1] = {
     stripeSubscriptionId: sub.id,
