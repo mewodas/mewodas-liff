@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X, Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 
 const MIN_SEATS = 3;
 const SUPPORT_FEE = 5500;
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export default function SeatChangeModal({ currentSeats, currentUseCount, onClose, onSuccess }: Props) {
+  const toast = useToast();
   const safeMinInit = Math.max(MIN_SEATS, currentUseCount);
   const [newSeats, setNewSeats] = useState(Math.max(currentSeats, safeMinInit));
   const [preview, setPreview] = useState<{ amountDue: number; newTier: string } | null>(null);
@@ -79,9 +81,11 @@ export default function SeatChangeModal({ currentSeats, currentUseCount, onClose
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || `失敗 (${res.status})`);
+      toast.success('席数を変更しました');
       onSuccess();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '変更に失敗しました');
     } finally {
       setConfirming(false);
     }

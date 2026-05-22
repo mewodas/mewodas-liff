@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import InstallPrompt from './InstallPrompt';
+import { ToastProvider } from '@/components/Toast';
 
 export const metadata: Metadata = {
   title: 'FitMeal 店舗管理',
@@ -14,9 +15,9 @@ export const metadata: Metadata = {
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <ToastProvider>
       {children}
       <InstallPrompt />
-    </>
+    </ToastProvider>
   );
 }

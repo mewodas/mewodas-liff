@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Save, ExternalLink, Mail, Hash, Tag, Store as StoreIcon, Plus, Edit, Trash2, X, MapPin, Phone, User, Key, Copy, Check, RefreshCw, MessageCircle, Clock, CreditCard, Zap } from 'lucide-react';
 import AdminShell from '../../AdminShell';
+import { useToast } from '@/components/Toast';
 
 type Tenant = {
   pageId: string;
@@ -54,11 +55,11 @@ type Store = {
 
 export default function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const toast = useToast();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   const [liffId, setLiffId] = useState('');
   const [plan, setPlan] = useState('');
@@ -137,7 +138,6 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   async function save() {
     if (!tenant) return;
     setSaving(true);
-    setSaveMsg(null);
     setError(null);
     try {
       const patchBody: Record<string, unknown> = {
@@ -163,13 +163,13 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
-      setSaveMsg('保存しました');
-      setTimeout(() => setSaveMsg(null), 2500);
+      toast.success('保存しました');
       // 再取得
       const refreshed = await fetch(`/api/admin/tenants/${id}`, { cache: 'no-store' }).then((r) => r.json());
       if (refreshed?.tenant) setTenant(refreshed.tenant);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -191,11 +191,14 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       if (!res.ok) throw new Error(j.error || `${res.status}`);
       if (j.action === 'checkout' && j.url) {
         setApplyStripeMsg(`Checkout URL を発行しました。顧客に送付してください:\n${j.url}`);
+        toast.success('Checkout URL を発行しました');
       } else if (j.action === 'updated') {
         setApplyStripeMsg('Stripe のサブスクリプションを更新しました');
+        toast.success('Stripe を更新しました');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : 'Stripe 反映に失敗しました');
     } finally {
       setApplyStripeLoading(false);
     }
@@ -211,9 +214,6 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         <div className="space-y-4">
           {error && (
             <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
-          )}
-          {saveMsg && (
-            <div className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs p-3 rounded-xl">{saveMsg}</div>
           )}
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-2">
@@ -606,6 +606,7 @@ function StoreForm({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
   const [storeId, setStoreId] = useState(initial?.storeId || '');
   const [address, setAddress] = useState(initial?.address || '');
@@ -634,9 +635,11 @@ function StoreForm({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
+      toast.success(initial ? '保存しました' : '作成しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -649,9 +652,11 @@ function StoreForm({
     try {
       const res = await fetch(`/api/admin/stores/${initial.pageId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+      toast.success('削除しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
     } finally {
       setSaving(false);
     }

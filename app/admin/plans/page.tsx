@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useToast } from '@/components/Toast';
 
 type PlanDef = {
   pageId: string;
@@ -43,6 +44,7 @@ const EMPTY_FORM = {
 type FormState = typeof EMPTY_FORM;
 
 export default function PlansPage() {
+  const toast = useToast();
   const [plans, setPlans] = useState<PlanDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,6 @@ export default function PlansPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -125,12 +126,12 @@ export default function PlansPage() {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || `${r.status}`);
-      setSaveMsg(editingCode ? '更新しました' : '作成しました');
-      setTimeout(() => setSaveMsg(null), 2500);
+      toast.success(editingCode ? '更新しました' : '作成しました');
       cancelForm();
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -141,9 +142,6 @@ export default function PlansPage() {
       <div className="space-y-4">
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl">{error}</div>
-        )}
-        {saveMsg && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl">{saveMsg}</div>
         )}
 
         <div className="flex items-center justify-between">

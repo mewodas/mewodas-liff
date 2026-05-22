@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Rocket, RefreshCw, ExternalLink, Copy, Check, Building2, Mail } from 'lucide-react';
 import AdminShell from '../../AdminShell';
+import { useToast } from '@/components/Toast';
 
 const PLANS = ['5-10名', '11-20名', '21名+', 'モニター', '無料'] as const;
 
@@ -18,6 +19,7 @@ type ProvisionResult = {
 };
 
 export default function NewTenantPage() {
+  const toast = useToast();
   const [name, setName] = useState('');
   const [plan, setPlan] = useState<string>('5-10名');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -43,8 +45,10 @@ export default function NewTenantPage() {
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || `作成失敗（${res.status}）`);
       setResult(j);
+      toast.success('テナントを作成しました');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : 'テナントの作成に失敗しました');
     } finally {
       setSubmitting(false);
     }

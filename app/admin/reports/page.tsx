@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
+import { useToast } from '@/components/Toast';
 
 type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
 type Store = { pageId: string; storeId: string; name: string; signature: string };
@@ -81,6 +82,7 @@ export default function AdminReportsPage() {
 }
 
 function Inner() {
+  const toast = useToast();
   const sp = useSearchParams();
   const pathname = usePathname() || '';
   const isStore = pathname.startsWith('/store');
@@ -261,9 +263,16 @@ function Inner() {
         throw new Error(j?.error || `送信失敗（${res.status}）`);
       }
       const j = await res.json();
-      setResultMsg(j?.push?.pushed ? '送信完了（LINEプッシュあり）' : '保存完了（LINEプッシュ未送信）');
+      if (j?.push?.pushed) {
+        setResultMsg('送信完了（LINEプッシュあり）');
+        toast.success('送信しました');
+      } else {
+        setResultMsg('保存完了（LINEプッシュ未送信）');
+        toast.success('保存しました');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '送信に失敗しました');
     } finally {
       setSending(false);
     }
@@ -296,9 +305,16 @@ function Inner() {
         throw new Error(j?.error || `LINE 送信失敗（${res.status}）`);
       }
       const j = await res.json();
-      setResultMsg(j?.push?.pushed ? 'LINE 送信しました' : `失敗: ${j?.push?.reason || '不明'}`);
+      if (j?.push?.pushed) {
+        setResultMsg('LINE 送信しました');
+        toast.success('送信しました');
+      } else {
+        setResultMsg(`失敗: ${j?.push?.reason || '不明'}`);
+        toast.error(`LINE 送信失敗: ${j?.push?.reason || '不明'}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : 'LINE 送信に失敗しました');
     } finally {
       setSendingLine(false);
     }

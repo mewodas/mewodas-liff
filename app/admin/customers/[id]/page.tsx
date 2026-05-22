@@ -34,6 +34,7 @@ import {
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
+import { useToast } from '@/components/Toast';
 
 type Customer = {
   pageId: string;
@@ -100,6 +101,7 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const router = useRouter();
+  const toast = useToast();
   const [resettingOnboard, setResettingOnboard] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -282,9 +284,11 @@ export default function CustomerDetailPage({
       }
       const j = await res.json();
       setCustomer(j.customer);
-      router.push(`${base}?saved=1`);
+      toast.success('保存しました');
+      router.push(base);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -298,9 +302,10 @@ export default function CustomerDetailPage({
     try {
       const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
-      alert('オンボーディングをリセットしました。');
+      toast.success('オンボーディングをリセットしました');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'リセット失敗');
+      toast.error(e instanceof Error ? e.message : 'リセットに失敗しました');
     } finally {
       setResettingOnboard(false);
     }
@@ -318,9 +323,11 @@ export default function CustomerDetailPage({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `削除失敗（${res.status}）`);
       }
-      router.push(`${base}?saved=1`);
+      toast.success('削除しました');
+      router.push(base);
     } catch (e) {
       setError(e instanceof Error ? e.message : '削除失敗');
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
       setDeleting(false);
     }
   }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { UserPlus, Edit, Trash2, Check, X, Users, AlertTriangle } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useToast } from '@/components/Toast';
 
 type Staff = { id: string; name: string; shop: string; role: string; active: boolean };
 
@@ -139,6 +140,7 @@ function StaffEditor({
   onSaved: () => void;
   onDeleted?: () => void;
 }) {
+  const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
   const [shop, setShop] = useState(initial?.shop || '');
   const [role, setRole] = useState(initial?.role || '');
@@ -161,9 +163,11 @@ function StaffEditor({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
+      toast.success(initial ? '保存しました' : '作成しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -176,9 +180,11 @@ function StaffEditor({
     try {
       const res = await fetch(`/api/admin/staff/${initial.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+      toast.success('削除しました');
       onDeleted?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
     } finally {
       setSaving(false);
     }

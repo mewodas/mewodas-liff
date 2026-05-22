@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
+import { useToast } from '@/components/Toast';
 
 type RangeType = '昨日' | '今日' | '先週' | '今週' | '先月' | '今月' | 'カスタム';
 
@@ -111,6 +112,7 @@ const VARIABLE_GROUPS = [
 
 export default function AdminTemplatesPage() {
   const base = useAdminBase();
+  const toast = useToast();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,8 +163,10 @@ export default function AdminTemplatesPage() {
       const j = await res.json();
       await load();
       setEditingId(j.template.id);
+      toast.success('複製しました');
     } catch (e) {
       setError(e instanceof Error ? e.message : '複製エラー');
+      toast.error(e instanceof Error ? e.message : '複製に失敗しました');
     } finally {
       setDuplicatingId(null);
     }
@@ -336,9 +340,11 @@ export default function AdminTemplatesPage() {
                             try {
                               const res = await fetch(`/api/admin/templates/${t.id}`, { method: 'DELETE' });
                               if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+                              toast.success('削除しました');
                               await load();
                             } catch (e) {
                               setError(e instanceof Error ? e.message : '削除エラー');
+                              toast.error(e instanceof Error ? e.message : '削除に失敗しました');
                             }
                           }}
                           className="text-[11px] font-bold text-rose-700 border border-rose-300 px-2.5 py-1 rounded-full active:bg-rose-50 inline-flex items-center gap-1"
@@ -371,6 +377,7 @@ function TemplateEditor({
   onSaved: () => void;
   onDeleted?: () => void;
 }) {
+  const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
   const [titleTemplate, setTitleTemplate] = useState(initial?.titleTemplate || '');
   const [bodyTemplate, setBodyTemplate] = useState(initial?.bodyTemplate || '');
@@ -419,9 +426,11 @@ function TemplateEditor({
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
+      toast.success(initial ? '更新しました' : '作成しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -434,9 +443,11 @@ function TemplateEditor({
     try {
       const res = await fetch(`/api/admin/templates/${initial.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+      toast.success('削除しました');
       onDeleted?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
     } finally {
       setSaving(false);
     }

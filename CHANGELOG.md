@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-22 20:00 – change(admin): store/admin 全ページに完了トースト通知を統一
+- 管理画面: store / admin 全ページに保存・更新・削除の完了トースト（Sansan風・画面下部の緑バー）を追加
+- components/Toast.tsx（新規）・app/admin/layout.tsx（新規）を追加。Provider を /store・/admin レイアウトでマウント
+- 影響範囲: 管理画面（/store, /admin）
+
 ## 2026-05-22 (本番) – fix(gemini): 補正モードで店名・場所の補足が食品アイテム化されるバグを修正
 
 - bug: 「テキスト補正」で「サイゼリヤです。」等の店名・場所・状況の補足を入力すると、AI がそれを料理の追加申告と誤認し、items に新規アイテム（kcal付き）として追加していた

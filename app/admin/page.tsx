@@ -1,11 +1,11 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
 import AdminShell from './AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
+import { useToast } from '@/components/Toast';
 
 type SeatInfo = {
   seatLimit: number | null;
@@ -31,43 +31,9 @@ type Store = { pageId: string; storeId: string; name: string };
 
 const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
-function SavedSnackbar() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (searchParams.get('saved') === '1') {
-      setVisible(true);
-      const t = setTimeout(() => {
-        setVisible(false);
-        router.replace(window.location.pathname);
-      }, 4000);
-      return () => clearTimeout(t);
-    }
-  }, [searchParams, router]);
-
-  if (!visible) return null;
-
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg inline-flex items-center gap-3">
-      <span>✅ 保存しました</span>
-      <button
-        type="button"
-        onClick={() => {
-          setVisible(false);
-          router.replace(window.location.pathname);
-        }}
-        className="text-white/80 hover:text-white text-xs font-bold leading-none"
-      >
-        閉じる
-      </button>
-    </div>
-  );
-}
-
 export default function AdminCustomersPage() {
   const base = useAdminBase();
+  const toast = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +41,7 @@ export default function AdminCustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('すべて');
   const [storeFilter, setStoreFilter] = useState<string>('');
   const [stores, setStores] = useState<Store[]>([]);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
-
-  const showToast = useCallback((msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  }, []);
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -143,25 +103,15 @@ export default function AdminCustomersPage() {
       const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
       const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。`;
       await navigator.clipboard.writeText(text);
-      showToast('ユーザー招待フォームのリンクをコピーしました');
+      toast.success('ユーザー招待フォームのリンクをコピーしました');
     } catch {
-      showToast('コピーに失敗しました');
+      toast.error('コピーに失敗しました');
     }
   }
 
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
-      <Suspense>
-        <SavedSnackbar />
-      </Suspense>
-
       <div className="space-y-3">
-        {toastMsg && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-xl inline-flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-400" strokeWidth={2.4} />
-            {toastMsg}
-          </div>
-        )}
 
         {/* 席数上限バナー */}
         {seatInfo?.isOverLimit && (

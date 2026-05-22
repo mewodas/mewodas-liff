@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Store as StoreIcon, Plus, Save, X, Trash2, Edit, ChevronDown } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useToast } from '@/components/Toast';
 
 type Store = {
   pageId: string;
@@ -121,6 +122,7 @@ export default function AdminStoresPage() {
 }
 
 function QuickAddForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () => void }) {
+  const toast = useToast();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,9 +144,11 @@ function QuickAddForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: ()
         const j = await res.json().catch(() => null);
         throw new Error(j?.error || `保存失敗（${res.status}）`);
       }
+      toast.success('作成しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '作成に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -196,6 +200,7 @@ function QuickAddForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: ()
 }
 
 function EditForm({ initial, onCancel, onSaved }: { initial: Store; onCancel: () => void; onSaved: () => void }) {
+  const toast = useToast();
   const [name, setName] = useState(initial.name);
   const [signature, setSignature] = useState(initial.signature);
   const [address, setAddress] = useState(initial.address);
@@ -219,9 +224,11 @@ function EditForm({ initial, onCancel, onSaved }: { initial: Store; onCancel: ()
         body: JSON.stringify({ name, signature, address, phone, manager }),
       });
       if (!res.ok) throw new Error(`保存失敗（${res.status}）`);
+      toast.success('保存しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -233,9 +240,11 @@ function EditForm({ initial, onCancel, onSaved }: { initial: Store; onCancel: ()
     try {
       const res = await fetch(`/api/admin/stores/${initial.pageId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`削除失敗（${res.status}）`);
+      toast.success('削除しました');
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
     } finally {
       setSaving(false);
     }

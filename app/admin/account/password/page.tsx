@@ -6,12 +6,14 @@ import { Key, Save, Check } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import PasswordInput from '@/components/PasswordInput';
+import { useToast } from '@/components/Toast';
 
 type Me = { email: string; role: 'master' | 'tenant_admin' };
 
 export default function ChangePasswordPage() {
   const router = useRouter();
   const base = useAdminBase();
+  const toast = useToast();
   const [me, setMe] = useState<Me | null>(null);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -54,11 +56,13 @@ export default function ChangePasswordPage() {
       setCurrent('');
       setNext('');
       setConfirm('');
+      toast.success('パスワードを変更しました');
       setTimeout(() => {
         router.replace(base);
       }, 1800);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : 'パスワードの変更に失敗しました');
     } finally {
       setSaving(false);
     }

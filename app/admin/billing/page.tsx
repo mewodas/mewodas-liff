@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import SeatChangeModal from './SeatChangeModal';
+import { useToast } from '@/components/Toast';
 
 const MIN_SEATS = 3;
 const SUPPORT_FEE = 5500;
@@ -58,6 +59,7 @@ type BillingInfo = {
 };
 
 export default function BillingPage() {
+  const toast = useToast();
   const [info, setInfo] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,7 @@ export default function BillingPage() {
       if (j.url) window.location.href = j.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : '処理に失敗しました');
     } finally {
       setProcessing(false);
     }
@@ -115,6 +118,7 @@ export default function BillingPage() {
       if (j.url) window.location.href = j.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
+      toast.error(e instanceof Error ? e.message : 'ポータルの起動に失敗しました');
     } finally {
       setProcessing(false);
     }
