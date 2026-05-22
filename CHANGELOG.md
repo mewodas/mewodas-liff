@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-22 – feat: セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード）
+- feat(A): テナント別 LIFF ランタイム解決。`GET /api/public/tenant-config?tenantId=` を追加（CORS 許可・s-maxage キャッシュ）。`lib/liff.ts` の `initLiff(overrideLiffId?)` を後方互換拡張。`lib/tenantLiff.ts` 新規追加（URL ?tenantId= → tenant-config fetch → liff.init）。`/home`・`/home/register` が tenantId 解決に対応
+- feat(B): リッチメニュー自動構築 `lib/lineRichMenu.ts` 新規追加。`public/richmenu-default.png`（2500×1686）生成。createRichMenu / deleteRichMenu（冪等）実装
+- feat(C): オンボーディング API 群（`/api/store/onboarding/` 配下）新規追加。state・verify-token・verify-liff・build-richmenu・test-push・issue-test-token。公開 API：`/api/public/onboarding/owner-userid`。一時トークン管理 `lib/onboardingTokens.ts`
+- feat(D): ウィザード UI `app/store/onboarding/page.tsx` 新規追加（5 ステップ、中断再開可）。`/store` トップの未完了バナー追加。AdminShell のタブに「セットアップ」追加
+- feat(D): LIFF テスト用ページ `app/home/onboard-test/page.tsx` 新規追加
+- feat(F): Notion テナント DB（本番・staging 共用）に `onboardingStep`・`onboardingCompletedAt`・`richMenuId`・`ownerLineUserId` 列を追加。`lib/notion.ts`（TenantRow 型・updateTenantRow・listTenantRows）更新
+- 影響範囲: 顧客側 LIFF（/home, /home/register, 新規 /home/onboard-test）・管理画面（/store/onboarding）・API（/api/store/onboarding/*, /api/public/tenant-config, /api/public/onboarding/owner-userid）・DB（Notion テナント DB）
+- 既存テナント（メヲダス、staging）の挙動は維持（?tenantId= 無し時は NEXT_PUBLIC_LIFF_ID にフォールバック）
+
 ## 2026-05-22 20:00 – change(admin): store/admin 全ページに完了トースト通知を統一
 - 管理画面: store / admin 全ページに保存・更新・削除の完了トースト（Sansan風・画面下部の緑バー）を追加
 - components/Toast.tsx（新規）・app/admin/layout.tsx（新規）を追加。Provider を /store・/admin レイアウトでマウント

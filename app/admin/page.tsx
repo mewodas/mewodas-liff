@@ -34,6 +34,7 @@ const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 export default function AdminCustomersPage() {
   const base = useAdminBase();
   const toast = useToast();
+  const isStore = base === '/store';
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +43,19 @@ export default function AdminCustomersPage() {
   const [storeFilter, setStoreFilter] = useState<string>('');
   const [stores, setStores] = useState<Store[]>([]);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
+  const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
 
   const loadCustomers = useCallback(async () => {
     try {
-      const [cRes, sRes, bRes] = await Promise.all([
+      const requests: Promise<Response>[] = [
         fetch('/api/admin/customers', { cache: 'no-store' }),
         fetch('/api/admin/stores', { cache: 'no-store' }),
         fetch('/api/admin/billing/info', { cache: 'no-store' }),
-      ]);
+      ];
+      if (isStore) {
+        requests.push(fetch('/api/store/onboarding/state', { cache: 'no-store' }));
+      }
+      const [cRes, sRes, bRes, oRes] = await Promise.all(requests);
       if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
       const cJ = await cRes.json();
       const sJ = sRes.ok ? await sRes.json() : { stores: [] };
@@ -64,12 +70,16 @@ export default function AdminCustomersPage() {
           isNearLimit: bJ.isNearLimit,
         });
       }
+      if (oRes) {
+        const oJ = oRes.ok ? await oRes.json() : null;
+        if (oJ && !oJ.onboardingCompletedAt) setOnboardingIncomplete(true);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isStore]);
 
   useEffect(() => {
     loadCustomers();
@@ -112,6 +122,23 @@ export default function AdminCustomersPage() {
   return (
     <AdminShell title={`顧客一覧（${customers.length}名）`}>
       <div className="space-y-3">
+
+        {/* オンボーディング未完了バナー（store のみ） */}
+        {isStore && onboardingIncomplete && (
+          <div className="bg-violet-50 border-2 border-violet-400 text-violet-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-500" strokeWidth={2.2} />
+            <div className="flex-1">
+              <div className="font-bold text-sm mb-0.5">LINE 連携のセットアップが未完了です</div>
+              <div className="mb-2">リッチメニュー・LINE 連携を設定するとお客様がアプリをすぐに使えるようになります。</div>
+              <Link
+                href="/store/onboarding"
+                className="inline-flex items-center gap-1 bg-violet-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs"
+              >
+                セットアップを始める →
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* 席数上限バナー */}
         {seatInfo?.isOverLimit && (

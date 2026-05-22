@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { initLiffWithTenant } from '@/lib/tenantLiff';
 
 export default function RegisterPage() {
   return (
@@ -123,9 +124,15 @@ function RegisterInner() {
       try {
         const liffModule = await import('@line/liff');
         const liff = liffModule.default;
-        const id = process.env.NEXT_PUBLIC_LIFF_ID;
+        const { config } = await initLiffWithTenant(
+          (overrideLiffId) => {
+            const id = overrideLiffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
+            if (!id) throw new Error('LIFF ID 未設定');
+            return liff.init({ liffId: id });
+          }
+        );
+        const id = config?.liffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
         if (!id) throw new Error('LIFF ID 未設定');
-        await liff.init({ liffId: id });
         setLiffId(id);
         setIsInClient(liff.isInClient());
 
