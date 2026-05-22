@@ -186,7 +186,7 @@ export default function AdminCustomersPage() {
           <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
             <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" strokeWidth={2.2} />
             <div>
-              あと1名で席数上限です。早めの増枠をご検討ください。
+              あと1名で利用可能アカウント数の上限です。早めの増枠をご検討ください。
               <Link href={`${base}/billing`} className="text-amber-800 font-bold underline ml-1">
                 プランを確認する →
               </Link>

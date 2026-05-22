@@ -230,7 +230,7 @@ function PlanCard({ plan, onEdit }: { plan: PlanDef; onEdit: () => void }) {
               </div>
             </div>
             <div className="bg-stone-50 rounded-lg p-2">
-              <div className="text-stone-500 text-[10px] font-bold mb-0.5">最低席数</div>
+              <div className="text-stone-500 text-[10px] font-bold mb-0.5">最低利用可能アカウント数</div>
               <div className="font-bold text-stone-900">{plan.minSeats}名</div>
             </div>
             <div className="bg-stone-50 rounded-lg p-2">
@@ -314,7 +314,7 @@ function PlanForm({
         <Field label="per-user単価（円/人/月）">
           <input type="number" value={form.perUserPrice} onChange={(e) => set('perUserPrice', Number(e.target.value))} min={0} className={inputCls} disabled={form.volumeApplied} />
         </Field>
-        <Field label="最低席数">
+        <Field label="最低利用可能アカウント数">
           <input type="number" value={form.minSeats} onChange={(e) => set('minSeats', Number(e.target.value))} min={1} className={inputCls} />
         </Field>
       </div>

@@ -170,7 +170,7 @@ export default function BillingPage() {
             <>
             {/* 上限到達バナー */}
             {info?.isOverLimit && (
-              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex w-full gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 <div>
                   <div className="font-bold">利用可能アカウント数の上限に達しています（{info.seatLimit}名満席）</div>
@@ -181,7 +181,7 @@ export default function BillingPage() {
 
             {/* 残り1席バナー */}
             {!info?.isOverLimit && info?.isNearLimit && (
-              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex w-full gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 <div>あと1名で利用可能アカウント数の上限です。早めの増枠をご検討ください。</div>
               </div>
@@ -189,7 +189,7 @@ export default function BillingPage() {
 
             {/* 解約予約中バナー（次回請求日に解約発動） */}
             {info?.cancelAtPeriodEnd && (
-              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2 items-start">
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex w-full gap-2 items-start">
                 <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 <div>
                   <div className="font-bold">解約予約中です</div>
@@ -413,13 +413,13 @@ export default function BillingPage() {
 
             {/* ステータス系バナー（Stripe連動モードのみ） */}
             {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl inline-flex gap-2">
+              <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl flex w-full gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 お試し期間中です。期間終了前にカード登録をお願いします。
               </div>
             )}
             {info?.paymentStatus === '未払い' && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl inline-flex gap-2">
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl flex w-full gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
                 お支払いに失敗しました。カード情報を更新してください。
               </div>

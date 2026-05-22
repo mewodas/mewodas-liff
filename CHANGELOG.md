@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-22 (本番) – change(admin): 「席数」表記の全体統一＋課金ページ警告バナー全幅化
+
+- 用語統一: 残っていた「席数」「契約席数」UI 表記を「利用可能アカウント数」に統一
+  - テナント編集（/admin/tenants/[id]）の課金モード説明・「契約席数」入力ラベル・Stripe反映セクションの「席数」ラベル
+  - /admin（残り1席バナー）・/admin/customers/[id]（削除確認ダイアログ・削除セクション説明）・/admin/plans（最低席数ラベル ×2）
+  - API エラーメッセージ: /api/admin/tenants/[id]（Stripe連動モードの編集禁止）・apply-stripe（最低数バリデーション）
+- change: /admin/billing の警告バナー（上限到達・残り1席・解約予約中・お試し・未払い）を inline-flex → flex w-full で全幅化
+- 影響範囲: 管理画面（/admin 配下）・API（/api/admin）。コード内コメント・Notion DB プロパティ名「契約席数」は変更なし
+
 ## 2026-05-22 (本番) – release: 課金制御機能（課金モード3種・プラン管理DB・Stripe反映）staging一括反映
 
 - 本番反映: 社長指示により staging → main マージ。課金制御機能および先行 staging 分（席数上限UI改修・Notion再発防止）を一括反映

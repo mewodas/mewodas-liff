@@ -29,7 +29,7 @@ export const POST = withMasterOnly(async (req: NextRequest, { params }: { params
 
     const minSeats = plan.minSeats;
     if (!seats || seats < minSeats) {
-      return NextResponse.json({ error: `席数は${minSeats}名以上必須` }, { status: 400 });
+      return NextResponse.json({ error: `利用可能アカウント数は${minSeats}名以上必須` }, { status: 400 });
     }
 
     const stripe = getStripe();

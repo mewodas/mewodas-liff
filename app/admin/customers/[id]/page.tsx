@@ -308,7 +308,7 @@ export default function CustomerDetailPage({
 
   async function deleteAccount() {
     const customerName = customer?.name || 'この顧客';
-    if (!confirm(`「${customerName}」のアカウントを削除します。\n\n・LIFF からアクセスできなくなります\n・席数カウントから外れます\n・データ（食事記録など）は Notion に残ります\n\n本当に削除しますか？`)) {
+    if (!confirm(`「${customerName}」のアカウントを削除します。\n\n・LIFF からアクセスできなくなります\n・利用可能アカウント数のカウントから外れます\n・データ（食事記録など）は Notion に残ります\n\n本当に削除しますか？`)) {
       return;
     }
     setDeleting(true);
@@ -1018,7 +1018,7 @@ export default function CustomerDetailPage({
               </h3>
               <p className="text-[11px] text-rose-800 mb-3 leading-relaxed">
                 顧客レコードを Notion でアーカイブ化します。
-                LIFF からのアクセスができなくなり、席数カウントから外れます。
+                LIFF からのアクセスができなくなり、利用可能アカウント数のカウントから外れます。
                 食事記録・体重などのデータは Notion に残ります（必要なら別途削除）。
               </p>
               <button

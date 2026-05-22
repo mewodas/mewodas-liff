@@ -70,7 +70,7 @@ export const PATCH = withMasterOnly(async (req, { params }: { params: Promise<{ 
     const effectiveMode = 'billingMode' in body ? patch.billingMode : current.billingMode;
     if ((effectiveMode === 'Stripe連動' || effectiveMode == null) && 'seatLimit' in body) {
       return NextResponse.json(
-        { error: 'Stripe連動モードでは席数を直接編集できません（席数は Stripe 契約と同期されます）' },
+        { error: 'Stripe連動モードでは利用可能アカウント数を直接編集できません（Stripe 契約と同期されます）' },
         { status: 400 }
       );
     }

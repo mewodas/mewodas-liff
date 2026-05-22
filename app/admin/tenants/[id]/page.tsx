@@ -486,15 +486,15 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                 {BILLING_MODES.map((m) => (<option key={m} value={m}>{m}</option>))}
               </select>
               <div className="text-[10px] text-stone-500 mt-1 space-y-0.5">
-                <div>無制限: 席数ゲートなし（社内テスト・デモ）</div>
-                <div>手動: 下の席数入力が真実（PoC・特例契約）</div>
-                <div>Stripe連動: Stripe webhook が席数を同期（通常有償）</div>
+                <div>無制限: 利用可能アカウント数のゲートなし（社内テスト・デモ）</div>
+                <div>手動: 下の利用可能アカウント数入力が真実（PoC・特例契約）</div>
+                <div>Stripe連動: Stripe webhook が利用可能アカウント数を同期（通常有償）</div>
               </div>
             </div>
 
             {billingMode === '手動' && (
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">契約席数（手動モード必須）</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">利用可能アカウント数（手動モード必須）</label>
                 <input
                   type="number"
                   value={seatLimit}
@@ -530,10 +530,10 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
               </h2>
               <div className="text-[11px] text-stone-600 bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1">
                 <div>未契約 → Checkout Session URL を発行して顧客に送付</div>
-                <div>契約済み → Subscription を更新（プラン変更・席数変更）</div>
+                <div>契約済み → Subscription を更新（プラン変更・利用可能アカウント数変更）</div>
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 mb-1 block">席数</label>
+                <label className="text-xs font-bold text-stone-700 mb-1 block">利用可能アカウント数</label>
                 <input
                   type="number"
                   value={applyStripeSeats}
