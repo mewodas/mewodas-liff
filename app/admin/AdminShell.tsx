@@ -3,17 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
 
 const TABS: Tab[] = [
   {
-    suffix: '',
-    label: '顧客',
+    suffix: '/progress',
+    label: '進捗管理',
+    Icon: TrendingUp,
+    match: (p, base) => p === base || p.startsWith(`${base}/progress`),
+  },
+  {
+    suffix: '/customers',
+    label: '顧客設定',
     Icon: Users,
-    match: (p, base) => p === base || p.startsWith(`${base}/customers`),
+    match: (p, base) => p.startsWith(`${base}/customers`),
   },
   {
     suffix: '/meals',

@@ -1,5 +1,65 @@
 # CHANGELOG
 
+## 2026-05-23 – feat: 進捗管理メニュー追加（/admin・/store 両対応）
+- feat(admin/store): AdminShell に「進捗管理」タブ（TrendingUp アイコン）を先頭追加、「顧客」タブを「顧客設定」にリネームし `/customers` サブルートへ移動
+- feat(admin/store): `/admin` `/store` トップをサーバーコンポーネントに変換。`onboardingCompletedAt` を見てオンボーディング完了済み → `/progress`、未完了 → `/customers` へリダイレクト
+- feat(admin/store): `/admin/customers/page.tsx` を新規切り出し（`/store/customers/page.tsx` は re-export）。既存 `/admin/customers/[id]` `/store/customers/[id]` はそのまま動作
+- feat(admin/store): `/admin/progress` `/store/progress` 進捗管理一覧画面を新規作成。今日の食事（kcal/件数）・体重（最新値＋前日比）・運動（分数）を3カラム表示
+- feat(api): `/api/admin/progress` を新規作成。顧客リスト取得後に食事DB・体重DB・運動DBを並列クエリ（食事/運動は一括、体重は concurrency=5 で顧客別）。Notion レート制限対策済み
+- feat(admin/store): `/admin/progress/[id]` `/store/progress/[id]` 進捗詳細画面を追加（既存 customers/[id] を re-export）。パスに `/progress/` が含まれる場合は `back` を `/progress` へ変更、レポート送付ボタンを常時表示
+- 影響範囲: 管理画面（/admin, /store）・API（/api/admin/progress）。顧客側 LIFF は変更なし
+
+## 2026-05-23 – fix(register): 401 リトライをテナント固有 liffId 優先に変更
+- `/home/register` で API が 401 を返したときのリトライが `NEXT_PUBLIC_LIFF_ID` を直接使っていた → state 側で解決済みの `liffId`（tenant-config 経由）を優先、無い場合のみ env にフォールバック
+- 影響: 顧客側 LIFF（/home/register）。2社目以降のテナント（自前 LIFF 持ち）でも 401 リトライが正しく動くようになる。メヲダス1社のみの現状では実害なし
+
+## 2026-05-23 – fix(admin): ツアーリセット UI 文言明確化 ＋ LP 連携 TODO 追加
+
+- change(admin): `/admin/customers/[id]` のオンボーディングリセットボタン文言を「オンボーディングをリセット」→「ホーム＋食事記録ツアーを再表示」に変更。ホームと食事記録ツアーの両方がリセット対象であることを明示
+- change(admin): セクション名を「オンボーディングリセット」→「ツアーリセット」に変更。説明文に「ホーム初回ガイド・食事記録ガイドを再表示」を明記
+- change(admin): confirm ダイアログ文言を「ホーム＋食事記録ツアーをリセットします」に変更
+- change(admin): リセット成功トーストを「リセット完了。顧客側で次回起動時から再表示されます」に変更
+- docs: `docs/LP_INTEGRATION_TODO.md` 新規追加。LP（fitmeal-lp）がやるべきフォーム差し替え手順・フィールドマッピング・動作確認手順・本番切り替え前チェックリストを文書化
+- 影響範囲: 管理画面（/admin/customers/[id] の UI 文言のみ）。顧客側・API は変更なし
+- Notion 列確認結果: 本番 FitMeal 顧客 DB（2d6ec0c0...）・staging 顧客 DB（31cbec9f...）ともに `ツアーリセット日時`（date型）列が存在することを MCP で確認済み。Notion スキーマ修正は不要
+
+## 2026-05-23 (夜・後追い) – fix(signup): コードレビュー指摘の defensive 修正
+
+- fix: `/api/public/signup` の入力長を Stripe metadata 500 文字制限に合わせて切り詰め（gymName/ownerName を 100 文字、phone を 20 文字、email を 200 文字）
+- fix: `/api/public/signup` の `headcount` を 1..500 にクランプ（bot が巨大な quantity を Stripe に流して法外金額が表示されるのを防止）
+- fix: `/api/public/signup` の `success_url` を Vercel preview URL ではなく本番ドメインに固定。`NEXT_PUBLIC_APP_URL` 環境変数があればそれを優先、無ければ `staging.fitmeal.jp` / `app.fitmeal.jp` を hostname から推定
+- fix: `/api/public/signup` の in-memory rate limit map に 1万 entry 超でクリーンアップを追加（warm instance のメモリリーク防止）
+- fix: webhook `handleSelfServeCheckoutCompleted` で `gymName` が metadata に無い場合に黙ってデフォルト名で発行せず abort + console.error（識別不能テナントの混入防止）
+- chore: `/signup/welcome` の `<Suspense>` に `fallback={null}` 明示
+- docs: `lib/provisionTenant.ts` に「3DB 並列作成成功 → insertTenantRow 失敗」時の孤立 DB 発生を既知制約として明記（Postgres 移行で根本対処予定）
+- 影響範囲: API（/api/public/signup・/api/stripe/webhook）・公開ページ（/signup/welcome）・lib（provisionTenant 仕様コメント）
+- 関連: 同日夜のセルフサーブ申込 Phase 2 実装に対する code-reviewer の指摘 [1][3][4][5][6][7][8]
+- 残課題: [1] (provisionTenant 部分失敗時の真の冪等化) は Postgres 移行と同時対応
+
+## 2026-05-23 – feat: セルフサーブ申込 Phase 2（LP→Stripe→webhook→テナント自動発行）
+
+- feat: `lib/provisionTenant.ts` 新規。テナント自動プロビジョニングの共有関数（Notion 3DB 作成・テナント行・店舗・初期PW・メール送信を1関数に集約）。**冪等**（stripeCustomerId 既存ヒット時は再利用）
+- refactor: `app/api/admin/tenants/route.ts` POST を `provisionTenant` 経由に置換。挙動は維持（admin 経由は `selfServe:false` でログイン情報メールを送信）
+- feat: `app/api/public/signup/route.ts` 新規。LP からの公開申込みエンドポイント。CORS（fitmeal.jp 限定）・honeypot（_gotcha）・IP単位レート制限（1分3件）・入力検証・Stripe Checkout Session 作成（trial 14日・payment_method_collection: always・metadata.selfServe=true）
+- feat: `app/api/stripe/webhook/route.ts` 拡張。`checkout.session.completed` で `metadata.selfServe==='true'` を検知し `handleSelfServeCheckoutCompleted` 経由でテナント自動発行（冪等）→ subscription metadata に tenantId 後追い → `handleSubscriptionUpdate` で seatLimit/planTier 確定
+- feat: `app/signup/welcome/page.tsx` + `app/signup/layout.tsx` 新規。Stripe Checkout 成功 URL の公開着地ページ。受付完了・トライアル案内・次ステップ案内
+- feat: `lib/email.ts` に `welcomeEmail` 新規追加（既存 `loginInfoEmail` と並列）。トライアル終了日と LINE 連携ガイド URL（help.fitmeal.jp）を本文に含む
+- chore: `components/FooterNav.tsx` に `/signup/*` 配下を非表示パスに追加
+- chore: `fitmeal-lp/SIGNUP_PHASE2_LP_SWAP.md` 新規。本番反映時の LP 切替手順・必要 env・ロールバック手順をドキュメント化（**LP 本体は未変更**・本番反映タイミングを社長が握る）
+- 影響範囲: API（/api/public/signup 新設、/api/stripe/webhook 拡張、/api/admin/tenants 内部実装変更）・公開ページ（/signup/welcome 新設）・lib（provisionTenant/email/FooterNav）・LP（手順書のみ・本体未変更）
+- 必要な本番 env（社長作業）: `STRIPE_PRICE_SUPPORT_FEE`・`STRIPE_PRICE_PER_USER`（標準プラン本番 Price ID）・Stripe 本番 webhook endpoint 登録・help.fitmeal.jp の onboarding ガイド公開
+- 設計書: `docs/SELFSERVE_SIGNUP_DESIGN.md` Phase 1 スコープ準拠
+
+## 2026-05-22 – feat: セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード）
+- feat(A): テナント別 LIFF ランタイム解決。`GET /api/public/tenant-config?tenantId=` を追加（CORS 許可・s-maxage キャッシュ）。`lib/liff.ts` の `initLiff(overrideLiffId?)` を後方互換拡張。`lib/tenantLiff.ts` 新規追加（URL ?tenantId= → tenant-config fetch → liff.init）。`/home`・`/home/register` が tenantId 解決に対応
+- feat(B): リッチメニュー自動構築 `lib/lineRichMenu.ts` 新規追加。`public/richmenu-default.png`（2500×1686）生成。createRichMenu / deleteRichMenu（冪等）実装
+- feat(C): オンボーディング API 群（`/api/store/onboarding/` 配下）新規追加。state・verify-token・verify-liff・build-richmenu・test-push・issue-test-token。公開 API：`/api/public/onboarding/owner-userid`。一時トークン管理 `lib/onboardingTokens.ts`
+- feat(D): ウィザード UI `app/store/onboarding/page.tsx` 新規追加（5 ステップ、中断再開可）。`/store` トップの未完了バナー追加。AdminShell のタブに「セットアップ」追加
+- feat(D): LIFF テスト用ページ `app/home/onboard-test/page.tsx` 新規追加
+- feat(F): Notion テナント DB（本番・staging 共用）に `onboardingStep`・`onboardingCompletedAt`・`richMenuId`・`ownerLineUserId` 列を追加。`lib/notion.ts`（TenantRow 型・updateTenantRow・listTenantRows）更新
+- 影響範囲: 顧客側 LIFF（/home, /home/register, 新規 /home/onboard-test）・管理画面（/store/onboarding）・API（/api/store/onboarding/*, /api/public/tenant-config, /api/public/onboarding/owner-userid）・DB（Notion テナント DB）
+- 既存テナント（メヲダス、staging）の挙動は維持（?tenantId= 無し時は NEXT_PUBLIC_LIFF_ID にフォールバック）
+
 ## 2026-05-22 20:00 – change(admin): store/admin 全ページに完了トースト通知を統一
 - 管理画面: store / admin 全ページに保存・更新・削除の完了トースト（Sansan風・画面下部の緑バー）を追加
 - components/Toast.tsx（新規）・app/admin/layout.tsx（新規）を追加。Provider を /store・/admin レイアウトでマウント

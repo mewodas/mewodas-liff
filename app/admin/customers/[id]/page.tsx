@@ -1,13 +1,12 @@
 'use client';
 
 import { use, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Target,
   Scale,
   ClipboardList,
   Save,
-  Calendar as CalendarIcon,
   Calculator,
   Hourglass,
   History,
@@ -18,6 +17,7 @@ import {
   Info,
   Circle,
   RotateCcw,
+  Send,
 } from 'lucide-react';
 import {
   LineChart,
@@ -101,9 +101,12 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const router = useRouter();
+  const pathname = usePathname() || '';
+  const isFromProgress = pathname.includes('/progress/');
   const toast = useToast();
   const [resettingOnboard, setResettingOnboard] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -363,8 +366,83 @@ export default function CustomerDetailPage({
     }
   }
 
+  async function sendReport() {
+    if (!customer) return;
+    setSendingReport(true);
+    try {
+      const today = jstToday();
+      const yesterday = (() => {
+        const [y, m, d] = today.split('-').map(Number);
+        const dt = new Date(y, m - 1, d - 1);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      })();
+
+      const tRes = await fetch('/api/admin/templates', { cache: 'no-store' });
+      const tJ = tRes.ok ? await tRes.json() : null;
+      const templates: Array<{ id: string; name: string; category: string; rangeType?: string }> = tJ?.templates || [];
+      const defaultTemplate = templates.find((t) => t.category === '前日レポート' || t.name.includes('前日')) || templates[0];
+
+      const startDate = defaultTemplate?.rangeType === '昨日' ? yesterday : yesterday;
+      const endDate = yesterday;
+
+      let title = '前日のレポート';
+      let body = '';
+
+      if (defaultTemplate) {
+        const gRes = await fetch('/api/admin/reports/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: id,
+            templateId: defaultTemplate.id,
+            startDate,
+            endDate,
+          }),
+        });
+        if (gRes.ok) {
+          const gJ = await gRes.json();
+          title = gJ.title || title;
+          body = gJ.body || body;
+        }
+      }
+
+      if (!body.trim()) {
+        body = `${yesterday} の食事記録をご確認ください。`;
+      }
+
+      const res = await fetch('/api/admin/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: id,
+          category: defaultTemplate?.category || '前日レポート',
+          title,
+          body,
+          staffName: '',
+          sendLinePush: true,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `送信失敗（${res.status}）`);
+      }
+      const j = await res.json();
+      if (j?.push?.pushed) {
+        toast.success('レポートを送信しました');
+      } else {
+        toast.success('レポートを保存しました（LINE未送信）');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'レポート送信に失敗しました');
+    } finally {
+      setSendingReport(false);
+    }
+  }
+
+  const backHref = isFromProgress ? `${base}/progress` : base;
+
   return (
-    <AdminShell title={customer?.name || '顧客詳細'} back={{ href: base }}>
+    <AdminShell title={customer?.name || '顧客詳細'} back={{ href: backHref }}>
       {loading ? (
         <div className="text-center text-stone-500 py-10">読み込み中…</div>
       ) : !customer ? (
@@ -997,6 +1075,28 @@ export default function CustomerDetailPage({
               )}
             </section>
           )}
+
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
+              <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              レポート送付
+            </h3>
+            <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
+              前日レポートを生成してこの顧客に LINE 送信します。テンプレートが設定されている場合は最初のものを使用します。
+            </p>
+            <button
+              type="button"
+              onClick={sendReport}
+              disabled={sendingReport || !customer?.lineUserId}
+              className="w-full bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              <Send className="w-3.5 h-3.5" strokeWidth={2.2} />
+              {sendingReport ? '送信中…' : '前日レポートを送付'}
+            </button>
+            {!customer?.lineUserId && (
+              <p className="text-[10px] text-stone-500 mt-1.5">LINE 未連携のため送付できません</p>
+            )}
+          </section>
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
