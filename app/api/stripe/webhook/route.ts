@@ -20,6 +20,7 @@ import {
 import { listPlans } from '@/lib/notion';
 import { listTenantRows, updateTenantRow } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
+import { provisionTenant } from '@/lib/provisionTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -102,6 +103,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const subscriptionId = typeof session.subscription === 'string'
     ? session.subscription
     : session.subscription?.id;
+
+  // セルフサーブ申込: LP からの新規申込で tenantId が未存在の状態。
+  // provisionTenant() でテナント自動発行 + Stripe IDs 紐付け + ウェルカムメール送信。
+  // 冪等: 同じ stripeCustomerId のテナントが既にあれば再利用 (webhook リトライ耐性)。
+  if (session.metadata?.selfServe === 'true') {
+    await handleSelfServeCheckoutCompleted(session);
+    return;
+  }
+
   const tenantId = session.metadata?.tenantId;
   if (!tenantId) return;
 
@@ -119,6 +129,80 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       await handleSubscriptionUpdate(sub);
     } catch (e) {
       console.error('checkout.session.completed → subscription retrieve 失敗:', e);
+    }
+  }
+}
+
+async function handleSelfServeCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+  const subscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+
+  if (!customerId) {
+    console.error('selfServe checkout に customer がない:', session.id);
+    return;
+  }
+
+  const gymName = session.metadata?.gymName || 'New Gym';
+  const ownerName = session.metadata?.ownerName || '';
+  const ownerEmail = session.customer_details?.email || session.customer_email || '';
+  if (!ownerEmail) {
+    console.error('selfServe checkout に customer email がない:', session.id);
+    return;
+  }
+
+  // トライアル終了日を Stripe から取得 (subscription を引いて trial_end を見る)
+  let trialEndDate: string | null = null;
+  if (subscriptionId) {
+    try {
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      if (sub.trial_end) {
+        trialEndDate = new Date(sub.trial_end * 1000).toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('selfServe trial_end 取得失敗:', e);
+    }
+  }
+
+  const note = ownerName ? `セルフサーブ申込 (担当: ${ownerName})` : 'セルフサーブ申込';
+  const planLabel = session.metadata?.planCode === 'standard' ? '標準プラン' : (session.metadata?.planCode || '標準プラン');
+
+  // プロビジョニング (冪等)
+  const result = await provisionTenant({
+    name: gymName,
+    ownerEmail,
+    plan: planLabel,
+    note,
+    billingMode: 'Stripe連動',
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId || null,
+    trialEndDate,
+    selfServe: true,
+  });
+
+  if (result.reused) {
+    console.log(`selfServe: 既存テナント再利用 (冪等) tenantId=${result.tenantId}`);
+    return;
+  }
+
+  console.log(`selfServe: テナント発行 tenantId=${result.tenantId} mail=${result.mail.sent}`);
+
+  // Stripe 側 subscription metadata に tenantId を後追いで書き込み (将来の event tracing 用)
+  if (subscriptionId) {
+    try {
+      const stripe = getStripe();
+      await stripe.subscriptions.update(subscriptionId, {
+        metadata: {
+          ...(session.metadata || {}),
+          tenantId: result.tenantId,
+        },
+      });
+      // seatLimit / planTier / monthlyPrice を確定させる
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      await handleSubscriptionUpdate(sub);
+    } catch (e) {
+      console.error('selfServe subscription metadata 更新失敗:', e);
     }
   }
 }

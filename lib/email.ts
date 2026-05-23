@@ -121,6 +121,59 @@ export function resetCompletedEmail(params: {
   };
 }
 
+/**
+ * セルフサーブ申込からのウェルカム＋ログイン情報メール。
+ * trialEndDate を渡すとトライアル終了日を本文に含める。
+ */
+export function welcomeEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  password: string;
+  trialEndDate?: string;
+  loginUrl?: string;
+  lineGuideUrl?: string;
+}): EmailPayload {
+  const loginUrl = params.loginUrl || 'https://app.fitmeal.jp/store/login';
+  const lineGuideUrl = params.lineGuideUrl || 'https://help.fitmeal.jp/onboarding.html';
+  const trialLine = params.trialEndDate
+    ? `\n【無料トライアル期間】\n本日から ${params.trialEndDate} までは¥0（カード登録のみ・期間中解約で課金ゼロ）\n`
+    : '';
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    'FitMeal にお申し込みいただきありがとうございます。',
+    'アカウントを発行しましたので、下記からログインしてご利用を開始してください。',
+    '',
+    '【ログインURL】',
+    loginUrl,
+    '',
+    '【メールアドレス】',
+    params.ownerEmail,
+    '',
+    '【初期パスワード】',
+    params.password,
+    trialLine,
+    '【次の15分でやること: LINE連携】',
+    'FitMeal は LINE 公式アカウント + LIFF を経由して会員様が食事を記録します。',
+    '以下のガイドに沿って、ジム様の LINE 連携をセットアップしてください。',
+    lineGuideUrl,
+    '',
+    '※初回ログイン後、画面右上のアカウントメニューから必ずパスワードを変更してください。',
+    '※スマートフォンでアクセスすると「ホーム画面に追加」でアプリのように使えます。',
+    '',
+    'ご不明な点があればこのメールに返信してお問い合わせください。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】${params.tenantName} 様、ご登録ありがとうございます`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
+
 /** ログイン情報案内メールのテンプレート */
 export function loginInfoEmail(params: {
   tenantName: string;

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-05-23 – feat: セルフサーブ申込 Phase 2（LP→Stripe→webhook→テナント自動発行）
+
+- feat: `lib/provisionTenant.ts` 新規。テナント自動プロビジョニングの共有関数（Notion 3DB 作成・テナント行・店舗・初期PW・メール送信を1関数に集約）。**冪等**（stripeCustomerId 既存ヒット時は再利用）
+- refactor: `app/api/admin/tenants/route.ts` POST を `provisionTenant` 経由に置換。挙動は維持（admin 経由は `selfServe:false` でログイン情報メールを送信）
+- feat: `app/api/public/signup/route.ts` 新規。LP からの公開申込みエンドポイント。CORS（fitmeal.jp 限定）・honeypot（_gotcha）・IP単位レート制限（1分3件）・入力検証・Stripe Checkout Session 作成（trial 14日・payment_method_collection: always・metadata.selfServe=true）
+- feat: `app/api/stripe/webhook/route.ts` 拡張。`checkout.session.completed` で `metadata.selfServe==='true'` を検知し `handleSelfServeCheckoutCompleted` 経由でテナント自動発行（冪等）→ subscription metadata に tenantId 後追い → `handleSubscriptionUpdate` で seatLimit/planTier 確定
+- feat: `app/signup/welcome/page.tsx` + `app/signup/layout.tsx` 新規。Stripe Checkout 成功 URL の公開着地ページ。受付完了・トライアル案内・次ステップ案内
+- feat: `lib/email.ts` に `welcomeEmail` 新規追加（既存 `loginInfoEmail` と並列）。トライアル終了日と LINE 連携ガイド URL（help.fitmeal.jp）を本文に含む
+- chore: `components/FooterNav.tsx` に `/signup/*` 配下を非表示パスに追加
+- chore: `fitmeal-lp/SIGNUP_PHASE2_LP_SWAP.md` 新規。本番反映時の LP 切替手順・必要 env・ロールバック手順をドキュメント化（**LP 本体は未変更**・本番反映タイミングを社長が握る）
+- 影響範囲: API（/api/public/signup 新設、/api/stripe/webhook 拡張、/api/admin/tenants 内部実装変更）・公開ページ（/signup/welcome 新設）・lib（provisionTenant/email/FooterNav）・LP（手順書のみ・本体未変更）
+- 必要な本番 env（社長作業）: `STRIPE_PRICE_SUPPORT_FEE`・`STRIPE_PRICE_PER_USER`（標準プラン本番 Price ID）・Stripe 本番 webhook endpoint 登録・help.fitmeal.jp の onboarding ガイド公開
+- 設計書: `docs/SELFSERVE_SIGNUP_DESIGN.md` Phase 1 スコープ準拠
+
 ## 2026-05-22 – feat: セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード）
 - feat(A): テナント別 LIFF ランタイム解決。`GET /api/public/tenant-config?tenantId=` を追加（CORS 許可・s-maxage キャッシュ）。`lib/liff.ts` の `initLiff(overrideLiffId?)` を後方互換拡張。`lib/tenantLiff.ts` 新規追加（URL ?tenantId= → tenant-config fetch → liff.init）。`/home`・`/home/register` が tenantId 解決に対応
 - feat(B): リッチメニュー自動構築 `lib/lineRichMenu.ts` 新規追加。`public/richmenu-default.png`（2500×1686）生成。createRichMenu / deleteRichMenu（冪等）実装
