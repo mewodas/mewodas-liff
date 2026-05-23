@@ -295,14 +295,14 @@ export default function CustomerDetailPage({
   }
 
   async function resetOnboarding() {
-    if (!confirm('オンボーディングをリセットします。\n顧客は次回 LIFF を開いたときに、再度オンボーディング画面が表示されます。')) {
+    if (!confirm('ホーム＋食事記録ツアーをリセットします。\n顧客は次回 LIFF を開いたときに、再度ツアーが表示されます。')) {
       return;
     }
     setResettingOnboard(true);
     try {
       const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
-      toast.success('オンボーディングをリセットしました');
+      toast.success('リセット完了。顧客側で次回起動時から再表示されます');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'リセット失敗');
       toast.error(e instanceof Error ? e.message : 'リセットに失敗しました');
@@ -1001,10 +1001,10 @@ export default function CustomerDetailPage({
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                オンボーディングリセット
+                ツアーリセット
               </h3>
               <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
-                顧客が次回 LIFF を開いたときに再度オンボーディング画面が表示されます。
+                ホーム初回ガイド・食事記録ガイドを再表示します。顧客が次回 LIFF を開いたときから再表示されます。
                 目標値・体重・性別などの基本情報は保持されます。
               </p>
                 <button
@@ -1014,7 +1014,7 @@ export default function CustomerDetailPage({
                   className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
-                  {resettingOnboard ? 'リセット中…' : 'オンボーディングをリセット'}
+                  {resettingOnboard ? 'リセット中…' : 'ホーム＋食事記録ツアーを再表示'}
                 </button>
             </section>
 

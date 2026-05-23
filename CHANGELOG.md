@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-23 – fix(admin): ツアーリセット UI 文言明確化 ＋ LP 連携 TODO 追加
+
+- change(admin): `/admin/customers/[id]` のオンボーディングリセットボタン文言を「オンボーディングをリセット」→「ホーム＋食事記録ツアーを再表示」に変更。ホームと食事記録ツアーの両方がリセット対象であることを明示
+- change(admin): セクション名を「オンボーディングリセット」→「ツアーリセット」に変更。説明文に「ホーム初回ガイド・食事記録ガイドを再表示」を明記
+- change(admin): confirm ダイアログ文言を「ホーム＋食事記録ツアーをリセットします」に変更
+- change(admin): リセット成功トーストを「リセット完了。顧客側で次回起動時から再表示されます」に変更
+- docs: `docs/LP_INTEGRATION_TODO.md` 新規追加。LP（fitmeal-lp）がやるべきフォーム差し替え手順・フィールドマッピング・動作確認手順・本番切り替え前チェックリストを文書化
+- 影響範囲: 管理画面（/admin/customers/[id] の UI 文言のみ）。顧客側・API は変更なし
+- Notion 列確認結果: 本番 FitMeal 顧客 DB（2d6ec0c0...）・staging 顧客 DB（31cbec9f...）ともに `ツアーリセット日時`（date型）列が存在することを MCP で確認済み。Notion スキーマ修正は不要
+
 ## 2026-05-23 (夜・後追い) – fix(signup): コードレビュー指摘の defensive 修正
 
 - fix: `/api/public/signup` の入力長を Stripe metadata 500 文字制限に合わせて切り詰め（gymName/ownerName を 100 文字、phone を 20 文字、email を 200 文字）
