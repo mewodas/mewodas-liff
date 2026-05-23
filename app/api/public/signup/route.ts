@@ -52,6 +52,13 @@ const RATE_MAX = 3;
 
 function checkRateLimit(ip: string): { ok: boolean; retryAfter?: number } {
   const now = Date.now();
+  // map サイズ膨張防止: 1万 entry を超えたら期限切れエントリをまとめて掃除
+  if (rateMap.size > 10_000) {
+    const cutoff = now - RATE_WINDOW_MS;
+    for (const [key, val] of rateMap) {
+      if (val.windowStart < cutoff) rateMap.delete(key);
+    }
+  }
   const rec = rateMap.get(ip);
   if (!rec || now - rec.windowStart > RATE_WINDOW_MS) {
     rateMap.set(ip, { count: 1, windowStart: now });
@@ -91,12 +98,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true }, { headers: cors });
     }
 
-    const gymName = String(body.gymName || '').trim();
-    const ownerName = String(body.ownerName || '').trim();
-    const email = String(body.email || '').trim();
-    const phone = String(body.phone || '').trim();
+    // Stripe metadata は 500 文字制限。100 文字で十分以上のバッファ。
+    const gymName = String(body.gymName || '').trim().slice(0, 100);
+    const ownerName = String(body.ownerName || '').trim().slice(0, 100);
+    const email = String(body.email || '').trim().slice(0, 200);
+    const phone = String(body.phone || '').trim().slice(0, 20);
     const headcountRaw = body.headcount;
-    const headcount = Math.max(1, Math.floor(Number(headcountRaw) || 5));
+    // 上限 500: bot が巨大な quantity を Stripe に投げて法外な金額を表示するのを防ぐ。
+    // 標準プラン Volume 段階 (1650/人) 想定で 500 人なら ¥825,000/月。それ以上は要相談扱い。
+    const headcount = Math.min(500, Math.max(1, Math.floor(Number(headcountRaw) || 5)));
 
     if (!gymName) {
       return NextResponse.json({ error: 'ジム名は必須です' }, { status: 400, headers: cors });
@@ -132,8 +142,12 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe();
     const successOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-    // success_url は app.fitmeal.jp 配下の /signup/welcome に固定 (このサービスのドメイン)
-    const appOrigin = req.nextUrl.origin;
+    // success_url は本番アプリドメインに固定する。req.nextUrl.origin だと Vercel preview URL
+    // (xxx.vercel.app) や staging.fitmeal.jp に誘導されてしまう。
+    // staging では NEXT_PUBLIC_APP_URL=https://staging.fitmeal.jp、本番では未設定でデフォルト。
+    const appOrigin =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (req.nextUrl.hostname.includes('staging') ? 'https://staging.fitmeal.jp' : 'https://app.fitmeal.jp');
 
     const metadata: Record<string, string> = {
       selfServe: 'true',

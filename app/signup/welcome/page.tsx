@@ -21,7 +21,7 @@ export default async function SignupWelcomePage({ searchParams }: Props) {
         : null;
 
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
         <div className="mx-auto max-w-2xl px-6 py-16">
           <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-emerald-100">

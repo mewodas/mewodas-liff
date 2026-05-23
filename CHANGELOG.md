@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-05-23 (夜・後追い) – fix(signup): コードレビュー指摘の defensive 修正
+
+- fix: `/api/public/signup` の入力長を Stripe metadata 500 文字制限に合わせて切り詰め（gymName/ownerName を 100 文字、phone を 20 文字、email を 200 文字）
+- fix: `/api/public/signup` の `headcount` を 1..500 にクランプ（bot が巨大な quantity を Stripe に流して法外金額が表示されるのを防止）
+- fix: `/api/public/signup` の `success_url` を Vercel preview URL ではなく本番ドメインに固定。`NEXT_PUBLIC_APP_URL` 環境変数があればそれを優先、無ければ `staging.fitmeal.jp` / `app.fitmeal.jp` を hostname から推定
+- fix: `/api/public/signup` の in-memory rate limit map に 1万 entry 超でクリーンアップを追加（warm instance のメモリリーク防止）
+- fix: webhook `handleSelfServeCheckoutCompleted` で `gymName` が metadata に無い場合に黙ってデフォルト名で発行せず abort + console.error（識別不能テナントの混入防止）
+- chore: `/signup/welcome` の `<Suspense>` に `fallback={null}` 明示
+- docs: `lib/provisionTenant.ts` に「3DB 並列作成成功 → insertTenantRow 失敗」時の孤立 DB 発生を既知制約として明記（Postgres 移行で根本対処予定）
+- 影響範囲: API（/api/public/signup・/api/stripe/webhook）・公開ページ（/signup/welcome）・lib（provisionTenant 仕様コメント）
+- 関連: 同日夜のセルフサーブ申込 Phase 2 実装に対する code-reviewer の指摘 [1][3][4][5][6][7][8]
+- 残課題: [1] (provisionTenant 部分失敗時の真の冪等化) は Postgres 移行と同時対応
+
 ## 2026-05-23 – feat: セルフサーブ申込 Phase 2（LP→Stripe→webhook→テナント自動発行）
 
 - feat: `lib/provisionTenant.ts` 新規。テナント自動プロビジョニングの共有関数（Notion 3DB 作成・テナント行・店舗・初期PW・メール送信を1関数に集約）。**冪等**（stripeCustomerId 既存ヒット時は再利用）

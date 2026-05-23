@@ -143,7 +143,13 @@ async function handleSelfServeCheckoutCompleted(session: Stripe.Checkout.Session
     return;
   }
 
-  const gymName = session.metadata?.gymName || 'New Gym';
+  const gymName = session.metadata?.gymName;
+  if (!gymName) {
+    // gymName 必須・LP では required input なので通常欠落しない。
+    // 黙ってデフォルト名で発行するとテナント識別不能になるためアラート優先で abort。
+    console.error('selfServe: gymName が metadata に無い session.id=', session.id, 'metadata=', session.metadata);
+    return;
+  }
   const ownerName = session.metadata?.ownerName || '';
   const ownerEmail = session.customer_details?.email || session.customer_email || '';
   if (!ownerEmail) {

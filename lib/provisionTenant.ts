@@ -79,6 +79,12 @@ function jstToday(): string {
  * - ウェルカム/ログイン情報メール送信
  *
  * 冪等性: 同じ stripeCustomerId のテナントが既にあれば再利用して即 return。
+ *
+ * 既知の制約 (Postgres 移行で根本対処予定): 3DB 並列作成 Promise.all が成功した直後で
+ * insertTenantRow が失敗した場合、Notion 側に「孤立 DB が残った状態」になる。次の
+ * webhook リトライでは stripeCustomerId 付きテナント行がまだ無いため、新規プロビと
+ * 判定され、もう一組の 3DB が作られる。実害は孤立 DB 3 本のみ（手動アーカイブで掃除可）。
+ * Notion API 失敗率が低い現状では許容、テナント 200 突破で Postgres 移行と同時に解消。
  */
 export async function provisionTenant(input: ProvisionInput): Promise<ProvisionResult> {
   // 冪等性チェック: 既存 stripeCustomer に紐づくテナントがあれば再利用
