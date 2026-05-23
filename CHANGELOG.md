@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-23 – fix(register): 401 リトライをテナント固有 liffId 優先に変更
+- `/home/register` で API が 401 を返したときのリトライが `NEXT_PUBLIC_LIFF_ID` を直接使っていた → state 側で解決済みの `liffId`（tenant-config 経由）を優先、無い場合のみ env にフォールバック
+- 影響: 顧客側 LIFF（/home/register）。2社目以降のテナント（自前 LIFF 持ち）でも 401 リトライが正しく動くようになる。メヲダス1社のみの現状では実害なし
+
 ## 2026-05-23 – fix(admin): ツアーリセット UI 文言明確化 ＋ LP 連携 TODO 追加
 
 - change(admin): `/admin/customers/[id]` のオンボーディングリセットボタン文言を「オンボーディングをリセット」→「ホーム＋食事記録ツアーを再表示」に変更。ホームと食事記録ツアーの両方がリセット対象であることを明示

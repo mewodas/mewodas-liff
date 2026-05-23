@@ -248,8 +248,9 @@ function RegisterInner() {
 
       // 401: アクセストークンが無効（失効・環境不整合）→ liff.init() 再実行でトークン更新を試みて1回リトライ
       // リトライは1回のみ（無限ループ防止）
+      // テナント固有 liffId（state）を優先し、無ければ env にフォールバック（2社目以降のテナント対応）
       if (res.status === 401) {
-        const liffId2 = process.env.NEXT_PUBLIC_LIFF_ID;
+        const liffId2 = liffId || process.env.NEXT_PUBLIC_LIFF_ID;
         if (liffId2) {
           try {
             await liff.init({ liffId: liffId2 });
