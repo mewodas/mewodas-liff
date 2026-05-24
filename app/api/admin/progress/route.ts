@@ -66,9 +66,13 @@ type ProgressItem = {
   };
 };
 
-export const GET = withAdminTenant(async () => {
+export const GET = withAdminTenant(async (req) => {
   try {
-    const today = jstToday();
+    const url = new URL(req.url);
+    const dateParam = url.searchParams.get('date');
+    const jstNow = jstToday();
+    const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : jstNow;
+    const today = selectedDate;
     const [todayY, todayM, todayD] = today.split('-').map(Number);
     const yesterdayDt = new Date(todayY, todayM - 1, todayD - 1);
     const yesterday = `${yesterdayDt.getFullYear()}-${String(yesterdayDt.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDt.getDate()).padStart(2, '0')}`;
@@ -214,7 +218,7 @@ export const GET = withAdminTenant(async () => {
       }
     }
 
-    return NextResponse.json({ progress, today });
+    return NextResponse.json({ progress, today: selectedDate });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
   }
