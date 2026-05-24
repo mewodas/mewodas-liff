@@ -425,6 +425,18 @@ export async function assertFoodRecordOwnership(pageId: string): Promise<void> {
   }
 }
 
+// pageId が現テナントの顧客DBに属することを確認。不一致なら例外 throw
+// 管理API（patch/approve/archive 等）で他テナントの顧客操作を防ぐガード。
+export async function assertCustomerOwnership(pageId: string): Promise<void> {
+  const page = await notionRequest('GET', `/pages/${pageId}`);
+  const parent = page?.parent;
+  const expectedDbId = getTenantNotion().customerDbId.replace(/-/g, '');
+  const actualDbId = (parent?.database_id || '').replace(/-/g, '');
+  if (parent?.type !== 'database_id' || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: customer pageId does not belong to tenant');
+  }
+}
+
 // ===== テナント自動プロビジョニング =====
 
 // 新規ジム用の「{ジム名} 顧客」DB を作成。FitMeal 顧客スキーマと同じ構造。
@@ -650,6 +662,8 @@ export type TenantRow = {
   onboardingCompletedAt: string | null;
   richMenuId: string | null;
   ownerLineUserId: string | null;
+  /** 招待モード（Phase 2）。'個別招待'=トレーナー1件ずつURL発行、'承認制'=公開URL+ジムが承認 */
+  inviteMode: 'individual' | 'approval' | null;
 };
 
 export async function updateTenantRow(
@@ -685,6 +699,7 @@ export async function updateTenantRow(
     onboardingCompletedAt?: string | null;
     richMenuId?: string | null;
     ownerLineUserId?: string | null;
+    inviteMode?: 'individual' | 'approval' | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -788,6 +803,11 @@ export async function updateTenantRow(
       ? { rich_text: [{ type: 'text', text: { content: patch.richMenuId } }] }
       : { rich_text: [] };
   }
+  if (patch.inviteMode !== undefined) {
+    properties['招待モード'] = patch.inviteMode !== null
+      ? { select: { name: patch.inviteMode === 'approval' ? '承認制' : '個別招待' } }
+      : { select: null };
+  }
   if (patch.ownerLineUserId !== undefined) {
     properties['ownerLineUserId'] = patch.ownerLineUserId
       ? { rich_text: [{ type: 'text', text: { content: patch.ownerLineUserId } }] }
@@ -840,6 +860,14 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       onboardingCompletedAt: p['onboardingCompletedAt']?.date?.start ?? null,
       richMenuId: p['richMenuId']?.rich_text?.[0]?.plain_text || null,
       ownerLineUserId: p['ownerLineUserId']?.rich_text?.[0]?.plain_text || null,
+      // Notion の select 値（'個別招待' / '承認制'）を TS 値（'individual' / 'approval'）に正規化。
+      // 列が無い or 未設定の場合は null → コード側で 'individual' フォールバック。
+      inviteMode: (() => {
+        const v = p['招待モード']?.select?.name;
+        if (v === '承認制') return 'approval' as const;
+        if (v === '個別招待') return 'individual' as const;
+        return null;
+      })(),
     };
   });
 }

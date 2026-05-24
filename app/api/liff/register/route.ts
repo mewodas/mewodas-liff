@@ -7,7 +7,7 @@ import { getTenantByIdAsync } from '@/lib/tenantResolver';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
 import { calcGoals } from '@/lib/goalCalc';
 import { getSeatStatus } from '@/lib/seats';
-import { verifyInviteToken } from '@/lib/inviteToken';
+import { verifyInviteToken, type InviteKind } from '@/lib/inviteToken';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,9 @@ function ageFromBirthdate(birthdate: string): number | undefined {
 
 // 招待トークン優先のテナント解決ラッパー:
 // x-invite-token があれば HMAC 検証して verified tenant で fn を実行する。
-// なければ withLiffTenantAccessToken で解決された現テナント（x-tenant-id / x-liff-id / default）を使う。
+// fn コールバックには verified invite の `kind`（individual / approval）を渡し、
+// register 側で `kind=approval` のときに「承認待ち」ステータスで作成する判定に使う。
+// x-invite-token がない場合は kind=null として fn を呼ぶ（既存テナント context で動作）。
 //
 // 重要な構造上の制約:
 //   - 本関数の OUTSIDE (= fn コールバックの外) で getCurrentTenant() を絶対に呼ばないこと。
@@ -44,10 +46,10 @@ function ageFromBirthdate(birthdate: string): number | undefined {
 //   - 必ず fn コールバック内に DB 参照・席数チェック・テナント設定の取得などを置く。
 async function withInviteOrCurrentTenant<T>(
   req: NextRequest,
-  fn: () => Promise<T>
+  fn: (inviteKind: InviteKind | null) => Promise<T>
 ): Promise<T | NextResponse> {
   const inviteToken = req.headers.get('x-invite-token');
-  if (!inviteToken) return fn();
+  if (!inviteToken) return fn(null);
   const payload = verifyInviteToken(inviteToken);
   if (!payload) {
     return NextResponse.json(
@@ -70,7 +72,7 @@ async function withInviteOrCurrentTenant<T>(
       { status: 404 }
     );
   }
-  return runWithTenantById(payload.tenantId, fn);
+  return runWithTenantById(payload.tenantId, () => fn(payload.kind));
 }
 
 export const GET = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
@@ -92,13 +94,14 @@ export const GET = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unkn
       alreadyRegistered: !!existing,
       overLimit: seatStatus.isOverLimit,
       customerName: existing?.name,
+      foodStatus: existing?.foodStatus ?? null,
       officialLineUrl,
     });
   });
 });
 
 export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
-  return withInviteOrCurrentTenant(req, async () => {
+  return withInviteOrCurrentTenant(req, async (inviteKind) => {
     // 重複チェック: 同じ LINE ID の顧客が既にいれば二重作成しない
     const existing = await getCustomerByLineId(verifiedLineUserId, { force: true });
     if (existing) {
@@ -113,6 +116,7 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
         alreadyRegistered: true,
         customerId: existing.pageId,
         customerName: existing.name,
+        foodStatus: existing.foodStatus ?? null,
         officialLineUrl,
         tenantId: tenant.id,
       });
@@ -183,10 +187,23 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
       });
     }
 
+    // 招待モードによる初期ステータスの決定:
+    //   - 招待トークンが kind='approval' → '承認待ち'（ジムが /store/customers で承認するまで LIFF 利用不可）
+    //   - 招待トークンが kind='individual' or トークンなし → '進行中'（即利用可、既存挙動）
+    // 招待トークン無し（旧 ?tenantId= 平文 or 招待無し）でテナントが「承認制」モード設定の場合も
+    // '承認待ち' で作成する（公開 register URL がジムサイト等に貼られた場合の保護）。
+    const tenantForStatus = getCurrentTenant();
+    const tenantInviteMode = tenantForStatus.inviteMode ?? 'individual';
+    const effectiveMode: 'individual' | 'approval' =
+      inviteKind === 'approval' ? 'approval'
+      : inviteKind === 'individual' ? 'individual'
+      : tenantInviteMode;
+    const initialFoodStatus = effectiveMode === 'approval' ? '承認待ち' : '進行中';
+
     const customer = await createCustomer({
       name,
       lineUserId: verifiedLineUserId,
-      foodStatus: '進行中',
+      foodStatus: initialFoodStatus,
       gender,
       heightCm,
       age,
@@ -217,6 +234,7 @@ export const POST = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unk
       alreadyRegistered: false,
       customerId: customer.pageId,
       customerName: customer.name,
+      foodStatus: initialFoodStatus,
       officialLineUrl,
       tenantId: tenant.id,
     });

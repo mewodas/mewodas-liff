@@ -260,6 +260,8 @@ function LiffGateInner() {
     !!error && /進行中|食事管理|対象外/.test(error);
 
   if (isNonActiveStatus || isStatusError) {
+    // 承認待ち時は専用メッセージ（ジムが承認すれば即利用開始できる旨を伝える）
+    const isApprovalPending = foodStatus === '承認待ち';
     return (
       <main className="min-h-screen bg-stone-100 flex flex-col pb-28">
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-6">
@@ -268,14 +270,30 @@ function LiffGateInner() {
               <AlertCircle className="w-7 h-7 text-amber-500" strokeWidth={2.2} />
             </div>
             <h1 className="text-base font-bold text-stone-900 leading-relaxed">
-              食事管理対象外、
-              <br />
-              またはステータスが進行中ではありません
+              {isApprovalPending ? (
+                <>ジムからの承認待ちです</>
+              ) : (
+                <>
+                  食事管理対象外、
+                  <br />
+                  またはステータスが進行中ではありません
+                </>
+              )}
             </h1>
             <p className="text-xs text-stone-500 leading-relaxed">
-              ご利用にはトレーナーによる設定が必要です。
-              <br />
-              下記からご連絡ください。
+              {isApprovalPending ? (
+                <>
+                  ジム側で承認が完了するとご利用開始できます。
+                  <br />
+                  ご不明な点はジムまでお問い合わせください。
+                </>
+              ) : (
+                <>
+                  ご利用にはトレーナーによる設定が必要です。
+                  <br />
+                  下記からご連絡ください。
+                </>
+              )}
             </p>
             {officialLineUrl && (
               <a

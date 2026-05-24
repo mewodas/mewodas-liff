@@ -90,6 +90,8 @@ function RegisterInner() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [officialLineUrl, setOfficialLineUrl] = useState('');
+  // 承認制モード判定用。null/'進行中' = 通常、'承認待ち' = 承認待ち画面を出す
+  const [registeredStatus, setRegisteredStatus] = useState<string | null>(null);
 
   const daysInSelectedMonth =
     birthYear && birthMonth
@@ -205,12 +207,14 @@ function RegisterInner() {
                 overLimit: boolean;
                 customerName?: string;
                 officialLineUrl?: string;
+                foodStatus?: string | null;
               };
               if (checkJ.alreadyRegistered) {
                 // 既登録ユーザーは即「登録済み」画面（フォーム入力不要）。
                 // 名前と公式LINE案内も復元しておくと "は登録済みです" の空白名詞表示を回避できる。
                 if (checkJ.customerName) setCustomerName(checkJ.customerName);
                 if (checkJ.officialLineUrl) setOfficialLineUrl(checkJ.officialLineUrl);
+                if (checkJ.foodStatus) setRegisteredStatus(checkJ.foodStatus);
                 setPhase('already-registered');
                 return;
               }
@@ -324,6 +328,7 @@ function RegisterInner() {
 
       setCustomerName(j.customerName || '');
       setOfficialLineUrl(j.officialLineUrl || '');
+      if (j.foodStatus) setRegisteredStatus(j.foodStatus);
       // 次回 LIFF 起動時にも同じテナントを使うため localStorage に保存
       // サーバー側で検証された tenantId を優先（旧 URL の平文 tenantId が改ざんされていた場合の保険）
       const resolvedTenantId: string | undefined = j.tenantId || tenantId;
@@ -377,21 +382,41 @@ function RegisterInner() {
   }
 
   if (phase === 'already-registered') {
+    const isPendingApproval = registeredStatus === '承認待ち';
     return (
-      <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center p-6 gap-6 text-center">
-        <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-          <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+      <div className={`min-h-screen flex flex-col items-center justify-center p-6 gap-6 text-center ${isPendingApproval ? 'bg-amber-50' : 'bg-emerald-50'}`}>
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${isPendingApproval ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+          {isPendingApproval ? (
+            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          ) : (
+            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様は登録済みです` : 'すでに登録済みです'}
+            {isPendingApproval
+              ? customerName ? `${customerName}様 承認待ちです` : 'ジムからの承認待ちです'
+              : customerName ? `${customerName}様は登録済みです` : 'すでに登録済みです'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
-            すでにアカウントが作成されています。
-            <br />
-            このウィンドウを閉じてリッチメニューからご利用ください。
+            {isPendingApproval ? (
+              <>
+                お申込みありがとうございます。
+                <br />
+                ジム側で承認が完了するとご利用開始できます。
+              </>
+            ) : (
+              <>
+                すでにアカウントが作成されています。
+                <br />
+                このウィンドウを閉じてリッチメニューからご利用ください。
+              </>
+            )}
           </p>
         </div>
         {officialLineUrl && (
@@ -407,19 +432,37 @@ function RegisterInner() {
   }
 
   if (phase === 'done') {
+    const isPendingApproval = registeredStatus === '承認待ち';
     return (
-      <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center p-6 gap-6 text-center">
-        <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-          <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+      <div className={`min-h-screen flex flex-col items-center justify-center p-6 gap-6 text-center ${isPendingApproval ? 'bg-amber-50' : 'bg-emerald-50'}`}>
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${isPendingApproval ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+          {isPendingApproval ? (
+            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          ) : (
+            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様　登録完了しました` : '登録完了しました'}
+            {isPendingApproval
+              ? customerName ? `${customerName}様 お申込みを受け付けました` : 'お申込みを受け付けました'
+              : customerName ? `${customerName}様 登録完了しました` : '登録完了しました'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
-            食事管理プログラムへようこそ。
+            {isPendingApproval ? (
+              <>
+                ジムが承認するとご利用開始できます。
+                <br />
+                承認まで少々お待ちください。
+              </>
+            ) : (
+              <>食事管理プログラムへようこそ。</>
+            )}
           </p>
         </div>
 

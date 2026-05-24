@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle } from 'lucide-react';
+import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
@@ -29,7 +29,9 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '承認待ち', '進行中', '休止中', '卒業'];
+// 承認制モードは未公開（バックエンドのみ実装済み）。UI からは個別招待モードに固定して呼ぶ。
+// 将来 UI を再公開する場合は本ファイルにモード切替トグル・/api/admin/tenant-settings 連動を復活させる。
 
 export default function AdminCustomersPage() {
   const base = useAdminBase();
@@ -44,6 +46,7 @@ export default function AdminCustomersPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -81,6 +84,30 @@ export default function AdminCustomersPage() {
     }
   }, [isStore]);
 
+  async function approveCustomer(e: React.MouseEvent, customerId: string, customerName: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (approvingId) return;
+    if (!window.confirm(`「${customerName}」さんを承認しますか？\n承認すると食事管理機能が利用可能になります。`)) return;
+    setApprovingId(customerId);
+    try {
+      const res = await fetch(`/api/admin/customers/${encodeURIComponent(customerId)}/approve`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `承認失敗（${res.status}）`);
+      }
+      // 楽観的にローカル state を更新
+      setCustomers((prev) => prev.map((c) => (c.pageId === customerId ? { ...c, foodStatus: '進行中' } : c)));
+      toast.success(`「${customerName}」さんを承認しました`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '承認に失敗しました');
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
@@ -107,7 +134,7 @@ export default function AdminCustomersPage() {
     if (seatInfo?.isOverLimit) return;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
-      // 署名付き招待URL（7日有効）を発行
+      // 個別招待モードで 7日有効の URL を発行。承認制モードは UI 未公開（バックエンドのみ実装）。
       const inviteRes = await fetch('/api/admin/invites/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,40 +295,58 @@ export default function AdminCustomersPage() {
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
-            {filtered.map((c) => (
-              <li key={c.pageId}>
-                <Link
-                  href={`${base}/customers/${c.pageId}`}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
-                      <StatusBadge status={c.foodStatus} />
-                      {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
-                        <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
-                          {storeNameById.get(c.storeId)}
-                        </span>
-                      )}
+            {filtered.map((c) => {
+              const isPending = c.foodStatus === '承認待ち';
+              return (
+                <li key={c.pageId}>
+                  <Link
+                    href={`${base}/customers/${c.pageId}`}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
+                        <StatusBadge status={c.foodStatus} />
+                        {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
+                          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                            {storeNameById.get(c.storeId)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-stone-600 mt-0.5 truncate">
+                        {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
+                        {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
+                        {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
+                      </div>
+                      <div className="mt-1.5 flex gap-2 flex-wrap items-center">
+                        {c.lineUserId ? (
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Check className="w-3 h-3" strokeWidth={2.4} />
+                            LINE 連携済み
+                          </span>
+                        ) : null}
+                        {isPending && (
+                          <button
+                            type="button"
+                            onClick={(e) => approveCustomer(e, c.pageId, c.name)}
+                            disabled={approvingId === c.pageId}
+                            className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${
+                              approvingId === c.pageId
+                                ? 'bg-stone-100 text-stone-400 border-stone-300 cursor-wait'
+                                : 'bg-emerald-500 text-white border-emerald-500 active:bg-emerald-600'
+                            }`}
+                          >
+                            <UserCheck className="w-3 h-3" strokeWidth={2.4} />
+                            {approvingId === c.pageId ? '承認中…' : '承認'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-stone-600 mt-0.5 truncate">
-                      {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
-                      {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
-                      {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
-                    </div>
-                    <div className="mt-1.5 flex gap-2 flex-wrap">
-                      {c.lineUserId ? (
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                          <Check className="w-3 h-3" strokeWidth={2.4} />
-                          LINE 連携済み
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
-                </Link>
-              </li>
-            ))}
+                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -318,7 +363,9 @@ function StatusBadge({ status }: { status: string | null }) {
     );
   }
   const cls =
-    status === '進行中'
+    status === '承認待ち'
+      ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      : status === '進行中'
       ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
       : status === '休止中'
       ? 'bg-amber-100 text-amber-800 border-amber-300'
