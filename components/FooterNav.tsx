@@ -47,9 +47,10 @@ const items: NavItem[] = [
 export default function FooterNav() {
   const pathname = usePathname() || '/';
 
-  // 管理者画面・店舗側画面ではフッターナビを非表示
+  // 管理者画面・店舗側画面・セルフサーブ申込完了ページではフッターナビを非表示
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/store')) return null;
+  if (pathname.startsWith('/signup')) return null;
   // オンボーディング（自己登録フォーム・旧招待トークン引き換え）画面ではフッターナビを非表示。
   // 登録完了までフッターからプロダクトへ抜ける導線を塞ぎ、送信ボタンとの重なりによる
   // 誤タップ（「申し込む」を押したつもりがフッターの「AI相談」等を踏む）も防ぐ。

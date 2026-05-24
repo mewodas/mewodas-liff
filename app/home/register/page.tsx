@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { initLiffWithTenant } from '@/lib/tenantLiff';
 
 export default function RegisterPage() {
   return (
@@ -63,7 +64,10 @@ function clearDraft(): void {
 
 function RegisterInner() {
   const sp = useSearchParams();
-  const tenantId = sp.get('tenantId') || '';
+  // 署名付き招待トークン（新方式）と平文 tenantId（旧方式）の両対応
+  const inviteToken = sp.get('t');
+  const tenantIdFromUrl = sp.get('tenantId') || '';
+  const [tenantId, setTenantId] = useState<string>(tenantIdFromUrl);
 
   const [phase, setPhase] = useState<Phase>('liff-init');
   const [liffId, setLiffId] = useState<string | null>(null);
@@ -102,7 +106,13 @@ function RegisterInner() {
   const ran = useRef(false);
 
   function getRegisterUrl(): string {
-    return `${window.location.origin}/home/register${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ''}`;
+    // 再認証時はURL末尾のクエリパラメータを保持（招待トークン or 平文 tenantId）
+    const qs = inviteToken
+      ? `?t=${encodeURIComponent(inviteToken)}`
+      : tenantIdFromUrl
+        ? `?tenantId=${encodeURIComponent(tenantIdFromUrl)}`
+        : '';
+    return `${window.location.origin}/home/register${qs}`;
   }
 
   function triggerReauth(): void {
@@ -115,6 +125,27 @@ function RegisterInner() {
     });
   }
 
+  // 署名付き招待トークンを公開エンドポイントで検証 → 検証済み tenantId に上書き
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/public/invite/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: inviteToken }),
+        });
+        if (!res.ok) return;
+        const j = (await res.json()) as { tenantId?: string };
+        if (!cancelled && j.tenantId) setTenantId(j.tenantId);
+      } catch {
+        /* 解決失敗時は tenantIdFromUrl またはデフォルトテナントへフォールバック */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [inviteToken]);
+
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
@@ -123,9 +154,15 @@ function RegisterInner() {
       try {
         const liffModule = await import('@line/liff');
         const liff = liffModule.default;
-        const id = process.env.NEXT_PUBLIC_LIFF_ID;
+        const { config } = await initLiffWithTenant(
+          (overrideLiffId) => {
+            const id = overrideLiffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
+            if (!id) throw new Error('LIFF ID 未設定');
+            return liff.init({ liffId: id });
+          }
+        );
+        const id = config?.liffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
         if (!id) throw new Error('LIFF ID 未設定');
-        await liff.init({ liffId: id });
         setLiffId(id);
         setIsInClient(liff.isInClient());
 
@@ -152,7 +189,7 @@ function RegisterInner() {
           clearDraft();
         }
 
-        // 席数上限チェック（未登録ユーザーのみフォームをブロック）
+        // 席数上限 ＆ 既登録チェック（登録済みなら即「登録済み」画面へ）
         try {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
@@ -160,10 +197,24 @@ function RegisterInner() {
               Authorization: `Bearer ${accessToken}`,
             };
             if (tenantId) checkHeaders['x-tenant-id'] = tenantId;
+            if (inviteToken) checkHeaders['x-invite-token'] = inviteToken;
             const checkRes = await fetch('/api/liff/register', { headers: checkHeaders });
             if (checkRes.ok) {
-              const checkJ = await checkRes.json() as { alreadyRegistered: boolean; overLimit: boolean };
-              if (checkJ.overLimit && !checkJ.alreadyRegistered) {
+              const checkJ = await checkRes.json() as {
+                alreadyRegistered: boolean;
+                overLimit: boolean;
+                customerName?: string;
+                officialLineUrl?: string;
+              };
+              if (checkJ.alreadyRegistered) {
+                // 既登録ユーザーは即「登録済み」画面（フォーム入力不要）。
+                // 名前と公式LINE案内も復元しておくと "は登録済みです" の空白名詞表示を回避できる。
+                if (checkJ.customerName) setCustomerName(checkJ.customerName);
+                if (checkJ.officialLineUrl) setOfficialLineUrl(checkJ.officialLineUrl);
+                setPhase('already-registered');
+                return;
+              }
+              if (checkJ.overLimit) {
                 setPhase('over-limit');
                 return;
               }
@@ -183,8 +234,8 @@ function RegisterInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !heightCm || !currentWeight) {
-      setSubmitError('必須項目を入力してください');
+    if (!name.trim()) {
+      setSubmitError('お名前を入力してください');
       return;
     }
     setPhase('submitting');
@@ -220,8 +271,8 @@ function RegisterInner() {
         name: name.trim(),
         gender: gender || undefined,
         birthdate,
-        heightCm: parseFloat(heightCm),
-        currentWeight: parseFloat(currentWeight),
+        heightCm: heightCm ? parseFloat(heightCm) : undefined,
+        currentWeight: currentWeight ? parseFloat(currentWeight) : undefined,
         targetWeight: targetWeight ? parseFloat(targetWeight) : undefined,
         targetDate,
         activityLevel: activityLevel || undefined,
@@ -234,6 +285,8 @@ function RegisterInner() {
         };
         if (liffId) headers['x-liff-id'] = liffId;
         if (tenantId) headers['x-tenant-id'] = tenantId;
+        // 署名付き招待トークン: サーバー側で HMAC 検証して tenantId を上書きする
+        if (inviteToken) headers['x-invite-token'] = inviteToken;
         return fetch('/api/liff/register', { method: 'POST', headers, body: bodyPayload });
       };
 
@@ -241,8 +294,9 @@ function RegisterInner() {
 
       // 401: アクセストークンが無効（失効・環境不整合）→ liff.init() 再実行でトークン更新を試みて1回リトライ
       // リトライは1回のみ（無限ループ防止）
+      // テナント固有 liffId（state）を優先し、無ければ env にフォールバック（2社目以降のテナント対応）
       if (res.status === 401) {
-        const liffId2 = process.env.NEXT_PUBLIC_LIFF_ID;
+        const liffId2 = liffId || process.env.NEXT_PUBLIC_LIFF_ID;
         if (liffId2) {
           try {
             await liff.init({ liffId: liffId2 });
@@ -270,6 +324,12 @@ function RegisterInner() {
 
       setCustomerName(j.customerName || '');
       setOfficialLineUrl(j.officialLineUrl || '');
+      // 次回 LIFF 起動時にも同じテナントを使うため localStorage に保存
+      // サーバー側で検証された tenantId を優先（旧 URL の平文 tenantId が改ざんされていた場合の保険）
+      const resolvedTenantId: string | undefined = j.tenantId || tenantId;
+      if (resolvedTenantId) {
+        try { localStorage.setItem('fitmeal_tenant_id', resolvedTenantId); } catch { /* ignore */ }
+      }
       setPhase(j.alreadyRegistered ? 'already-registered' : 'done');
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'エラーが発生しました');
@@ -326,7 +386,7 @@ function RegisterInner() {
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様` : ''}は登録済みです
+            {customerName ? `${customerName}様は登録済みです` : 'すでに登録済みです'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
             すでにアカウントが作成されています。
@@ -356,7 +416,7 @@ function RegisterInner() {
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様` : ''}　登録完了しました
+            {customerName ? `${customerName}様　登録完了しました` : '登録完了しました'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
             食事管理プログラムへようこそ。
@@ -460,7 +520,7 @@ function RegisterInner() {
         </Section>
 
         <Section title="体型・目標">
-          <Field label="身長 (cm)" required>
+          <Field label="身長 (cm)">
             <input
               type="number"
               inputMode="decimal"
@@ -469,12 +529,11 @@ function RegisterInner() {
               max="250"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
-              placeholder="170.0"
-              required
+              placeholder="170.0（任意）"
               className={inputCls}
             />
           </Field>
-          <Field label="現在体重 (kg)" required>
+          <Field label="現在体重 (kg)">
             <input
               type="number"
               inputMode="decimal"
@@ -483,8 +542,7 @@ function RegisterInner() {
               max="300"
               value={currentWeight}
               onChange={(e) => setCurrentWeight(e.target.value)}
-              placeholder="70.0"
-              required
+              placeholder="70.0（任意）"
               className={inputCls}
             />
           </Field>

@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-22（課金制御機能 bcb152f 追加）
+最終更新: 2026-05-22（セルフサーブ・オンボーディング Phase 1 5bd2977 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -149,6 +149,48 @@
 | S1 | /store → 店舗ダッシュボード表示 | [M] | CORE |
 | S2 | /admin/tenants → マルチテナント一覧（master のみ） | [M] | CORE |
 
+### セルフサーブ・オンボーディング（/store/onboarding）— 2026-05-22 追加（commit 5bd2977）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| ONB1 | GET /api/store/onboarding/state: 未認証 → 401 | [A] ✅ | CORE |
+| ONB2 | POST /api/store/onboarding/verify-liff: 未認証 → 401 | [A] ✅ | CORE |
+| ONB3 | POST /api/store/onboarding/verify-token: 未認証 → 401 | [A] ✅ | CORE |
+| ONB4 | POST /api/store/onboarding/build-richmenu: 未認証 → 401 | [A] ✅ | CORE |
+| ONB5 | POST /api/store/onboarding/issue-test-token: 未認証 → 401 | [A] ✅ | CORE |
+| ONB6 | POST /api/store/onboarding/test-push: 未認証 → 401 | [A] ✅ | CORE |
+| ONB7 | POST /api/store/onboarding/state: 未認証（complete:true）→ 401 | [A] ✅ | CORE |
+| ONB8 | GET /api/public/tenant-config: tenantId なし → 400 | [A] ✅ | CORE |
+| ONB9 | GET /api/public/tenant-config: 存在しない tenantId → 404（CORS ヘッダー付き） | [A] ✅ | CORE |
+| ONB10 | OPTIONS /api/public/tenant-config → 204（CORS プリフライト） | [A] ✅ | CORE |
+| ONB11 | POST /api/public/onboarding/owner-userid: パラメータなし → 400 | [A] ✅ | CORE |
+| ONB12 | POST /api/public/onboarding/owner-userid: 無効トークン → 400 | [A] ✅ | CORE |
+| ONB13 | /store/onboarding: 未認証 → /store/login?from=%2Fstore%2Fonboarding にリダイレクト | [A] ✅ | CORE |
+| ONB14 | /store/onboarding: 「セットアップ」タブが /store のみ表示（storeOnly: true 制御） | [A] コード確認済み ✅ | CORE |
+| ONB15 | /store トップ: onboardingCompletedAt=null → 未完了バナー表示 | [M] | CORE |
+| ONB16 | /store トップ: onboardingCompletedAt 設定済み → バナー非表示 | [M] | CORE |
+| ONB17 | ウィザード Step 0〜4 の遷移・「戻る」ボタン動作 | [M] | CORE |
+| ONB18 | Step 1: LIFF ID 保存 → Step 1 次へボタンが有効化 | [M] | CORE |
+| ONB19 | Step 2: リッチメニュー構築ボタン → richMenuId 取得後 Step 2 次へが有効化 | [M] 実 LINE 必要 | CORE |
+| ONB20 | Step 4: テストリンク発行 → URL が表示される | [M] | CORE |
+| ONB21 | Step 4: テストリンクを LINE で開く → success 画面・ownerLineUserId 登録 | [M] 実 LINE 必要 | CORE |
+| ONB22 | Step 4: テスト送信（ownerLineUserId 取得後）→ LINE にメッセージ届く | [M] 実 LINE 必要 | CORE |
+| ONB23 | 完了後: /store トップの未完了バナーが消える | [M] | CORE |
+| ONB24 | 完了後: 完了画面でリッチメニュー再構築ボタンが動作する | [M] 実 LINE 必要 | SCOPE |
+| ONB25 | /home/onboard-test: tenantId・t パラメータなし → エラー画面表示（JS 側） | [M] | CORE |
+| ONB26 | /home/onboard-test: 無効トークン → API 400 → エラー画面表示 | [M] | CORE |
+
+### tenantId 付き LIFF 回帰（/home・/home/register）— 2026-05-22 追加（commit 5bd2977）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| TID1 | /home（tenantId なし）→ NEXT_PUBLIC_LIFF_ID でフォールバック initLiff・既存動作継続 | [M] 実機 LINE 必要 | CORE |
+| TID2 | /home/register（tenantId なし）→ NEXT_PUBLIC_LIFF_ID でフォールバック・フォーム表示 | [M] 実機 LINE 必要 | CORE |
+| TID3 | /home（tenantId 付き・liffId 設定済みテナント）→ テナント固有 liffId で initLiff | [M] 実機 LINE 必要 | SCOPE |
+| TID4 | /home（tenantId 付き・liffId 未設定テナント）→ フォールバック initLiff・クラッシュしない | [M] | CORE |
+| TID5 | /home/register の 401 リトライ: NEXT_PUBLIC_LIFF_ID で再 init・無限ループしない | [M] | CORE |
+| TID6 | sessionStorage への tenantId 保存: ページ遷移後も tenantId が引き継がれる | [M] | SCOPE |
+
 ### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
 
 | # | 確認項目 | 方法 | 優先度 |
@@ -189,6 +231,7 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-22 | セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード） | 5bd2977 | 条件付き GO（自動検証全通過・ONB1〜ONB13/ONB8〜ONB12・ONB14 コード確認済み。社長手動確認カード発行済み） |
 | 2026-05-22 | 本番スモーク: merge c6a39e4（課金制御フル実装・席数UI改修・Notionバグ修正 7コミット） | c6a39e4 | 本番スモーク OK（自動検証全通過）・社長手動確認カード発行済み（SEAT7/REG4/BL12〜BL18） |
 | 2026-05-22 | 課金制御フル実装（billingMode 3種・fitmeal-plans DB・webhook ガード・API ガード） | bcb152f | 条件付き GO（社長手動確認 BL12〜BL18 待ち） |
 | 2026-05-21 | lib/notion.ts: createTenantCustomerDb スキーマ補完 + listTenantRows マスタキー分離 | acabbaa | GO（自動検証完全通過・社長手動確認不要） |
@@ -215,6 +258,10 @@
 - `登録完了日時` は `/api/liff/register` 成功時に Notion に書き込まれる。既存顧客はこの日時が null になる（以前の登録方式では保存されなかったため）
 - GET `/api/liff/register` のチェックが失敗（ネットワークエラー・500 等）した場合、catch ブロックで無視してフォームが表示される設計。サーバー側 POST でも上限チェックするため二重防止になっている
 - POST `/api/liff/register` で 403（席数上限）が来た場合、over-limit フェーズにはならずフォームに「定員に達しているため…」のエラーメッセージが submitError として表示される（GET チェックをすり抜けた場合の最終防波堤として機能）
+- **onboardingTokens.ts のインスタンス問題（設計上の既知制約）**: issueToken と consumeToken はメモリ内 Map で管理（globalThis スコープ）。Vercel がマルチインスタンスを起動した場合、token を発行したインスタンスと verify するインスタンスが異なり、consumeToken が null を返す可能性がある。TTL=15分のベストエフォート設計（CHANGELOG に記載あり）。再発行ボタンで回避可能
+- **リッチメニュー URL の /register パス**: lineRichMenu.ts の registerUrl は `liff.line.me/{liffId}/register?tenantId=xxx` → LIFF エンドポイント URL `/home` からの相対パスで `/home/register?tenantId=xxx` に展開される。`/home/register` は存在するルートのため正常
+- **register 401 リトライ時の liffId**: フォーム送信後の 401 リトライは process.env.NEXT_PUBLIC_LIFF_ID（デフォルト LIFF ID）で再 init する。tenantId 指定ユーザーが 401 になった場合、テナント固有 liffId でなくデフォルト liffId でリトライする。通常はアクセストークン取得後に 401 が発生するケースはほぼないため実害は低いが、マルチテナント本格展開後は要見直し
+- **tenant-config のキャッシュ**: s-maxage=300（5分）。テナントの liffId を更新した直後は CDN キャッシュで古い値が返ることがある。本番でテナント設定変更後 5 分は反映に遅れる場合がある
 - 招待ボタンの disabled 状態は `seatInfo` が null（billing/info API 失敗）の場合は enabled になる（失敗時はボタンが使えることが優先）
 - 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
 - **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる

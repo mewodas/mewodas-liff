@@ -486,6 +486,10 @@ export async function createTenantCustomerDb(
       '目標C(g)': { number: {} },
       所属店舗: { rich_text: {} },
       食事記録リンク: { url: {} },
+      生年月日: { date: {} },
+      メールアドレス: { email: {} },
+      電話番号: { phone_number: {} },
+      フリガナ: { rich_text: {} },
       ツアーリセット日時: { date: {} },
       オンボーディング完了日時: { date: {} },
       登録完了日時: { date: {} },
@@ -641,6 +645,11 @@ export type TenantRow = {
   billingMode: '無制限' | '手動' | 'Stripe連動' | null;
   /** fitmeal-plans の planCode */
   planCode: string | null;
+  /** セルフサーブオンボーディング */
+  onboardingStep: number | null;
+  onboardingCompletedAt: string | null;
+  richMenuId: string | null;
+  ownerLineUserId: string | null;
 };
 
 export async function updateTenantRow(
@@ -652,6 +661,7 @@ export async function updateTenantRow(
     status?: string;
     note?: string;
     lineChannelToken?: string | null;
+    officialLineUrl?: string | null;
     lineAutoSendEnabled?: boolean;
     autoSendTime?: string | null;
     stripeCustomerId?: string | null;
@@ -671,6 +681,10 @@ export async function updateTenantRow(
     planTier?: PlanTier | null;
     billingMode?: '無制限' | '手動' | 'Stripe連動' | null;
     planCode?: string | null;
+    onboardingStep?: number | null;
+    onboardingCompletedAt?: string | null;
+    richMenuId?: string | null;
+    ownerLineUserId?: string | null;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -756,6 +770,29 @@ export async function updateTenantRow(
       ? { rich_text: [{ type: 'text', text: { content: patch.planCode } }] }
       : { rich_text: [] };
   }
+  if (patch.officialLineUrl !== undefined) {
+    properties['公式LINE URL'] = patch.officialLineUrl ? { url: patch.officialLineUrl } : { url: null };
+  }
+  if (patch.onboardingStep !== undefined) {
+    properties['onboardingStep'] = patch.onboardingStep !== null
+      ? { number: patch.onboardingStep }
+      : { number: null };
+  }
+  if (patch.onboardingCompletedAt !== undefined) {
+    properties['onboardingCompletedAt'] = patch.onboardingCompletedAt !== null
+      ? { date: { start: patch.onboardingCompletedAt } }
+      : { date: null };
+  }
+  if (patch.richMenuId !== undefined) {
+    properties['richMenuId'] = patch.richMenuId
+      ? { rich_text: [{ type: 'text', text: { content: patch.richMenuId } }] }
+      : { rich_text: [] };
+  }
+  if (patch.ownerLineUserId !== undefined) {
+    properties['ownerLineUserId'] = patch.ownerLineUserId
+      ? { rich_text: [{ type: 'text', text: { content: patch.ownerLineUserId } }] }
+      : { rich_text: [] };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -799,6 +836,10 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       planTier: (p['プラン種別']?.select?.name as PlanTier | undefined) ?? null,
       billingMode: (p['課金モード']?.select?.name as '無制限' | '手動' | 'Stripe連動' | undefined) ?? null,
       planCode: p['プランコード']?.rich_text?.[0]?.plain_text || null,
+      onboardingStep: p['onboardingStep']?.number ?? null,
+      onboardingCompletedAt: p['onboardingCompletedAt']?.date?.start ?? null,
+      richMenuId: p['richMenuId']?.rich_text?.[0]?.plain_text || null,
+      ownerLineUserId: p['ownerLineUserId']?.rich_text?.[0]?.plain_text || null,
     };
   });
 }
