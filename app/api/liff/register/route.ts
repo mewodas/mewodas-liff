@@ -3,6 +3,7 @@ import { withLiffTenantAccessToken, runWithTenantById } from '@/lib/withTenant';
 import { getCustomerByLineId } from '@/lib/notion';
 import { createCustomer, patchCustomer } from '@/lib/repository/customers';
 import { getCurrentTenant } from '@/lib/tenant';
+import { getTenantByIdAsync } from '@/lib/tenantResolver';
 import { fetchOfficialLineUrl } from '@/lib/lineBot';
 import { calcGoals } from '@/lib/goalCalc';
 import { getSeatStatus } from '@/lib/seats';
@@ -35,6 +36,12 @@ function ageFromBirthdate(birthdate: string): number | undefined {
 // 招待トークン優先のテナント解決ラッパー:
 // x-invite-token があれば HMAC 検証して verified tenant で fn を実行する。
 // なければ withLiffTenantAccessToken で解決された現テナント（x-tenant-id / x-liff-id / default）を使う。
+//
+// 重要な構造上の制約:
+//   - 本関数の OUTSIDE (= fn コールバックの外) で getCurrentTenant() を絶対に呼ばないこと。
+//     withLiffTenantAccessToken が x-tenant-id 由来の未検証テナント context を設定済みで、
+//     招待トークンの verified テナントへの上書きは fn を runInTenantContext で包む中で発生するため。
+//   - 必ず fn コールバック内に DB 参照・席数チェック・テナント設定の取得などを置く。
 async function withInviteOrCurrentTenant<T>(
   req: NextRequest,
   fn: () => Promise<T>
@@ -46,6 +53,21 @@ async function withInviteOrCurrentTenant<T>(
     return NextResponse.json(
       { error: '招待リンクが無効、または期限切れです。担当トレーナーから新しいリンクを取得してください。' },
       { status: 401 }
+    );
+  }
+  // tenantId の存在を Notion で明示確認してから runWithTenantById を呼ぶ。
+  // 直接 runWithTenantById に渡すと、Notion から見つからなかった場合に getDefaultTenant() (= メヲダス) に
+  // 暗黙的にフォールバックしてしまい、攻撃者が存在しない tenantId のトークンでメヲダスに顧客登録できる脆弱性になる。
+  let tenant;
+  try {
+    tenant = await getTenantByIdAsync(payload.tenantId);
+  } catch {
+    tenant = null;
+  }
+  if (!tenant) {
+    return NextResponse.json(
+      { error: '招待リンクに対応するジムが見つかりません。担当トレーナーにお問い合わせください。' },
+      { status: 404 }
     );
   }
   return runWithTenantById(payload.tenantId, fn);
