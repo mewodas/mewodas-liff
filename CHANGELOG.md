@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-24 – fix(register): 「登録済み」画面の名前空白表示を修正
+- fix(api): `/api/liff/register` GET レスポンスに `customerName` と `officialLineUrl` を含めるように変更（既登録時のみ）
+- fix(home): `/home/register` の事前チェック（onMount）で取得した `customerName` / `officialLineUrl` を state に反映。`already-registered` 画面で名前が空文字になり「　は登録済みです」と表示されていた問題を解消
+- fix(home): 名前が取れなかった場合のフォールバック文言を「すでに登録済みです」「登録完了しました」に変更（先頭の不自然な空白・「は」の脱落を防止）
+- 影響範囲: 顧客側 LIFF（/home/register の登録完了/登録済み画面）・API（/api/liff/register GET）
+- 発見経緯: staging リリース後 QA 中、社長が招待URLを既登録のLINEアカウントで開いた際にスクリーンショットで指摘
+
 ## 2026-05-24 – feat: 進捗管理 日付セレクタ・分析画面連動・リダイレクト対応
 - feat(admin/store): `/admin/progress` に日付セレクタ追加。「← 前日 / date input / 翌日 →」構成。翌日ボタンは今日より後に進めない（disabled）。日付変更でリスト再フェッチ
 - feat(api): `/api/admin/progress` に `?date=YYYY-MM-DD` クエリ対応。未指定は JST 今日。食事・運動・体重（前日比）の集計対象日を指定日に変更
