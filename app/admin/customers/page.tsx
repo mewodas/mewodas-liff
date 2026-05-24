@@ -28,9 +28,10 @@ type Customer = {
 };
 
 type Store = { pageId: string; storeId: string; name: string };
-type InviteMode = 'individual' | 'approval';
 
 const STATUSES = ['すべて', '承認待ち', '進行中', '休止中', '卒業'];
+// 承認制モードは未公開（バックエンドのみ実装済み）。UI からは個別招待モードに固定して呼ぶ。
+// 将来 UI を再公開する場合は本ファイルにモード切替トグル・/api/admin/tenant-settings 連動を復活させる。
 
 export default function AdminCustomersPage() {
   const base = useAdminBase();
@@ -45,8 +46,6 @@ export default function AdminCustomersPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
-  const [inviteMode, setInviteMode] = useState<InviteMode>('individual');
-  const [savingMode, setSavingMode] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const loadCustomers = useCallback(async () => {
@@ -55,17 +54,15 @@ export default function AdminCustomersPage() {
         fetch('/api/admin/customers', { cache: 'no-store' }),
         fetch('/api/admin/stores', { cache: 'no-store' }),
         fetch('/api/admin/billing/info', { cache: 'no-store' }),
-        fetch('/api/admin/tenant-settings', { cache: 'no-store' }),
       ];
       if (isStore) {
         requests.push(fetch('/api/store/onboarding/state', { cache: 'no-store' }));
       }
-      const [cRes, sRes, bRes, tRes, oRes] = await Promise.all(requests);
+      const [cRes, sRes, bRes, oRes] = await Promise.all(requests);
       if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
       const cJ = await cRes.json();
       const sJ = sRes.ok ? await sRes.json() : { stores: [] };
       const bJ = bRes.ok ? await bRes.json() : null;
-      const tJ = tRes.ok ? await tRes.json() : null;
       setCustomers(cJ.customers || []);
       setStores(sJ.stores || []);
       if (bJ && !bJ.error) {
@@ -75,9 +72,6 @@ export default function AdminCustomersPage() {
           isOverLimit: bJ.isOverLimit,
           isNearLimit: bJ.isNearLimit,
         });
-      }
-      if (tJ && (tJ.inviteMode === 'individual' || tJ.inviteMode === 'approval')) {
-        setInviteMode(tJ.inviteMode);
       }
       if (oRes) {
         const oJ = oRes.ok ? await oRes.json() : null;
@@ -89,30 +83,6 @@ export default function AdminCustomersPage() {
       setLoading(false);
     }
   }, [isStore]);
-
-  async function updateInviteMode(next: InviteMode) {
-    if (savingMode || next === inviteMode) return;
-    setSavingMode(true);
-    const prev = inviteMode;
-    setInviteMode(next); // 楽観的更新
-    try {
-      const res = await fetch('/api/admin/tenant-settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteMode: next }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `保存失敗（${res.status}）`);
-      }
-      toast.success(next === 'approval' ? '承認制モードに切り替えました' : '個別招待モードに切り替えました');
-    } catch (e) {
-      setInviteMode(prev); // rollback
-      toast.error(e instanceof Error ? e.message : '切替に失敗しました');
-    } finally {
-      setSavingMode(false);
-    }
-  }
 
   async function approveCustomer(e: React.MouseEvent, customerId: string, customerName: string) {
     e.preventDefault();
@@ -164,22 +134,18 @@ export default function AdminCustomersPage() {
     if (seatInfo?.isOverLimit) return;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
-      // 個別招待: 7日有効・1顧客ごとに発行 / 承認制: 30日有効・公開URL（複数人申込→ジムが承認）
-      const isApprovalMode = inviteMode === 'approval';
-      const expiresInDays = isApprovalMode ? 30 : 7;
+      // 個別招待モードで 7日有効の URL を発行。承認制モードは UI 未公開（バックエンドのみ実装）。
       const inviteRes = await fetch('/api/admin/invites/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expiresInDays, kind: inviteMode }),
+        body: JSON.stringify({ expiresInDays: 7, kind: 'individual' }),
       });
       let url: string;
       let expiresNote = '';
       if (inviteRes.ok) {
         const j = await inviteRes.json();
         url = `${origin}/home/register?t=${encodeURIComponent(j.token)}`;
-        expiresNote = isApprovalMode
-          ? '\n（このリンクは30日間有効です。ジムが承認すると食事管理が始められます）'
-          : '\n（このリンクは発行から7日間有効です）';
+        expiresNote = '\n（このリンクは発行から7日間有効です）';
       } else {
         // フォールバック: 旧来の平文 tenantId URL（招待API障害時の救済）
         const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
@@ -187,12 +153,9 @@ export default function AdminCustomersPage() {
         const tenantId: string = meJ?.currentTenantId || '';
         url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
       }
-      const headerText = isApprovalMode
-        ? '食事管理プログラムへのお申込みをお願いします。\n申込後、ジム側で承認が完了するとご利用開始できます。'
-        : '食事管理プログラムへのご登録をお願いします。';
-      const text = `${headerText}\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。${expiresNote}`;
+      const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。${expiresNote}`;
       await navigator.clipboard.writeText(text);
-      toast.success(isApprovalMode ? '公開申込URLをコピーしました（30日間有効）' : 'ユーザー招待URLをコピーしました（7日間有効）');
+      toast.success('ユーザー招待URLをコピーしました（7日間有効）');
     } catch {
       toast.error('コピーに失敗しました');
     }
@@ -250,41 +213,6 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        {/* 招待モード切替（個別招待 / 承認制）
-            individual: トレーナーが1件ずつ URL を発行して送付。7日有効
-            approval:   公開 URL（30日有効）。誰でも申込→ジムが承認すると利用開始 */}
-        <div className="bg-white border border-stone-200 rounded-xl p-3">
-          <div className="text-[11px] font-bold text-stone-600 mb-2">招待方式</div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => updateInviteMode('individual')}
-              disabled={savingMode}
-              className={`text-[11px] font-bold px-2.5 py-2 rounded-lg border text-left leading-tight ${
-                inviteMode === 'individual'
-                  ? 'bg-sky-50 border-sky-400 text-sky-800 ring-1 ring-sky-300'
-                  : 'bg-stone-50 border-stone-200 text-stone-600'
-              } ${savingMode ? 'opacity-50 cursor-wait' : ''}`}
-            >
-              <div className="text-xs font-bold">個別招待</div>
-              <div className="mt-0.5 text-[10px] leading-tight text-stone-500">URL を 1人ずつ送付 / 7日有効</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => updateInviteMode('approval')}
-              disabled={savingMode}
-              className={`text-[11px] font-bold px-2.5 py-2 rounded-lg border text-left leading-tight ${
-                inviteMode === 'approval'
-                  ? 'bg-amber-50 border-amber-400 text-amber-800 ring-1 ring-amber-300'
-                  : 'bg-stone-50 border-stone-200 text-stone-600'
-              } ${savingMode ? 'opacity-50 cursor-wait' : ''}`}
-            >
-              <div className="text-xs font-bold">承認制</div>
-              <div className="mt-0.5 text-[10px] leading-tight text-stone-500">公開URL / 申込後ジムが承認</div>
-            </button>
-          </div>
-        </div>
-
         <button
           type="button"
           onClick={copyApplyLink}
@@ -292,13 +220,11 @@ export default function AdminCustomersPage() {
           className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
             seatInfo?.isOverLimit
               ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
-              : inviteMode === 'approval'
-                ? 'bg-amber-100 text-amber-800 border-amber-300 active:bg-amber-200'
-                : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
+              : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
           }`}
         >
           <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          {inviteMode === 'approval' ? '公開申込URLをコピー（30日有効）' : 'ユーザー招待フォームをコピー（7日有効）'}
+          ユーザー招待フォームをコピー
         </button>
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">

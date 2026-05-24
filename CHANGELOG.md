@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-24 – change(store): 承認制モードのUIを非公開化（ソフトリバート）
+- change(admin/store): `/store/customers` から「招待方式」切替トグル UI を撤去。`inviteMode` state・`updateInviteMode` 関数・`/api/admin/tenant-settings` GET 呼び出しを削除
+- change(admin/store): 招待コピーボタンを「ユーザー招待フォームをコピー」（個別招待・7日有効）に固定
+- 残置: バックエンド（lib/tenant.ts inviteMode・/api/admin/tenant-settings 両 verb・/api/admin/customers/[id]/approve POST・/api/liff/register の kind=approval 分岐・Notion テナント DB「招待モード」列・全顧客 DB「承認待ち」option・LiffGate / register の「承認待ち」画面）はすべて温存
+- 残置: `/store/customers` の「承認待ち」フィルタタブ・「承認」ボタンは温存（既存承認待ち顧客が出現した際の救済用、表示影響なし）
+- 影響範囲: 管理画面（/store/customers の見た目）のみ。API・DB・顧客側 LIFF への影響なし
+- 経緯: Phase 2 staging リリース後、社長が UI を見て「わかりづらい」と判断 → モード切替の業務複雑度が個別招待のシンプルさを上回ると判断 → ソフトリバート決定。将来 UI 再公開時は本ファイルにトグル・state・API GET 呼び出しを復活させるだけで再利用可能
+
 ## 2026-05-24 – security(approve): cross-tenant 承認の脆弱性修正
 - fix(api): `/api/admin/customers/[id]/approve` POST に `assertCustomerOwnership` ガード追加。テナント A の管理者が テナント B の顧客 pageId を知っていれば承認できる cross-tenant 脆弱性を解消（403 で弾く）
 - feat(lib/notion.ts): `assertCustomerOwnership(pageId)` 関数を新規追加。pageId が現テナントの顧客 DB 配下であることを Notion の parent.database_id で検証。既存 `assertFoodRecordOwnership` と同パターン
