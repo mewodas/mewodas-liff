@@ -401,19 +401,25 @@ function Inner() {
           {/* 顧客選択 */}
           <div>
             <label className="text-xs font-bold text-stone-700 mb-1 block">顧客</label>
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">選択してください</option>
-              {filteredCustomers.map((c) => (
-                <option key={c.pageId} value={c.pageId}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {loadingCustomers && <div className="text-[11px] text-stone-500 mt-1">顧客読み込み中…</div>}
+            {loadingCustomers ? (
+              <div className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm text-stone-500">
+                顧客読み込み中…
+              </div>
+            ) : (
+              <select
+                key={`customer-select-${filteredCustomers.length}`}
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">選択してください</option>
+                {filteredCustomers.map((c) => (
+                  <option key={c.pageId} value={c.pageId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </section>
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-24 – fix(analysis): URLクエリ指定の顧客が dropdown に反映されない問題を修正
+- fix(admin): `/admin/analysis?customer=<pageId>&date=...` でアクセス時、controlled `<select>` の `value` に対応する `<option>` が customers 非同期ロード前に存在しないため、ブラウザ DOM が「選択してください」表示のまま残る React の既知挙動を回避
+- change(admin): `loadingCustomers` 中は select 自体を描画せず、ロード完了後に `key={filteredCustomers.length}` 付きで再マウント。URL 経由の `?customer=` 指定が確実に dropdown に反映される
+- 影響範囲: 管理画面 `/admin/analysis` `/store/analysis`。クエリなしアクセス時の挙動は変更なし
+- 発見経緯: 進捗管理から顧客クリック → 分析画面に飛んでも顧客が自動選択されない、と社長報告
+
 ## 2026-05-24 – feat: 進捗管理 日付セレクタ・分析画面連動・リダイレクト対応
 - feat(admin/store): `/admin/progress` に「← 前日 / 日付ピッカー / 翌日 →」日付セレクタ追加。翌日ボタンは当日で disabled。日付変更で `?date=YYYY-MM-DD` 付き再取得
 - feat(api): `/api/admin/progress` に `?date=YYYY-MM-DD` クエリ対応。未指定は JST 今日。食事・体重・運動すべて指定日を対象とし、体重の `deltaFromYesterday` は「指定日 vs 指定日-1」
