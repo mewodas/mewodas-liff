@@ -41,6 +41,8 @@ export type TenantConfig = {
   liffId?: string;
   /** LINE Messaging API Channel Access Token（push 用） */
   lineChannelToken?: string;
+  /** 招待モード: 'individual'=個別招待（既定・トレーナーが1件ずつURL発行）、'approval'=承認制（公開URL+ジムが承認）*/
+  inviteMode?: 'individual' | 'approval';
   /** LINE自動送付ON/OFF */
   lineAutoSendEnabled?: boolean;
   /** 自動送付時刻 "HH:MM" JST */

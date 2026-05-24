@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-05-24 – feat: 承認制モード + モード切替UI（Phase 2）
+- feat(notion-db): FitMeal テナント DB に「招待モード」select 列追加（`個別招待` / `承認制`、未設定なら個別招待扱い）
+- feat(notion-db): 全テナント顧客 DB（メヲダス本店・staging・テスト）の「ステータス」select に「承認待ち」option を追加（yellow、先頭配置）
+- feat(lib/tenant.ts): TenantConfig に `inviteMode?: 'individual' | 'approval'` 追加
+- feat(lib/notion.ts): TenantRow に inviteMode 追加、listTenantRows でパース、updateTenantRow で書込対応
+- feat(lib/tenantResolver.ts): inviteMode を TenantConfig に伝搬。未設定なら 'individual' フォールバック
+- feat(api): `/api/admin/tenant-settings` GET/PATCH 新規追加。現在テナントの inviteMode を取得・更新。invalidateTenantCache 付き
+- feat(api): `/api/admin/customers/[id]/approve` POST 新規追加。「承認待ち」→「進行中」に状態遷移。withAdminTenant 認証必須
+- change(api): `/api/liff/register` 改修。`x-invite-token` の `kind` を withInviteOrCurrentTenant 経由で fn に渡し、`kind=approval` の場合は `foodStatus='承認待ち'` で作成。トークン無しの場合はテナント設定 `inviteMode` を見て決定。GET/POST レスポンスに `foodStatus` を含める
+- feat(admin/store): `/store/customers`（`/admin/customers/page.tsx`）に「招待方式」切替 UI 追加（個別招待 / 承認制、楽観的更新 + rollback）
+- feat(admin/store): copyApplyLink が `inviteMode` を見て URL を発行（individual: 7日有効、approval: 30日有効・公開URL）。コピー文言・有効期限案内も切替
+- feat(admin/store): 顧客一覧の「承認待ち」行に **「承認」ボタン** 追加。クリックで /api/admin/customers/[id]/approve を叩き 進行中 に遷移
+- feat(admin/store): STATUSES フィルタに「承認待ち」追加。StatusBadge に yellow バッジ追加
+- feat(home): `/home/register` の登録結果が `foodStatus='承認待ち'` の場合は「お申込みを受け付けました（承認待ち）」画面を表示。既登録チェックでも `foodStatus` を取得し既存「登録済み」画面と分岐
+- feat(home): `/home`（LiffGate）の非進行中ステータス画面が `承認待ち` の場合は専用文言「ジムからの承認待ちです / ジム側で承認が完了するとご利用開始できます」を表示
+- 影響範囲: 顧客側 LIFF（/home, /home/register, LiffGate）・管理画面（/store/customers）・API（/api/admin/tenant-settings, /api/admin/customers/[id]/approve, /api/liff/register）・Notion DB
+- メヲダス本店への影響: 招待モード未設定（=個別招待扱い）のためデフォルトで影響なし。既存顧客の食事管理ステータスは「進行中」のままで LIFF は通常動作
+- 既存個別招待モードへの影響: なし（既存挙動を完全互換、`kind: 'individual'` がデフォルト）
+- 設計経緯: Phase 1 完了後に社長との対話で「承認制モード」を Phase 2 として確定。集客フェーズ（公開URL を website/SNS に貼る運用）を可能にする業務価値を最優先
+
 ## 2026-05-24 – fix(notion): createTenantCustomerDb に欠落列4つを追加
 - fix(lib/notion.ts): `createTenantCustomerDb` の properties に `生年月日`（date）・`メールアドレス`（email）・`電話番号`（phone_number）・`フリガナ`（rich_text）を追加
 - 影響範囲: 新規 B2B テナントのセルフサーブ・オンボーディング経由で作成される顧客 DB のスキーマ。既存テナントの顧客 DB には影響なし
