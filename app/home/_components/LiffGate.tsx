@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { initLiffWithTenant } from '@/lib/tenantLiff';
 import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
@@ -95,7 +96,7 @@ function LiffGateInner() {
   useEffect(() => {
     (async () => {
       try {
-        await initLiff();
+        await initLiffWithTenant(initLiff);
         const profile = await getLineProfile();
         if (!profile) {
           setError('LINEプロフィール取得失敗');

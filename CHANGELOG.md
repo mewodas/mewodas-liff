@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-24 – feat: 進捗管理 日付セレクタ・分析画面連動・リダイレクト対応
+- feat(admin/store): `/admin/progress` に日付セレクタ追加。「← 前日 / date input / 翌日 →」構成。翌日ボタンは今日より後に進めない（disabled）。日付変更でリスト再フェッチ
+- feat(api): `/api/admin/progress` に `?date=YYYY-MM-DD` クエリ対応。未指定は JST 今日。食事・運動・体重（前日比）の集計対象日を指定日に変更
+- change(admin/store): 進捗一覧の顧客行クリックを `/progress/[id]`（顧客設定画面）から `/analysis?customer=<pageId>&date=<選択日>` へ変更。`<Link>` から `useRouter().push()` に切り替え
+- feat(admin): `/admin/analysis` の `Inner()` が `?customer=<pageId>` および `?date=YYYY-MM-DD` クエリパラメータを初期 state に反映。旧 `?customerId=` パラメータも後方互換維持。`?date=` 指定時は開始日＝終了日＝指定日で単一日モード起動。クエリなしアクセス時のデフォルト（today 単一日）は変更なし
+- change(admin/store): `/admin/progress/[id]` と `/store/progress/[id]` を `redirect()` 薄サーバーコンポーネントに置き換え。旧 URL への直アクセスはそれぞれ `/admin/analysis?customer=<id>` `/store/analysis?customer=<id>` へリダイレクト
+- 影響範囲: 管理画面（/admin/progress, /admin/analysis, /store/progress, /store/analysis）・API（/api/admin/progress）。顧客側 LIFF は変更なし
+
 ## 2026-05-24 – feat: 署名付き招待URL方式（SaaS オンボハードル解消 Phase 1）
 - feat(lib): `lib/inviteToken.ts` を新規追加。HMAC-SHA256 署名でテナントIDと有効期限を改ざん不可能な形にエンコード。秘密鍵は `INVITE_TOKEN_SECRET`（未設定なら `ADMIN_SESSION_SECRET` をフォールバック）
 - feat(api): `/api/admin/invites/create` を新規追加。`/store/customers` の「ユーザー招待」ボタンが呼び出す。7日有効・1〜30日でクランプ

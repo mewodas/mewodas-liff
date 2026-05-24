@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { initLiffWithTenant } from '@/lib/tenantLiff';
 
 export default function RegisterPage() {
   return (
@@ -153,9 +154,15 @@ function RegisterInner() {
       try {
         const liffModule = await import('@line/liff');
         const liff = liffModule.default;
-        const id = process.env.NEXT_PUBLIC_LIFF_ID;
+        const { config } = await initLiffWithTenant(
+          (overrideLiffId) => {
+            const id = overrideLiffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
+            if (!id) throw new Error('LIFF ID 未設定');
+            return liff.init({ liffId: id });
+          }
+        );
+        const id = config?.liffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
         if (!id) throw new Error('LIFF ID 未設定');
-        await liff.init({ liffId: id });
         setLiffId(id);
         setIsInClient(liff.isInClient());
 
@@ -279,8 +286,9 @@ function RegisterInner() {
 
       // 401: アクセストークンが無効（失効・環境不整合）→ liff.init() 再実行でトークン更新を試みて1回リトライ
       // リトライは1回のみ（無限ループ防止）
+      // テナント固有 liffId（state）を優先し、無ければ env にフォールバック（2社目以降のテナント対応）
       if (res.status === 401) {
-        const liffId2 = process.env.NEXT_PUBLIC_LIFF_ID;
+        const liffId2 = liffId || process.env.NEXT_PUBLIC_LIFF_ID;
         if (liffId2) {
           try {
             await liff.init({ liffId: liffId2 });

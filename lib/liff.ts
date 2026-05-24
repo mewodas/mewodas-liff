@@ -1,18 +1,21 @@
 import liff, { type Liff } from '@line/liff';
 
 let initialized = false;
+let currentLiffId: string | null = null;
 
-export async function initLiff(): Promise<Liff> {
-  if (!initialized) {
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    if (!liffId) throw new Error('NEXT_PUBLIC_LIFF_ID is not set');
-    await liff.init({ liffId });
-    initialized = true;
+export async function initLiff(overrideLiffId?: string): Promise<Liff> {
+  const liffId = overrideLiffId ?? process.env.NEXT_PUBLIC_LIFF_ID;
+  if (!liffId) throw new Error('NEXT_PUBLIC_LIFF_ID is not set');
+  if (initialized && currentLiffId === liffId) return liff;
+  if (initialized && currentLiffId !== liffId) {
+    initialized = false;
   }
+  await liff.init({ liffId });
+  initialized = true;
+  currentLiffId = liffId;
   return liff;
 }
 
-// IDトークン期限切れ時に呼び出し、LIFFを再初期化して新トークンを取得する
 export async function refreshLiff(): Promise<void> {
   initialized = false;
   await initLiff();

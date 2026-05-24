@@ -59,6 +59,13 @@ const TABS: Tab[] = [
     storeOnly: true,
   },
   {
+    suffix: '/onboarding',
+    label: 'セットアップ',
+    Icon: Rocket,
+    match: (p, base) => p.startsWith(`${base}/onboarding`),
+    storeOnly: true,
+  },
+  {
     suffix: '/tenants',
     label: 'テナント',
     Icon: Building2,
