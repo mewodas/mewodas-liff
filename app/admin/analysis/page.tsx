@@ -159,14 +159,19 @@ export default function AdminAnalysisPage() {
 function Inner() {
   const sp = useSearchParams();
   const base = useAdminBase();
-  const initialCustomerId = sp.get('customerId') || '';
+  const initialCustomerId = sp.get('customer') || sp.get('customerId') || '';
   const today = jstToday();
+  const initialDate = (() => {
+    const d = sp.get('date');
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) return d;
+    return null;
+  })();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
-  const [from, setFrom] = useState<string>(today);
-  const [to, setTo] = useState<string>(today);
+  const [from, setFrom] = useState<string>(initialDate ?? today);
+  const [to, setTo] = useState<string>(initialDate ?? today);
 
   // グラフ用データ（data API）
   const [stats, setStats] = useState<Stats | null>(null);

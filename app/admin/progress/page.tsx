@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { Search, Circle, ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Circle, ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronLeft } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -31,30 +31,43 @@ type Store = { pageId: string; storeId: string; name: string };
 
 const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
+function jstToday(): string {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 export default function ProgressPage() {
   const base = useAdminBase();
+  const router = useRouter();
+  const todayStr = jstToday();
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [today, setToday] = useState('');
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('進行中');
   const [storeFilter, setStoreFilter] = useState<string>('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (date: string) => {
     setLoading(true);
     setError(null);
     try {
       const [pRes, sRes] = await Promise.all([
-        fetch('/api/admin/progress', { cache: 'no-store' }),
+        fetch(`/api/admin/progress?date=${date}`, { cache: 'no-store' }),
         fetch('/api/admin/stores', { cache: 'no-store' }),
       ]);
       if (!pRes.ok) throw new Error(`取得失敗（${pRes.status}）`);
       const pJ = await pRes.json();
       const sJ = sRes.ok ? await sRes.json() : { stores: [] };
       setProgress(pJ.progress || []);
-      setToday(pJ.today || '');
       setStores(sJ.stores || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
@@ -64,8 +77,8 @@ export default function ProgressPage() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(selectedDate);
+  }, [load, selectedDate]);
 
   const filtered = useMemo(() => {
     const qn = q.trim();
@@ -83,19 +96,57 @@ export default function ProgressPage() {
     return m;
   }, [stores]);
 
-  const [todayM, todayD] = today ? today.split('-').map(Number) : [0, 0];
-  const todayLabel = today ? `${todayM}/${todayD}` : '';
+  const isToday = selectedDate === todayStr;
+  const [, selM, selD] = selectedDate.split('-').map(Number);
+  const dateLabel = `${selM}/${selD}`;
+
+  function handleDateChange(newDate: string) {
+    if (newDate > todayStr) return;
+    setSelectedDate(newDate);
+  }
+
+  function handleRowClick(pageId: string) {
+    router.push(`${base}/analysis?customer=${pageId}&date=${selectedDate}`);
+  }
 
   return (
-    <AdminShell title={`進捗管理${todayLabel ? ` — ${todayLabel}` : ''}`}>
+    <AdminShell title={`進捗管理 — ${dateLabel}`}>
       <div className="space-y-3">
+        {/* 日付セレクタ */}
+        <div className="flex items-center justify-between gap-2 bg-white rounded-2xl border border-stone-200 shadow-sm px-3 py-2.5">
+          <button
+            type="button"
+            onClick={() => handleDateChange(addDays(selectedDate, -1))}
+            className="p-1.5 rounded-xl hover:bg-stone-100 active:bg-stone-200 text-stone-600"
+            aria-label="前日"
+          >
+            <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+          </button>
+          <input
+            type="date"
+            value={selectedDate}
+            max={todayStr}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="text-sm font-bold text-stone-800 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg px-1 text-center"
+          />
+          <button
+            type="button"
+            onClick={() => handleDateChange(addDays(selectedDate, 1))}
+            disabled={isToday}
+            className="p-1.5 rounded-xl hover:bg-stone-100 active:bg-stone-200 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="翌日"
+          >
+            <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
+          </button>
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="text-xs text-stone-500">
             {!loading && `${filtered.length}名`}
           </div>
           <button
             type="button"
-            onClick={load}
+            onClick={() => load(selectedDate)}
             disabled={loading}
             className="flex items-center gap-1 text-xs font-bold text-stone-600 px-3 py-1.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 disabled:opacity-50"
           >
@@ -167,16 +218,17 @@ export default function ProgressPage() {
         )}
 
         {loading ? (
-          <div className="text-center text-stone-500 py-10">読み込み中…<br /><span className="text-xs">Notion から今日のデータを集計しています</span></div>
+          <div className="text-center text-stone-500 py-10">読み込み中…<br /><span className="text-xs">Notion からデータを集計しています</span></div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             {filtered.map((item) => (
               <li key={item.pageId}>
-                <Link
-                  href={`${base}/progress/${item.pageId}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
+                <button
+                  type="button"
+                  onClick={() => handleRowClick(item.pageId)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
@@ -191,7 +243,7 @@ export default function ProgressPage() {
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       {/* 食事 */}
                       <div className="bg-emerald-50 rounded-lg px-2 py-1.5">
-                        <div className="text-[10px] text-emerald-700 font-bold mb-0.5">今日の食事</div>
+                        <div className="text-[10px] text-emerald-700 font-bold mb-0.5">食事</div>
                         {item.today.mealCount > 0 ? (
                           <>
                             <div className="font-bold text-stone-900">
@@ -230,7 +282,7 @@ export default function ProgressPage() {
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
-                </Link>
+                </button>
               </li>
             ))}
           </ul>

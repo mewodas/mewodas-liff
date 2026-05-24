@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-24 – feat: 進捗管理 日付セレクタ・分析画面連動・リダイレクト対応
+- feat(admin/store): `/admin/progress` に「← 前日 / 日付ピッカー / 翌日 →」日付セレクタ追加。翌日ボタンは当日で disabled。日付変更で `?date=YYYY-MM-DD` 付き再取得
+- feat(api): `/api/admin/progress` に `?date=YYYY-MM-DD` クエリ対応。未指定は JST 今日。食事・体重・運動すべて指定日を対象とし、体重の `deltaFromYesterday` は「指定日 vs 指定日-1」
+- change(admin/store): 進捗一覧の顧客行クリックを `/progress/[id]`（顧客設定画面）から `/analysis?customer=<pageId>&date=<選択日>` へ変更
+- feat(admin): `/admin/analysis` の `Inner()` が `?customer=<pageId>`（新）・`?date=YYYY-MM-DD` クエリパラメータを初期 state に反映。`?customerId=`（旧）は後方互換で保持
+- change(admin/store): `/admin/progress/[id]` と `/store/progress/[id]` を `redirect()` 薄サーバーコンポーネントに置き換え（各々 `/admin/analysis?customer=${id}`・`/store/analysis?customer=${id}` へ転送）
+- 影響範囲: 管理画面（/admin/progress, /admin/analysis, /store/progress, /store/analysis）・API（/api/admin/progress）。顧客側 LIFF は変更なし
+
 ## 2026-05-23 – feat: 進捗管理メニュー追加（/admin・/store 両対応）
 - feat(admin/store): AdminShell に「進捗管理」タブ（TrendingUp アイコン）を先頭追加、「顧客」タブを「顧客設定」にリネームし `/customers` サブルートへ移動
 - feat(admin/store): `/admin` `/store` トップをサーバーコンポーネントに変換。`onboardingCompletedAt` を見てオンボーディング完了済み → `/progress`、未完了 → `/customers` へリダイレクト
