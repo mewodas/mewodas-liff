@@ -79,9 +79,20 @@ export const GET = withLiffTenantAccessToken(async (req: NextRequest, _ctx: unkn
       getCustomerByLineId(verifiedLineUserId, { force: true }),
       getSeatStatus(),
     ]);
+    let officialLineUrl: string | undefined;
+    if (existing) {
+      const tenant = getCurrentTenant();
+      officialLineUrl = tenant.officialLineUrl || '';
+      if (!officialLineUrl && tenant.lineChannelToken) {
+        officialLineUrl = (await fetchOfficialLineUrl(tenant.lineChannelToken)) || '';
+      }
+      if (!officialLineUrl) officialLineUrl = process.env.OFFICIAL_LINE_URL || '';
+    }
     return NextResponse.json({
       alreadyRegistered: !!existing,
       overLimit: seatStatus.isOverLimit,
+      customerName: existing?.name,
+      officialLineUrl,
     });
   });
 });

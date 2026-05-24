@@ -200,9 +200,17 @@ function RegisterInner() {
             if (inviteToken) checkHeaders['x-invite-token'] = inviteToken;
             const checkRes = await fetch('/api/liff/register', { headers: checkHeaders });
             if (checkRes.ok) {
-              const checkJ = await checkRes.json() as { alreadyRegistered: boolean; overLimit: boolean };
+              const checkJ = await checkRes.json() as {
+                alreadyRegistered: boolean;
+                overLimit: boolean;
+                customerName?: string;
+                officialLineUrl?: string;
+              };
               if (checkJ.alreadyRegistered) {
-                // 既登録ユーザーは即「登録済み」画面（フォーム入力不要）
+                // 既登録ユーザーは即「登録済み」画面（フォーム入力不要）。
+                // 名前と公式LINE案内も復元しておくと "は登録済みです" の空白名詞表示を回避できる。
+                if (checkJ.customerName) setCustomerName(checkJ.customerName);
+                if (checkJ.officialLineUrl) setOfficialLineUrl(checkJ.officialLineUrl);
                 setPhase('already-registered');
                 return;
               }
@@ -378,7 +386,7 @@ function RegisterInner() {
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様` : ''}は登録済みです
+            {customerName ? `${customerName}様は登録済みです` : 'すでに登録済みです'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
             すでにアカウントが作成されています。
@@ -408,7 +416,7 @@ function RegisterInner() {
         </div>
         <div>
           <p className="text-xl font-bold text-stone-900">
-            {customerName ? `${customerName}様` : ''}　登録完了しました
+            {customerName ? `${customerName}様　登録完了しました` : '登録完了しました'}
           </p>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">
             食事管理プログラムへようこそ。
