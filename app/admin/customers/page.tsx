@@ -107,13 +107,28 @@ export default function AdminCustomersPage() {
     if (seatInfo?.isOverLimit) return;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
-      const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
-      const meJ = meRes.ok ? await meRes.json() : null;
-      const tenantId: string = meJ?.currentTenantId || '';
-      const url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
-      const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。`;
+      // 署名付き招待URL（7日有効）を発行
+      const inviteRes = await fetch('/api/admin/invites/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresInDays: 7, kind: 'individual' }),
+      });
+      let url: string;
+      let expiresNote = '';
+      if (inviteRes.ok) {
+        const j = await inviteRes.json();
+        url = `${origin}/home/register?t=${encodeURIComponent(j.token)}`;
+        expiresNote = '\n（このリンクは発行から7日間有効です）';
+      } else {
+        // フォールバック: 旧来の平文 tenantId URL（招待API障害時の救済）
+        const meRes = await fetch('/api/admin/auth/me', { cache: 'no-store' });
+        const meJ = meRes.ok ? await meRes.json() : null;
+        const tenantId: string = meJ?.currentTenantId || '';
+        url = tenantId ? `${origin}/home/register?tenantId=${encodeURIComponent(tenantId)}` : `${origin}/home/register`;
+      }
+      const text = `食事管理プログラムへのご登録をお願いします。\n\n${url}\n\nご登録後、画面の案内に従って公式LINEを友だち追加してください。${expiresNote}`;
       await navigator.clipboard.writeText(text);
-      toast.success('ユーザー招待フォームのリンクをコピーしました');
+      toast.success('ユーザー招待URLをコピーしました（7日間有効）');
     } catch {
       toast.error('コピーに失敗しました');
     }

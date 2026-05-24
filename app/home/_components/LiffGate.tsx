@@ -61,6 +61,37 @@ function LiffGateInner() {
     }
   }
 
+  // 招待 URL（?t= 署名付き or ?tenantId= 平文）から tenantId を解決し localStorage に保存。
+  // apiFetch がこれを x-tenant-id ヘッダに自動付与する。
+  // 共通 LIFF 配下の SaaS テナントが「自分のジム」のデータにアクセスできるようにする要。
+  useEffect(() => {
+    const t = searchParams.get('t');
+    const tenantIdParam = searchParams.get('tenantId');
+    if (!t && !tenantIdParam) return;
+    let cancelled = false;
+    (async () => {
+      let resolvedTenantId: string | null = tenantIdParam || null;
+      if (t) {
+        try {
+          const res = await fetch('/api/public/invite/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: t }),
+          });
+          if (res.ok) {
+            const j = (await res.json()) as { tenantId?: string };
+            if (j.tenantId) resolvedTenantId = j.tenantId;
+          }
+        } catch { /* fall back to ?tenantId= or default */ }
+      }
+      if (cancelled) return;
+      if (resolvedTenantId) {
+        try { localStorage.setItem('fitmeal_tenant_id', resolvedTenantId); } catch { /* ignore */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchParams]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -85,8 +116,9 @@ function LiffGateInner() {
       try {
         const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
         if (res.status === 404) {
-          // 顧客レコードなし → 申し込みフォームへ誘導
-          router.replace('/home/register');
+          // 顧客レコードなし → 申し込みフォームへ誘導（招待トークン等は保持）
+          const qs = searchParams.toString();
+          router.replace(qs ? `/home/register?${qs}` : '/home/register');
           return;
         }
         if (!res.ok) {

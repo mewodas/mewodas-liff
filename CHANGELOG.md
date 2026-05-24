@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-05-24 – feat: 署名付き招待URL方式（SaaS オンボハードル解消 Phase 1）
+- feat(lib): `lib/inviteToken.ts` を新規追加。HMAC-SHA256 署名でテナントIDと有効期限を改ざん不可能な形にエンコード。秘密鍵は `INVITE_TOKEN_SECRET`（未設定なら `ADMIN_SESSION_SECRET` をフォールバック）
+- feat(api): `/api/admin/invites/create` を新規追加。`/store/customers` の「ユーザー招待」ボタンが呼び出す。7日有効・1〜30日でクランプ
+- feat(api): `/api/public/invite/resolve` を新規追加。クライアント側が招待トークンを `tenantId` に交換する公開エンドポイント
+- feat(admin/store): `/store/customers`（再エクスポート元 `/admin/customers/page.tsx`）の「ユーザー招待フォームをコピー」ボタンが署名付き URL を生成するように変更。`/home/register?t=<token>` 形式。招待API障害時は旧 `?tenantId=` 形式にフォールバック
+- feat(home): `/home/register` が `?t=<signed_token>` クエリを受け付け、`/api/public/invite/resolve` で検証 → `x-invite-token` ヘッダで POST → サーバー側で再検証してテナントを上書き。旧 `?tenantId=` 平文も後方互換維持
+- feat(home): 登録成功後に `localStorage.fitmeal_tenant_id` を保存。次回 LIFF 起動時にも同じテナント文脈で API 呼び出しが行えるようにする
+- feat(home): `/home`（LiffGate）も `?t=` `?tenantId=` を読み取って localStorage 保存。`/home/register` への 404 リダイレクト時にクエリパラメータを保持
+- feat(home): `lib/apiFetch.ts` が `localStorage.fitmeal_tenant_id` を自動で `x-tenant-id` ヘッダに付与（共通 LIFF 配下の SaaS テナントが「自分のジム」のデータにアクセスできるようにする要）
+- change(home): `/home/register` フォームの必須項目を「お名前」のみに緩和（身長・現在体重は任意化、placeholder に「(任意)」表記）。トレーナーが後から /admin で入力できる
+- change(api): `/api/liff/register` GET/POST が `x-invite-token` を受け付け、HMAC 検証して verified `tenantId` で `runWithTenantById` 実行。身長/体重欠如時は目標 PFC 計算をスキップ
+- change(api): `/api/liff/register` GET レスポンスに `alreadyRegistered` を見て `/home/register` 側で「登録済み」画面に即遷移（既登録者がフォームを再入力する無駄を排除）
+- feat(api): `/api/liff/register` POST レスポンスに verified `tenantId` を含めるように変更。クライアント側で localStorage 同期に使用
+- 影響範囲: 顧客側 LIFF（/home, /home/register, lib/apiFetch.ts）・管理画面（/admin/customers, /store/customers）・API（/api/admin/invites/*, /api/public/invite/*, /api/liff/register）
+- メヲダス本店への影響: なし。既存の `x-liff-id` 解決経路と専用 LIFF 構成はそのまま維持（`lib/withTenant.ts` の優先順位 x-tenant-id > x-liff-id > default を踏襲）
+- 環境変数: `INVITE_TOKEN_SECRET`（推奨）または `ADMIN_SESSION_SECRET`（フォールバック）が必要。staging Preview env は既存の ADMIN_SESSION_SECRET でそのまま動作する想定
+- 既知の MVP 制約: nonce による 1 回使い切り未実装。漏洩したトークンは 7 日間有効のまま再利用可能（次フェーズで対応）。承認制モード・複数ジム切替 UI・モード切替設定 UI は未実装（次フェーズ）
+- 設計経緯メモ: 社長との対話で「LINE Developers 設定撤廃 + 共通 LIFF + URL 署名トークンでテナント識別」方針を確定し MVP として実装
+
 ## 2026-05-23 – feat: 進捗管理メニュー追加（/admin・/store 両対応）
 - feat(admin/store): AdminShell に「進捗管理」タブ（TrendingUp アイコン）を先頭追加、「顧客」タブを「顧客設定」にリネームし `/customers` サブルートへ移動
 - feat(admin/store): `/admin` `/store` トップをサーバーコンポーネントに変換。`onboardingCompletedAt` を見てオンボーディング完了済み → `/progress`、未完了 → `/customers` へリダイレクト
