@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-24 – fix(notion): createTenantCustomerDb に欠落列4つを追加
+- fix(lib/notion.ts): `createTenantCustomerDb` の properties に `生年月日`（date）・`メールアドレス`（email）・`電話番号`（phone_number）・`フリガナ`（rich_text）を追加
+- 影響範囲: 新規 B2B テナントのセルフサーブ・オンボーディング経由で作成される顧客 DB のスキーマ。既存テナントの顧客 DB には影響なし
+- 背景: 本番 Sentry エラー「ツアーリセット日時 is not a property that exists」の根本原因対策。既存テスト用テナント DB は手動追加済み。新規顧客 DB で同種の欠落を防ぐための予防修正
+
 ## 2026-05-24 – fix(register): 「登録済み」画面の名前空白表示を修正
 - fix(api): `/api/liff/register` GET レスポンスに `customerName` と `officialLineUrl` を含めるように変更（既登録時のみ）
 - fix(home): `/home/register` の事前チェック（onMount）で取得した `customerName` / `officialLineUrl` を state に反映。`already-registered` 画面で名前が空文字になり「　は登録済みです」と表示されていた問題を解消
