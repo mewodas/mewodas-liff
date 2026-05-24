@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-24 – security(approve): cross-tenant 承認の脆弱性修正
+- fix(api): `/api/admin/customers/[id]/approve` POST に `assertCustomerOwnership` ガード追加。テナント A の管理者が テナント B の顧客 pageId を知っていれば承認できる cross-tenant 脆弱性を解消（403 で弾く）
+- feat(lib/notion.ts): `assertCustomerOwnership(pageId)` 関数を新規追加。pageId が現テナントの顧客 DB 配下であることを Notion の parent.database_id で検証。既存 `assertFoodRecordOwnership` と同パターン
+- 発見経緯: Phase 2 code-review で Blocker として指摘
+- 影響範囲: API（/api/admin/customers/[id]/approve）。実際の悪用には他テナントの pageId 知識が必要だが、設計の堅牢性として必須
+
 ## 2026-05-24 – feat: 承認制モード + モード切替UI（Phase 2）
 - feat(notion-db): FitMeal テナント DB に「招待モード」select 列追加（`個別招待` / `承認制`、未設定なら個別招待扱い）
 - feat(notion-db): 全テナント顧客 DB（メヲダス本店・staging・テスト）の「ステータス」select に「承認待ち」option を追加（yellow、先頭配置）

@@ -425,6 +425,18 @@ export async function assertFoodRecordOwnership(pageId: string): Promise<void> {
   }
 }
 
+// pageId が現テナントの顧客DBに属することを確認。不一致なら例外 throw
+// 管理API（patch/approve/archive 等）で他テナントの顧客操作を防ぐガード。
+export async function assertCustomerOwnership(pageId: string): Promise<void> {
+  const page = await notionRequest('GET', `/pages/${pageId}`);
+  const parent = page?.parent;
+  const expectedDbId = getTenantNotion().customerDbId.replace(/-/g, '');
+  const actualDbId = (parent?.database_id || '').replace(/-/g, '');
+  if (parent?.type !== 'database_id' || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: customer pageId does not belong to tenant');
+  }
+}
+
 // ===== テナント自動プロビジョニング =====
 
 // 新規ジム用の「{ジム名} 顧客」DB を作成。FitMeal 顧客スキーマと同じ構造。

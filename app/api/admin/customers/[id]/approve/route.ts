@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminTenant } from '@/lib/withTenant';
 import { getCustomer, patchCustomer } from '@/lib/repository/customers';
+import { assertCustomerOwnership } from '@/lib/notion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,13 @@ export const dynamic = 'force-dynamic';
 export const POST = withAdminTenant(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
+    // テナント境界チェック: pageId が現テナントの顧客 DB 配下であることを Notion の parent.database_id で検証。
+    // これがないと、テナント A の管理者が テナント B の顧客 pageId を知っていれば承認できる cross-tenant 脆弱性になる。
+    try {
+      await assertCustomerOwnership(id);
+    } catch {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
     const customer = await getCustomer(id);
     if (!customer) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
