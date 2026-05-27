@@ -85,9 +85,11 @@ export default function ChatPage() {
         throw new Error(errJson.error || `送信失敗（${res.status}）`);
       }
       const json = await res.json();
+      const rawReply: string = json.reply ?? '';
+      const cleanReply = rawReply.replace(/\*\*/g, '');
       const newAssistantMessage: Message = {
         role: 'assistant',
-        content: json.reply,
+        content: cleanReply,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, newAssistantMessage]);

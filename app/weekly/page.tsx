@@ -147,14 +147,12 @@ export default function WeeklyPage() {
   const { customer, week } = data;
   const { goals } = customer;
   const weekLabel = `${fmtJp(week.startDate)} 〜 ${fmtJp(week.endDate)}`;
-  const offsetLabel = offset === 0 ? '今週' : offset === -1 ? '先週' : offset > 0 ? `${offset}週後` : `${-offset}週前`;
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader
         title="週次レポート"
         Icon={TrendingUp}
-        subtitle={`${offsetLabel}：${weekLabel}`}
         back
       />
       {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
@@ -166,30 +164,39 @@ export default function WeeklyPage() {
         </div>
       )}
       <div className={`max-w-md mx-auto px-4 py-6 transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}>
-        {/* 週ナビゲーション（過去のみ） */}
-        <div className="flex gap-2 mb-4">
+        {/* 週ナビゲーション。中央は offset===0 で「今週」、過去週なら「N週間前 / 日付」を兼ねるラベル */}
+        <div className="grid grid-cols-3 gap-2 mb-4 items-stretch">
           <button
             onClick={() => setOffset(offset - 1)}
-            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
+            className="bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
           >
             ← 前週
           </button>
-          {offset !== 0 && (
-            <>
-              <button
-                onClick={() => setOffset(0)}
-                className="px-4 bg-emerald-500 text-white font-bold py-2 rounded-xl text-sm"
-              >
-                今週
-              </button>
-              <button
-                onClick={() => setOffset(offset + 1)}
-                className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
-              >
-                翌週 →
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setOffset(0)}
+            disabled={offset === 0}
+            className={`font-bold rounded-xl ${
+              offset === 0
+                ? 'bg-emerald-500 text-white shadow-sm py-2 text-sm'
+                : 'bg-white border border-stone-300 text-stone-900 active:bg-stone-50 py-1.5 leading-tight'
+            }`}
+          >
+            {offset === 0 ? (
+              '今週'
+            ) : (
+              <span className="flex flex-col items-center justify-center">
+                <span className="text-xs font-bold">{-offset}週間前</span>
+                <span className="text-[10px] font-normal text-stone-600 mt-0.5">{weekLabel}</span>
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setOffset(offset + 1)}
+            disabled={offset >= 0}
+            className="bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50 disabled:opacity-40 disabled:active:bg-white"
+          >
+            翌週 →
+          </button>
         </div>
 
         {/* 週次サマリ（履歴と同じレイアウト） */}

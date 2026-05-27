@@ -22,6 +22,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     let day = '';
     let mealType = '';
     let comment = '';
+    let source = '';
     let items: ItemPayload[] = [];
     const images: Array<{ base64: string; mimeType: string }> = [];
 
@@ -32,6 +33,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       date = String(formData.get('date') || '');
       mealType = String(formData.get('mealType') || '');
       comment = String(formData.get('comment') || '');
+      source = String(formData.get('source') || '');
       const itemsJson = String(formData.get('items') || '[]');
       try {
         items = JSON.parse(itemsJson);
@@ -53,6 +55,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       date = body.date || '';
       mealType = body.mealType || '';
       comment = body.comment || '';
+      source = body.source || '';
       items = Array.isArray(body.items) ? body.items : [];
     }
 
@@ -92,6 +95,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       ? date
       : getTargetDate(day || '今日');
     const trimmedComment = comment.trim() || null;
+    const isTextRecord = source === 'text_input';
 
     const beforeDedup = items.length;
     items = items.filter((it, idx) => {
@@ -116,8 +120,16 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     }
 
     const saveResults = await Promise.all(
-      items.map((it, idx) =>
-        saveFoodRecord({
+      items.map((it, idx) => {
+        // 食品DB / マイメニュー と同じ `${title} ｜ ${label}` 形式で per-item に記録元バッジを付与。
+        // テキスト記録時は写真なしで AI解析した item ごとにバッジが付き、履歴一覧でも識別できる。
+        let supplementText: string | null;
+        if (isTextRecord) {
+          supplementText = `${it.name} ｜ テキスト記録から登録`;
+        } else {
+          supplementText = idx === 0 ? trimmedComment : null;
+        }
+        return saveFoodRecord({
           customerName: customer.name,
           lineUserId: verifiedLineUserId,
           pfc: {
@@ -130,9 +142,9 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
           mealType,
           goals: customer.goals,
           targetDate,
-          supplementText: idx === 0 ? trimmedComment : null,
-        })
-      )
+          supplementText,
+        });
+      })
     );
 
     const firstRecord = saveResults[0];

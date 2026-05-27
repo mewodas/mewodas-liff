@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { initLiff, getLineProfile } from '@/lib/liff';
+import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached } from '@/lib/clientCache';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
@@ -42,8 +43,8 @@ export default function BadgesPage() {
           setReady(true);
           if (!cached.isStale) return;
         }
-        const res = await fetch(
-          `/api/today?lineUserId=${encodeURIComponent(userId)}&date=${today}&t=${Date.now()}`,
+        const res = await apiFetch(
+          `/api/today?date=${today}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);

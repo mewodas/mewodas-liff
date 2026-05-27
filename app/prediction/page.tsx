@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { TrendingDown, BarChart3, CheckCircle2, AlertTriangle, MessageCircle, Lightbulb } from 'lucide-react';
+import { TrendingDown, BarChart3, CheckCircle2, AlertTriangle, MessageCircle } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { getCached, setCached } from '@/lib/clientCache';
@@ -204,26 +204,6 @@ function PredictionDetail({
           </div>
         )}
       </div>
-
-      {/* アドバイス */}
-      {p.recommendations.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-5">
-          <div className="text-xs font-bold text-stone-700 mb-2 flex items-center gap-1">
-            <Lightbulb className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.2} />
-            AIアドバイス
-          </div>
-          <ul className="space-y-2">
-            {p.recommendations.map((r, i) => (
-              <li
-                key={i}
-                className="text-sm text-stone-800 bg-stone-50 rounded-xl px-3 py-2 leading-relaxed"
-              >
-                {i + 1}. {r}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="text-[10px] text-stone-500 leading-relaxed px-2">
         ※ 直近30日の食事・運動・体重データから AI が推定した参考値です。実際の体重変化と異なる場合があります。

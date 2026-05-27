@@ -9,11 +9,11 @@ import {
   TrendingDown,
   Trophy,
   User,
-  Target,
   Link as LinkIcon,
   ClipboardList,
   Sparkles,
   Settings,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import FooterNav from '@/components/FooterNav';
@@ -43,6 +43,7 @@ const sections: Section[] = [
     items: [
       { href: '/history', Icon: BookOpen, color: 'text-emerald-600', label: '履歴', sub: '過去の記録を確認' },
       { href: '/weekly', Icon: TrendingUp, color: 'text-emerald-600', label: '週次レポート', sub: '7日間の振り返り' },
+      { href: '/prediction', Icon: TrendingDown, color: 'text-emerald-600', label: '体重推移・予測', sub: 'グラフ＋AI推測' },
     ],
   },
   {
@@ -52,7 +53,6 @@ const sections: Section[] = [
     items: [
       { href: '/chat', Icon: MessageCircle, color: 'text-emerald-600', label: 'AI食事相談', sub: '栄養士AIに質問' },
       { href: '/meal-plan', Icon: ChefHat, color: 'text-emerald-600', label: 'AI献立作成', sub: '1日分の献立提案' },
-      { href: '/prediction', Icon: TrendingDown, color: 'text-emerald-600', label: '体重推移・予測', sub: 'グラフ＋AI推測' },
     ],
   },
   {
@@ -68,8 +68,8 @@ const sections: Section[] = [
     Icon: Settings,
     iconColor: 'text-stone-500',
     items: [
-      { href: '/profile', Icon: User, color: 'text-emerald-600', label: 'プロフィール', sub: '登録情報を確認' },
-      { href: '/goals', Icon: Target, color: 'text-emerald-600', label: '目標設定', sub: '目標・PFC確認' },
+      { href: '/profile', Icon: User, color: 'text-emerald-600', label: 'プロフィール', sub: '登録情報・目標を確認' },
+      { href: '/announcements', Icon: Megaphone, color: 'text-sky-600', label: 'お知らせ', sub: '運営からのお知らせ' },
       { href: '/menu/sync', Icon: LinkIcon, color: 'text-stone-500', label: 'データ連携', sub: '近日対応', disabled: true },
     ],
   },

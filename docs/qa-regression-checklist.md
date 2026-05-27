@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-22（セルフサーブ・オンボーディング Phase 1 5bd2977 追加）
+最終更新: 2026-05-24（承認制モード Phase 2 d04d705/34c3050 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -180,6 +180,27 @@
 | ONB25 | /home/onboard-test: tenantId・t パラメータなし → エラー画面表示（JS 側） | [M] | CORE |
 | ONB26 | /home/onboard-test: 無効トークン → API 400 → エラー画面表示 | [M] | CORE |
 
+### 承認制モード・モード切替（Phase 2）— 2026-05-24 追加（commits d04d705/34c3050）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| APV1 | GET /api/admin/tenant-settings: 未認証 → 401 | [A] ✅ | CORE |
+| APV2 | PATCH /api/admin/tenant-settings: 未認証 → 401 | [A] ✅ | CORE |
+| APV3 | POST /api/admin/customers/[id]/approve: 未認証 → 401 | [A] ✅ | CORE |
+| APV4 | PATCH /api/admin/tenant-settings: inviteMode='invalid' → 400 | [A] コード確認済み ✅ | CORE |
+| APV5 | /store/customers: ページロード後「招待方式」切替UI（個別招待/承認制）が表示される | [M] | CORE |
+| APV6 | 「承認制」クリック → トースト「承認制モードに切り替えました」表示・ボタン文言が「公開申込URLをコピー（30日有効）」に変わる | [M] | CORE |
+| APV7 | ページリロード後も「承認制」が選択されたまま表示される（Notion 永続化） | [M] | CORE |
+| APV8 | 承認制モードで「公開申込URLをコピー」→ URL を別 LINE で開く → 名前入力 → 「承認待ち」amber 完了画面表示 | [M] | CORE（最重要） |
+| APV9 | 承認待ち顧客が /home を開くと「ジムからの承認待ちです」LiffGate 画面表示（通常 /home ではない） | [M] | CORE（最重要） |
+| APV10 | /store/customers の「承認待ち」フィルタタブで申込顧客が yellow バッジ+「承認」ボタン付きで表示 | [M] | CORE（最重要） |
+| APV11 | 「承認」ボタン → confirm ダイアログ → OK → トースト「承認しました」→ バッジが「進行中」に変わる | [M] | CORE |
+| APV12 | 承認後、その顧客の LINE で /home を開くと通常の食事管理画面（承認待ち画面でない） | [M] | CORE |
+| APV13 | 個別招待モードに戻す → 新規登録が「進行中」ステータスになる（回帰） | [M] | CORE |
+| APV14 | メヲダス本店テナント: inviteMode 未設定 → 既存顧客 /home が通常動作（影響なし） | [M] 社長実機確認 | CORE |
+| APV15 | POST /api/admin/customers/[id]/approve: 別テナントの顧客 pageId を送ると 403 | [A] コード確認済み ✅ | CORE（セキュリティ） |
+| APV16 | 承認制テナントで「進行中」の既存顧客が /home を正常に開ける（既存顧客の影響なし） | [M] | CORE |
+
 ### tenantId 付き LIFF 回帰（/home・/home/register）— 2026-05-22 追加（commit 5bd2977）
 
 | # | 確認項目 | 方法 | 優先度 |
@@ -231,6 +252,7 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-24 | 承認制モード Phase 2（招待方式切替UI・承認制公開URL・承認操作・LiffGate承認待ち画面） | d04d705/34c3050 | 条件付き GO（自動検証全通過・APV1〜APV4/APV15 コード確認済み。社長手動確認カード発行済み） |
 | 2026-05-22 | セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード） | 5bd2977 | 条件付き GO（自動検証全通過・ONB1〜ONB13/ONB8〜ONB12・ONB14 コード確認済み。社長手動確認カード発行済み） |
 | 2026-05-22 | 本番スモーク: merge c6a39e4（課金制御フル実装・席数UI改修・Notionバグ修正 7コミット） | c6a39e4 | 本番スモーク OK（自動検証全通過）・社長手動確認カード発行済み（SEAT7/REG4/BL12〜BL18） |
 | 2026-05-22 | 課金制御フル実装（billingMode 3種・fitmeal-plans DB・webhook ガード・API ガード） | bcb152f | 条件付き GO（社長手動確認 BL12〜BL18 待ち） |
@@ -263,6 +285,10 @@
 - **register 401 リトライ時の liffId**: フォーム送信後の 401 リトライは process.env.NEXT_PUBLIC_LIFF_ID（デフォルト LIFF ID）で再 init する。tenantId 指定ユーザーが 401 になった場合、テナント固有 liffId でなくデフォルト liffId でリトライする。通常はアクセストークン取得後に 401 が発生するケースはほぼないため実害は低いが、マルチテナント本格展開後は要見直し
 - **tenant-config のキャッシュ**: s-maxage=300（5分）。テナントの liffId を更新した直後は CDN キャッシュで古い値が返ることがある。本番でテナント設定変更後 5 分は反映に遅れる場合がある
 - 招待ボタンの disabled 状態は `seatInfo` が null（billing/info API 失敗）の場合は enabled になる（失敗時はボタンが使えることが優先）
+- 席数カウントは「進行中」のみ。休止中・卒業・**承認待ち**は席数消費しない（承認後に進行中になった時点でカウント）
+- **承認制モードで inviteMode='individual' の既存招待URL を使った場合**: kind='individual' が優先されて '進行中' で登録される。承認制テナントでも個別招待URL を別途発行すれば承認不要ルートとして使えるが、意図しない使い方になる可能性があるため注意
+- **createTenantCustomerDb に '承認待ち' option なし**: 新テナントの顧客 DB 作成時に「承認待ち」select option はスキーマに含まれていないが、Notion API は存在しない option への書き込みで自動作成するため実害はない。ただし新テナントでは option の並び順が後ろに追加される（既存テナントとは見た目が異なる場合がある）
+- **テナントキャッシュ 5分 TTL**: inviteMode を PATCH 後 `invalidateTenantCache()` で即時クリアされるが、エラー時には PATCH が失敗する（楽観的更新は rollback される）。正常系では即時反映
 - 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
 - **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる
 - **billingMode バリデーション**: 許可値は「無制限」「手動」「Stripe連動」の3種のみ。その他の値は Notion の select に新規オプションが作られるのを防ぐため API が 400 を返す

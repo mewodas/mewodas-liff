@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## 2026-05-28 – change(profile): 1日の栄養目標カードをホーム栄養サマリと同じ素の表記に揃える
+- change(profile): 「1日の栄養目標」セクションをホーム /home の `NutritionSummaryCard` と同じトーン＆マナーに統一。オレンジヒーロー・炎アイコン・色枠カードは廃止。kcal はプレーンな大きい数字、PFC 3項目はラベル＋数字のシンプル列、最下部に PFC バランス積み上げ帯のみ残す
+- PfcCard コンポーネントは廃止（用途消失）
+
+## 2026-05-28 – change(profile): 1日の栄養目標カードのUIリッチ化
+- change(profile): 「1日の栄養目標」セクションを刷新。kcal をオレンジグラデーションのヒーローカード（炎アイコン付き）に格上げ、PFC は abbr バッジ＋g 値＋カロリー比率% を表示する3カードに、最下部に PFC バランス（カロリー比率の積み上げ帯＋凡例）を追加
+- 既存 StatCard は 体重目標 セクションで継続利用、栄養目標専用に NutritionGoalCard / PfcCard コンポーネントを新規分離
+
+## 2026-05-28 – fix(badges): /badges で 401 になる不具合修正 + プロフィール絵文字削除
+- fix(badges): `/badges` 画面で `/api/today` を生 `fetch()` で呼んでいたため Authorization ヘッダが付かず常に 401。`apiFetch` 経由に修正（LIFF IDトークンが正しく付与される）。`lineUserId` クエリパラメータは不要（withLiffTenant が verified userId を解決するため削除）
+- change(profile): 「目標達成日」「1日の栄養目標」セクションヘッダの絵文字（lucide-react Calendar / Target アイコン）を削除。タイトル文字のみに
+
+## 2026-05-28 – feat(liff): 12項目改善のフィードバック反映（追加調整）
+- change(record/confirm): テキスト記録のメモ形式を食品DB/マイメニューと同じ `${name} ｜ テキスト記録から登録` 形式に統一。per-item でバッジ付与（一覧で全item に「テキスト記録から登録」表示）
+- change(profile): 目標サマリを廃止し、/goals の全コンテンツ（体重目標カード / 目標達成日 + 残日数バッジ / 1日の栄養目標4カード / プラン・活動レベル）をプロフィール画面にインライン化。/goals への詳細リンクも削除
+- change(menu): 設定カテゴリから「目標設定」を削除（プロフィールに統合済み）
+- change(menu): お知らせ専用セクションを廃止し、設定カテゴリの「プロフィール」直下に移動
+- change(menu): 「体重推移・予測」を AI機能 カテゴリから 記録・分析 カテゴリへ移動
+- change(weekly): 中央ボタンの表示を文脈依存に変更。offset===0 なら「今週」、過去週なら「N週間前 / 日付レンジ」を1ボタン内に集約。ボタン直下の独立した日付行は削除
+- 影響範囲: 顧客側 LIFF（/profile /menu /weekly + /api/record/confirm）
+- 経緯: 2026-05-27 staging 確認後の社長フィードバック反映
+
+## 2026-05-27 – feat(liff): 顧客LIFF 12項目改善（要望対応）
+- feat(chat): AI食事相談プロンプトに「マークダウン禁止（特に `**太字**`）」を追加 + クライアント側で応答から `**` を strip（lib/gemini.ts、app/chat/page.tsx）
+- change(record): 食事記録画面の朝食/昼食/夕食/間食 セグメント上部に出ていた「現在選択中の食事タイプ」緑ピル表示を削除（app/record/page.tsx）
+- feat(record): 写真選択 → 圧縮中のローディングオーバーレイ追加。既存の解析中/保存中オーバーレイと共通の見た目で「写真を読み込み中」フェーズを表示（app/record/page.tsx）
+- change(record): 解析結果確認画面の「AIに補正させる」セクションラベル左の絵文字（🔄）と「補正して再解析する」ボタン内の絵文字を削除。同セクションの枠を太く（border-2 border-emerald-300）、ボタンを primary CTA 化（bg-emerald-500 + text-white + shadow-md）して再解析動線を強調（app/record/page.tsx）
+- change(prediction): 体重推移・予測画面の「AIアドバイス」セクションを削除。`Lightbulb` import 削除、`recommendations` の表示ブロック除去（app/prediction/page.tsx）
+- feat(record): 「記録しました」画面に「内訳（N品）」セクションを追加。各食材の名前・PFC・kcal を per-item で表示（写真解析・テキスト解析どちらでも内訳が見える）（app/record/page.tsx）
+- feat(record): テキストのみで記録した食事に「テキスト記録」マーカーを付与。クライアントから `source: 'text_input'` を送信、サーバで supplementText 先頭に `[テキスト記録]` を挿入（app/record/page.tsx、app/api/record/confirm/route.ts）
+- feat(profile): プロフィール画面に目標サマリ（体重目標・1日の栄養目標・プラン・活動量）を追加。詳細は /goals へのリンクで誘導（app/profile/page.tsx）
+- feat(announcements): 運営からの全テナント共通お知らせを新規 Notion DB（`NOTION_ANNOUNCEMENTS_DB_ID`）から取得する仕組みを追加。`lib/announcements.ts`、`/api/announcements`、`/app/announcements/page.tsx`（旧：notifications 再エクスポート → 新：独立ページ）、`/app/menu/page.tsx` に「お知らせ」セクション追加
+- fix(weekly): 週次レポートの緑ヘッダから日付サブタイトルを撤去。代わりに「前週／今週／翌週」ボタングループ直下に選択中の週の日付レンジを表示。`今週` 以外でも常に3ボタン表示（grid-cols-3）、`今週` のアクティブ状態は offset===0 のときのみ、`翌週` は offset>=0 で disabled。これにより「前週を押しても表示が今週のまま」のバグ修正（app/weekly/page.tsx）
+- 影響範囲: 顧客側 LIFF（/home /record /profile /goals /weekly /prediction /announcements /menu /chat）
+- staging 動作確認後、社長指示で main へマージ。お知らせ機能は `NOTION_ANNOUNCEMENTS_DB_ID` を `.env.local` / `.env.staging` / Vercel env に追加し、Notion Integration を新DBに招待した後に有効化される
+- 関連: notion-ops でお知らせ Notion DB 作成済（DB ID `ae40c5c373d44e569a9e3a74318f755d`）
+
 ## 2026-05-24 – change(store): 承認制モードのUIを非公開化（ソフトリバート）
 - change(admin/store): `/store/customers` から「招待方式」切替トグル UI を撤去。`inviteMode` state・`updateInviteMode` 関数・`/api/admin/tenant-settings` GET 呼び出しを削除
 - change(admin/store): 招待コピーボタンを「ユーザー招待フォームをコピー」（個別招待・7日有効）に固定
