@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { initLiff } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import { User, Target, TrendingDown, Calendar } from 'lucide-react';
+import { User, TrendingDown } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
@@ -174,10 +174,7 @@ export default function ProfilePage() {
 
             {/* 目標達成日 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-              <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-rose-500" strokeWidth={2.2} />
-                目標達成日
-              </h2>
+              <h2 className="text-sm font-bold text-stone-900 mb-3">目標達成日</h2>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-stone-900">{formatGoalDate(profile.targetDate)}</span>
                 {profile.targetDate && (
@@ -200,10 +197,7 @@ export default function ProfilePage() {
 
             {/* 1日の栄養目標 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-              <h2 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-                1日の栄養目標
-              </h2>
+              <h2 className="text-sm font-bold text-stone-900 mb-3">1日の栄養目標</h2>
               <div className="grid grid-cols-2 gap-3">
                 <StatCard
                   label="カロリー"

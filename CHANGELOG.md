@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – fix(badges): /badges で 401 になる不具合修正 + プロフィール絵文字削除
+- fix(badges): `/badges` 画面で `/api/today` を生 `fetch()` で呼んでいたため Authorization ヘッダが付かず常に 401。`apiFetch` 経由に修正（LIFF IDトークンが正しく付与される）。`lineUserId` クエリパラメータは不要（withLiffTenant が verified userId を解決するため削除）
+- change(profile): 「目標達成日」「1日の栄養目標」セクションヘッダの絵文字（lucide-react Calendar / Target アイコン）を削除。タイトル文字のみに
+
 ## 2026-05-28 – feat(liff): 12項目改善のフィードバック反映（追加調整）
 - change(record/confirm): テキスト記録のメモ形式を食品DB/マイメニューと同じ `${name} ｜ テキスト記録から登録` 形式に統一。per-item でバッジ付与（一覧で全item に「テキスト記録から登録」表示）
 - change(profile): 目標サマリを廃止し、/goals の全コンテンツ（体重目標カード / 目標達成日 + 残日数バッジ / 1日の栄養目標4カード / プラン・活動レベル）をプロフィール画面にインライン化。/goals への詳細リンクも削除
