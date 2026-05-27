@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { initLiff } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import { User } from 'lucide-react';
+import { User, Target, TrendingDown, ChevronRight } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
@@ -16,6 +17,11 @@ type CustomerProfile = {
   phone: string | null;
   storeId: string | null;
   currentWeight: number | null;
+  targetWeight: number | null;
+  targetDate: string | null;
+  goals: { kcal: number; P: number; F: number; C: number };
+  plan: string | null;
+  activityLevel: string | null;
 };
 
 function maskEmail(email: string | null): string {
@@ -62,6 +68,11 @@ export default function ProfilePage() {
           phone: c.phone,
           storeId: c.storeId,
           currentWeight: c.currentWeight,
+          targetWeight: c.targetWeight,
+          targetDate: c.targetDate,
+          goals: c.goals,
+          plan: c.plan,
+          activityLevel: c.activityLevel,
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
@@ -123,10 +134,79 @@ export default function ProfilePage() {
                 <ReadOnlyRow label="所属店舗" value={profile.storeId} last />
               </section>
             )}
+
+            {/* 目標サマリ（編集は /goals 経由） */}
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                  <Target className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+                  目標
+                </h2>
+                <Link
+                  href="/goals"
+                  className="text-xs font-bold text-emerald-700 inline-flex items-center gap-0.5 active:opacity-70"
+                >
+                  詳細を見る
+                  <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.4} />
+                </Link>
+              </div>
+
+              {(profile.targetWeight !== null || profile.targetDate) && (
+                <div className="mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <div className="text-[10px] font-bold text-emerald-700 mb-1 flex items-center gap-1">
+                    <TrendingDown className="w-3 h-3" strokeWidth={2.4} />
+                    体重目標
+                  </div>
+                  <div className="text-sm font-bold text-stone-900">
+                    {profile.targetWeight !== null ? `${profile.targetWeight} kg` : '—'}
+                    {profile.targetDate && (
+                      <span className="text-xs font-medium text-stone-600 ml-2">
+                        （{profile.targetDate.replace(/-/g, '/')}まで）
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-[10px] font-bold text-stone-600 mb-1.5">1日の栄養目標</div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <GoalCell label="kcal" value={profile.goals.kcal} unit="" />
+                <GoalCell label="P" value={profile.goals.P} unit="g" />
+                <GoalCell label="F" value={profile.goals.F} unit="g" />
+                <GoalCell label="C" value={profile.goals.C} unit="g" />
+              </div>
+
+              {(profile.plan || profile.activityLevel) && (
+                <div className="mt-3 flex items-center gap-3 text-xs text-stone-700">
+                  {profile.plan && (
+                    <span>
+                      プラン：<span className="font-bold text-stone-900">{profile.plan}</span>
+                    </span>
+                  )}
+                  {profile.activityLevel && (
+                    <span>
+                      活動量：<span className="font-bold text-stone-900">{profile.activityLevel}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </section>
           </>
         )}
       </div>
     </main>
+  );
+}
+
+function GoalCell({ label, value, unit }: { label: string; value: number; unit: string }) {
+  return (
+    <div className="bg-stone-50 border border-stone-200 rounded-lg py-2">
+      <div className="text-[10px] text-stone-500">{label}</div>
+      <div className="text-sm font-bold text-stone-900">
+        {value}
+        {unit && <span className="text-[10px] text-stone-500 ml-0.5">{unit}</span>}
+      </div>
+    </div>
   );
 }
 

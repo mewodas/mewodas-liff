@@ -22,6 +22,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     let day = '';
     let mealType = '';
     let comment = '';
+    let source = '';
     let items: ItemPayload[] = [];
     const images: Array<{ base64: string; mimeType: string }> = [];
 
@@ -32,6 +33,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       date = String(formData.get('date') || '');
       mealType = String(formData.get('mealType') || '');
       comment = String(formData.get('comment') || '');
+      source = String(formData.get('source') || '');
       const itemsJson = String(formData.get('items') || '[]');
       try {
         items = JSON.parse(itemsJson);
@@ -53,6 +55,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       date = body.date || '';
       mealType = body.mealType || '';
       comment = body.comment || '';
+      source = body.source || '';
       items = Array.isArray(body.items) ? body.items : [];
     }
 
@@ -91,7 +94,17 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
       ? date
       : getTargetDate(day || '今日');
-    const trimmedComment = comment.trim() || null;
+    const rawComment = comment.trim();
+    // テキスト記録（写真なし）の場合、メモ先頭に記録元マーカーを付与。
+    // 表示側（meal-detail 等）でそのままタイトル付近に出るため、マイメニューの
+    // 「ご飯 ｜ マイメニューから登録」と同じ要領で識別できる。
+    const sourceMarker = source === 'text_input' ? 'テキスト記録' : null;
+    const composedComment = sourceMarker
+      ? rawComment
+        ? `[${sourceMarker}] ${rawComment}`
+        : `[${sourceMarker}]`
+      : rawComment;
+    const trimmedComment = composedComment || null;
 
     const beforeDedup = items.length;
     items = items.filter((it, idx) => {

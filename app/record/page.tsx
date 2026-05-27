@@ -124,6 +124,7 @@ export default function RecordPage() {
   const [editingItem, setEditingItem] = useState<AnalyzedItem | null>(null);
   const [reanalyzeText, setReanalyzeText] = useState('');
   const [savedTotal, setSavedTotal] = useState<{ kcal: number; P: number; F: number; C: number } | null>(null);
+  const [savedItems, setSavedItems] = useState<AnalyzedItem[]>([]);
   const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
@@ -138,6 +139,7 @@ export default function RecordPage() {
     note: string;
   } | null>(null);
   const [labelBusy, setLabelBusy] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [tourResetAt, setTourResetAt] = useState<string | null | undefined>(undefined);
 
   // 食事記録が完了したらオンボの段階を進める
@@ -202,6 +204,7 @@ export default function RecordPage() {
     if (libraryInputRef.current) libraryInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
     setError(null);
+    setCompressing(true);
     try {
       const compressed = await Promise.all(files.map((f) => compressImage(f)));
       const newPhotos = [...photos, ...compressed].slice(0, 4);
@@ -221,6 +224,8 @@ export default function RecordPage() {
       // 自動解析は行わず、下部の「✨ 解析する」ボタンで明示的にトリガー
     } catch (err) {
       setError(err instanceof Error ? err.message : '写真の処理でエラー');
+    } finally {
+      setCompressing(false);
     }
   }
 
@@ -363,6 +368,9 @@ export default function RecordPage() {
       formData.append('mealType', mealType);
       formData.append('comment', comment);
       formData.append('items', JSON.stringify(selected));
+      // 写真ゼロ・テキストのみ＝テキスト記録（記録元の判定用）
+      const source = photos.length === 0 ? 'text_input' : 'image_analysis';
+      formData.append('source', source);
       photos.forEach((file, i) => {
         formData.append(`photo_${i}`, file, file.name);
       });
@@ -376,6 +384,7 @@ export default function RecordPage() {
       }
       const json = await res.json();
       setSavedTotal(json.pfc);
+      setSavedItems(selected);
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
@@ -432,6 +441,7 @@ export default function RecordPage() {
     setAnalyzed([]);
     setExcluded(new Set());
     setSavedTotal(null);
+    setSavedItems([]);
     setError(null);
     setStage('hub');
   }
@@ -504,25 +514,38 @@ export default function RecordPage() {
     );
   }
 
-  // ===== 解析中 / 記録中 =====
-  if (stage === 'analyzing' || stage === 'saving') {
-    const isSaving = stage === 'saving';
+  // ===== 解析中 / 記録中 / 写真読み込み中 =====
+  if (stage === 'analyzing' || stage === 'saving' || compressing) {
+    const phase: 'compressing' | 'analyzing' | 'saving' = compressing
+      ? 'compressing'
+      : stage === 'saving'
+      ? 'saving'
+      : 'analyzing';
     return (
-      <main className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6">
+      <main
+        className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6"
+        onTouchMove={(e) => e.preventDefault()}
+      >
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
           <div className="mb-4 flex items-center justify-center">
-            {isSaving ? (
+            {phase === 'saving' ? (
               <Save className="w-8 h-8 text-emerald-600" strokeWidth={2} />
             ) : (
               <Camera className="w-8 h-8 text-emerald-600" strokeWidth={2} />
             )}
           </div>
           <h2 className="text-base font-bold text-stone-900 mb-2">
-            {isSaving ? '記録してます' : '解析中'}
+            {phase === 'saving'
+              ? '記録してます'
+              : phase === 'compressing'
+              ? '写真を読み込み中'
+              : '解析中'}
           </h2>
           <p className="text-xs text-stone-600 mb-6">
-            {isSaving
+            {phase === 'saving'
               ? '食事データを保存しています'
+              : phase === 'compressing'
+              ? '画像を準備しています'
               : '料理を識別してカロリー・PFCを推定しています'}
           </p>
           <div className="flex justify-center">
@@ -531,7 +554,7 @@ export default function RecordPage() {
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
           </div>
           <p className="text-[10px] text-stone-500 mt-6">
-            {isSaving ? '数秒で完了します' : '約10〜15秒'}
+            {phase === 'saving' ? '数秒で完了します' : phase === 'compressing' ? 'まもなく完了します' : '約10〜15秒'}
           </p>
         </div>
       </main>
@@ -635,8 +658,8 @@ export default function RecordPage() {
           </div>
 
           {/* AI再解析（補正テキスト） */}
-          <div className="mt-5 bg-white rounded-2xl border border-stone-200 p-4">
-            <div className="text-sm font-bold text-stone-800 mb-1">🔄 AIに補正させる</div>
+          <div className="mt-5 bg-white rounded-2xl border-2 border-emerald-300 p-4 shadow-sm">
+            <div className="text-sm font-bold text-stone-800 mb-1">AIに補正させる</div>
             <p className="text-[11px] text-stone-600 mb-2 leading-relaxed">
               アイテム名の取り違えを修正する用途です（例：「3番は明太子じゃなくて鮭フレーク」）。<br />
               <span className="text-stone-500">PFC・グラム数の細かい調整は各アイテムの「編集」ボタンが正確です。</span>
@@ -652,9 +675,9 @@ export default function RecordPage() {
               type="button"
               onClick={reanalyzeWithText}
               disabled={!reanalyzeText.trim()}
-              className="w-full mt-2 bg-white border border-emerald-500 text-emerald-700 font-bold py-2.5 rounded-xl active:bg-emerald-50 disabled:opacity-50"
+              className="w-full mt-3 bg-emerald-500 text-white text-base font-bold py-3.5 rounded-xl shadow-md active:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
-              🔄 補正して再解析する
+              補正して再解析する
             </button>
           </div>
         </div>
@@ -709,6 +732,31 @@ export default function RecordPage() {
               <NutRow label="C (g)" value={savedTotal.C} />
             </div>
           </div>
+
+          {savedItems.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 mb-4">
+              <div className="text-xs font-bold text-stone-700 mb-2 px-1">
+                内訳（{savedItems.length}品）
+              </div>
+              <div className="divide-y divide-stone-100">
+                {savedItems.map((it) => (
+                  <div key={it.index} className="flex items-center py-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-stone-900 truncate">{it.name}</div>
+                      <div className="text-[10px] text-stone-600 mt-0.5">
+                        P{it.P}・F{it.F}・C{it.C}g
+                      </div>
+                    </div>
+                    <div className="text-right ml-2 flex-shrink-0">
+                      <div className="text-sm font-bold text-stone-900">{it.kcal}</div>
+                      <div className="text-[10px] text-stone-500">kcal</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button onClick={reset} className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-3 rounded-xl active:bg-stone-50">
               もう一回記録する
@@ -826,11 +874,7 @@ export default function RecordPage() {
             }}
             className="sr-only"
           />
-          <div className="text-center mb-3">
-            <div className="inline-block bg-emerald-100 text-emerald-800 text-xl font-bold px-4 py-1 rounded-full">
-              {mealType}
-            </div>
-          </div>
+
           <div className="grid grid-cols-4 gap-2">
             {(['朝食', '昼食', '夕食', '間食'] as MealType[]).map((m) => (
               <button

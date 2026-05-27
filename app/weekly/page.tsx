@@ -154,7 +154,6 @@ export default function WeeklyPage() {
       <PageHeader
         title="週次レポート"
         Icon={TrendingUp}
-        subtitle={`${offsetLabel}：${weekLabel}`}
         back
       />
       {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
@@ -166,30 +165,38 @@ export default function WeeklyPage() {
         </div>
       )}
       <div className={`max-w-md mx-auto px-4 py-6 transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}>
-        {/* 週ナビゲーション（過去のみ） */}
-        <div className="flex gap-2 mb-4">
+        {/* 週ナビゲーション */}
+        <div className="grid grid-cols-3 gap-2 mb-2">
           <button
             onClick={() => setOffset(offset - 1)}
-            className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
+            className="bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
           >
             ← 前週
           </button>
-          {offset !== 0 && (
-            <>
-              <button
-                onClick={() => setOffset(0)}
-                className="px-4 bg-emerald-500 text-white font-bold py-2 rounded-xl text-sm"
-              >
-                今週
-              </button>
-              <button
-                onClick={() => setOffset(offset + 1)}
-                className="flex-1 bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50"
-              >
-                翌週 →
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setOffset(0)}
+            disabled={offset === 0}
+            className={`font-bold py-2 rounded-xl text-sm ${
+              offset === 0
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'bg-white border border-stone-300 text-stone-900 active:bg-stone-50'
+            }`}
+          >
+            今週
+          </button>
+          <button
+            onClick={() => setOffset(offset + 1)}
+            disabled={offset >= 0}
+            className="bg-white border border-stone-300 text-stone-900 font-bold py-2 rounded-xl text-sm active:bg-stone-50 disabled:opacity-40 disabled:active:bg-white"
+          >
+            翌週 →
+          </button>
+        </div>
+        {/* 選択中の週の日付レンジ表示 */}
+        <div className="text-center text-xs text-stone-600 mb-4">
+          <span className="font-bold text-stone-700">{offsetLabel}</span>
+          <span className="mx-1.5 text-stone-400">／</span>
+          <span className="text-stone-800">{weekLabel}</span>
         </div>
 
         {/* 週次サマリ（履歴と同じレイアウト） */}

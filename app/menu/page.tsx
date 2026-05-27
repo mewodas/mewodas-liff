@@ -14,6 +14,8 @@ import {
   ClipboardList,
   Sparkles,
   Settings,
+  Megaphone,
+  Info,
   type LucideIcon,
 } from 'lucide-react';
 import FooterNav from '@/components/FooterNav';
@@ -36,6 +38,14 @@ type Section = {
 };
 
 const sections: Section[] = [
+  {
+    title: 'お知らせ',
+    Icon: Info,
+    iconColor: 'text-sky-600',
+    items: [
+      { href: '/announcements', Icon: Megaphone, color: 'text-sky-600', label: 'お知らせ', sub: '運営からのお知らせ' },
+    ],
+  },
   {
     title: '記録・分析',
     Icon: ClipboardList,
