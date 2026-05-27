@@ -94,17 +94,8 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
       ? date
       : getTargetDate(day || '今日');
-    const rawComment = comment.trim();
-    // テキスト記録（写真なし）の場合、メモ先頭に記録元マーカーを付与。
-    // 表示側（meal-detail 等）でそのままタイトル付近に出るため、マイメニューの
-    // 「ご飯 ｜ マイメニューから登録」と同じ要領で識別できる。
-    const sourceMarker = source === 'text_input' ? 'テキスト記録' : null;
-    const composedComment = sourceMarker
-      ? rawComment
-        ? `[${sourceMarker}] ${rawComment}`
-        : `[${sourceMarker}]`
-      : rawComment;
-    const trimmedComment = composedComment || null;
+    const trimmedComment = comment.trim() || null;
+    const isTextRecord = source === 'text_input';
 
     const beforeDedup = items.length;
     items = items.filter((it, idx) => {
@@ -129,8 +120,16 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     }
 
     const saveResults = await Promise.all(
-      items.map((it, idx) =>
-        saveFoodRecord({
+      items.map((it, idx) => {
+        // 食品DB / マイメニュー と同じ `${title} ｜ ${label}` 形式で per-item に記録元バッジを付与。
+        // テキスト記録時は写真なしで AI解析した item ごとにバッジが付き、履歴一覧でも識別できる。
+        let supplementText: string | null;
+        if (isTextRecord) {
+          supplementText = `${it.name} ｜ テキスト記録から登録`;
+        } else {
+          supplementText = idx === 0 ? trimmedComment : null;
+        }
+        return saveFoodRecord({
           customerName: customer.name,
           lineUserId: verifiedLineUserId,
           pfc: {
@@ -143,9 +142,9 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
           mealType,
           goals: customer.goals,
           targetDate,
-          supplementText: idx === 0 ? trimmedComment : null,
-        })
-      )
+          supplementText,
+        });
+      })
     );
 
     const firstRecord = saveResults[0];
