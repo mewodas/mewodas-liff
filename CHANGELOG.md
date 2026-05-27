@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – change(profile): 1日の栄養目標カードのUIリッチ化
+- change(profile): 「1日の栄養目標」セクションを刷新。kcal をオレンジグラデーションのヒーローカード（炎アイコン付き）に格上げ、PFC は abbr バッジ＋g 値＋カロリー比率% を表示する3カードに、最下部に PFC バランス（カロリー比率の積み上げ帯＋凡例）を追加
+- 既存 StatCard は 体重目標 セクションで継続利用、栄養目標専用に NutritionGoalCard / PfcCard コンポーネントを新規分離
+
 ## 2026-05-28 – fix(badges): /badges で 401 になる不具合修正 + プロフィール絵文字削除
 - fix(badges): `/badges` 画面で `/api/today` を生 `fetch()` で呼んでいたため Authorization ヘッダが付かず常に 401。`apiFetch` 経由に修正（LIFF IDトークンが正しく付与される）。`lineUserId` クエリパラメータは不要（withLiffTenant が verified userId を解決するため削除）
 - change(profile): 「目標達成日」「1日の栄養目標」セクションヘッダの絵文字（lucide-react Calendar / Target アイコン）を削除。タイトル文字のみに
