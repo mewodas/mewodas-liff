@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { initLiff } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import { User, TrendingDown, Flame } from 'lucide-react';
+import { User, TrendingDown } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
@@ -249,108 +249,61 @@ function NutritionGoalCard({
   const fPct = totalPfcKcal > 0 ? Math.round((fKcal / totalPfcKcal) * 100) : 0;
   const cPct = totalPfcKcal > 0 ? Math.max(0, 100 - pPct - fPct) : 0;
 
+  const nutrients = [
+    { label: 'たんぱく質', value: goals.P, unit: 'g' },
+    { label: '脂質', value: goals.F, unit: 'g' },
+    { label: '炭水化物', value: goals.C, unit: 'g' },
+  ];
+
   return (
     <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-      <h2 className="text-sm font-bold text-stone-900 mb-4">1日の栄養目標</h2>
+      <h2 className="text-base font-bold text-stone-900 mb-3">1日の栄養目標</h2>
 
-      {/* カロリー（ヒーロー） */}
-      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-bold text-orange-700">1日のカロリー目標</div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-4xl font-bold text-orange-700 tabular-nums">{goals.kcal}</span>
-              <span className="text-sm font-medium text-stone-600">kcal</span>
-            </div>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-white border border-orange-200 flex items-center justify-center shadow-sm">
-            <Flame className="w-6 h-6 text-orange-500" strokeWidth={2.2} />
-          </div>
+      <div className="mb-4">
+        <div className="text-xs text-stone-600 mb-1">カロリー</div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold text-stone-900">{goals.kcal}</span>
+          <span className="text-sm font-medium text-stone-500">kcal</span>
         </div>
       </div>
 
-      {/* PFC 3 カード */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <PfcCard label="たんぱく質" abbr="P" value={goals.P} pct={pPct} color="rose" />
-        <PfcCard label="脂質" abbr="F" value={goals.F} pct={fPct} color="amber" />
-        <PfcCard label="炭水化物" abbr="C" value={goals.C} pct={cPct} color="sky" />
+      <div className="grid grid-cols-3 gap-x-3 gap-y-3 mb-4">
+        {nutrients.map((n) => (
+          <div key={n.label}>
+            <div className="text-[11px] font-medium text-stone-700 mb-1">{n.label}</div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-base font-bold text-stone-900">{n.value}</span>
+              <span className="text-[10px] text-stone-500">{n.unit}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* PFC バランス可視化 */}
       {totalPfcKcal > 0 && (
         <div>
-          <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-[11px] font-bold text-stone-700">PFCバランス</span>
-            <span className="text-[10px] text-stone-500">カロリー比率</span>
-          </div>
+          <div className="text-[11px] font-bold text-stone-700 mb-1.5">PFCバランス</div>
           <div className="flex h-5 rounded-full overflow-hidden border border-stone-200">
-            <div className="bg-rose-400" style={{ width: `${pPct}%` }} title={`P ${pPct}%`} />
-            <div className="bg-amber-400" style={{ width: `${fPct}%` }} title={`F ${fPct}%`} />
-            <div className="bg-sky-400" style={{ width: `${cPct}%` }} title={`C ${cPct}%`} />
+            <div className="bg-rose-400" style={{ width: `${pPct}%` }} />
+            <div className="bg-amber-400" style={{ width: `${fPct}%` }} />
+            <div className="bg-sky-400" style={{ width: `${cPct}%` }} />
           </div>
-          <div className="flex justify-between mt-1.5 text-[10px] text-stone-600">
-            <span className="font-medium inline-flex items-center gap-1">
-              <span className="inline-block w-2 h-2 bg-rose-400 rounded-sm" />
+          <div className="flex justify-between mt-1 text-[10px] text-stone-600">
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-rose-400 rounded-sm mr-1" />
               P {pPct}%
             </span>
-            <span className="font-medium inline-flex items-center gap-1">
-              <span className="inline-block w-2 h-2 bg-amber-400 rounded-sm" />
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-amber-400 rounded-sm mr-1" />
               F {fPct}%
             </span>
-            <span className="font-medium inline-flex items-center gap-1">
-              <span className="inline-block w-2 h-2 bg-sky-400 rounded-sm" />
+            <span className="font-medium">
+              <span className="inline-block w-2 h-2 bg-sky-400 rounded-sm mr-1" />
               C {cPct}%
             </span>
           </div>
         </div>
       )}
     </section>
-  );
-}
-
-function PfcCard({
-  label,
-  abbr,
-  value,
-  pct,
-  color,
-}: {
-  label: string;
-  abbr: string;
-  value: number;
-  pct: number;
-  color: 'rose' | 'amber' | 'sky';
-}) {
-  const bg: Record<string, string> = {
-    rose: 'bg-rose-50 border-rose-200',
-    amber: 'bg-amber-50 border-amber-200',
-    sky: 'bg-sky-50 border-sky-200',
-  };
-  const text: Record<string, string> = {
-    rose: 'text-rose-700',
-    amber: 'text-amber-700',
-    sky: 'text-sky-700',
-  };
-  const dot: Record<string, string> = {
-    rose: 'bg-rose-400',
-    amber: 'bg-amber-400',
-    sky: 'bg-sky-400',
-  };
-  return (
-    <div className={`border rounded-xl p-3 ${bg[color]}`}>
-      <div className="flex items-center gap-1 mb-1.5">
-        <span className={`inline-block w-2 h-2 rounded-full ${dot[color]}`} />
-        <span className={`text-[11px] font-bold ${text[color]}`}>{abbr}</span>
-        <span className="text-[9px] font-medium text-stone-500 ml-auto tabular-nums">{pct}%</span>
-      </div>
-      <div className="flex items-baseline gap-0.5">
-        <span className={`text-xl font-bold ${text[color]} tabular-nums leading-none`}>
-          {value}
-        </span>
-        <span className="text-[10px] text-stone-500">g</span>
-      </div>
-      <div className="text-[9px] text-stone-500 mt-1 leading-tight">{label}</div>
-    </div>
   );
 }
 
