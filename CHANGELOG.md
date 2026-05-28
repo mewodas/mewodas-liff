@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-28 – feat(seed): サンプル顧客に個人シートを作成し運動・体重予測を有効化
+- feat: `lib/provisionTenant.ts` `seedSampleCustomer` を拡張。新規テナント作成時に個人シート（Notionページ）を自動生成して `食事記録リンク` にセット。
+- feat: 既存サンプル顧客（`食事記録リンク` 未設定）を後追い補完するバックフィルロジックを追加（`checkSampleExists` → `getSampleCustomerInfo` に変更し pageId と hasFoodSheetLink を返す）。
+- feat: `createFoodSheetPage` 新規関数。heading_2 `📝 記録` + table（11列・ヘッダー1行+直近10日データ）を作成。列[0]=日付(isoToJpMd形式)、[1]=体重、[9]=✅、[10]=運動内容。6〜7日に運動あり。
+- fix: `notionPost` を `notionRequest(method, ...)` に汎用化し `notionPatch` ラッパーを追加（顧客ページへの PATCH に対応）。
+- 影響範囲: サンプルデモ表示（運動 ✅ 表示・体重予測グラフ）。既存顧客データに変更なし。
+
 ## 2026-05-28 – change(store): ナビ順を「顧客設定」先頭に・初期表示を顧客設定へ
 - change: `app/admin/AdminShell.tsx` のタブ順を「顧客設定→進捗管理」に入替（ルート一致 `p===base` も顧客設定へ移動）
 - change: `app/store/page.tsx`・`app/admin/page.tsx` のルート遷移を常に `/customers`（顧客設定）へ。従来の onboardingCompletedAt 判定による /progress 遷移と不要なテナント照会を撤去
