@@ -372,53 +372,8 @@ function Inner() {
   return (
     <AdminShell title="顧客分析">
       <div className="space-y-3">
-        {/* 店舗フィルタ */}
+        {/* フィルタバー（進捗管理と同じ構成: 期間→店舗チップ→顧客select） */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          <div>
-            <label className="text-xs font-bold text-stone-700 mb-1 block">店舗</label>
-            <select
-              value={selectedStore}
-              onChange={(e) => {
-                setSelectedStore(e.target.value);
-                // 絞り込みで現在の顧客が外れたらクリア
-                const newFiltered = customers.filter((c) =>
-                  e.target.value === '' ? true : (c.storeId ?? '') === e.target.value
-                );
-                if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
-                  setCustomerId('');
-                }
-              }}
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {storeOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 顧客選択 */}
-          <div>
-            <label className="text-xs font-bold text-stone-700 mb-1 block">顧客</label>
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">選択してください</option>
-              {filteredCustomers.map((c) => (
-                <option key={c.pageId} value={c.pageId}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {loadingCustomers && <div className="text-[11px] text-stone-500 mt-1">顧客読み込み中…</div>}
-          </div>
-        </section>
-
-        {/* 期間 */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <DateRangePicker
             from={from}
             to={to}
@@ -428,6 +383,49 @@ function Inner() {
             onShift={shiftRange}
             isSingleDay={isSingleDay}
           />
+
+          {/* 店舗チップ */}
+          {storeOptions.length > 1 && (
+            <div className="flex gap-1 flex-wrap">
+              {storeOptions.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedStore(o.value);
+                    const newFiltered = customers.filter((c) =>
+                      o.value === '' ? true : (c.storeId ?? '') === o.value
+                    );
+                    if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
+                      setCustomerId('');
+                    }
+                  }}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                    selectedStore === o.value
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-stone-700 border-stone-300'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 顧客 select */}
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="">顧客を選択してください</option>
+            {filteredCustomers.map((c) => (
+              <option key={c.pageId} value={c.pageId}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {loadingCustomers && <div className="text-[11px] text-stone-500">顧客読み込み中…</div>}
         </section>
 
         {/* データ読み込み中インジケータ */}

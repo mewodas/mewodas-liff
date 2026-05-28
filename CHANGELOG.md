@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 顧客分析のフィルタを進捗管理と同じ構成に統一
+- change: `app/admin/analysis/page.tsx` 店舗フィルタを `<select>`→チップ化し、期間→店舗チップ→顧客select の1カード構成に（進捗管理と同じ見た目）。顧客分析は単一顧客選択のためステータス絞り込みは付けない
+- 影響範囲: 管理画面（/store・/admin の顧客分析フィルタ）
+
 ## 2026-05-28 – change(customer): 顧客側「お知らせ」表記を「レポート」に変更
 - change: 顧客LIFFの受信機能名を「お知らせ」→「レポート」に統一（/notifications タイトル・空表示・準備中文言、/menu 項目ラベル、ホームベルの aria-label）。アイコンはベルのまま、subtitle「トレーナーからの連絡」維持。
 - 据え置き: タブ内の「お知らせ」カテゴリ（お知らせ/アドバイス＝内容種別）、および運営→店舗の「お知らせ」(/admin/announcements「店舗へのお知らせ」・/store/announcements・ヘッダーベル) は名称維持。
