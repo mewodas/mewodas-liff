@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-28 – feat(announcements): お知らせ一斉送信 Phase 1（管理画面・API・lib拡張）
+- feat: `lib/announcements.ts` に `AnnouncementAudience`('顧客向け'|'店舗向け')・`AnnouncementStatus` 型を追加、`pageToAnnouncement` で `宛先種別` を読み取り（空は '顧客向け' デフォルト）
+- fix: `listAnnouncementsForTenant` に「宛先種別=店舗向けを除外」フィルタを追加（顧客LIFFへの漏れ防止）
+- feat: `lib/announcements.ts` に `createAnnouncement`・`listAnnouncementsForStore`・`listAllAnnouncementsAdmin`・`richText` ヘルパーを追加
+- feat: お知らせキャッシュキーを `announcements:{tenantId}` / `announcements:store:{tenantId}` に統一し、作成後 `invalidate('announcements:')` で全テナント分を確実にクリア（共有DBのため横断invalidateが必要）
+- feat: `app/api/admin/announcements/route.ts` 新規。GET=履歴一覧、POST=一斉お知らせ作成。セッションの role='master' か否かでテナント安全性を強制
+- security: 店舗(非master)の対象テナントは `getCurrentTenant()` のコンテキスト由来に固定（クライアント値・session生値を信用せず、staging override も反映）。GET履歴も非masterは「自テナント宛 or 全体」のみに絞り、他店舗お知らせの閲覧を遮断
+- feat: `app/admin/announcements/page.tsx` 新規。宛先・対象テナント・タイトル・本文・重要度・ピン留めの作成フォーム＋送信履歴一覧
+- feat: `app/store/announcements/page.tsx` 新規（1行 re-export）
+- feat: `app/admin/AdminShell.tsx` にナビタブ「お知らせ」(Megaphone)を追加（/analysis と /billing の間）
+- 影響範囲: 管理画面（/admin/announcements・/store/announcements）、API（/api/admin/announcements）、lib/announcements.ts
+
 ## 2026-05-28 – feat(preview): 顧客動線リデザイン Phase A+B（サンプルシード・席数除外・ストアプレビュー）
 - feat: `lib/demoSession.ts` に `generatePreviewToken`（exp 60分）追加、`verifyDemoToken` を kind:'demo'|'preview' 両対応に拡張
 - feat: `lib/demoClient.ts` トークン取得優先順位を URLクエリ `preview_token` → sessionStorage → localStorage に変更（プレビューは sessionStorage 隔離、localStorage非汚染）
