@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 進捗 食事カードの99%をkcal横へ・カード高さ揃え・ステータス統一
+- change: `app/admin/progress/page.tsx` 食事カードの達成率(%)をkcal表記の横へ移動（下段は食数のみ）。食事/体重カードを h-full で高さを揃えコンパクト化
+- change: 進捗のステータス絞り込みに「承認待ち」を追加し顧客設定と項目を統一（すべて/承認待ち/進行中/休止中/卒業）
+- 影響範囲: 管理画面（/store・/admin の進捗管理）
+
 ## 2026-05-28 – fix/change(store): デモバナー漏れ修正・顧客行ボタン・進捗PFC
 - fix: `components/DemoBannerWrapper.tsx` /store・/admin ではデモバナーを表示しない（プレビューiframeのsessionStorageトークンが親に共有され管理画面にバナーが漏れる問題を解消）
 - change: `app/admin/customers/page.tsx` デモ顧客行のプレビューを Monitor アイコン→「顧客画面を見る」ラベルボタンに。位置を矢印の左へ（ChevronRight を Link 外に出して末尾配置）

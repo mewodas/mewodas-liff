@@ -34,7 +34,7 @@ type ProgressItem = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '承認待ち', '進行中', '休止中', '卒業'];
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -308,15 +308,18 @@ function MealCard({
     : 'bg-rose-400';
 
   return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 space-y-1">
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 flex flex-col gap-1 h-full">
       <div className="text-[10px] font-bold text-emerald-700">食事</div>
       {mealCount > 0 ? (
         <>
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-1 flex-wrap">
             <span className="text-base font-bold text-stone-900 leading-none">{intakeKcal}</span>
             <span className="text-[10px] text-stone-500">
               {targetKcal > 0 ? `/ ${targetKcal} kcal` : 'kcal'}
             </span>
+            {pct !== null && (
+              <span className="text-[10px] font-bold text-stone-600 ml-0.5">{pct}%</span>
+            )}
           </div>
           {pct !== null && (
             <div className="relative h-1.5 rounded-full bg-stone-200 overflow-hidden">
@@ -331,10 +334,7 @@ function MealCard({
             <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1 py-0.5">F <b className="text-amber-800">{Math.round(intakeF)}</b>g</span>
             <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 text-sky-700 px-1 py-0.5">C <b className="text-sky-800">{Math.round(intakeC)}</b>g</span>
           </div>
-          <div className="text-[10px] text-stone-500">
-            {mealCount}食記録
-            {pct !== null && <span className="ml-1 font-bold text-stone-600">{pct}%</span>}
-          </div>
+          <div className="text-[10px] text-stone-500 mt-auto">{mealCount}食記録</div>
         </>
       ) : (
         <div className="text-[11px] text-stone-400 pt-0.5">未記録</div>
@@ -345,7 +345,7 @@ function MealCard({
 
 function WeightCard({ latest, delta }: { latest: number | null; delta: number | null }) {
   return (
-    <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 space-y-1">
+    <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 flex flex-col gap-1 h-full">
       <div className="text-[10px] font-bold text-sky-700">体重</div>
       {latest !== null ? (
         <>
