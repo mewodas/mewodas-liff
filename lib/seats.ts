@@ -46,11 +46,11 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
   );
   // 「進行中」顧客のみ seat カウント対象（休止中・卒業・サンプルは除外）
   const activeCustomers = customers.filter(
-    (c) => c.foodStatus === ACTIVE_FOOD_STATUS && !c.lineUserId.startsWith('SAMPLE_')
+    (c) => c.foodStatus === ACTIVE_FOOD_STATUS && !c.lineUserId?.startsWith('SAMPLE_')
   );
   const currentSeats = activeCustomers.length;
   // サンプル顧客は総数にも含めない
-  const totalCustomers = customers.filter((c) => !c.lineUserId.startsWith('SAMPLE_')).length;
+  const totalCustomers = customers.filter((c) => !c.lineUserId?.startsWith('SAMPLE_')).length;
 
   let seatLimit: number | null;
   let seatSource: SeatStatus['seatSource'];

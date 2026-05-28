@@ -151,7 +151,7 @@ export default function AdminCustomersPage() {
   const filtered = useMemo(() => {
     const qn = q.trim();
     return customers.filter((c) => {
-      if (c.lineUserId.startsWith('SAMPLE_')) return false;
+      if (c.lineUserId?.startsWith('SAMPLE_')) return false;
       if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
       if (storeFilter && c.storeId !== storeFilter) return false;
       if (qn && !c.name.includes(qn)) return false;
@@ -199,11 +199,11 @@ export default function AdminCustomersPage() {
   }
 
   const sampleCustomer = useMemo(
-    () => customers.find((c) => c.lineUserId.startsWith('SAMPLE_')),
+    () => customers.find((c) => c.lineUserId?.startsWith('SAMPLE_')),
     [customers]
   );
   const realCustomers = useMemo(
-    () => customers.filter((c) => !c.lineUserId.startsWith('SAMPLE_')),
+    () => customers.filter((c) => !c.lineUserId?.startsWith('SAMPLE_')),
     [customers]
   );
 
