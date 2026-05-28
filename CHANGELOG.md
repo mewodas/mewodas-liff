@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): デモ顧客(山田花子)を通常の顧客一覧に表示
+- change: `app/admin/customers/page.tsx` サンプル(SAMPLE_/DEMO_)を顧客一覧から除外せず通常行として表示。行内に「デモ」バッジ＋プレビューボタン（読み取り専用）を付与。右矢印で詳細・アカウント削除も可能に。別枠プレビューカードは撤去
+- 補足: 席数/課金カウントからは引き続き除外（lib/seats.ts）。見出しの実顧客数(realCustomers)はデモを除外したまま
+- 影響範囲: 管理画面（/store・/admin の顧客設定一覧）
+
 ## 2026-05-28 – change(store): 食事管理タブをナビから削除（ページ機能は存置）
 - change: `app/admin/AdminShell.tsx` のナビから「食事管理」(/meals) タブを削除。未使用となった UtensilsCrossed import も除去
 - 補足: /meals ページ（PFC編集・削除）は残置。ナビ以外からの導線は無いため直URLでのみ到達（必要なら顧客分析等から導線追加可）

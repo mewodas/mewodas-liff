@@ -151,7 +151,6 @@ export default function AdminCustomersPage() {
   const filtered = useMemo(() => {
     const qn = q.trim();
     return customers.filter((c) => {
-      if (c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_')) return false;
       if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
       if (storeFilter && c.storeId !== storeFilter) return false;
       if (qn && !c.name.includes(qn)) return false;
@@ -198,10 +197,6 @@ export default function AdminCustomersPage() {
     }
   }
 
-  const sampleCustomer = useMemo(
-    () => customers.find((c) => c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_')),
-    [customers]
-  );
   const realCustomers = useMemo(
     () => customers.filter((c) => !(c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_'))),
     [customers]
@@ -373,31 +368,6 @@ export default function AdminCustomersPage() {
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
 
-        {/* デモ用サンプル顧客（山田花子）— プレビューはここのみ */}
-        {sampleCustomer && !loading && (
-          <ul className="bg-white rounded-2xl border border-violet-200 shadow-sm">
-            <li>
-              <div className="flex items-center gap-2 px-3 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="text-sm font-bold text-stone-900 truncate">{sampleCustomer.name}</div>
-                    <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
-                  </div>
-                  <div className="text-[11px] text-stone-500 mt-0.5">お客様にどう見えるかを確認できます（読み取り専用）</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openPreview(sampleCustomer.lineUserId, sampleCustomer.name, 'sample')}
-                  className="flex items-center gap-1.5 font-bold py-2 px-3 rounded-xl text-xs sm:text-sm border bg-violet-600 text-white border-violet-600 active:bg-violet-700 whitespace-nowrap flex-shrink-0"
-                >
-                  <Monitor className="w-4 h-4" strokeWidth={2.2} />
-                  顧客画面を見る
-                </button>
-              </div>
-            </li>
-          </ul>
-        )}
-
         {loading ? (
           <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : filtered.length === 0 ? (
@@ -406,6 +376,7 @@ export default function AdminCustomersPage() {
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             {filtered.map((c) => {
               const isPending = c.foodStatus === '承認待ち';
+              const isSample = !!c.lineUserId && (c.lineUserId.startsWith('SAMPLE_') || c.lineUserId.startsWith('DEMO_'));
               return (
                 <li key={c.pageId}>
                   <div className="flex items-center gap-0 px-2 py-1 hover:bg-stone-50">
@@ -416,6 +387,9 @@ export default function AdminCustomersPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
+                          {isSample && (
+                            <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                          )}
                           <StatusBadge status={c.foodStatus} />
                           {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
                             <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
@@ -454,6 +428,16 @@ export default function AdminCustomersPage() {
                       </div>
                       <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
                     </Link>
+                    {isSample && (
+                      <button
+                        type="button"
+                        onClick={() => openPreview(c.lineUserId, c.name, 'sample')}
+                        className="p-2 rounded-lg hover:bg-violet-50 text-violet-600 flex-shrink-0"
+                        title="顧客画面を見る（読み取り専用）"
+                      >
+                        <Monitor className="w-4 h-4" strokeWidth={2.2} />
+                      </button>
+                    )}
                   </div>
                 </li>
               );
