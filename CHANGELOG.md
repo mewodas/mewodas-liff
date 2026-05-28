@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 食事管理タブをナビから削除（ページ機能は存置）
+- change: `app/admin/AdminShell.tsx` のナビから「食事管理」(/meals) タブを削除。未使用となった UtensilsCrossed import も除去
+- 補足: /meals ページ（PFC編集・削除）は残置。ナビ以外からの導線は無いため直URLでのみ到達（必要なら顧客分析等から導線追加可）
+- 影響範囲: 管理画面（/store・/admin のナビ表示）
+
 ## 2026-05-28 – change(store): 顧客プレビューを山田花子の行に集約・ナビ並べ替え
 - change: `app/admin/customers/page.tsx` 顧客画面プレビューをデモ用サンプル(山田花子)の行内ボタン（読み取り専用表記）に一本化。別枠プレビューカードを撤去
 - change: サンプル判定を `SAMPLE_`/`DEMO_` 両prefix対応に拡張（DEMO_系デモ顧客が実顧客一覧・席数に二重表示される問題を解消）。`lib/seats.ts` も同様に席数除外

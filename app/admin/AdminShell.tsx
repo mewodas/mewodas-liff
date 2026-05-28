@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Megaphone, Bell, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Megaphone, Bell, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -21,12 +21,6 @@ const TABS: Tab[] = [
     label: '進捗管理',
     Icon: TrendingUp,
     match: (p, base) => p.startsWith(`${base}/progress`),
-  },
-  {
-    suffix: '/meals',
-    label: '食事管理',
-    Icon: UtensilsCrossed,
-    match: (p, base) => p.startsWith(`${base}/meals`),
   },
   {
     suffix: '/analysis',
