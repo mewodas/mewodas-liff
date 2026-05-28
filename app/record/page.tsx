@@ -25,6 +25,7 @@ import {
   BarChart3,
   Lightbulb,
   Save,
+  RefreshCw,
 } from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
@@ -514,48 +515,15 @@ export default function RecordPage() {
     );
   }
 
-  // ===== 解析中 / 記録中 / 写真読み込み中 =====
+  // ===== 解析中 / 記録中 / 写真読み込み中（ホーム /home と同じ緑スピナー） =====
   if (stage === 'analyzing' || stage === 'saving' || compressing) {
-    const phase: 'compressing' | 'analyzing' | 'saving' = compressing
-      ? 'compressing'
-      : stage === 'saving'
-      ? 'saving'
-      : 'analyzing';
     return (
       <main
-        className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6"
+        className="fixed inset-0 bg-stone-900/20 flex items-center justify-center z-50"
         onTouchMove={(e) => e.preventDefault()}
       >
-        <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
-          <div className="mb-4 flex items-center justify-center">
-            {phase === 'saving' ? (
-              <Save className="w-8 h-8 text-emerald-600" strokeWidth={2} />
-            ) : (
-              <Camera className="w-8 h-8 text-emerald-600" strokeWidth={2} />
-            )}
-          </div>
-          <h2 className="text-base font-bold text-stone-900 mb-2">
-            {phase === 'saving'
-              ? '記録してます'
-              : phase === 'compressing'
-              ? '写真を読み込み中'
-              : '解析中'}
-          </h2>
-          <p className="text-xs text-stone-600 mb-6">
-            {phase === 'saving'
-              ? '食事データを保存しています'
-              : phase === 'compressing'
-              ? '画像を準備しています'
-              : '料理を識別してカロリー・PFCを推定しています'}
-          </p>
-          <div className="flex justify-center">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
-          </div>
-          <p className="text-[10px] text-stone-500 mt-6">
-            {phase === 'saving' ? '数秒で完了します' : phase === 'compressing' ? 'まもなく完了します' : '約10〜15秒'}
-          </p>
+        <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+          <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
         </div>
       </main>
     );
