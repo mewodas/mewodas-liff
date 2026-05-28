@@ -538,14 +538,14 @@ function Inner() {
           </section>
         ) : null}
 
-        {/* ---- ④ 体重 ---- */}
-        {hasData && weightLogs.length > 0 && (
-          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
-        )}
-
-        {/* ---- ⑤ 運動記録 ---- */}
-        {hasData && exerciseLogs.length > 0 && (
-          <ExerciseSection exerciseLogs={exerciseLogs} />
+        {/* ---- ④ 体重 ＋ ⑤ 運動記録（体重の直後に並べる） ---- */}
+        {hasData && (weightLogs.length > 0 || exerciseLogs.length > 0) && (
+          <WeightExercisePanel
+            isSingleDay={isSingleDay}
+            weightLogs={weightLogs}
+            exerciseLogs={exerciseLogs}
+            target={target}
+          />
         )}
 
         {/* ---- ⑤ 食事一覧ボタン + AI サマリ作成ボタン ---- */}
@@ -701,6 +701,41 @@ function Inner() {
   );
 }
 
+// ---- 体重＋運動パネル（横並び or 縦積み） ----
+
+function WeightExercisePanel({
+  isSingleDay,
+  weightLogs,
+  exerciseLogs,
+  target,
+}: {
+  isSingleDay: boolean;
+  weightLogs: WeightLog[];
+  exerciseLogs: ExerciseLog[];
+  target: TargetInfo | null;
+}) {
+  const hasWeight = weightLogs.length > 0;
+  const hasExercise = exerciseLogs.length > 0;
+
+  // 単日かつ両方ある場合は横2カラム
+  if (isSingleDay && hasWeight && hasExercise) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
+        <ExerciseSection isSingleDay={isSingleDay} exerciseLogs={exerciseLogs} />
+      </div>
+    );
+  }
+
+  // 期間表示 or 片方だけの場合は縦積み（体重→運動の順）
+  return (
+    <>
+      {hasWeight && <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />}
+      {hasExercise && <ExerciseSection isSingleDay={isSingleDay} exerciseLogs={exerciseLogs} />}
+    </>
+  );
+}
+
 // ---- 体重・運動セクション ----
 
 function calcGoalWeight(
@@ -852,7 +887,13 @@ function WeightSection({
 
 const INTENSITY_ORDER: Record<string, number> = { 高: 3, 中: 2, 低: 1 };
 
-function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
+function ExerciseSection({
+  isSingleDay,
+  exerciseLogs,
+}: {
+  isSingleDay: boolean;
+  exerciseLogs: ExerciseLog[];
+}) {
   if (exerciseLogs.length === 0) return null;
 
   const totalMin = exerciseLogs.reduce((a, b) => a + b.durationMin, 0);
@@ -870,14 +911,22 @@ function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
   }
   const exerciseSummary = Array.from(byExercise.entries()).sort((a, b) => b[1].count - a[1].count);
 
-  // 日付降順の記録リスト（同日内は強度の高い順）
+  // 日別グループ（日付昇順、同日内は強度の高い順）
   const sorted = exerciseLogs
     .slice()
     .sort((a, b) =>
       a.date !== b.date
-        ? (a.date < b.date ? 1 : -1)
+        ? (a.date < b.date ? -1 : 1)
         : (INTENSITY_ORDER[b.intensity] ?? 0) - (INTENSITY_ORDER[a.intensity] ?? 0)
     );
+
+  const byDate = new Map<string, ExerciseLog[]>();
+  for (const ex of sorted) {
+    const arr = byDate.get(ex.date) ?? [];
+    arr.push(ex);
+    byDate.set(ex.date, arr);
+  }
+  const groupedByDate = Array.from(byDate.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1));
 
   return (
     <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
@@ -893,8 +942,8 @@ function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
         <span>消費 {Math.round(totalKcal)} kcal</span>
       </div>
 
-      {/* 種目別集計 */}
-      {exerciseSummary.length > 1 && (
+      {/* 種目別集計（複数種目かつ期間表示の場合のみ） */}
+      {!isSingleDay && exerciseSummary.length > 1 && (
         <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
           {exerciseSummary.map(([name, v]) => (
             <div key={name} className="flex items-center justify-between px-3 py-1.5 text-xs">
@@ -907,25 +956,46 @@ function ExerciseSection({ exerciseLogs }: { exerciseLogs: ExerciseLog[] }) {
         </div>
       )}
 
-      {/* いつ・何を — 日付順の記録リスト */}
-      <div className="space-y-1.5">
-        {sorted.map((ex) => (
-          <div key={ex.id} className="border border-stone-200 rounded-xl p-2.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-stone-900">{ex.exercise || '（種目名なし）'}</span>
-              <span className="text-stone-400">{shortDate(ex.date)}</span>
+      {/* 記録リスト — 単日はフラット表示、期間は日別グループ */}
+      {isSingleDay ? (
+        <div className="space-y-1.5">
+          {sorted.map((ex) => (
+            <ExerciseRow key={ex.id} ex={ex} showDate={false} />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {groupedByDate.map(([date, list]) => (
+            <div key={date}>
+              <div className="text-[11px] font-bold text-stone-500 mb-1 px-0.5">{shortDate(date)}</div>
+              <div className="space-y-1">
+                {list.map((ex) => (
+                  <ExerciseRow key={ex.id} ex={ex} showDate={false} />
+                ))}
+              </div>
             </div>
-            <div className="text-stone-600 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-              <span>{ex.durationMin}分</span>
-              {ex.intensity && <span>強度: {ex.intensity}</span>}
-              {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
-              {ex.category && <span className="text-emerald-600">{ex.category}</span>}
-            </div>
-            {ex.memo && <div className="text-stone-400 mt-0.5">{ex.memo}</div>}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+function ExerciseRow({ ex, showDate }: { ex: ExerciseLog; showDate: boolean }) {
+  return (
+    <div className="border border-stone-200 rounded-xl p-2.5 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-stone-900">{ex.exercise || '（種目名なし）'}</span>
+        {showDate && <span className="text-stone-400">{shortDate(ex.date)}</span>}
+      </div>
+      <div className="text-stone-600 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+        <span>{ex.durationMin}分</span>
+        {ex.intensity && <span>強度: {ex.intensity}</span>}
+        {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
+        {ex.category && <span className="text-emerald-600">{ex.category}</span>}
+      </div>
+      {ex.memo && <div className="text-stone-400 mt-0.5">{ex.memo}</div>}
+    </div>
   );
 }
 

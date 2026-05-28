@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 進捗管理・顧客分析 UI 改善
+- change: `app/admin/progress/page.tsx` フィルタバーを食事管理と同じ構成（DateRangePicker + 店舗チップ + 顧客select + statusチップ）に刷新。単日運用を維持（from=to 固定）。食事・体重カードをデザイン向上（kcalゲージバー付き）。運動カードを削除。SAMPLE_/DEMO_ 顧客にデモバッジ追加。
+- change: `app/admin/analysis/page.tsx` 体重と運動を `WeightExercisePanel` でまとめ直後に隣接表示（単日時横2カラム、期間時縦積み）。`ExerciseSection` に `isSingleDay` 引数追加。期間表示時は日別グループ化（日付見出し付き）で各日の運動記録を視認可能に。
+- 影響範囲: 管理画面（/store・/admin の進捗管理・顧客分析）
+
 ## 2026-05-28 – change(store): デモ顧客(山田花子)を通常の顧客一覧に表示
 - change: `app/admin/customers/page.tsx` サンプル(SAMPLE_/DEMO_)を顧客一覧から除外せず通常行として表示。行内に「デモ」バッジ＋プレビューボタン（読み取り専用）を付与。右矢印で詳細・アカウント削除も可能に。別枠プレビューカードは撤去
 - 補足: 席数/課金カウントからは引き続き除外（lib/seats.ts）。見出しの実顧客数(realCustomers)はデモを除外したまま

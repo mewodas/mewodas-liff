@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Circle, ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronLeft } from 'lucide-react';
+import { Circle, ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type ProgressItem = {
   pageId: string;
   name: string;
+  lineUserId: string | null;
   storeId: string | null;
   foodStatus: string | null;
   today: {
@@ -52,7 +54,7 @@ export default function ProgressPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState('');
+  const [customerId, setCustomerId] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('進行中');
   const [storeFilter, setStoreFilter] = useState<string>('');
 
@@ -80,15 +82,17 @@ export default function ProgressPage() {
     load(selectedDate);
   }, [load, selectedDate]);
 
-  const filtered = useMemo(() => {
-    const qn = q.trim();
-    return progress.filter((p) => {
-      if (statusFilter !== 'すべて' && p.foodStatus !== statusFilter) return false;
-      if (storeFilter && p.storeId !== storeFilter) return false;
-      if (qn && !p.name.includes(qn)) return false;
-      return true;
-    });
-  }, [progress, q, statusFilter, storeFilter]);
+  function handleDateChange(newDate: string) {
+    if (newDate > todayStr) return;
+    setSelectedDate(newDate);
+  }
+
+  // DateRangePicker は from=to の単日固定で使う
+  function shiftDate(delta: number) {
+    const next = addDays(selectedDate, delta);
+    if (next > todayStr) return;
+    setSelectedDate(next);
+  }
 
   const storeNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -96,48 +100,105 @@ export default function ProgressPage() {
     return m;
   }, [stores]);
 
-  const isToday = selectedDate === todayStr;
-  const [, selM, selD] = selectedDate.split('-').map(Number);
-  const dateLabel = `${selM}/${selD}`;
+  // 顧客 select 用リスト（storeFilter 適用後）
+  const customerOptions = useMemo(() => {
+    return progress.filter((p) => {
+      if (storeFilter && p.storeId !== storeFilter) return false;
+      return true;
+    });
+  }, [progress, storeFilter]);
 
-  function handleDateChange(newDate: string) {
-    if (newDate > todayStr) return;
-    setSelectedDate(newDate);
-  }
+  const filtered = useMemo(() => {
+    return progress.filter((p) => {
+      if (statusFilter !== 'すべて' && p.foodStatus !== statusFilter) return false;
+      if (storeFilter && p.storeId !== storeFilter) return false;
+      if (customerId && p.pageId !== customerId) return false;
+      return true;
+    });
+  }, [progress, statusFilter, storeFilter, customerId]);
 
   function handleRowClick(pageId: string) {
     router.push(`${base}/analysis?customer=${pageId}&date=${selectedDate}`);
   }
 
   return (
-    <AdminShell title={`進捗管理 — ${dateLabel}`}>
+    <AdminShell title={`進捗管理（${filtered.length}名）`}>
       <div className="space-y-3">
-        {/* 日付セレクタ */}
-        <div className="flex items-center justify-between gap-2 bg-white rounded-2xl border border-stone-200 shadow-sm px-3 py-2.5">
-          <button
-            type="button"
-            onClick={() => handleDateChange(addDays(selectedDate, -1))}
-            className="p-1.5 rounded-xl hover:bg-stone-100 active:bg-stone-200 text-stone-600"
-            aria-label="前日"
-          >
-            <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
-          </button>
-          <input
-            type="date"
-            value={selectedDate}
-            max={todayStr}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="text-sm font-bold text-stone-800 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg px-1 text-center"
+        {/* フィルタバー（食事管理と同じ構成） */}
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+          {/* 日付ナビ — DateRangePicker を単日固定で使用 */}
+          <DateRangePicker
+            from={selectedDate}
+            to={selectedDate}
+            today={todayStr}
+            onChangeFrom={(v) => handleDateChange(v)}
+            onChangeTo={(v) => handleDateChange(v)}
+            onShift={shiftDate}
+            isSingleDay={true}
           />
-          <button
-            type="button"
-            onClick={() => handleDateChange(addDays(selectedDate, 1))}
-            disabled={isToday}
-            className="p-1.5 rounded-xl hover:bg-stone-100 active:bg-stone-200 text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="翌日"
+
+          {/* 店舗チップ */}
+          {stores.length > 0 && (
+            <div className="flex gap-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => { setStoreFilter(''); setCustomerId(''); }}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                  storeFilter === ''
+                    ? 'bg-violet-500 text-white border-violet-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                全店舗
+              </button>
+              {stores.map((s) => (
+                <button
+                  key={s.storeId}
+                  type="button"
+                  onClick={() => { setStoreFilter(s.storeId); setCustomerId(''); }}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                    storeFilter === s.storeId
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-stone-700 border-stone-300'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 顧客 select */}
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
-          </button>
+            <option value="">すべての顧客</option>
+            {customerOptions.map((p) => (
+              <option key={p.pageId} value={p.pageId}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          {/* status チップ */}
+          <div className="flex gap-1 flex-wrap">
+            {STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${
+                  statusFilter === s
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -155,64 +216,6 @@ export default function ProgressPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />
-            <input
-              type="text"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="氏名で検索"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-            {STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatusFilter(s)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
-                  statusFilter === s
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-white text-stone-700 border-stone-300'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          {stores.length > 0 && (
-            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-              <button
-                type="button"
-                onClick={() => setStoreFilter('')}
-                className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
-                  storeFilter === ''
-                    ? 'bg-violet-500 text-white border-violet-500'
-                    : 'bg-white text-stone-700 border-stone-300'
-                }`}
-              >
-                全店舗
-              </button>
-              {stores.map((s) => (
-                <button
-                  key={s.storeId}
-                  type="button"
-                  onClick={() => setStoreFilter(s.storeId)}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
-                    storeFilter === s.storeId
-                      ? 'bg-violet-500 text-white border-violet-500'
-                      : 'bg-white text-stone-700 border-stone-300'
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
@@ -223,72 +226,118 @@ export default function ProgressPage() {
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
-            {filtered.map((item) => (
-              <li key={item.pageId}>
-                <button
-                  type="button"
-                  onClick={() => handleRowClick(item.pageId)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <div className="text-sm font-bold text-stone-900">{item.name}</div>
-                      <StatusBadge status={item.foodStatus} />
-                      {item.storeId && storeNameById.get(item.storeId) && stores.length > 1 && (
-                        <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
-                          {storeNameById.get(item.storeId)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      {/* 食事 */}
-                      <div className="bg-emerald-50 rounded-lg px-2 py-1.5">
-                        <div className="text-[10px] text-emerald-700 font-bold mb-0.5">食事</div>
-                        {item.today.mealCount > 0 ? (
-                          <>
-                            <div className="font-bold text-stone-900">
-                              {item.today.intakeKcal}<span className="text-[10px] font-normal text-stone-500">/{item.today.targetKcal > 0 ? item.today.targetKcal : '—'}kcal</span>
-                            </div>
-                            <div className="text-[10px] text-stone-600">{item.today.mealCount}食記録</div>
-                          </>
-                        ) : (
-                          <div className="text-stone-400 text-[11px]">未記録</div>
+            {filtered.map((item) => {
+              const isSample = !!item.lineUserId && (item.lineUserId.startsWith('SAMPLE_') || item.lineUserId.startsWith('DEMO_'));
+              return (
+                <li key={item.pageId}>
+                  <button
+                    type="button"
+                    onClick={() => handleRowClick(item.pageId)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <div className="text-sm font-bold text-stone-900">{item.name}</div>
+                        {isSample && (
+                          <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                        )}
+                        <StatusBadge status={item.foodStatus} />
+                        {item.storeId && storeNameById.get(item.storeId) && stores.length > 1 && (
+                          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                            {storeNameById.get(item.storeId)}
+                          </span>
                         )}
                       </div>
-                      {/* 体重 */}
-                      <div className="bg-sky-50 rounded-lg px-2 py-1.5">
-                        <div className="text-[10px] text-sky-700 font-bold mb-0.5">体重</div>
-                        {item.weight.latest !== null ? (
-                          <>
-                            <div className="font-bold text-stone-900">{item.weight.latest}<span className="text-[10px] font-normal text-stone-500">kg</span></div>
-                            <WeightDelta delta={item.weight.deltaFromYesterday} />
-                          </>
-                        ) : (
-                          <div className="text-stone-400 text-[11px]">未記録</div>
-                        )}
-                      </div>
-                      {/* 運動 */}
-                      <div className="bg-violet-50 rounded-lg px-2 py-1.5">
-                        <div className="text-[10px] text-violet-700 font-bold mb-0.5">運動</div>
-                        {item.exercise.todayCount > 0 ? (
-                          <>
-                            <div className="font-bold text-stone-900">{item.exercise.todayMinutes}<span className="text-[10px] font-normal text-stone-500">分</span></div>
-                            <div className="text-[10px] text-stone-600">{item.exercise.todayCount}件</div>
-                          </>
-                        ) : (
-                          <div className="text-stone-400 text-[11px]">0分</div>
-                        )}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {/* 食事カード */}
+                        <MealCard
+                          intakeKcal={item.today.intakeKcal}
+                          targetKcal={item.today.targetKcal}
+                          mealCount={item.today.mealCount}
+                        />
+                        {/* 体重カード */}
+                        <WeightCard
+                          latest={item.weight.latest}
+                          delta={item.weight.deltaFromYesterday}
+                        />
                       </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
-                </button>
-              </li>
-            ))}
+                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
     </AdminShell>
+  );
+}
+
+function MealCard({
+  intakeKcal,
+  targetKcal,
+  mealCount,
+}: {
+  intakeKcal: number;
+  targetKcal: number;
+  mealCount: number;
+}) {
+  const pct = targetKcal > 0 ? Math.min(150, Math.round((intakeKcal / targetKcal) * 100)) : null;
+  const barColor =
+    pct === null ? 'bg-emerald-400'
+    : pct < 70 ? 'bg-sky-400'
+    : pct <= 115 ? 'bg-emerald-400'
+    : pct <= 130 ? 'bg-amber-400'
+    : 'bg-rose-400';
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-emerald-700">食事</div>
+      {mealCount > 0 ? (
+        <>
+          <div className="flex items-baseline gap-1">
+            <span className="text-base font-bold text-stone-900 leading-none">{intakeKcal}</span>
+            <span className="text-[10px] text-stone-500">
+              {targetKcal > 0 ? `/ ${targetKcal} kcal` : 'kcal'}
+            </span>
+          </div>
+          {pct !== null && (
+            <div className="relative h-1.5 rounded-full bg-stone-200 overflow-hidden">
+              <div
+                className={`absolute left-0 top-0 h-full ${barColor} rounded-full`}
+                style={{ width: `${Math.min(100, pct)}%` }}
+              />
+            </div>
+          )}
+          <div className="text-[10px] text-stone-500">
+            {mealCount}食記録
+            {pct !== null && <span className="ml-1 font-bold text-stone-600">{pct}%</span>}
+          </div>
+        </>
+      ) : (
+        <div className="text-[11px] text-stone-400 pt-0.5">未記録</div>
+      )}
+    </div>
+  );
+}
+
+function WeightCard({ latest, delta }: { latest: number | null; delta: number | null }) {
+  return (
+    <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-sky-700">体重</div>
+      {latest !== null ? (
+        <>
+          <div className="flex items-baseline gap-1">
+            <span className="text-base font-bold text-stone-900 leading-none">{latest}</span>
+            <span className="text-[10px] text-stone-500">kg</span>
+          </div>
+          <WeightDelta delta={delta} />
+        </>
+      ) : (
+        <div className="text-[11px] text-stone-400 pt-0.5">未記録</div>
+      )}
+    </div>
   );
 }
 
