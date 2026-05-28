@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-28 – feat(preview): 顧客動線リデザイン Phase A+B（サンプルシード・席数除外・ストアプレビュー）
+- feat: `lib/demoSession.ts` に `generatePreviewToken`（exp 60分）追加、`verifyDemoToken` を kind:'demo'|'preview' 両対応に拡張
+- feat: `lib/demoClient.ts` トークン取得優先順位を URLクエリ `preview_token` → sessionStorage → localStorage に変更（プレビューは sessionStorage 隔離、localStorage非汚染）
+- feat: `lib/provisionTenant.ts` に `seedSampleCustomer(tenantId, dbIds, notionApiKey)` 追加。テナント作成後に best-effort でサンプル顧客1名（山田 花子）＋直近7日分食事＋9日分体重をシード。lineUserId=`SAMPLE_FITMEAL` で識別、冪等（既存SAMPLE_顧客があればスキップ）
+- feat: `lib/notion.ts` 新規テナント食事DBのスキーマ列名を saveFoodRecord と一致させる（`タイトル`→`食事メモ`、`LINEユーザーID`→`LINE_UserID`）
+- feat: `lib/seats.ts` lineUserId が `SAMPLE_` 始まりの顧客を席数・総数カウントから除外（誤課金防止）
+- feat: `app/api/admin/preview-token/route.ts` 新規エンドポイント。admin 認証必須・tenantId はセッション由来・対象顧客の所属テナント検証後に preview トークンを発行
+- feat: `app/admin/customers/page.tsx` ストア顧客一覧に「顧客画面を見る」ボタン（上部: サンプルモード、各行: 実データモード）+ iframe プレビューモーダル追加。サンプル顧客は一覧から分離（席数バナーも実顧客数で表示）
+- feat: `app/api/admin/seed-sample/route.ts` staging 検証用 seed エンドポイント（master only、冪等）
+- 影響範囲: 管理画面（/store/customers のUI）、API（/api/admin/preview-token・seed-sample）、lib/（demoSession・demoClient・seats・provisionTenant・notion）
+- 既存フロー非影響: 公開 /demo（kind:'demo'）は維持。withLiffTenant のデモ分岐は demo/preview 両方を同一ヘッダで処理するため既存経路変更なし
+
 ## 2026-05-28 – fix(demo): デモ時にAI/記録アクション行を非表示
 - fix: デモモードの /home で「食事記録・AI食事相談・AI献立作成」アクション行を非表示に（読み取り専用デモではPOSTが403になり誤操作でエラー表示される問題を解消。リリース前QA指摘#2対応）
 - 影響範囲: 顧客側 LIFF（/home・デモモード時のみ。通常利用は不変）

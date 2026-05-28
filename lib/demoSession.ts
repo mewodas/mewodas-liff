@@ -30,7 +30,7 @@ function b64urlDecode(s: string): Buffer {
 export type DemoPayload = {
   tenantId: string;
   lineUserId: string;
-  kind: 'demo';
+  kind: 'demo' | 'preview';
   exp: number;
 };
 
@@ -40,6 +40,18 @@ export function generateDemoToken(opts: { tenantId: string; lineUserId: string }
     lineUserId: opts.lineUserId,
     kind: 'demo',
     exp: Date.now() + 365 * 24 * 60 * 60 * 1000,
+  };
+  const body = b64urlEncode(JSON.stringify(payload));
+  const sig = createHmac('sha256', getSecret()).update(body).digest();
+  return `${body}.${b64urlEncode(sig)}`;
+}
+
+export function generatePreviewToken(opts: { tenantId: string; lineUserId: string }): string {
+  const payload: DemoPayload = {
+    tenantId: opts.tenantId,
+    lineUserId: opts.lineUserId,
+    kind: 'preview',
+    exp: Date.now() + 60 * 60 * 1000,
   };
   const body = b64urlEncode(JSON.stringify(payload));
   const sig = createHmac('sha256', getSecret()).update(body).digest();
@@ -69,12 +81,12 @@ export function verifyDemoToken(token: string): DemoPayload | null {
   }
   if (typeof parsed.tenantId !== 'string' || !parsed.tenantId) return null;
   if (typeof parsed.lineUserId !== 'string' || !parsed.lineUserId) return null;
-  if (parsed.kind !== 'demo') return null;
+  if (parsed.kind !== 'demo' && parsed.kind !== 'preview') return null;
   if (typeof parsed.exp !== 'number' || Date.now() > parsed.exp) return null;
   return {
     tenantId: parsed.tenantId,
     lineUserId: parsed.lineUserId,
-    kind: 'demo',
+    kind: parsed.kind,
     exp: parsed.exp,
   };
 }
