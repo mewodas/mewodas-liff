@@ -1,9 +1,8 @@
 # CHANGELOG
 
-## 2026-05-28 – change(record): 写真解析/記録中ローディングをホーム緑スピナーに統一
-- change(record): 解析中・記録中・写真読み込み中の全画面モーダルを撤去。ホーム /home のカレンダー移動時と同じ緑スピナー（白丸 + RefreshCw 緑スピン）の中央オーバーレイに統一
-- カメラ/Saveアイコン・タイトル・補足文・ドット3点アニメーションを廃止
-- 既存の opacity ダイミング・touchmove 抑制は維持
+## 2026-05-28 – change(record): 写真読み込み中だけ緑スピナー、解析中/記録中は従来UIに戻す
+- change(record): `compressing`（写真アップロード時の圧縮中）のみホーム /home と同じ緑スピナー（白丸 + RefreshCw 緑スピン）に
+- 解析中・記録中（stage='analyzing'/'saving'）は従来の全画面モーダル（Camera/Save アイコン + タイトル + 補足文 + ドット3点アニメ + 経過目安）に戻す
 
 ## 2026-05-28 – change(profile): 体重目標セクションのアイコン削除
 - change(profile): 「体重目標」セクションヘッダから lucide TrendingDown アイコンを削除。タイトル文字のみに（他セクションと統一）
