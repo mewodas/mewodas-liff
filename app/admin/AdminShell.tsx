@@ -3,23 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Megaphone, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, type LucideIcon } from 'lucide-react';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
 
 const TABS: Tab[] = [
   {
-    suffix: '/progress',
-    label: '進捗管理',
-    Icon: TrendingUp,
-    match: (p, base) => p === base || p.startsWith(`${base}/progress`),
-  },
-  {
     suffix: '/customers',
     label: '顧客設定',
     Icon: Users,
-    match: (p, base) => p.startsWith(`${base}/customers`),
+    match: (p, base) => p === base || p.startsWith(`${base}/customers`),
+  },
+  {
+    suffix: '/progress',
+    label: '進捗管理',
+    Icon: TrendingUp,
+    match: (p, base) => p.startsWith(`${base}/progress`),
   },
   {
     suffix: '/meals',
@@ -29,7 +29,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/reports',
-    label: 'レポート送付',
+    label: 'お知らせ送付',
     Icon: Send,
     match: (p, base) => p.startsWith(`${base}/reports`),
   },
@@ -44,12 +44,6 @@ const TABS: Tab[] = [
     label: '顧客分析',
     Icon: Sparkles,
     match: (p, base) => p.startsWith(`${base}/analysis`),
-  },
-  {
-    suffix: '/announcements',
-    label: 'お知らせ',
-    Icon: Megaphone,
-    match: (p, base) => p.startsWith(`${base}/announcements`),
   },
   {
     suffix: '/billing',

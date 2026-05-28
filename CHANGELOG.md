@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): ナビ順を「顧客設定」先頭に・初期表示を顧客設定へ
+- change: `app/admin/AdminShell.tsx` のタブ順を「顧客設定→進捗管理」に入替（ルート一致 `p===base` も顧客設定へ移動）
+- change: `app/store/page.tsx`・`app/admin/page.tsx` のルート遷移を常に `/customers`（顧客設定）へ。従来の onboardingCompletedAt 判定による /progress 遷移と不要なテナント照会を撤去
+- 影響範囲: 管理画面（/store・/admin のナビ表示順と初期遷移先）
+
+## 2026-05-28 – feat(inbox): お知らせ機能統合（管理側トグル統合・顧客受信箱合流・未読バッジ統一）
+- feat: `lib/announcementReads.ts` 新規。localStorage キー `fitmeal_read_announcements` で一斉お知らせの既読ID管理。SSRガード付き。
+- feat: `lib/useInboxUnread.ts` 新規。`/api/notifications` + `/api/announcements` を取得し localStorage 既読と突合して合算未読数を返すクライアントフック。LIFF未初期化・失敗時は 0 を返す。
+- feat: `app/notifications/page.tsx` 改修。`/api/announcements` も取得して個別通知と一斉お知らせを日時降順マージ表示。一斉お知らせはlocalStorage既読管理（開いたら markAnnouncementRead）。PageHeader subtitle を「トレーナーからの連絡」に変更。
+- feat: `app/announcements/page.tsx` をリダイレクトページ化（`router.replace('/notifications')`）。
+- feat: `app/admin/reports/page.tsx` 改修。画面最上部に [レポート / お知らせ] pill トグルを追加。URLクエリ `?mode=announcement` で初期タブをお知らせに設定。お知らせモードは旧 admin/announcements/page.tsx のロジック・UIをインライン統合（送信フォーム＋送信履歴）。
+- feat: `app/admin/announcements/page.tsx` をリダイレクトページ化（`${base}/reports?mode=announcement` へ転送。/store でも動作）。
+- feat: `app/admin/AdminShell.tsx` の `/reports` label を「お知らせ送付」に改名、`/announcements` タブエントリと Megaphone import を削除。
+- feat: `app/menu/page.tsx` 改修。「お知らせ」アイコンを Megaphone→Bell に変更、リンク先を `/notifications` に変更、sub を「トレーナーからの連絡」に変更。LIFF初期化後に `useInboxUnread` で未読数を取得し、未読がある場合は Bell アイコン右上に赤丸インジケータを表示。
+- feat: `app/home/_components/LiffGate.tsx` の右上ベル未読バッジを `useInboxUnread` に切り替え（個別通知＋一斉お知らせの合算未読数）。
+- 影響範囲: 顧客側 LIFF（/notifications・/announcements・/menu・/home）、管理画面（/admin/reports・/store/reports・AdminShell ナビ）
+
 ## 2026-05-28 – feat(announcements): お知らせ一斉送信 Phase 1（管理画面・API・lib拡張）
 - feat: `lib/announcements.ts` に `AnnouncementAudience`('顧客向け'|'店舗向け')・`AnnouncementStatus` 型を追加、`pageToAnnouncement` で `宛先種別` を読み取り（空は '顧客向け' デフォルト）
 - fix: `listAnnouncementsForTenant` に「宛先種別=店舗向けを除外」フィルタを追加（顧客LIFFへの漏れ防止）
