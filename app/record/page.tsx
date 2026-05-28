@@ -515,20 +515,6 @@ export default function RecordPage() {
     );
   }
 
-  // ===== 写真読み込み中（ホーム /home と同じ緑スピナー） =====
-  if (compressing) {
-    return (
-      <main
-        className="fixed inset-0 bg-stone-900/20 flex items-center justify-center z-50"
-        onTouchMove={(e) => e.preventDefault()}
-      >
-        <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
-          <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
-        </div>
-      </main>
-    );
-  }
-
   // ===== 解析中 / 記録中 =====
   if (stage === 'analyzing' || stage === 'saving') {
     const isSaving = stage === 'saving';
@@ -816,7 +802,16 @@ export default function RecordPage() {
     <main className="min-h-screen bg-stone-50 pb-32">
       <PageHeader title="食事を記録" Icon={UtensilsCrossed} subtitle="写真・テキスト・成分表でPFC自動計算" onBack={() => { window.location.href = '/home'; }} />
 
-      <div className="px-4 py-5">
+      {/* 写真読み込み中：ホーム /home と同じ緑スピナー（下のhub画面を見せたまま重ねる） */}
+      {compressing && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+            <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
+          </div>
+        </div>
+      )}
+
+      <div className={`px-4 py-5 transition-opacity duration-300 ${compressing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">
             {error}

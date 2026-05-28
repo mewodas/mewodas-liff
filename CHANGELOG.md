@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – change(record): 写真読み込み中スピナーをホーム /home と完全同仕様に
+- change(record): 写真読み込み中（compressing）のスピナーをホームのカレンダー再取得時と完全に同じ仕様に。下のhub画面（食事を記録）が opacity-50 で透けて見えたまま、中央に緑スピナーを fixed で重ねる
+- pointer-events を中央オーバーレイで遮らず（pointer-events-none）、下のコンテナを `pointer-events-none` でブロック
+
 ## 2026-05-28 – change(record): 写真読み込み中だけ緑スピナー、解析中/記録中は従来UIに戻す
 - change(record): `compressing`（写真アップロード時の圧縮中）のみホーム /home と同じ緑スピナー（白丸 + RefreshCw 緑スピン）に
 - 解析中・記録中（stage='analyzing'/'saving'）は従来の全画面モーダル（Camera/Save アイコン + タイトル + 補足文 + ドット3点アニメ + 経過目安）に戻す
