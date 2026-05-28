@@ -15,6 +15,9 @@ type ProgressItem = {
   foodStatus: string | null;
   today: {
     intakeKcal: number;
+    intakeP: number;
+    intakeF: number;
+    intakeC: number;
     targetKcal: number;
     mealCount: number;
     mealTarget: number;
@@ -248,18 +251,25 @@ export default function ProgressPage() {
                           </span>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {/* 食事カード */}
-                        <MealCard
-                          intakeKcal={item.today.intakeKcal}
-                          targetKcal={item.today.targetKcal}
-                          mealCount={item.today.mealCount}
-                        />
-                        {/* 体重カード */}
-                        <WeightCard
-                          latest={item.weight.latest}
-                          delta={item.weight.deltaFromYesterday}
-                        />
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        {/* 食事カード（3/4幅・PFC内訳付き） */}
+                        <div className="col-span-3">
+                          <MealCard
+                            intakeKcal={item.today.intakeKcal}
+                            targetKcal={item.today.targetKcal}
+                            mealCount={item.today.mealCount}
+                            intakeP={item.today.intakeP}
+                            intakeF={item.today.intakeF}
+                            intakeC={item.today.intakeC}
+                          />
+                        </div>
+                        {/* 体重カード（1/4幅・コンパクト） */}
+                        <div className="col-span-1">
+                          <WeightCard
+                            latest={item.weight.latest}
+                            delta={item.weight.deltaFromYesterday}
+                          />
+                        </div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
@@ -278,10 +288,16 @@ function MealCard({
   intakeKcal,
   targetKcal,
   mealCount,
+  intakeP,
+  intakeF,
+  intakeC,
 }: {
   intakeKcal: number;
   targetKcal: number;
   mealCount: number;
+  intakeP: number;
+  intakeF: number;
+  intakeC: number;
 }) {
   const pct = targetKcal > 0 ? Math.min(150, Math.round((intakeKcal / targetKcal) * 100)) : null;
   const barColor =
@@ -310,6 +326,11 @@ function MealCard({
               />
             </div>
           )}
+          <div className="flex items-center gap-2 text-[10px] text-stone-600">
+            <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 text-rose-700 px-1 py-0.5">P <b className="text-rose-800">{Math.round(intakeP)}</b>g</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1 py-0.5">F <b className="text-amber-800">{Math.round(intakeF)}</b>g</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 text-sky-700 px-1 py-0.5">C <b className="text-sky-800">{Math.round(intakeC)}</b>g</span>
+          </div>
           <div className="text-[10px] text-stone-500">
             {mealCount}食記録
             {pct !== null && <span className="ml-1 font-bold text-stone-600">{pct}%</span>}

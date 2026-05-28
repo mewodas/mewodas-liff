@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-28 – fix/change(store): デモバナー漏れ修正・顧客行ボタン・進捗PFC
+- fix: `components/DemoBannerWrapper.tsx` /store・/admin ではデモバナーを表示しない（プレビューiframeのsessionStorageトークンが親に共有され管理画面にバナーが漏れる問題を解消）
+- change: `app/admin/customers/page.tsx` デモ顧客行のプレビューを Monitor アイコン→「顧客画面を見る」ラベルボタンに。位置を矢印の左へ（ChevronRight を Link 外に出して末尾配置）
+- change: `app/admin/progress/page.tsx` + `app/api/admin/progress/route.ts` 進捗一覧の食事カードに PFC 内訳を表示（APIで P/F/C を日次集計）。レイアウトを食事3/4・体重1/4に変更し体重カードをコンパクト化
+- 影響範囲: 管理画面（/store・/admin の顧客設定・進捗管理）、デモバナー（顧客LIFF）、API（/api/admin/progress）
+
 ## 2026-05-28 – change(store): 進捗管理・顧客分析 UI 改善
 - change: `app/admin/progress/page.tsx` フィルタバーを食事管理と同じ構成（DateRangePicker + 店舗チップ + 顧客select + statusチップ）に刷新。単日運用を維持（from=to 固定）。食事・体重カードをデザイン向上（kcalゲージバー付き）。運動カードを削除。SAMPLE_/DEMO_ 顧客にデモバッジ追加。
 - change: `app/admin/analysis/page.tsx` 体重と運動を `WeightExercisePanel` でまとめ直後に隣接表示（単日時横2カラム、期間時縦積み）。`ExerciseSection` に `isSingleDay` 引数追加。期間表示時は日別グループ化（日付見出し付き）で各日の運動記録を視認可能に。

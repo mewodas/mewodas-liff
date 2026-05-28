@@ -426,18 +426,19 @@ export default function AdminCustomersPage() {
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
                     </Link>
                     {isSample && (
                       <button
                         type="button"
                         onClick={() => openPreview(c.lineUserId, c.name, 'sample')}
-                        className="p-2 rounded-lg hover:bg-violet-50 text-violet-600 flex-shrink-0"
-                        title="顧客画面を見る（読み取り専用）"
+                        className="flex items-center gap-1 font-bold py-1.5 px-2.5 rounded-lg text-xs border bg-violet-100 text-violet-700 border-violet-300 active:bg-violet-200 whitespace-nowrap flex-shrink-0"
+                        title="読み取り専用"
                       >
-                        <Monitor className="w-4 h-4" strokeWidth={2.2} />
+                        <Monitor className="w-3.5 h-3.5" strokeWidth={2.2} />
+                        顧客画面を見る
                       </button>
                     )}
+                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 ml-1" strokeWidth={2.2} />
                   </div>
                 </li>
               );
