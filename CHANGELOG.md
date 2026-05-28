@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-05-28 – refactor(announcements): お知らせ機能再設計（運営→店舗専用・顧客巻き戻し）
+- refactor: `app/notifications/page.tsx` を a9385af 相当に巻き戻し。`/api/announcements` 取得・マージ・announcementReads 連携を全撤去。個別通知のみ表示に戻す。PageHeader subtitle を「トレーナーからの連絡」に維持。
+- refactor: `app/home/_components/LiffGate.tsx` のベル未読バッジを `useInboxUnread` から `useNotificationsUnread`（個別通知のみ）に切り替え。
+- refactor: `app/menu/page.tsx` の未読判定を同様に `useNotificationsUnread` に切り替え。
+- new: `lib/useNotificationsUnread.ts` 新設。`/api/notifications` の unreadCount のみ返すクライアントフック。SSR/失敗時は 0。
+- delete: `lib/useInboxUnread.ts` 削除。顧客向けお知らせ合流の廃止に伴い不要。
+- change: `lib/announcementReads.ts` の localStorage キーを `fitmeal_read_announcements` → `fitmeal_store_read_announcements` に変更（店舗ダッシュボード専用に転用）。
+- new: `lib/useStoreAnnouncementUnread.ts` 新設。`/api/admin/announcements` から店舗向け一覧を取得し localStorage 既読と突合して未読数を返すフック。
+- refactor: `app/admin/reports/page.tsx` を a9385af 相当に巻き戻し。[レポート/お知らせ] トグルとお知らせモードを全撤去。純粋な「レポート送付」に戻す。AdminShell title も「レポート送付」。
+- change: `app/admin/AdminShell.tsx` の `/reports` タブラベルを「レポート送付」に戻す。`/announcements` タブを masterOnly+storeHidden の「店舗へのお知らせ」として追加。ヘッダーに store 限定ベルアイコンを追加（`useStoreAnnouncementUnread` で未読バッジ）。
+- new: `app/admin/announcements/page.tsx` を master 限定の送信画面に作り替え。宛先は「店舗向け」固定。対象[全店舗/特定店舗]・タイトル/本文/重要度/ピン留め・送信履歴一覧。
+- refactor: `app/store/announcements/page.tsx` の re-export を解除し、独自の受信 inbox に作り替え。開いたら `markAnnouncementRead(id)` で localStorage 既読化。
+- change: `app/api/admin/announcements/route.ts` GET に「audience=店舗向けのみ返す」フィルタを追加（過去の顧客向けデータ混入防止）。POST の audience デフォルトを `'店舗向け'` に変更。
+- 影響範囲: 顧客側 LIFF（/notifications・/home・/menu）、管理画面（/admin/reports・/admin/announcements・/store/announcements・AdminShell）、API（/api/admin/announcements）
+
 ## 2026-05-28 – feat(seed): サンプル顧客に個人シートを作成し運動・体重予測を有効化
 - feat: `lib/provisionTenant.ts` `seedSampleCustomer` を拡張。新規テナント作成時に個人シート（Notionページ）を自動生成して `食事記録リンク` にセット。
 - feat: 既存サンプル顧客（`食事記録リンク` 未設定）を後追い補完するバックフィルロジックを追加（`checkSampleExists` → `getSampleCustomerInfo` に変更し pageId と hasFoodSheetLink を返す）。

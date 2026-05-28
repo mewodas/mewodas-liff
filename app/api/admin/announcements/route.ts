@@ -20,6 +20,8 @@ export const GET = withAdminTenant(async (req) => {
   const session = currentSession(req);
   const isMaster = session?.role === 'master';
   let announcements = await listAllAnnouncementsAdmin();
+  // 店舗向けのみ返す（顧客向けは過去データ混入防止のため除外）
+  announcements = announcements.filter((a) => a.audience === '店舗向け');
   if (!isMaster) {
     // 店舗は「自テナント宛 or 全テナント共通」のお知らせのみ閲覧（他店舗のお知らせを隠す）
     const tenantId = getCurrentTenant().id;
@@ -40,11 +42,12 @@ export const POST = withAdminTenant(async (req) => {
   try {
     const body = await req.json();
 
-    // ロールはセッションから、テナントIDは確立済みコンテキストから取得。
-    // コンテキストは withAdminTenant で解決済み（staging の FITMEAL_TENANT_ID_OVERRIDE も反映）。
+    // お知らせ送信は運営(master)専用。店舗(tenant_admin)は受信のみで送信不可。
     const session = currentSession(req);
     const isMaster = session?.role === 'master';
-    const contextTenantId = getCurrentTenant().id;
+    if (!isMaster) {
+      return NextResponse.json({ error: 'お知らせ送信は運営専用です' }, { status: 403 });
+    }
 
     const title = String(body.title || '').trim();
     const bodyText = String(body.body || '').trim();
@@ -55,24 +58,14 @@ export const POST = withAdminTenant(async (req) => {
       return NextResponse.json({ error: 'title / body が必要' }, { status: 400 });
     }
 
-    let audience: AnnouncementAudience;
+    // 宛先は店舗向け固定（顧客向け一斉は廃止）。対象テナントはリクエスト値（全店舗 or 特定店舗）。
+    const audience: AnnouncementAudience = '店舗向け';
     let targetTenants: string[];
-
-    if (isMaster) {
-      // 運営（master）: audience・対象テナントはリクエスト値を信頼する
-      audience = (body.audience as AnnouncementAudience) || '顧客向け';
-      const scope: string = body.scope || 'all';
-      if (scope === 'tenant' && body.targetTenantId) {
-        targetTenants = [String(body.targetTenantId)];
-      } else {
-        // 'all' または 店舗向け = 対象テナント空（全テナント共通）
-        targetTenants = [];
-      }
+    const scope: string = body.scope || 'all';
+    if (scope === 'tenant' && body.targetTenantId) {
+      targetTenants = [String(body.targetTenantId)];
     } else {
-      // 店舗（tenant_admin）: audience を強制的に '顧客向け'、対象テナントを自テナントに固定
-      // クライアント値は一切信用しない
-      audience = '顧客向け';
-      targetTenants = [contextTenantId];
+      targetTenants = [];
     }
 
     const announcement = await createAnnouncement({

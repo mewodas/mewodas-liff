@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'fitmeal_read_announcements';
+const STORAGE_KEY = 'fitmeal_store_read_announcements';
 
 export function getReadAnnouncementIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();

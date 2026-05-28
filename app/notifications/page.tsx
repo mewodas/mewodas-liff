@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
-import { getReadAnnouncementIds, markAnnouncementRead } from '@/lib/announcementReads';
 import PageHeader from '@/components/PageHeader';
-import { Bell, FileText, Sparkles, Inbox, ChevronDown, ChevronUp, Megaphone, AlertTriangle } from 'lucide-react';
+import { Bell, FileText, Sparkles, Inbox, ChevronDown, ChevronUp } from 'lucide-react';
 
-type NotificationItem = {
+type Notification = {
   id: string;
   category: string;
   title: string;
@@ -16,56 +15,23 @@ type NotificationItem = {
   read: boolean;
   readAt: string | null;
   createdAt: string;
-  source: 'notification';
 };
-
-type AnnouncementItem = {
-  id: string;
-  category: 'お知らせ';
-  title: string;
-  body: string;
-  read: boolean;
-  readAt: null;
-  createdAt: string;
-  source: 'announcement';
-  importance: '通常' | '重要';
-};
-
-type InboxItem = NotificationItem | AnnouncementItem;
 
 const TABS = ['すべて', '前日レポート', '週次', 'お知らせ'] as const;
 type Tab = typeof TABS[number];
 
-function matchTab(tab: Tab, item: InboxItem): boolean {
+function matchTab(tab: Tab, category: string): boolean {
   if (tab === 'すべて') return true;
-  if (tab === '前日レポート') return item.category === '前日レポート';
-  if (tab === '週次') return item.category === '週次レポート';
-  if (tab === 'お知らせ') return item.category === 'お知らせ' || item.category === 'アドバイス';
+  if (tab === '前日レポート') return category === '前日レポート';
+  if (tab === '週次') return category === '週次レポート';
+  if (tab === 'お知らせ') return category === 'お知らせ' || category === 'アドバイス';
   return false;
-}
-
-function formatDate(iso: string): string {
-  // 日付のみ (YYYY-MM-DD) の場合は日付表示
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    try {
-      const [y, m, d] = iso.split('-').map(Number);
-      return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`;
-    } catch {
-      return iso;
-    }
-  }
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return iso;
-  }
 }
 
 export default function NotificationsPage() {
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [items, setItems] = useState<InboxItem[]>([]);
+  const [items, setItems] = useState<Notification[]>([]);
   const [configured, setConfigured] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -93,48 +59,13 @@ export default function NotificationsPage() {
     if (!userId) return;
     (async () => {
       try {
-        const [notifRes, annRes] = await Promise.all([
-          apiFetch(`/api/notifications?t=${Date.now()}`, { cache: 'no-store' }),
-          apiFetch(`/api/announcements?t=${Date.now()}`, { cache: 'no-store' }),
-        ]);
-
-        let notifItems: NotificationItem[] = [];
-        let notifConfigured = true;
-        if (notifRes.ok) {
-          const j = await notifRes.json();
-          notifConfigured = !!j.configured;
-          notifItems = (j.notifications || []).map((n: Omit<NotificationItem, 'source'>) => ({
-            ...n,
-            source: 'notification' as const,
-          }));
-        }
-
-        let annItems: AnnouncementItem[] = [];
-        if (annRes.ok) {
-          const j = await annRes.json();
-          const readIds = getReadAnnouncementIds();
-          annItems = (j.announcements || []).map((a: { id: string; title: string; body: string; importance: '通常' | '重要'; publishedAt: string | null }) => ({
-            id: a.id,
-            category: 'お知らせ' as const,
-            title: a.title,
-            body: a.body,
-            read: readIds.has(a.id),
-            readAt: null,
-            createdAt: a.publishedAt || '',
-            source: 'announcement' as const,
-            importance: a.importance,
-          }));
-        }
-
-        // 日時降順マージ（空文字は末尾扱い）
-        const merged: InboxItem[] = [...notifItems, ...annItems].sort((a, b) => {
-          if (!a.createdAt) return 1;
-          if (!b.createdAt) return -1;
-          return b.createdAt.localeCompare(a.createdAt);
+        const res = await apiFetch(`/api/notifications?t=${Date.now()}`, {
+          cache: 'no-store',
         });
-
-        setConfigured(notifConfigured);
-        setItems(merged);
+        if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
+        const j = await res.json();
+        setConfigured(!!j.configured);
+        setItems(j.notifications || []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -143,24 +74,15 @@ export default function NotificationsPage() {
     })();
   }, [userId]);
 
-  async function toggleOpen(item: InboxItem) {
-    const next = openId === item.id ? null : item.id;
+  async function toggleOpen(n: Notification) {
+    const next = openId === n.id ? null : n.id;
     setOpenId(next);
-    if (next === item.id && !item.read) {
-      if (item.source === 'notification') {
-        try {
-          await apiFetch(`/api/notifications/${encodeURIComponent(item.id)}/read`, { method: 'POST' });
-          setItems((arr) => arr.map((x): InboxItem => {
-            if (x.id !== item.id) return x;
-            if (x.source === 'notification') return { ...x, read: true, readAt: new Date().toISOString() };
-            return { ...x, read: true };
-          }));
-        } catch {
-          // ignore
-        }
-      } else {
-        markAnnouncementRead(item.id);
-        setItems((arr) => arr.map((x): InboxItem => (x.id === item.id ? { ...x, read: true } : x)));
+    if (next === n.id && !n.read) {
+      try {
+        await apiFetch(`/api/notifications/${encodeURIComponent(n.id)}/read`, { method: 'POST' });
+        setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true, readAt: new Date().toISOString() } : x)));
+      } catch {
+        // ignore
       }
     }
   }
@@ -173,7 +95,7 @@ export default function NotificationsPage() {
     );
   }
 
-  const filtered = items.filter((n) => matchTab(activeTab, n));
+  const filtered = items.filter((n) => matchTab(activeTab, n.category));
   const unreadTotal = items.filter((n) => !n.read).length;
 
   return (
@@ -190,7 +112,7 @@ export default function NotificationsPage() {
             {TABS.map((tab) => {
               const tabUnread = tab === 'すべて'
                 ? unreadTotal
-                : items.filter((n) => !n.read && matchTab(tab, n)).length;
+                : items.filter((n) => !n.read && matchTab(tab, n.category)).length;
               const active = activeTab === tab;
               return (
                 <button
@@ -251,8 +173,8 @@ export default function NotificationsPage() {
                       {!n.read && (
                         <span className="inline-block w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-label="未読" />
                       )}
-                      <CategoryBadge item={n} />
-                      <span className="text-[11px] text-stone-500">{formatDate(n.createdAt)}</span>
+                      <CategoryBadge category={n.category} />
+                      <span className="text-[11px] text-stone-500">{formatTime(n.createdAt)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div
@@ -284,22 +206,7 @@ export default function NotificationsPage() {
   );
 }
 
-function CategoryBadge({ item }: { item: InboxItem }) {
-  if (item.source === 'announcement') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-sky-100 text-sky-700 border-sky-300">
-        <Megaphone className="w-3 h-3" strokeWidth={2.4} />
-        お知らせ
-        {item.importance === '重要' && (
-          <span className="ml-0.5 inline-flex items-center gap-0.5 text-[9px] font-bold text-rose-600">
-            <AlertTriangle className="w-2.5 h-2.5" strokeWidth={2.4} />
-            重要
-          </span>
-        )}
-      </span>
-    );
-  }
-  const { category } = item;
+function CategoryBadge({ category }: { category: string }) {
   const cls =
     category === '前日レポート' || category === '週次レポート'
       ? 'bg-sky-100 text-sky-700 border-sky-300'
@@ -318,4 +225,13 @@ function CategoryBadge({ item }: { item: InboxItem }) {
       {category}
     </span>
   );
+}
+
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
 }

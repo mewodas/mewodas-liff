@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, UtensilsCrossed, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Megaphone, Bell, type LucideIcon } from 'lucide-react';
+import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
 type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
@@ -29,7 +30,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/reports',
-    label: 'お知らせ送付',
+    label: 'レポート送付',
     Icon: Send,
     match: (p, base) => p.startsWith(`${base}/reports`),
   },
@@ -81,6 +82,14 @@ const TABS: Tab[] = [
     masterOnly: true,
     storeHidden: true,
   },
+  {
+    suffix: '/announcements',
+    label: '店舗へのお知らせ',
+    Icon: Megaphone,
+    match: (p, base) => p.startsWith(`${base}/announcements`),
+    masterOnly: true,
+    storeHidden: true,
+  },
 ];
 
 type Me = {
@@ -111,6 +120,7 @@ export default function AdminShell({
   const [me, setMe] = useState<Me | null>(cachedMe);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
@@ -188,6 +198,20 @@ export default function AdminShell({
                 店舗
               </span>
             )}
+            {isStore && (
+              <Link
+                href="/store/announcements"
+                className="relative hidden sm:flex w-8 h-8 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+                aria-label={`お知らせ（未読${storeUnread}件）`}
+              >
+                <Bell className="w-4 h-4" strokeWidth={2.2} />
+                {storeUnread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                    {storeUnread > 9 ? '9+' : storeUnread}
+                  </span>
+                )}
+              </Link>
+            )}
             {me?.role === 'tenant_admin' && (
               <Link
                 href={`${base}/account/password`}
@@ -218,7 +242,7 @@ export default function AdminShell({
         </div>
 
         {/* デスクトップ用タブナビ */}
-        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-x-auto">
+        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-1 -mb-px min-w-max">
             {visibleTabs.map((t) => {
               const href = `${base}${t.suffix}`;
