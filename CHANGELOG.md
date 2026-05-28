@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – fix(demo): デモ時にAI/記録アクション行を非表示
+- fix: デモモードの /home で「食事記録・AI食事相談・AI献立作成」アクション行を非表示に（読み取り専用デモではPOSTが403になり誤操作でエラー表示される問題を解消。リリース前QA指摘#2対応）
+- 影響範囲: 顧客側 LIFF（/home・デモモード時のみ。通常利用は不変）
+
 ## 2026-05-28 – feat(demo): LINE不要の顧客画面デモモード実装
 - feat: `/demo` 起動ルート + `/api/public/demo/start` トークン発行 API を追加。LIFF・LINE ログイン不要で顧客画面をサンプルデータで体験可能に
 - feat: `lib/demoSession.ts` HMAC-SHA256 署名デモトークン発行・検証（inviteToken.ts と同パターン）

@@ -488,25 +488,25 @@ function LiffGateInner() {
               <NutritionSummaryCard totals={totals} goals={goals} />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {!isDemo && (
+            {!isDemo && (
+              <div className="grid grid-cols-3 gap-2 mb-4">
                 <QuickAction
                   href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
                   icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
                   label="食事記録"
                 />
-              )}
-              <QuickAction
-                href="/chat"
-                icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="AI食事相談"
-              />
-              <QuickAction
-                href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
-                icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="AI献立作成"
-              />
-            </div>
+                <QuickAction
+                  href="/chat"
+                  icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="AI食事相談"
+                />
+                <QuickAction
+                  href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
+                  icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="AI献立作成"
+                />
+              </div>
+            )}
 
             {!isDemo && userId && selectedDate <= todayStr && (
               <div
