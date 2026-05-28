@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(customer): レポート受信箱のタブ「週次」→「週次レポート」に改名
+- change: `app/notifications/page.tsx` のタブラベル「週次」を「週次レポート」に統一（メニュー表記と一致）。matchTab も追随。挙動・カテゴリ判定は不変。
+- 影響範囲: 顧客側LIFF（/notifications）
+
 ## 2026-05-29 – fix(demo): プレビューiframe内ではデモバナーを出さない
 - fix: `lib/demoClient.ts` に `isPreviewMode()`（preview_token/sessionStorage 由来=プレビュー）を追加。`components/DemoBannerWrapper.tsx` で公開 /demo（localStorage 由来）のみバナー表示し、ストアの顧客画面プレビューiframe では非表示に（モーダルで読み取り専用を明示済みのため重複回避）
 - 影響範囲: 顧客LIFF（デモバナー表示条件）
