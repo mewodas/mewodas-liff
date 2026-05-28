@@ -12,6 +12,7 @@ import { runInTenantContext } from './tenantContext';
 import { getTenantByIdAsync, resolveTenantByLiffId } from './tenantResolver';
 import { verifySession, SESSION_COOKIE_NAME, type SessionPayload } from './adminAuth';
 import { getDefaultTenant } from './tenant';
+import { verifyDemoToken } from './demoSession';
 
 // Next.js のルートハンドラ第2引数は経路により形が違うため any 受けで通す
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -130,6 +131,29 @@ export function withAdminTenant(handler: RouteHandler): RouteHandler {
  */
 export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteHandler {
   return async (req, ctx) => {
+    // --- デモモード分岐（x-demo-token ヘッダが存在する場合） ---
+    const demoTokenHeader = req.headers.get('x-demo-token') || '';
+    if (demoTokenHeader) {
+      const demoPayload = verifyDemoToken(demoTokenHeader);
+      if (!demoPayload) {
+        return NextResponse.json({ error: 'Invalid or expired demo token' }, { status: 401 });
+      }
+      // デモは読み取り専用: GET 以外を拒否
+      if (req.method !== 'GET') {
+        return NextResponse.json({ error: 'demo is read-only' }, { status: 403 });
+      }
+      // テナントはトークン内 tenantId のみで解決（FITMEAL_TENANT_ID_OVERRIDE / x-tenant-id を無視）
+      let demoTenant;
+      try {
+        demoTenant = (await getTenantByIdAsync(demoPayload.tenantId)) || getDefaultTenant();
+      } catch {
+        demoTenant = getDefaultTenant();
+      }
+      return runInTenantContext(demoTenant, () =>
+        (handler as LiffRouteHandler)(req, ctx, demoPayload.lineUserId)
+      );
+    }
+
     // --- LINE IDトークン検証 ---
     const authHeader = req.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {

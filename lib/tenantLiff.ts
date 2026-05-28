@@ -2,6 +2,8 @@
 // 適切な liffId で LIFF を初期化するヘルパー。
 // ブラウザ専用 (use client ページから呼ぶこと)
 
+import { isDemoMode } from './demoClient';
+
 // localStorage に統一: lib/apiFetch.ts も同じキーを読んで x-tenant-id に自動付与する。
 // 過去 sessionStorage に保存していた既存ユーザーは、初回アクセス時に
 // URL ?tenantId= or ?t= から再解決され localStorage に書き込まれる。
@@ -52,6 +54,12 @@ async function fetchTenantConfig(tenantId: string): Promise<TenantPublicConfig |
 export async function initLiffWithTenant(
   initLiff: (overrideLiffId?: string) => Promise<unknown>
 ): Promise<{ tenantId: string | null; config: TenantPublicConfig | null }> {
+  // デモモード時は LIFF 初期化をスキップ（LINE ログイン不要）
+  if (isDemoMode()) {
+    const storedTenantId = getStoredTenantId();
+    return { tenantId: storedTenantId, config: null };
+  }
+
   let tenantId: string | null = null;
 
   if (typeof window !== 'undefined') {

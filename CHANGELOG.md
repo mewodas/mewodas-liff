@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-28 – feat(demo): LINE不要の顧客画面デモモード実装
+- feat: `/demo` 起動ルート + `/api/public/demo/start` トークン発行 API を追加。LIFF・LINE ログイン不要で顧客画面をサンプルデータで体験可能に
+- feat: `lib/demoSession.ts` HMAC-SHA256 署名デモトークン発行・検証（inviteToken.ts と同パターン）
+- feat: `lib/demoClient.ts` クライアント側デモモード判定の単一ソース（localStorage `fitmeal_demo_token`）
+- feat: `lib/withTenant.ts` `withLiffTenant` にデモ分岐追加。`x-demo-token` ヘッダで検証、テナントはトークン内 tenantId のみ、非 GET は 403
+- feat: `lib/apiFetch.ts` デモ時は LIFF を呼ばず `x-demo-token` ヘッダで API アクセス
+- feat: `lib/liff.ts` + `lib/tenantLiff.ts` デモモード時 LIFF 初期化・login() をスキップ
+- feat: `components/DemoBanner.tsx` + `DemoBannerWrapper.tsx` 全ページ上部にデモバナー表示、「デモを終了」で localStorage クリア
+- feat: `app/home/_components/LiffGate.tsx` デモ時は食事記録ボタン・WeightExerciseCard・オンボーディング・register リダイレクトを非表示
+- 影響範囲: 顧客側 LIFF（新規 /demo + 既存全ページのバナー）、API（新規 /api/public/demo/start + withLiffTenant デモ分岐）
+- 既存フロー非影響: `x-demo-token` ヘッダなし時は完全に従来通りの LINE idToken 検証フローを通る
+
 ## 2026-05-28 – change(record): 写真アップ完了後の視認性向上
 - change(record): 写真アップロード完了後、プレビューエリアまで自動スクロール（scrollIntoView smooth）
 - change(record): プレビューエリアの枠を border-2 emerald-300 に強調、ヘッダに CheckCircle2 + 枚数表示を追加してアップロード完了が一目で分かるように

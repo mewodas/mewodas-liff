@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { initLiffWithTenant } from '@/lib/tenantLiff';
 import { apiFetch } from '@/lib/apiFetch';
+import { isDemoMode } from '@/lib/demoClient';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
@@ -49,6 +50,7 @@ function LiffGateInner() {
   const [foodStatus, setFoodStatus] = useState<string | null>(null);
   const [officialLineUrl, setOfficialLineUrl] = useState<string | null>(null);
   const [customerReady, setCustomerReady] = useState(false);
+  const [isDemo] = useState(() => isDemoMode());
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -117,6 +119,12 @@ function LiffGateInner() {
       try {
         const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
         if (res.status === 404) {
+          // デモモード時は register へのリダイレクトをスキップ
+          if (isDemoMode()) {
+            setOnboardingDone(true);
+            setCustomerReady(true);
+            return;
+          }
           // 顧客レコードなし → 申し込みフォームへ誘導（招待トークン等は保持）
           const qs = searchParams.toString();
           router.replace(qs ? `/home/register?${qs}` : '/home/register');
@@ -325,7 +333,7 @@ function LiffGateInner() {
 
   if (!data) return null;
 
-  const showOnboarding = onboardingDone === false && !!userId;
+  const showOnboarding = onboardingDone === false && !!userId && !isDemo;
   const { customer, today } = data;
   const { totals, mealsByType } = today;
   const { goals } = customer;
@@ -481,11 +489,13 @@ function LiffGateInner() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 mb-4">
-              <QuickAction
-                href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
-                icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="食事記録"
-              />
+              {!isDemo && (
+                <QuickAction
+                  href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
+                  icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="食事記録"
+                />
+              )}
               <QuickAction
                 href="/chat"
                 icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
@@ -498,7 +508,7 @@ function LiffGateInner() {
               />
             </div>
 
-            {userId && selectedDate <= todayStr && (
+            {!isDemo && userId && selectedDate <= todayStr && (
               <div
                 data-tour="today-record-card"
                 className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}

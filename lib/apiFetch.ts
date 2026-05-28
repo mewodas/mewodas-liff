@@ -1,4 +1,5 @@
 import { getIdToken, refreshLiff } from './liff';
+import { getDemoToken, isDemoMode } from './demoClient';
 
 export const TENANT_ID_STORAGE_KEY = 'fitmeal_tenant_id';
 
@@ -28,10 +29,29 @@ function buildHeaders(base: HeadersInit | undefined, idToken: string): Headers {
   return headers;
 }
 
+function buildDemoHeaders(base: HeadersInit | undefined, demoToken: string): Headers {
+  const headers = new Headers(base);
+  headers.set('x-demo-token', demoToken);
+  if (!headers.has('x-tenant-id')) {
+    const stored = getStoredTenantId();
+    if (stored) headers.set('x-tenant-id', stored);
+  }
+  return headers;
+}
+
 export async function apiFetch(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
+  // デモモード: LIFF を呼ばず x-demo-token で API にアクセス
+  if (isDemoMode()) {
+    const demoToken = getDemoToken();
+    if (demoToken) {
+      const headers = buildDemoHeaders(init?.headers, demoToken);
+      return fetch(input, { ...init, headers });
+    }
+  }
+
   const idToken = await getIdToken();
   if (!idToken) {
     throw new Error('LINE IDトークンの取得に失敗しました。再ログインしてください。');
