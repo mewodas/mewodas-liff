@@ -201,7 +201,7 @@ export default function AdminShell({
             {isStore && (
               <Link
                 href="/store/announcements"
-                className="relative hidden sm:flex w-8 h-8 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+                className="relative flex w-8 h-8 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
                 aria-label={`お知らせ（未読${storeUnread}件）`}
               >
                 <Bell className="w-4 h-4" strokeWidth={2.2} />
