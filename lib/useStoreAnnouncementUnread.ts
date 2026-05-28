@@ -15,7 +15,7 @@ export function useStoreAnnouncementUnread(): number {
         const j = await res.json();
         const announcements: { id: string }[] = j.announcements ?? [];
         if (cancelled) return;
-        const readIds = getReadAnnouncementIds();
+        const readIds = getReadAnnouncementIds('store');
         setCount(announcements.filter((a) => !readIds.has(a.id)).length);
       } catch {
         // ネットワーク失敗時は 0 を維持

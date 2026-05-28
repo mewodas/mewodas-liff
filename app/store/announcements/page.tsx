@@ -45,7 +45,7 @@ export default function StoreAnnouncementsPage() {
         setAnnouncements(j.announcements || []);
         const ids = new Set<string>();
         for (const a of (j.announcements || []) as Announcement[]) {
-          if (isAnnouncementRead(a.id)) ids.add(a.id);
+          if (isAnnouncementRead(a.id, 'store')) ids.add(a.id);
         }
         setReadIds(ids);
       } catch {
@@ -60,7 +60,7 @@ export default function StoreAnnouncementsPage() {
     const next = openId === a.id ? null : a.id;
     setOpenId(next);
     if (next === a.id && !readIds.has(a.id)) {
-      markAnnouncementRead(a.id);
+      markAnnouncementRead(a.id, 'store');
       setReadIds((prev) => new Set([...prev, a.id]));
     }
   }

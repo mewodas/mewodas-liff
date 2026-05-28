@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(announcement): お知らせ統合 — reports トグル復活・顧客受信再マージ・バッジ合算
+- feat: `app/admin/reports/page.tsx` に [レポート/お知らせ] トグルを復活（5403842 の設計を現行 reports に統合）。店舗モードは「自店舗の全顧客に一斉送信」案内のみ、master モードは宛先種別（顧客向け/店舗向け）＋対象店舗（全/特定）を選択可。送信履歴も表示。
+- feat: `app/admin/announcements/page.tsx` を `${base}/reports?mode=announcement` への router.replace redirect に変更（送信機能は reports に移管）。
+- feat: `app/admin/AdminShell.tsx` から masterOnly の `/announcements`「店舗へのお知らせ」タブエントリを削除。ヘッダーベル（/store/announcements 受信 inbox）は維持。
+- feat: `app/api/admin/announcements/route.ts` の POST を店舗送信可に変更（非 master は audience='顧客向け' 強制・targetTenants=[自テナント] 固定）。GET の audience='店舗向け' ハードフィルタを解除（master=全件、非 master=自テナント宛 or 全体）。
+- feat: `app/notifications/page.tsx` に /api/announcements 取得を再マージ。顧客向けお知らせを「お知らせ」タブ＆すべてに表示。既読は localStorage（customerスコープ）。タブ配列・subtitle・PageHeader title は現行維持。
+- feat: `lib/announcementReads.ts` を scope 引数対応に（customer→`fitmeal_read_announcements`、store→`fitmeal_store_read_announcements`）。デフォルト='store' で既存呼び出し互換を維持。
+- feat: `app/store/announcements/page.tsx`・`lib/useStoreAnnouncementUnread.ts` の読み書きを scope='store' に明示更新。
+- feat: `lib/useInboxUnread.ts` 新規。個別通知＋顧客向けお知らせ（customerスコープ）の合算未読数フック。`app/home/_components/LiffGate.tsx`・`app/menu/page.tsx` で `useNotificationsUnread` を置き換え。
+- 影響範囲: 顧客LIFF（/notifications・ホームベル・/menu バッジ）、管理画面（/admin/reports・/store/reports・/admin/announcements redirect）、API（POST/GET 変更）
+
 ## 2026-05-29 – feat(cron): デモ顧客記録の日次リフレッシュ cron 追加
 - feat: `lib/refreshDemoData.ts` 新規。SAMPLE_/DEMO_ プレフィックス顧客の食事・体重・個人シートを今日基準で再生成（既存レコードを archived:true 後に直近7日分を再投入）
 - feat: `app/api/cron/refresh-demo-data/route.ts` 新規。全テナント走査・checkCronAuth 認証（Bearer CRON_SECRET）

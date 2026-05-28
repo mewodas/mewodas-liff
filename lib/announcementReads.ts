@@ -1,9 +1,14 @@
-const STORAGE_KEY = 'fitmeal_store_read_announcements';
+const STORE_KEY = 'fitmeal_store_read_announcements';
+const CUSTOMER_KEY = 'fitmeal_read_announcements';
 
-export function getReadAnnouncementIds(): Set<string> {
+function storageKey(scope: 'customer' | 'store'): string {
+  return scope === 'customer' ? CUSTOMER_KEY : STORE_KEY;
+}
+
+export function getReadAnnouncementIds(scope: 'customer' | 'store' = 'store'): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(scope));
     const arr: string[] = raw ? JSON.parse(raw) : [];
     return new Set(arr);
   } catch {
@@ -11,17 +16,17 @@ export function getReadAnnouncementIds(): Set<string> {
   }
 }
 
-export function markAnnouncementRead(id: string): void {
+export function markAnnouncementRead(id: string, scope: 'customer' | 'store' = 'store'): void {
   if (typeof window === 'undefined') return;
   try {
-    const set = getReadAnnouncementIds();
+    const set = getReadAnnouncementIds(scope);
     set.add(id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    localStorage.setItem(storageKey(scope), JSON.stringify([...set]));
   } catch {
     // ignore
   }
 }
 
-export function isAnnouncementRead(id: string): boolean {
-  return getReadAnnouncementIds().has(id);
+export function isAnnouncementRead(id: string, scope: 'customer' | 'store' = 'store'): boolean {
+  return getReadAnnouncementIds(scope).has(id);
 }
