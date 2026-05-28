@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗カード3行化・承認待ち削除・店舗チップ即時表示
+- change: `app/admin/progress/page.tsx` 食事カードを3行構成に圧縮（食事ラベルの横にkcal・%、食数を上段右へ、行間を詰める）。体重カードも詰めてラベル横に値表示
+- change: 進捗・顧客設定のステータス絞り込みから「承認待ち」を削除（`app/admin/progress/page.tsx`・`app/admin/customers/page.tsx`）
+- change: 進捗・顧客分析の店舗チップを読み込み前から常時表示（ロード完了まで出ない問題を解消）
+- change: `app/admin/analysis/page.tsx` 店舗フィルタから「店舗未設定」を除外
+- 影響範囲: 管理画面（/store・/admin の進捗管理・顧客設定・顧客分析）
+
 ## 2026-05-28 – change(store): 顧客分析のフィルタを進捗管理と同じ構成に統一
 - change: `app/admin/analysis/page.tsx` 店舗フィルタを `<select>`→チップ化し、期間→店舗チップ→顧客select の1カード構成に（進捗管理と同じ見た目）。顧客分析は単一顧客選択のためステータス絞り込みは付けない
 - 影響範囲: 管理画面（/store・/admin の顧客分析フィルタ）

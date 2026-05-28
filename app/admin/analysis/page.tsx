@@ -265,10 +265,10 @@ function Inner() {
     const opts: { value: string; label: string }[] = [{ value: '', label: 'すべての店舗' }];
     for (const c of customers) {
       const key = c.storeId ?? '';
-      if (!seen.has(key)) {
-        seen.add(key);
-        opts.push({ value: key, label: key === '' ? '店舗未設定' : key });
-      }
+      // 店舗未設定（空キー）はフィルタに出さない
+      if (key === '' || seen.has(key)) continue;
+      seen.add(key);
+      opts.push({ value: key, label: key });
     }
     return opts;
   }, [customers]);
@@ -384,33 +384,31 @@ function Inner() {
             isSingleDay={isSingleDay}
           />
 
-          {/* 店舗チップ */}
-          {storeOptions.length > 1 && (
-            <div className="flex gap-1 flex-wrap">
-              {storeOptions.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  onClick={() => {
-                    setSelectedStore(o.value);
-                    const newFiltered = customers.filter((c) =>
-                      o.value === '' ? true : (c.storeId ?? '') === o.value
-                    );
-                    if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
-                      setCustomerId('');
-                    }
-                  }}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                    selectedStore === o.value
-                      ? 'bg-violet-500 text-white border-violet-500'
-                      : 'bg-white text-stone-700 border-stone-300'
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* 店舗チップ（読み込み前から「すべての店舗」を表示） */}
+          <div className="flex gap-1 flex-wrap">
+            {storeOptions.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  setSelectedStore(o.value);
+                  const newFiltered = customers.filter((c) =>
+                    o.value === '' ? true : (c.storeId ?? '') === o.value
+                  );
+                  if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
+                    setCustomerId('');
+                  }
+                }}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                  selectedStore === o.value
+                    ? 'bg-violet-500 text-white border-violet-500'
+                    : 'bg-white text-stone-700 border-stone-300'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
 
           {/* 顧客 select */}
           <select
