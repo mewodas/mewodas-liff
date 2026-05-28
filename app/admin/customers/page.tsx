@@ -29,7 +29,7 @@ type Customer = {
 
 type Store = { pageId: string; storeId: string; name: string };
 
-const STATUSES = ['すべて', '承認待ち', '進行中', '休止中', '卒業'];
+const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 // 承認制モードは未公開（バックエンドのみ実装済み）。UI からは個別招待モードに固定して呼ぶ。
 // 将来 UI を再公開する場合は本ファイルにモード切替トグル・/api/admin/tenant-settings 連動を復活させる。
 

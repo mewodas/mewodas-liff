@@ -17,13 +17,13 @@ type Notification = {
   createdAt: string;
 };
 
-const TABS = ['すべて', '前日レポート', '週次', 'お知らせ'] as const;
+const TABS = ['すべて', '前日レポート', '週次レポート', 'お知らせ'] as const;
 type Tab = typeof TABS[number];
 
 function matchTab(tab: Tab, category: string): boolean {
   if (tab === 'すべて') return true;
   if (tab === '前日レポート') return category === '前日レポート';
-  if (tab === '週次') return category === '週次レポート';
+  if (tab === '週次レポート') return category === '週次レポート';
   if (tab === 'お知らせ') return category === 'お知らせ' || category === 'アドバイス';
   return false;
 }

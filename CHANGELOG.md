@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(cron): デモ顧客記録の日次リフレッシュ cron 追加
+- feat: `lib/refreshDemoData.ts` 新規。SAMPLE_/DEMO_ プレフィックス顧客の食事・体重・個人シートを今日基準で再生成（既存レコードを archived:true 後に直近7日分を再投入）
+- feat: `app/api/cron/refresh-demo-data/route.ts` 新規。全テナント走査・checkCronAuth 認証（Bearer CRON_SECRET）
+- feat: `vercel.json` に cron 追加（毎日 19:00 UTC = JST 04:00）
+- 影響範囲: cron / API（顧客側UI・管理画面の動作変化なし）
+
+## 2026-05-29 – change(customer): レポート受信箱のタブ「週次」→「週次レポート」に改名
+- change: `app/notifications/page.tsx` のタブラベル「週次」を「週次レポート」に統一（メニュー表記と一致）。matchTab も追随。挙動・カテゴリ判定は不変。
+- 影響範囲: 顧客側LIFF（/notifications）
+
+## 2026-05-29 – fix(demo): プレビューiframe内ではデモバナーを出さない
+- fix: `lib/demoClient.ts` に `isPreviewMode()`（preview_token/sessionStorage 由来=プレビュー）を追加。`components/DemoBannerWrapper.tsx` で公開 /demo（localStorage 由来）のみバナー表示し、ストアの顧客画面プレビューiframe では非表示に（モーダルで読み取り専用を明示済みのため重複回避）
+- 影響範囲: 顧客LIFF（デモバナー表示条件）
+
+## 2026-05-29 – change(store): 進捗カード3行化・承認待ち削除・店舗チップ即時表示
+- change: `app/admin/progress/page.tsx` 食事カードを3行構成に圧縮（食事ラベルの横にkcal・%、食数を上段右へ、行間を詰める）。体重カードも詰めてラベル横に値表示
+- change: 進捗・顧客設定のステータス絞り込みから「承認待ち」を削除（`app/admin/progress/page.tsx`・`app/admin/customers/page.tsx`）
+- change: 進捗・顧客分析の店舗チップを読み込み前から常時表示（ロード完了まで出ない問題を解消）
+- change: `app/admin/analysis/page.tsx` 店舗フィルタから「店舗未設定」を除外
+- 影響範囲: 管理画面（/store・/admin の進捗管理・顧客設定・顧客分析）
+
 ## 2026-05-28 – change(store): 顧客分析のフィルタを進捗管理と同じ構成に統一
 - change: `app/admin/analysis/page.tsx` 店舗フィルタを `<select>`→チップ化し、期間→店舗チップ→顧客select の1カード構成に（進捗管理と同じ見た目）。顧客分析は単一顧客選択のためステータス絞り込みは付けない
 - 影響範囲: 管理画面（/store・/admin の顧客分析フィルタ）
