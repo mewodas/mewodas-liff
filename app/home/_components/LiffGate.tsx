@@ -424,7 +424,7 @@ function LiffGateInner() {
                 <Link
                   href="/notifications"
                   className="relative w-9 h-9 bg-white border border-stone-200 rounded-full flex items-center justify-center active:bg-stone-100 text-stone-700"
-                  aria-label={`お知らせを開く（未読${unreadCount}件）`}
+                  aria-label={`レポートを開く（未読${unreadCount}件）`}
                 >
                   <Bell className="w-5 h-5" strokeWidth={2.2} />
                   {unreadCount > 0 && (

@@ -73,7 +73,7 @@ const sections: Section[] = [
     iconColor: 'text-stone-500',
     items: [
       { href: '/profile', Icon: User, color: 'text-emerald-600', label: 'プロフィール', sub: '登録情報・目標を確認' },
-      { href: '/notifications', Icon: Bell, color: 'text-sky-600', label: 'お知らせ', sub: 'トレーナーからの連絡', showUnread: true },
+      { href: '/notifications', Icon: Bell, color: 'text-sky-600', label: 'レポート', sub: 'トレーナーからの連絡', showUnread: true },
       { href: '/menu/sync', Icon: LinkIcon, color: 'text-stone-500', label: 'データ連携', sub: '近日対応', disabled: true },
     ],
   },

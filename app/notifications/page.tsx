@@ -100,7 +100,7 @@ export default function NotificationsPage() {
 
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
-      <PageHeader title="お知らせ" Icon={Bell} subtitle="トレーナーからの連絡" back />
+      <PageHeader title="レポート" Icon={Bell} subtitle="トレーナーからの連絡" back />
       <div className="max-w-md mx-auto px-4 pt-3 pb-4 space-y-3">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
@@ -142,7 +142,7 @@ export default function NotificationsPage() {
         {!configured ? (
           <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-6 text-center">
             <Inbox className="w-10 h-10 text-stone-400 mx-auto mb-2" strokeWidth={2} />
-            <div className="text-sm font-bold text-stone-800 mb-1">お知らせ機能は準備中です</div>
+            <div className="text-sm font-bold text-stone-800 mb-1">レポート機能は準備中です</div>
             <div className="text-xs text-stone-600 leading-relaxed">設定完了後にここに表示されます</div>
             <Link href="/home" className="inline-block mt-4 text-xs font-bold text-emerald-700 underline">
               ホームに戻る
@@ -152,10 +152,10 @@ export default function NotificationsPage() {
           <div className="bg-white rounded-2xl shadow-md border border-stone-200 p-6 text-center">
             <Inbox className="w-10 h-10 text-stone-400 mx-auto mb-2" strokeWidth={2} />
             <div className="text-sm font-bold text-stone-800 mb-1">
-              {activeTab === 'すべて' ? 'まだお知らせはありません' : `「${activeTab}」のお知らせはありません`}
+              {activeTab === 'すべて' ? 'まだレポートはありません' : `「${activeTab}」のレポートはありません`}
             </div>
             <div className="text-xs text-stone-600 leading-relaxed">
-              トレーナーからレポートやお知らせが届くと、ここに表示されます
+              トレーナーからレポートが届くと、ここに表示されます
             </div>
           </div>
         ) : (
