@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { initLiffWithTenant } from '@/lib/tenantLiff';
 import { apiFetch } from '@/lib/apiFetch';
+import { useInboxUnread } from '@/lib/useInboxUnread';
 import { isDemoMode } from '@/lib/demoClient';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
@@ -44,7 +45,7 @@ function LiffGateInner() {
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const unreadCount = useInboxUnread(userId);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [foodStatus, setFoodStatus] = useState<string | null>(null);
@@ -175,22 +176,6 @@ function LiffGateInner() {
       }
     })();
   }, [userId, selectedDate, isToday, data]);
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await apiFetch(`/api/notifications?t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const j = await res.json();
-        if (!cancelled) setUnreadCount(j.unreadCount || 0);
-      } catch {
-        // ignore
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
