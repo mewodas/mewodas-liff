@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(demo): プレビューiframe内ではデモバナーを出さない
+- fix: `lib/demoClient.ts` に `isPreviewMode()`（preview_token/sessionStorage 由来=プレビュー）を追加。`components/DemoBannerWrapper.tsx` で公開 /demo（localStorage 由来）のみバナー表示し、ストアの顧客画面プレビューiframe では非表示に（モーダルで読み取り専用を明示済みのため重複回避）
+- 影響範囲: 顧客LIFF（デモバナー表示条件）
+
 ## 2026-05-29 – change(store): 進捗カード3行化・承認待ち削除・店舗チップ即時表示
 - change: `app/admin/progress/page.tsx` 食事カードを3行構成に圧縮（食事ラベルの横にkcal・%、食数を上段右へ、行間を詰める）。体重カードも詰めてラベル横に値表示
 - change: 進捗・顧客設定のステータス絞り込みから「承認待ち」を削除（`app/admin/progress/page.tsx`・`app/admin/customers/page.tsx`）

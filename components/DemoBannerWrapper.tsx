@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { isDemoMode } from '@/lib/demoClient';
+import { isDemoMode, isPreviewMode } from '@/lib/demoClient';
 import DemoBanner from './DemoBanner';
 
 export default function DemoBannerWrapper() {
@@ -10,12 +10,13 @@ export default function DemoBannerWrapper() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    setShow(isDemoMode());
+    // 公開 /demo（localStorage 由来）でのみバナー表示。
+    // ストアの顧客画面プレビュー iframe（preview_token/sessionStorage 由来）では出さない
+    // ＝モーダル側で「プレビュー・読み取り専用」を既に明示しているため重複を避ける。
+    setShow(isDemoMode() && !isPreviewMode());
   }, []);
 
-  // 管理画面（/store・/admin）ではデモバナーを出さない。
-  // プレビュー iframe が sessionStorage に置くトークンが同一オリジンの親（/store）と
-  // 共有され、isDemoMode() が true になって管理画面にバナーが漏れるのを防ぐ。
+  // 管理画面（/store・/admin）ではデモバナーを出さない（sessionStorage 共有での漏れ防止）。
   const isAdminArea = pathname.startsWith('/store') || pathname.startsWith('/admin');
   if (!show || isAdminArea) return null;
   return <DemoBanner />;

@@ -59,6 +59,12 @@ export function isDemoMode(): boolean {
   return !!getDemoToken();
 }
 
+// プレビュー（ストアの顧客画面プレビュー iframe）かどうか。
+// URL preview_token または sessionStorage 由来 = プレビュー。localStorage 由来 = 公開 /demo。
+export function isPreviewMode(): boolean {
+  return !!(getPreviewTokenFromUrl() || getPreviewTokenFromSession());
+}
+
 export function setDemoToken(token: string, tenantId: string): void {
   try {
     localStorage.setItem(DEMO_TOKEN_STORAGE_KEY, token);
