@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-05-28 – change(record): 写真アップ完了後の視認性向上
+- change(record): 写真アップロード完了後、プレビューエリアまで自動スクロール（scrollIntoView smooth）
+- change(record): プレビューエリアの枠を border-2 emerald-300 に強調、ヘッダに CheckCircle2 + 枚数表示を追加してアップロード完了が一目で分かるように
+
+## 2026-05-28 – change(record): 写真読み込み中スピナーをホーム /home と完全同仕様に
+- change(record): 写真読み込み中（compressing）のスピナーをホームのカレンダー再取得時と完全に同じ仕様に。下のhub画面（食事を記録）が opacity-50 で透けて見えたまま、中央に緑スピナーを fixed で重ねる
+- pointer-events を中央オーバーレイで遮らず（pointer-events-none）、下のコンテナを `pointer-events-none` でブロック
+
+## 2026-05-28 – change(record): 写真読み込み中だけ緑スピナー、解析中/記録中は従来UIに戻す
+- change(record): `compressing`（写真アップロード時の圧縮中）のみホーム /home と同じ緑スピナー（白丸 + RefreshCw 緑スピン）に
+- 解析中・記録中（stage='analyzing'/'saving'）は従来の全画面モーダル（Camera/Save アイコン + タイトル + 補足文 + ドット3点アニメ + 経過目安）に戻す
+
+## 2026-05-28 – change(profile): 体重目標セクションのアイコン削除
+- change(profile): 「体重目標」セクションヘッダから lucide TrendingDown アイコンを削除。タイトル文字のみに（他セクションと統一）
+- TrendingDown は他で未使用のため import も削除
+
 ## 2026-05-28 – change(profile): 1日の栄養目標カードをホーム栄養サマリと同じ素の表記に揃える
 - change(profile): 「1日の栄養目標」セクションをホーム /home の `NutritionSummaryCard` と同じトーン＆マナーに統一。オレンジヒーロー・炎アイコン・色枠カードは廃止。kcal はプレーンな大きい数字、PFC 3項目はラベル＋数字のシンプル列、最下部に PFC バランス積み上げ帯のみ残す
 - PfcCard コンポーネントは廃止（用途消失）

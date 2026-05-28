@@ -25,6 +25,7 @@ import {
   BarChart3,
   Lightbulb,
   Save,
+  RefreshCw,
 } from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
@@ -131,6 +132,7 @@ export default function RecordPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [labelResult, setLabelResult] = useState<{
     name: string;
     servingLabel: string;
@@ -221,6 +223,10 @@ export default function RecordPage() {
         )
       );
       setPreviews((prev) => [...prev, ...newPreviews].slice(0, 4));
+      // プレビュー位置までスクロールしてアップロード完了を視認できるように
+      setTimeout(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
       // 自動解析は行わず、下部の「✨ 解析する」ボタンで明示的にトリガー
     } catch (err) {
       setError(err instanceof Error ? err.message : '写真の処理でエラー');
@@ -514,38 +520,25 @@ export default function RecordPage() {
     );
   }
 
-  // ===== 解析中 / 記録中 / 写真読み込み中 =====
-  if (stage === 'analyzing' || stage === 'saving' || compressing) {
-    const phase: 'compressing' | 'analyzing' | 'saving' = compressing
-      ? 'compressing'
-      : stage === 'saving'
-      ? 'saving'
-      : 'analyzing';
+  // ===== 解析中 / 記録中 =====
+  if (stage === 'analyzing' || stage === 'saving') {
+    const isSaving = stage === 'saving';
     return (
-      <main
-        className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6"
-        onTouchMove={(e) => e.preventDefault()}
-      >
+      <main className="fixed inset-0 bg-stone-900/60 flex items-center justify-center z-50 px-6">
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
           <div className="mb-4 flex items-center justify-center">
-            {phase === 'saving' ? (
+            {isSaving ? (
               <Save className="w-8 h-8 text-emerald-600" strokeWidth={2} />
             ) : (
               <Camera className="w-8 h-8 text-emerald-600" strokeWidth={2} />
             )}
           </div>
           <h2 className="text-base font-bold text-stone-900 mb-2">
-            {phase === 'saving'
-              ? '記録してます'
-              : phase === 'compressing'
-              ? '写真を読み込み中'
-              : '解析中'}
+            {isSaving ? '記録してます' : '解析中'}
           </h2>
           <p className="text-xs text-stone-600 mb-6">
-            {phase === 'saving'
+            {isSaving
               ? '食事データを保存しています'
-              : phase === 'compressing'
-              ? '画像を準備しています'
               : '料理を識別してカロリー・PFCを推定しています'}
           </p>
           <div className="flex justify-center">
@@ -554,7 +547,7 @@ export default function RecordPage() {
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mx-1" style={{ animationDelay: '300ms' }} />
           </div>
           <p className="text-[10px] text-stone-500 mt-6">
-            {phase === 'saving' ? '数秒で完了します' : phase === 'compressing' ? 'まもなく完了します' : '約10〜15秒'}
+            {isSaving ? '数秒で完了します' : '約10〜15秒'}
           </p>
         </div>
       </main>
@@ -814,7 +807,16 @@ export default function RecordPage() {
     <main className="min-h-screen bg-stone-50 pb-32">
       <PageHeader title="食事を記録" Icon={UtensilsCrossed} subtitle="写真・テキスト・成分表でPFC自動計算" onBack={() => { window.location.href = '/home'; }} />
 
-      <div className="px-4 py-5">
+      {/* 写真読み込み中：ホーム /home と同じ緑スピナー（下のhub画面を見せたまま重ねる） */}
+      {compressing && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full w-16 h-16 shadow-xl border border-stone-200 flex items-center justify-center">
+            <RefreshCw className="w-7 h-7 text-emerald-600 animate-spin" strokeWidth={2.4} />
+          </div>
+        </div>
+      )}
+
+      <div className={`px-4 py-5 transition-opacity duration-300 ${compressing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-sm font-medium p-3 rounded-xl mb-4">
             {error}
@@ -963,8 +965,11 @@ export default function RecordPage() {
         />
 
         {previews.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-3 mb-4">
-            <div className="text-xs font-bold text-stone-700 mb-2">選択中の写真</div>
+          <div ref={previewRef} className="bg-white rounded-2xl shadow-sm border-2 border-emerald-300 p-3 mb-4 scroll-mt-4">
+            <div className="text-xs font-bold text-emerald-700 mb-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.4} />
+              選択中の写真（{previews.length}枚）
+            </div>
             <div className="grid grid-cols-4 gap-2 mb-3">
               {previews.map((src, i) => (
                 <div key={i} className="relative">
