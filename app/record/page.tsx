@@ -132,6 +132,7 @@ export default function RecordPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [labelResult, setLabelResult] = useState<{
     name: string;
     servingLabel: string;
@@ -222,6 +223,10 @@ export default function RecordPage() {
         )
       );
       setPreviews((prev) => [...prev, ...newPreviews].slice(0, 4));
+      // プレビュー位置までスクロールしてアップロード完了を視認できるように
+      setTimeout(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
       // 自動解析は行わず、下部の「✨ 解析する」ボタンで明示的にトリガー
     } catch (err) {
       setError(err instanceof Error ? err.message : '写真の処理でエラー');
@@ -960,8 +965,11 @@ export default function RecordPage() {
         />
 
         {previews.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-3 mb-4">
-            <div className="text-xs font-bold text-stone-700 mb-2">選択中の写真</div>
+          <div ref={previewRef} className="bg-white rounded-2xl shadow-sm border-2 border-emerald-300 p-3 mb-4 scroll-mt-4">
+            <div className="text-xs font-bold text-emerald-700 mb-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.4} />
+              選択中の写真（{previews.length}枚）
+            </div>
             <div className="grid grid-cols-4 gap-2 mb-3">
               {previews.map((src, i) => (
                 <div key={i} className="relative">

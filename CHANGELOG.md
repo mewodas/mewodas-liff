@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – change(record): 写真アップ完了後の視認性向上
+- change(record): 写真アップロード完了後、プレビューエリアまで自動スクロール（scrollIntoView smooth）
+- change(record): プレビューエリアの枠を border-2 emerald-300 に強調、ヘッダに CheckCircle2 + 枚数表示を追加してアップロード完了が一目で分かるように
+
 ## 2026-05-28 – change(record): 写真読み込み中スピナーをホーム /home と完全同仕様に
 - change(record): 写真読み込み中（compressing）のスピナーをホームのカレンダー再取得時と完全に同じ仕様に。下のhub画面（食事を記録）が opacity-50 で透けて見えたまま、中央に緑スピナーを fixed で重ねる
 - pointer-events を中央オーバーレイで遮らず（pointer-events-none）、下のコンテナを `pointer-events-none` でブロック
