@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { initLiff } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import PageHeader from '@/components/PageHeader';
-import { User, TrendingDown } from 'lucide-react';
+import { User } from 'lucide-react';
 
 type CustomerProfile = {
   name: string;
@@ -151,10 +151,7 @@ export default function ProfilePage() {
             {/* 体重目標 */}
             {(profile.currentWeight !== null || profile.targetWeight !== null) && (
               <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-                <h2 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-1.5">
-                  <TrendingDown className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-                  体重目標
-                </h2>
+                <h2 className="text-sm font-bold text-stone-900 mb-4">体重目標</h2>
                 <div className="grid grid-cols-2 gap-3">
                   <StatCard
                     label="開始体重"

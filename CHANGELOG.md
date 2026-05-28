@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-28 – change(profile): 体重目標セクションのアイコン削除
+- change(profile): 「体重目標」セクションヘッダから lucide TrendingDown アイコンを削除。タイトル文字のみに（他セクションと統一）
+- TrendingDown は他で未使用のため import も削除
+
 ## 2026-05-28 – change(profile): 1日の栄養目標カードをホーム栄養サマリと同じ素の表記に揃える
 - change(profile): 「1日の栄養目標」セクションをホーム /home の `NutritionSummaryCard` と同じトーン＆マナーに統一。オレンジヒーロー・炎アイコン・色枠カードは廃止。kcal はプレーンな大きい数字、PFC 3項目はラベル＋数字のシンプル列、最下部に PFC バランス積み上げ帯のみ残す
 - PfcCard コンポーネントは廃止（用途消失）
