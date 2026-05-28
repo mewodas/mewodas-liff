@@ -16,21 +16,25 @@
 // このモジュールは「全テナント or 特定テナント向けの放送告知」を扱う。
 
 import { getCurrentTenant } from '@/lib/tenant';
-import { getCached, setCached } from '@/lib/cache';
+import { getCached, setCached, invalidate } from '@/lib/cache';
 
 const NOTION_BASE = 'https://api.notion.com/v1';
 const NOTION_API_VERSION = '2022-06-28';
 
 export type AnnouncementImportance = '通常' | '重要';
+export type AnnouncementAudience = '顧客向け' | '店舗向け';
+export type AnnouncementStatus = '下書き' | '公開' | 'アーカイブ';
 
 export type Announcement = {
   id: string;
   title: string;
   body: string;
   importance: AnnouncementImportance;
+  audience: AnnouncementAudience;
   pinned: boolean;
   publishedAt: string | null;
   publishUntil: string | null;
+  status: AnnouncementStatus;
   targetTenants: string[]; // 空配列＝全テナント共通
 };
 
@@ -79,12 +83,26 @@ function pageToAnnouncement(page: { id: string; properties: Record<string, any> 
     body:
       p['本文']?.rich_text?.map((rt: { plain_text: string }) => rt.plain_text).join('') || '',
     importance: (p['重要度']?.select?.name as AnnouncementImportance) || '通常',
+    // 宛先種別: 未設定（旧データ互換）は '顧客向け' をデフォルトにする
+    audience: (p['宛先種別']?.select?.name as AnnouncementAudience) || '顧客向け',
     pinned: !!p['ピン留め']?.checkbox,
     publishedAt: p['公開日']?.date?.start || null,
     publishUntil: p['公開終了日']?.date?.start || null,
+    status: (p['公開ステータス']?.select?.name as AnnouncementStatus) || '公開',
     targetTenants:
       (p['対象テナント']?.multi_select || []).map((t: { name: string }) => t.name) || [],
   };
+}
+
+function richText(s: string): { text: { content: string } }[] {
+  const chunks: string[] = [];
+  let rest = s;
+  while (rest.length > 0) {
+    chunks.push(rest.slice(0, 1800));
+    rest = rest.slice(1800);
+  }
+  if (chunks.length === 0) chunks.push('');
+  return chunks.map((c) => ({ text: { content: c } }));
 }
 
 /**
@@ -99,7 +117,9 @@ export async function listAnnouncementsForTenant(tenantId: string): Promise<Anno
   const dbId = getDbId();
   if (!dbId) return [];
 
-  const cacheKey = `${tenantId}:announcements`;
+  // お知らせは全テナント共有DB。キャッシュキーは閲覧側テナント単位だが、
+  // 作成時に全テナントぶんを一括 invalidate できるよう `announcements:` 接頭辞で揃える。
+  const cacheKey = `announcements:${tenantId}`;
   const hit = getCached<Announcement[]>(cacheKey);
   if (hit) return hit;
 
@@ -117,6 +137,8 @@ export async function listAnnouncementsForTenant(tenantId: string): Promise<Anno
   const today = new Date().toISOString().slice(0, 10);
   const all = (res.results || []).map(pageToAnnouncement);
   const filtered = all.filter((a) => {
+    // 店舗向けお知らせは顧客LIFFに表示しない
+    if (a.audience === '店舗向け') return false;
     if (a.publishedAt && a.publishedAt > today) return false;
     if (a.publishUntil && a.publishUntil < today) return false;
     if (a.targetTenants.length > 0 && !a.targetTenants.includes(tenantId)) return false;
@@ -144,6 +166,105 @@ export async function listAnnouncements(): Promise<Announcement[]> {
     // フォールバック
   }
   return listAnnouncementsForTenant(tenantId);
+}
+
+export type CreateAnnouncementParams = {
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+  importance: AnnouncementImportance;
+  pinned: boolean;
+  targetTenants: string[];
+  publishedAt?: string;
+  publishUntil?: string;
+  status?: AnnouncementStatus;
+};
+
+export async function createAnnouncement(params: CreateAnnouncementParams): Promise<Announcement> {
+  const dbId = getDbId();
+  if (!dbId) throw new Error('NOTION_ANNOUNCEMENTS_DB_ID 未設定');
+  const status = params.status ?? '公開';
+  const props: Record<string, unknown> = {
+    タイトル: { title: [{ text: { content: params.title.slice(0, 200) } }] },
+    本文: { rich_text: richText(params.body) },
+    重要度: { select: { name: params.importance } },
+    宛先種別: { select: { name: params.audience } },
+    ピン留め: { checkbox: params.pinned },
+    公開ステータス: { select: { name: status } },
+  };
+  if (params.targetTenants.length > 0) {
+    props['対象テナント'] = {
+      multi_select: params.targetTenants.map((name) => ({ name })),
+    };
+  }
+  if (params.publishedAt) {
+    props['公開日'] = { date: { start: params.publishedAt } };
+  }
+  if (params.publishUntil) {
+    props['公開終了日'] = { date: { start: params.publishUntil } };
+  }
+  const page = (await notionRequest('POST', '/pages', {
+    parent: { database_id: dbId },
+    properties: props,
+  })) as { id: string; properties: Record<string, unknown> };
+  // キャッシュ invalidate（全テナントのお知らせキャッシュ＝`announcements:` 接頭辞すべて）
+  invalidate('announcements:');
+  return pageToAnnouncement(page as { id: string; properties: Record<string, unknown> });
+}
+
+/**
+ * 店舗ダッシュボード向け: 宛先種別=店舗向け かつ（対象テナント空 or tenantId を含む）を返す。
+ * Phase3 の店舗ダッシュボード実装時に利用する。
+ */
+export async function listAnnouncementsForStore(tenantId: string): Promise<Announcement[]> {
+  const dbId = getDbId();
+  if (!dbId) return [];
+
+  const cacheKey = `announcements:store:${tenantId}`;
+  const hit = getCached<Announcement[]>(cacheKey);
+  if (hit) return hit;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
+    page_size: 50,
+    sorts: [{ property: '公開日', direction: 'descending' }],
+    filter: {
+      and: [
+        { property: '公開ステータス', select: { equals: '公開' } },
+        { property: '宛先種別', select: { equals: '店舗向け' } },
+      ],
+    },
+  })) as { results?: Array<{ id: string; properties: Record<string, unknown> }> };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const all = (res.results || []).map(pageToAnnouncement);
+  const filtered = all.filter((a) => {
+    if (a.publishedAt && a.publishedAt > today) return false;
+    if (a.publishUntil && a.publishUntil < today) return false;
+    if (a.targetTenants.length > 0 && !a.targetTenants.includes(tenantId)) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    const aDate = a.publishedAt || '';
+    const bDate = b.publishedAt || '';
+    return bDate.localeCompare(aDate);
+  });
+
+  setCached(cacheKey, filtered, 60_000);
+  return filtered;
+}
+
+export async function listAllAnnouncementsAdmin(): Promise<Announcement[]> {
+  const dbId = getDbId();
+  if (!dbId) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
+    page_size: 100,
+    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+  })) as { results?: Array<{ id: string; properties: Record<string, unknown> }> };
+  return (res.results || []).map(pageToAnnouncement);
 }
 
 export async function getAnnouncementById(id: string): Promise<Announcement | null> {

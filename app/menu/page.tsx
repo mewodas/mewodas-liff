@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { initLiff, getLineProfile } from '@/lib/liff';
+import { useNotificationsUnread } from '@/lib/useNotificationsUnread';
 import {
   BookOpen,
   TrendingUp,
@@ -13,7 +16,7 @@ import {
   ClipboardList,
   Sparkles,
   Settings,
-  Megaphone,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 import FooterNav from '@/components/FooterNav';
@@ -26,6 +29,7 @@ type MenuItem = {
   label: string;
   sub?: string;
   disabled?: boolean;
+  showUnread?: boolean;
 };
 
 type Section = {
@@ -69,13 +73,28 @@ const sections: Section[] = [
     iconColor: 'text-stone-500',
     items: [
       { href: '/profile', Icon: User, color: 'text-emerald-600', label: 'プロフィール', sub: '登録情報・目標を確認' },
-      { href: '/announcements', Icon: Megaphone, color: 'text-sky-600', label: 'お知らせ', sub: '運営からのお知らせ' },
+      { href: '/notifications', Icon: Bell, color: 'text-sky-600', label: 'レポート', sub: 'トレーナーからの連絡', showUnread: true },
       { href: '/menu/sync', Icon: LinkIcon, color: 'text-stone-500', label: 'データ連携', sub: '近日対応', disabled: true },
     ],
   },
 ];
 
 export default function MenuPage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const unreadCount = useNotificationsUnread(userId);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await initLiff();
+        const profile = await getLineProfile();
+        if (profile) setUserId(profile.userId);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
       <PageHeader title="メニュー" subtitle="すべての機能・設定にアクセス" />
@@ -91,9 +110,15 @@ export default function MenuPage() {
               {section.items.map((item) => {
                 const baseClass =
                   'flex flex-col items-center justify-center bg-white rounded-2xl py-4 px-2 border border-stone-200 shadow-sm';
+                const hasUnread = item.showUnread && unreadCount > 0;
                 const inner = (
                   <>
-                    <item.Icon className={`w-7 h-7 ${item.color}`} strokeWidth={2} />
+                    <div className="relative">
+                      <item.Icon className={`w-7 h-7 ${item.color}`} strokeWidth={2} />
+                      {hasUnread && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white" aria-label="未読あり" />
+                      )}
+                    </div>
                     <span className="text-xs font-bold text-stone-900 mt-2 text-center leading-tight">
                       {item.label}
                     </span>

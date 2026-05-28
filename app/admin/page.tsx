@@ -1,10 +1,6 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
-import { getTenantByIdAsync } from '@/lib/tenantResolver';
-import { getDefaultTenant } from '@/lib/tenant';
-import { listTenantRows } from '@/lib/notion';
-import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,25 +13,6 @@ export default async function AdminRootPage() {
     redirect('/admin/login');
   }
 
-  try {
-    const tenantId = session.currentTenantId || 'mewodas';
-    let tenant;
-    try {
-      tenant = (await getTenantByIdAsync(tenantId)) || getDefaultTenant();
-    } catch {
-      tenant = getDefaultTenant();
-    }
-
-    const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
-    const row = rows.find((r) => r.tenantId === tenant.id) as (typeof rows[0] & { onboardingCompletedAt?: string | null }) | undefined;
-    const onboardingCompletedAt = row?.onboardingCompletedAt ?? null;
-
-    if (onboardingCompletedAt) {
-      redirect('/admin/progress');
-    } else {
-      redirect('/admin/customers');
-    }
-  } catch {
-    redirect('/admin/progress');
-  }
+  // 初期表示は顧客設定（/admin/customers）
+  redirect('/admin/customers');
 }

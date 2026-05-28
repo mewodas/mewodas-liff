@@ -1,5 +1,125 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 顧客分析のフィルタを進捗管理と同じ構成に統一
+- change: `app/admin/analysis/page.tsx` 店舗フィルタを `<select>`→チップ化し、期間→店舗チップ→顧客select の1カード構成に（進捗管理と同じ見た目）。顧客分析は単一顧客選択のためステータス絞り込みは付けない
+- 影響範囲: 管理画面（/store・/admin の顧客分析フィルタ）
+
+## 2026-05-28 – change(customer): 顧客側「お知らせ」表記を「レポート」に変更
+- change: 顧客LIFFの受信機能名を「お知らせ」→「レポート」に統一（/notifications タイトル・空表示・準備中文言、/menu 項目ラベル、ホームベルの aria-label）。アイコンはベルのまま、subtitle「トレーナーからの連絡」維持。
+- 据え置き: タブ内の「お知らせ」カテゴリ（お知らせ/アドバイス＝内容種別）、および運営→店舗の「お知らせ」(/admin/announcements「店舗へのお知らせ」・/store/announcements・ヘッダーベル) は名称維持。
+- 影響範囲: 顧客側LIFF
+
+## 2026-05-28 – change(store): 進捗 食事カードの99%をkcal横へ・カード高さ揃え・ステータス統一
+- change: `app/admin/progress/page.tsx` 食事カードの達成率(%)をkcal表記の横へ移動（下段は食数のみ）。食事/体重カードを h-full で高さを揃えコンパクト化
+- change: 進捗のステータス絞り込みに「承認待ち」を追加し顧客設定と項目を統一（すべて/承認待ち/進行中/休止中/卒業）
+- 影響範囲: 管理画面（/store・/admin の進捗管理）
+
+## 2026-05-28 – fix/change(store): デモバナー漏れ修正・顧客行ボタン・進捗PFC
+- fix: `components/DemoBannerWrapper.tsx` /store・/admin ではデモバナーを表示しない（プレビューiframeのsessionStorageトークンが親に共有され管理画面にバナーが漏れる問題を解消）
+- change: `app/admin/customers/page.tsx` デモ顧客行のプレビューを Monitor アイコン→「顧客画面を見る」ラベルボタンに。位置を矢印の左へ（ChevronRight を Link 外に出して末尾配置）
+- change: `app/admin/progress/page.tsx` + `app/api/admin/progress/route.ts` 進捗一覧の食事カードに PFC 内訳を表示（APIで P/F/C を日次集計）。レイアウトを食事3/4・体重1/4に変更し体重カードをコンパクト化
+- 影響範囲: 管理画面（/store・/admin の顧客設定・進捗管理）、デモバナー（顧客LIFF）、API（/api/admin/progress）
+
+## 2026-05-28 – change(store): 進捗管理・顧客分析 UI 改善
+- change: `app/admin/progress/page.tsx` フィルタバーを食事管理と同じ構成（DateRangePicker + 店舗チップ + 顧客select + statusチップ）に刷新。単日運用を維持（from=to 固定）。食事・体重カードをデザイン向上（kcalゲージバー付き）。運動カードを削除。SAMPLE_/DEMO_ 顧客にデモバッジ追加。
+- change: `app/admin/analysis/page.tsx` 体重と運動を `WeightExercisePanel` でまとめ直後に隣接表示（単日時横2カラム、期間時縦積み）。`ExerciseSection` に `isSingleDay` 引数追加。期間表示時は日別グループ化（日付見出し付き）で各日の運動記録を視認可能に。
+- 影響範囲: 管理画面（/store・/admin の進捗管理・顧客分析）
+
+## 2026-05-28 – change(store): デモ顧客(山田花子)を通常の顧客一覧に表示
+- change: `app/admin/customers/page.tsx` サンプル(SAMPLE_/DEMO_)を顧客一覧から除外せず通常行として表示。行内に「デモ」バッジ＋プレビューボタン（読み取り専用）を付与。右矢印で詳細・アカウント削除も可能に。別枠プレビューカードは撤去
+- 補足: 席数/課金カウントからは引き続き除外（lib/seats.ts）。見出しの実顧客数(realCustomers)はデモを除外したまま
+- 影響範囲: 管理画面（/store・/admin の顧客設定一覧）
+
+## 2026-05-28 – change(store): 食事管理タブをナビから削除（ページ機能は存置）
+- change: `app/admin/AdminShell.tsx` のナビから「食事管理」(/meals) タブを削除。未使用となった UtensilsCrossed import も除去
+- 補足: /meals ページ（PFC編集・削除）は残置。ナビ以外からの導線は無いため直URLでのみ到達（必要なら顧客分析等から導線追加可）
+- 影響範囲: 管理画面（/store・/admin のナビ表示）
+
+## 2026-05-28 – change(store): 顧客プレビューを山田花子の行に集約・ナビ並べ替え
+- change: `app/admin/customers/page.tsx` 顧客画面プレビューをデモ用サンプル(山田花子)の行内ボタン（読み取り専用表記）に一本化。別枠プレビューカードを撤去
+- change: サンプル判定を `SAMPLE_`/`DEMO_` 両prefix対応に拡張（DEMO_系デモ顧客が実顧客一覧・席数に二重表示される問題を解消）。`lib/seats.ts` も同様に席数除外
+- change: `app/admin/AdminShell.tsx` ナビの「顧客分析」を「食事管理」の直後に移動
+- 影響範囲: 管理画面（/store・/admin の顧客設定・ナビ・席数集計）
+
+## 2026-05-28 – refactor(announcements): お知らせ機能再設計（運営→店舗専用・顧客巻き戻し）
+- refactor: `app/notifications/page.tsx` を a9385af 相当に巻き戻し。`/api/announcements` 取得・マージ・announcementReads 連携を全撤去。個別通知のみ表示に戻す。PageHeader subtitle を「トレーナーからの連絡」に維持。
+- refactor: `app/home/_components/LiffGate.tsx` のベル未読バッジを `useInboxUnread` から `useNotificationsUnread`（個別通知のみ）に切り替え。
+- refactor: `app/menu/page.tsx` の未読判定を同様に `useNotificationsUnread` に切り替え。
+- new: `lib/useNotificationsUnread.ts` 新設。`/api/notifications` の unreadCount のみ返すクライアントフック。SSR/失敗時は 0。
+- delete: `lib/useInboxUnread.ts` 削除。顧客向けお知らせ合流の廃止に伴い不要。
+- change: `lib/announcementReads.ts` の localStorage キーを `fitmeal_read_announcements` → `fitmeal_store_read_announcements` に変更（店舗ダッシュボード専用に転用）。
+- new: `lib/useStoreAnnouncementUnread.ts` 新設。`/api/admin/announcements` から店舗向け一覧を取得し localStorage 既読と突合して未読数を返すフック。
+- refactor: `app/admin/reports/page.tsx` を a9385af 相当に巻き戻し。[レポート/お知らせ] トグルとお知らせモードを全撤去。純粋な「レポート送付」に戻す。AdminShell title も「レポート送付」。
+- change: `app/admin/AdminShell.tsx` の `/reports` タブラベルを「レポート送付」に戻す。`/announcements` タブを masterOnly+storeHidden の「店舗へのお知らせ」として追加。ヘッダーに store 限定ベルアイコンを追加（`useStoreAnnouncementUnread` で未読バッジ）。
+- new: `app/admin/announcements/page.tsx` を master 限定の送信画面に作り替え。宛先は「店舗向け」固定。対象[全店舗/特定店舗]・タイトル/本文/重要度/ピン留め・送信履歴一覧。
+- refactor: `app/store/announcements/page.tsx` の re-export を解除し、独自の受信 inbox に作り替え。開いたら `markAnnouncementRead(id)` で localStorage 既読化。
+- change: `app/api/admin/announcements/route.ts` GET に「audience=店舗向けのみ返す」フィルタを追加（過去の顧客向けデータ混入防止）。POST の audience デフォルトを `'店舗向け'` に変更。
+- 影響範囲: 顧客側 LIFF（/notifications・/home・/menu）、管理画面（/admin/reports・/admin/announcements・/store/announcements・AdminShell）、API（/api/admin/announcements）
+
+## 2026-05-28 – feat(seed): サンプル顧客に個人シートを作成し運動・体重予測を有効化
+- feat: `lib/provisionTenant.ts` `seedSampleCustomer` を拡張。新規テナント作成時に個人シート（Notionページ）を自動生成して `食事記録リンク` にセット。
+- feat: 既存サンプル顧客（`食事記録リンク` 未設定）を後追い補完するバックフィルロジックを追加（`checkSampleExists` → `getSampleCustomerInfo` に変更し pageId と hasFoodSheetLink を返す）。
+- feat: `createFoodSheetPage` 新規関数。heading_2 `📝 記録` + table（11列・ヘッダー1行+直近10日データ）を作成。列[0]=日付(isoToJpMd形式)、[1]=体重、[9]=✅、[10]=運動内容。6〜7日に運動あり。
+- fix: `notionPost` を `notionRequest(method, ...)` に汎用化し `notionPatch` ラッパーを追加（顧客ページへの PATCH に対応）。
+- 影響範囲: サンプルデモ表示（運動 ✅ 表示・体重予測グラフ）。既存顧客データに変更なし。
+
+## 2026-05-28 – change(store): ナビ順を「顧客設定」先頭に・初期表示を顧客設定へ
+- change: `app/admin/AdminShell.tsx` のタブ順を「顧客設定→進捗管理」に入替（ルート一致 `p===base` も顧客設定へ移動）
+- change: `app/store/page.tsx`・`app/admin/page.tsx` のルート遷移を常に `/customers`（顧客設定）へ。従来の onboardingCompletedAt 判定による /progress 遷移と不要なテナント照会を撤去
+- 影響範囲: 管理画面（/store・/admin のナビ表示順と初期遷移先）
+
+## 2026-05-28 – feat(inbox): お知らせ機能統合（管理側トグル統合・顧客受信箱合流・未読バッジ統一）
+- feat: `lib/announcementReads.ts` 新規。localStorage キー `fitmeal_read_announcements` で一斉お知らせの既読ID管理。SSRガード付き。
+- feat: `lib/useInboxUnread.ts` 新規。`/api/notifications` + `/api/announcements` を取得し localStorage 既読と突合して合算未読数を返すクライアントフック。LIFF未初期化・失敗時は 0 を返す。
+- feat: `app/notifications/page.tsx` 改修。`/api/announcements` も取得して個別通知と一斉お知らせを日時降順マージ表示。一斉お知らせはlocalStorage既読管理（開いたら markAnnouncementRead）。PageHeader subtitle を「トレーナーからの連絡」に変更。
+- feat: `app/announcements/page.tsx` をリダイレクトページ化（`router.replace('/notifications')`）。
+- feat: `app/admin/reports/page.tsx` 改修。画面最上部に [レポート / お知らせ] pill トグルを追加。URLクエリ `?mode=announcement` で初期タブをお知らせに設定。お知らせモードは旧 admin/announcements/page.tsx のロジック・UIをインライン統合（送信フォーム＋送信履歴）。
+- feat: `app/admin/announcements/page.tsx` をリダイレクトページ化（`${base}/reports?mode=announcement` へ転送。/store でも動作）。
+- feat: `app/admin/AdminShell.tsx` の `/reports` label を「お知らせ送付」に改名、`/announcements` タブエントリと Megaphone import を削除。
+- feat: `app/menu/page.tsx` 改修。「お知らせ」アイコンを Megaphone→Bell に変更、リンク先を `/notifications` に変更、sub を「トレーナーからの連絡」に変更。LIFF初期化後に `useInboxUnread` で未読数を取得し、未読がある場合は Bell アイコン右上に赤丸インジケータを表示。
+- feat: `app/home/_components/LiffGate.tsx` の右上ベル未読バッジを `useInboxUnread` に切り替え（個別通知＋一斉お知らせの合算未読数）。
+- 影響範囲: 顧客側 LIFF（/notifications・/announcements・/menu・/home）、管理画面（/admin/reports・/store/reports・AdminShell ナビ）
+
+## 2026-05-28 – feat(announcements): お知らせ一斉送信 Phase 1（管理画面・API・lib拡張）
+- feat: `lib/announcements.ts` に `AnnouncementAudience`('顧客向け'|'店舗向け')・`AnnouncementStatus` 型を追加、`pageToAnnouncement` で `宛先種別` を読み取り（空は '顧客向け' デフォルト）
+- fix: `listAnnouncementsForTenant` に「宛先種別=店舗向けを除外」フィルタを追加（顧客LIFFへの漏れ防止）
+- feat: `lib/announcements.ts` に `createAnnouncement`・`listAnnouncementsForStore`・`listAllAnnouncementsAdmin`・`richText` ヘルパーを追加
+- feat: お知らせキャッシュキーを `announcements:{tenantId}` / `announcements:store:{tenantId}` に統一し、作成後 `invalidate('announcements:')` で全テナント分を確実にクリア（共有DBのため横断invalidateが必要）
+- feat: `app/api/admin/announcements/route.ts` 新規。GET=履歴一覧、POST=一斉お知らせ作成。セッションの role='master' か否かでテナント安全性を強制
+- security: 店舗(非master)の対象テナントは `getCurrentTenant()` のコンテキスト由来に固定（クライアント値・session生値を信用せず、staging override も反映）。GET履歴も非masterは「自テナント宛 or 全体」のみに絞り、他店舗お知らせの閲覧を遮断
+- feat: `app/admin/announcements/page.tsx` 新規。宛先・対象テナント・タイトル・本文・重要度・ピン留めの作成フォーム＋送信履歴一覧
+- feat: `app/store/announcements/page.tsx` 新規（1行 re-export）
+- feat: `app/admin/AdminShell.tsx` にナビタブ「お知らせ」(Megaphone)を追加（/analysis と /billing の間）
+- 影響範囲: 管理画面（/admin/announcements・/store/announcements）、API（/api/admin/announcements）、lib/announcements.ts
+
+## 2026-05-28 – feat(preview): 顧客動線リデザイン Phase A+B（サンプルシード・席数除外・ストアプレビュー）
+- feat: `lib/demoSession.ts` に `generatePreviewToken`（exp 60分）追加、`verifyDemoToken` を kind:'demo'|'preview' 両対応に拡張
+- feat: `lib/demoClient.ts` トークン取得優先順位を URLクエリ `preview_token` → sessionStorage → localStorage に変更（プレビューは sessionStorage 隔離、localStorage非汚染）
+- feat: `lib/provisionTenant.ts` に `seedSampleCustomer(tenantId, dbIds, notionApiKey)` 追加。テナント作成後に best-effort でサンプル顧客1名（山田 花子）＋直近7日分食事＋9日分体重をシード。lineUserId=`SAMPLE_FITMEAL` で識別、冪等（既存SAMPLE_顧客があればスキップ）
+- feat: `lib/notion.ts` 新規テナント食事DBのスキーマ列名を saveFoodRecord と一致させる（`タイトル`→`食事メモ`、`LINEユーザーID`→`LINE_UserID`）
+- feat: `lib/seats.ts` lineUserId が `SAMPLE_` 始まりの顧客を席数・総数カウントから除外（誤課金防止）
+- feat: `app/api/admin/preview-token/route.ts` 新規エンドポイント。admin 認証必須・tenantId はセッション由来・対象顧客の所属テナント検証後に preview トークンを発行
+- feat: `app/admin/customers/page.tsx` ストア顧客一覧に「顧客画面を見る」ボタン（上部: サンプルモード、各行: 実データモード）+ iframe プレビューモーダル追加。サンプル顧客は一覧から分離（席数バナーも実顧客数で表示）
+- feat: `app/api/admin/seed-sample/route.ts` staging 検証用 seed エンドポイント（master only、冪等）
+- 影響範囲: 管理画面（/store/customers のUI）、API（/api/admin/preview-token・seed-sample）、lib/（demoSession・demoClient・seats・provisionTenant・notion）
+- 既存フロー非影響: 公開 /demo（kind:'demo'）は維持。withLiffTenant のデモ分岐は demo/preview 両方を同一ヘッダで処理するため既存経路変更なし
+
+## 2026-05-28 – fix(demo): デモ時にAI/記録アクション行を非表示
+- fix: デモモードの /home で「食事記録・AI食事相談・AI献立作成」アクション行を非表示に（読み取り専用デモではPOSTが403になり誤操作でエラー表示される問題を解消。リリース前QA指摘#2対応）
+- 影響範囲: 顧客側 LIFF（/home・デモモード時のみ。通常利用は不変）
+
+## 2026-05-28 – feat(demo): LINE不要の顧客画面デモモード実装
+- feat: `/demo` 起動ルート + `/api/public/demo/start` トークン発行 API を追加。LIFF・LINE ログイン不要で顧客画面をサンプルデータで体験可能に
+- feat: `lib/demoSession.ts` HMAC-SHA256 署名デモトークン発行・検証（inviteToken.ts と同パターン）
+- feat: `lib/demoClient.ts` クライアント側デモモード判定の単一ソース（localStorage `fitmeal_demo_token`）
+- feat: `lib/withTenant.ts` `withLiffTenant` にデモ分岐追加。`x-demo-token` ヘッダで検証、テナントはトークン内 tenantId のみ、非 GET は 403
+- feat: `lib/apiFetch.ts` デモ時は LIFF を呼ばず `x-demo-token` ヘッダで API アクセス
+- feat: `lib/liff.ts` + `lib/tenantLiff.ts` デモモード時 LIFF 初期化・login() をスキップ
+- feat: `components/DemoBanner.tsx` + `DemoBannerWrapper.tsx` 全ページ上部にデモバナー表示、「デモを終了」で localStorage クリア
+- feat: `app/home/_components/LiffGate.tsx` デモ時は食事記録ボタン・WeightExerciseCard・オンボーディング・register リダイレクトを非表示
+- 影響範囲: 顧客側 LIFF（新規 /demo + 既存全ページのバナー）、API（新規 /api/public/demo/start + withLiffTenant デモ分岐）
+- 既存フロー非影響: `x-demo-token` ヘッダなし時は完全に従来通りの LINE idToken 検証フローを通る
+
 ## 2026-05-28 – change(record): 写真アップ完了後の視認性向上
 - change(record): 写真アップロード完了後、プレビューエリアまで自動スクロール（scrollIntoView smooth）
 - change(record): プレビューエリアの枠を border-2 emerald-300 に強調、ヘッダに CheckCircle2 + 枚数表示を追加してアップロード完了が一目で分かるように

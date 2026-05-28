@@ -519,8 +519,8 @@ export async function createTenantFoodDb(
     parent: { type: 'page_id', page_id: parentPageId },
     title: [{ type: 'text', text: { content: `${tenantName} 食事記録` } }],
     properties: {
-      タイトル: { title: {} },
-      LINEユーザーID: { rich_text: {} },
+      食事メモ: { title: {} },
+      LINE_UserID: { rich_text: {} },
       日付: { date: {} },
       食事区分: {
         select: {

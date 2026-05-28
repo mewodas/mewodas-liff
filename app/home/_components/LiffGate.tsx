@@ -6,6 +6,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { initLiffWithTenant } from '@/lib/tenantLiff';
 import { apiFetch } from '@/lib/apiFetch';
+import { useNotificationsUnread } from '@/lib/useNotificationsUnread';
+import { isDemoMode } from '@/lib/demoClient';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
 import MealRatioChart from '@/components/MealRatioChart';
@@ -43,12 +45,13 @@ function LiffGateInner() {
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const unreadCount = useNotificationsUnread(userId);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [foodStatus, setFoodStatus] = useState<string | null>(null);
   const [officialLineUrl, setOfficialLineUrl] = useState<string | null>(null);
   const [customerReady, setCustomerReady] = useState(false);
+  const [isDemo] = useState(() => isDemoMode());
 
   const todayStr = jstTodayString();
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr;
@@ -117,6 +120,12 @@ function LiffGateInner() {
       try {
         const res = await apiFetch(`/api/customer/me`, { cache: 'no-store' });
         if (res.status === 404) {
+          // デモモード時は register へのリダイレクトをスキップ
+          if (isDemoMode()) {
+            setOnboardingDone(true);
+            setCustomerReady(true);
+            return;
+          }
           // 顧客レコードなし → 申し込みフォームへ誘導（招待トークン等は保持）
           const qs = searchParams.toString();
           router.replace(qs ? `/home/register?${qs}` : '/home/register');
@@ -167,22 +176,6 @@ function LiffGateInner() {
       }
     })();
   }, [userId, selectedDate, isToday, data]);
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await apiFetch(`/api/notifications?t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const j = await res.json();
-        if (!cancelled) setUnreadCount(j.unreadCount || 0);
-      } catch {
-        // ignore
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -325,7 +318,7 @@ function LiffGateInner() {
 
   if (!data) return null;
 
-  const showOnboarding = onboardingDone === false && !!userId;
+  const showOnboarding = onboardingDone === false && !!userId && !isDemo;
   const { customer, today } = data;
   const { totals, mealsByType } = today;
   const { goals } = customer;
@@ -431,7 +424,7 @@ function LiffGateInner() {
                 <Link
                   href="/notifications"
                   className="relative w-9 h-9 bg-white border border-stone-200 rounded-full flex items-center justify-center active:bg-stone-100 text-stone-700"
-                  aria-label={`お知らせを開く（未読${unreadCount}件）`}
+                  aria-label={`レポートを開く（未読${unreadCount}件）`}
                 >
                   <Bell className="w-5 h-5" strokeWidth={2.2} />
                   {unreadCount > 0 && (
@@ -480,25 +473,27 @@ function LiffGateInner() {
               <NutritionSummaryCard totals={totals} goals={goals} />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <QuickAction
-                href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
-                icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="食事記録"
-              />
-              <QuickAction
-                href="/chat"
-                icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="AI食事相談"
-              />
-              <QuickAction
-                href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
-                icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
-                label="AI献立作成"
-              />
-            </div>
+            {!isDemo && (
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <QuickAction
+                  href={`/record${isToday ? '' : `?date=${selectedDate}`}`}
+                  icon={<UtensilsCrossed className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="食事記録"
+                />
+                <QuickAction
+                  href="/chat"
+                  icon={<MessageCircle className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="AI食事相談"
+                />
+                <QuickAction
+                  href={`/meal-plan${isToday ? '' : `?date=${selectedDate}`}`}
+                  icon={<ChefHat className="w-5 h-5 text-emerald-600" strokeWidth={2} />}
+                  label="AI献立作成"
+                />
+              </div>
+            )}
 
-            {userId && selectedDate <= todayStr && (
+            {!isDemo && userId && selectedDate <= todayStr && (
               <div
                 data-tour="today-record-card"
                 className={`transition-opacity duration-300 ${refetching ? 'opacity-50' : 'opacity-100'}`}

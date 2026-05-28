@@ -52,6 +52,9 @@ type ProgressItem = {
   foodStatus: string | null;
   today: {
     intakeKcal: number;
+    intakeP: number;
+    intakeF: number;
+    intakeC: number;
     targetKcal: number;
     mealCount: number;
     mealTarget: number;
@@ -93,6 +96,9 @@ export const GET = withAdminTenant(async (req) => {
       foodStatus: c.foodStatus,
       today: {
         intakeKcal: 0,
+        intakeP: 0,
+        intakeF: 0,
+        intakeC: 0,
         targetKcal: c.goals?.kcal || 0,
         mealCount: 0,
         mealTarget: 4,
@@ -141,6 +147,9 @@ export const GET = withAdminTenant(async (req) => {
           if (idx === undefined) continue;
           const kcal = p['カロリー_kcal']?.number || 0;
           progress[idx].today.intakeKcal += kcal;
+          progress[idx].today.intakeP += p['タンパク質_g']?.number || 0;
+          progress[idx].today.intakeF += p['脂質_g']?.number || 0;
+          progress[idx].today.intakeC += p['炭水化物_g']?.number || 0;
           progress[idx].today.mealCount += 1;
         }
       } catch {

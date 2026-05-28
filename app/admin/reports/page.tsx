@@ -109,8 +109,6 @@ function Inner() {
   const [sendLinePush, setSendLinePush] = useState(true);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
-  // body が「テンプレ由来の初期値」のままか、ユーザーが編集したかを判定するため
-  // テンプレ適用時の値を ref に保持
   const templateBaselineRef = useRef<{ title: string; body: string }>({ title: '', body: initialDraft });
 
   const startDate = from;
@@ -123,7 +121,6 @@ function Inner() {
 
   useEffect(() => {
     (async () => {
-      // 各 API を独立して try/catch。1つ失敗しても他は動かす。
       async function safeFetch<T>(url: string, fallback: T): Promise<T> {
         try {
           const res = await fetch(url, { cache: 'no-store' });
@@ -177,9 +174,6 @@ function Inner() {
   }, [selectedCustomer, stores]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
 
-  // テンプレ切替時：タイトル・本文をテンプレのベーステキストで上書き
-  // ただしユーザーが編集済みなら上書きしない
-  // rangeType がある場合は from/to も自動更新（バグ1修正）
   useEffect(() => {
     if (!selectedTemplate) return;
     const baseTitle = selectedTemplate.titleTemplate || '';
@@ -241,7 +235,6 @@ function Inner() {
     setResultMsg(null);
     try {
       const category = selectedTemplate?.category || 'カスタム';
-      // 顧客の所属店舗の署名を本文末尾に自動付与（テンプレに署名が無い場合のみ）
       const sig = customerStore?.signature?.trim() || '';
       const bodyText = sig && !body.includes(sig)
         ? `${body.trim()}\n\n— ${sig}`
@@ -340,7 +333,7 @@ function Inner() {
           </select>
         </section>
 
-        {/* ② 期間（食事管理と同じ DateRangePicker・今日デフォルト） */}
+        {/* ② 期間 */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
           <div className="text-xs font-bold text-stone-700 mb-2">② 期間</div>
           <DateRangePicker
@@ -354,7 +347,7 @@ function Inner() {
           />
         </section>
 
-        {/* ③ 所属店舗（顧客から自動判定、レポート署名に使用） */}
+        {/* ③ 所属店舗 */}
         {customerStore && (
           <section className="bg-violet-50 border border-violet-200 rounded-2xl p-3">
             <div className="text-[11px] font-bold text-violet-800 mb-0.5">③ 送信元店舗（顧客の所属から自動）</div>
@@ -371,7 +364,7 @@ function Inner() {
           </section>
         )}
 
-        {/* ④ テンプレ（チップ形式で並べる・切替で本文が変わる） */}
+        {/* ④ テンプレ */}
         <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
@@ -424,7 +417,6 @@ function Inner() {
             </div>
           )}
 
-          {/* タイトル */}
           <div className="pt-1">
             <label className="text-[10px] font-bold text-stone-700 block mb-1">タイトル</label>
             <input
@@ -436,7 +428,6 @@ function Inner() {
             />
           </div>
 
-          {/* 本文（ベーステキスト、最初から表示） */}
           <div>
             <label className="text-[10px] font-bold text-stone-700 block mb-1 inline-flex items-center gap-1">
               <FileText className="w-3 h-3" strokeWidth={2.4} />

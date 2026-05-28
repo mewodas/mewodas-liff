@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck } from 'lucide-react';
+import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck, Monitor, X } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
@@ -47,6 +47,10 @@ export default function AdminCustomersPage() {
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ lineUserId: string; name: string } | null>(null);
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'sample' | 'real'>('sample');
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -108,6 +112,38 @@ export default function AdminCustomersPage() {
     }
   }
 
+  async function openPreview(lineUserId: string, name: string, mode: 'sample' | 'real') {
+    setPreviewMode(mode);
+    setPreviewTarget({ lineUserId, name });
+    setPreviewToken(null);
+    setPreviewLoading(true);
+    try {
+      const res = await fetch('/api/admin/preview-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineUserId }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j.error || 'プレビュートークンの取得に失敗しました');
+        setPreviewTarget(null);
+        return;
+      }
+      const j = await res.json();
+      setPreviewToken(j.token);
+    } catch {
+      toast.error('プレビューを開けませんでした');
+      setPreviewTarget(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  function closePreview() {
+    setPreviewTarget(null);
+    setPreviewToken(null);
+  }
+
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
@@ -161,8 +197,50 @@ export default function AdminCustomersPage() {
     }
   }
 
+  const realCustomers = useMemo(
+    () => customers.filter((c) => !(c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_'))),
+    [customers]
+  );
+
   return (
-    <AdminShell title={`顧客設定（${customers.length}名）`}>
+    <AdminShell title={`顧客設定（${realCustomers.length}名）`}>
+      {/* プレビューモーダル */}
+      {previewTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col" style={{ maxHeight: '90vh' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
+              <div>
+                <div className="text-sm font-bold text-stone-900">
+                  顧客画面プレビュー
+                  {previewMode === 'sample' && (
+                    <span className="ml-2 text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">サンプル</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-stone-500">{previewTarget.name} — 読み取り専用（60分）</div>
+              </div>
+              <button type="button" onClick={closePreview} className="p-1 rounded-lg hover:bg-stone-100">
+                <X className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden rounded-b-2xl bg-stone-100" style={{ minHeight: 560 }}>
+              {previewLoading ? (
+                <div className="flex items-center justify-center h-full text-stone-500 text-sm py-20">
+                  準備中…
+                </div>
+              ) : previewToken ? (
+                <iframe
+                  src={`/home?preview_token=${encodeURIComponent(previewToken)}`}
+                  className="w-full h-full border-0 rounded-b-2xl"
+                  style={{ minHeight: 560 }}
+                  title="顧客画面プレビュー"
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
 
         {/* オンボーディング未完了バナー（store のみ） */}
@@ -224,8 +302,9 @@ export default function AdminCustomersPage() {
           }`}
         >
           <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          ユーザー招待フォームをコピー
+          招待URLをコピー
         </button>
+
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
@@ -297,53 +376,70 @@ export default function AdminCustomersPage() {
           <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             {filtered.map((c) => {
               const isPending = c.foodStatus === '承認待ち';
+              const isSample = !!c.lineUserId && (c.lineUserId.startsWith('SAMPLE_') || c.lineUserId.startsWith('DEMO_'));
               return (
                 <li key={c.pageId}>
-                  <Link
-                    href={`${base}/customers/${c.pageId}`}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
-                        <StatusBadge status={c.foodStatus} />
-                        {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
-                          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
-                            {storeNameById.get(c.storeId)}
-                          </span>
-                        )}
+                  <div className="flex items-center gap-0 px-2 py-1 hover:bg-stone-50">
+                    <Link
+                      href={`${base}/customers/${c.pageId}`}
+                      className="flex items-start gap-3 px-2 py-2 flex-1 min-w-0"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
+                          {isSample && (
+                            <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                          )}
+                          <StatusBadge status={c.foodStatus} />
+                          {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
+                            <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                              {storeNameById.get(c.storeId)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-stone-600 mt-0.5 truncate">
+                          {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
+                          {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
+                          {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
+                        </div>
+                        <div className="mt-1.5 flex gap-2 flex-wrap items-center">
+                          {c.lineUserId ? (
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              <Check className="w-3 h-3" strokeWidth={2.4} />
+                              LINE 連携済み
+                            </span>
+                          ) : null}
+                          {isPending && (
+                            <button
+                              type="button"
+                              onClick={(e) => approveCustomer(e, c.pageId, c.name)}
+                              disabled={approvingId === c.pageId}
+                              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${
+                                approvingId === c.pageId
+                                  ? 'bg-stone-100 text-stone-400 border-stone-300 cursor-wait'
+                                  : 'bg-emerald-500 text-white border-emerald-500 active:bg-emerald-600'
+                              }`}
+                            >
+                              <UserCheck className="w-3 h-3" strokeWidth={2.4} />
+                              {approvingId === c.pageId ? '承認中…' : '承認'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-stone-600 mt-0.5 truncate">
-                        {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
-                        {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
-                        {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
-                      </div>
-                      <div className="mt-1.5 flex gap-2 flex-wrap items-center">
-                        {c.lineUserId ? (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                            <Check className="w-3 h-3" strokeWidth={2.4} />
-                            LINE 連携済み
-                          </span>
-                        ) : null}
-                        {isPending && (
-                          <button
-                            type="button"
-                            onClick={(e) => approveCustomer(e, c.pageId, c.name)}
-                            disabled={approvingId === c.pageId}
-                            className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${
-                              approvingId === c.pageId
-                                ? 'bg-stone-100 text-stone-400 border-stone-300 cursor-wait'
-                                : 'bg-emerald-500 text-white border-emerald-500 active:bg-emerald-600'
-                            }`}
-                          >
-                            <UserCheck className="w-3 h-3" strokeWidth={2.4} />
-                            {approvingId === c.pageId ? '承認中…' : '承認'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
-                  </Link>
+                    </Link>
+                    {isSample && (
+                      <button
+                        type="button"
+                        onClick={() => openPreview(c.lineUserId, c.name, 'sample')}
+                        className="flex items-center gap-1 font-bold py-1.5 px-2.5 rounded-lg text-xs border bg-violet-100 text-violet-700 border-violet-300 active:bg-violet-200 whitespace-nowrap flex-shrink-0"
+                        title="読み取り専用"
+                      >
+                        <Monitor className="w-3.5 h-3.5" strokeWidth={2.2} />
+                        顧客画面を見る
+                      </button>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 ml-1" strokeWidth={2.2} />
+                  </div>
                 </li>
               );
             })}
