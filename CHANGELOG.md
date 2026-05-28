@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-28 – change(store): 顧客プレビューを山田花子の行に集約・ナビ並べ替え
+- change: `app/admin/customers/page.tsx` 顧客画面プレビューをデモ用サンプル(山田花子)の行内ボタン（読み取り専用表記）に一本化。別枠プレビューカードを撤去
+- change: サンプル判定を `SAMPLE_`/`DEMO_` 両prefix対応に拡張（DEMO_系デモ顧客が実顧客一覧・席数に二重表示される問題を解消）。`lib/seats.ts` も同様に席数除外
+- change: `app/admin/AdminShell.tsx` ナビの「顧客分析」を「食事管理」の直後に移動
+- 影響範囲: 管理画面（/store・/admin の顧客設定・ナビ・席数集計）
+
 ## 2026-05-28 – refactor(announcements): お知らせ機能再設計（運営→店舗専用・顧客巻き戻し）
 - refactor: `app/notifications/page.tsx` を a9385af 相当に巻き戻し。`/api/announcements` 取得・マージ・announcementReads 連携を全撤去。個別通知のみ表示に戻す。PageHeader subtitle を「トレーナーからの連絡」に維持。
 - refactor: `app/home/_components/LiffGate.tsx` のベル未読バッジを `useInboxUnread` から `useNotificationsUnread`（個別通知のみ）に切り替え。

@@ -29,6 +29,12 @@ const TABS: Tab[] = [
     match: (p, base) => p.startsWith(`${base}/meals`),
   },
   {
+    suffix: '/analysis',
+    label: '顧客分析',
+    Icon: Sparkles,
+    match: (p, base) => p.startsWith(`${base}/analysis`),
+  },
+  {
     suffix: '/reports',
     label: 'レポート送付',
     Icon: Send,
@@ -39,12 +45,6 @@ const TABS: Tab[] = [
     label: 'テンプレ管理',
     Icon: FileText,
     match: (p, base) => p.startsWith(`${base}/templates`),
-  },
-  {
-    suffix: '/analysis',
-    label: '顧客分析',
-    Icon: Sparkles,
-    match: (p, base) => p.startsWith(`${base}/analysis`),
   },
   {
     suffix: '/billing',
