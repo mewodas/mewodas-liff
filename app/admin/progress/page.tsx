@@ -218,7 +218,7 @@ export default function ProgressPage() {
         )}
 
         {loading ? (
-          <div className="text-center text-stone-500 py-10">読み込み中…<br /><span className="text-xs">Notion からデータを集計しています</span></div>
+          <div className="text-center text-stone-500 py-10">読み込み中…</div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (

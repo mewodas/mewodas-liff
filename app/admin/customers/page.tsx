@@ -296,31 +296,40 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={copyApplyLink}
-            disabled={!!seatInfo?.isOverLimit}
-            className={`flex flex-1 font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
-              seatInfo?.isOverLimit
-                ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
-                : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
-            }`}
-          >
-            <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-            招待URLをコピー
-          </button>
-          {sampleCustomer && (
+        <button
+          type="button"
+          onClick={copyApplyLink}
+          disabled={!!seatInfo?.isOverLimit}
+          className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
+            seatInfo?.isOverLimit
+              ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
+              : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
+          }`}
+        >
+          <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+          招待URLをコピー
+        </button>
+
+        {/* デモ用サンプル顧客の画面プレビュー（山田花子のみに表示） */}
+        {sampleCustomer && (
+          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-violet-900 flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                顧客画面プレビュー（{sampleCustomer.name}）
+              </div>
+              <div className="text-[11px] text-violet-700 mt-0.5">お客様にどう見えるかを確認できます（読み取り専用）</div>
+            </div>
             <button
               type="button"
-              onClick={() => openPreview(sampleCustomer.lineUserId, 'サンプル顧客（山田 花子）', 'sample')}
-              className="flex font-bold py-3 px-3 rounded-xl items-center justify-center gap-1.5 text-sm border bg-violet-100 text-violet-700 border-violet-300 active:bg-violet-200 whitespace-nowrap"
+              onClick={() => openPreview(sampleCustomer.lineUserId, sampleCustomer.name, 'sample')}
+              className="flex font-bold py-2 px-3 rounded-xl items-center justify-center gap-1.5 text-sm border bg-violet-600 text-white border-violet-600 active:bg-violet-700 whitespace-nowrap flex-shrink-0"
             >
               <Monitor className="w-4 h-4" strokeWidth={2.2} />
               顧客画面を見る
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
@@ -440,16 +449,6 @@ export default function AdminCustomersPage() {
                       </div>
                       <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 mt-1" strokeWidth={2.2} />
                     </Link>
-                    {c.lineUserId && (
-                      <button
-                        type="button"
-                        onClick={() => openPreview(c.lineUserId, c.name, 'real')}
-                        className="p-2 rounded-lg hover:bg-violet-50 text-violet-500 flex-shrink-0"
-                        title="顧客画面を見る"
-                      >
-                        <Monitor className="w-4 h-4" strokeWidth={2.2} />
-                      </button>
-                    )}
                   </div>
                 </li>
               );
