@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(cron): デモ顧客記録の日次リフレッシュ cron 追加
+- feat: `lib/refreshDemoData.ts` 新規。SAMPLE_/DEMO_ プレフィックス顧客の食事・体重・個人シートを今日基準で再生成（既存レコードを archived:true 後に直近7日分を再投入）
+- feat: `app/api/cron/refresh-demo-data/route.ts` 新規。全テナント走査・checkCronAuth 認証（Bearer CRON_SECRET）
+- feat: `vercel.json` に cron 追加（毎日 19:00 UTC = JST 04:00）
+- 影響範囲: cron / API（顧客側UI・管理画面の動作変化なし）
+
 ## 2026-05-29 – change(customer): レポート受信箱のタブ「週次」→「週次レポート」に改名
 - change: `app/notifications/page.tsx` のタブラベル「週次」を「週次レポート」に統一（メニュー表記と一致）。matchTab も追随。挙動・カテゴリ判定は不変。
 - 影響範囲: 顧客側LIFF（/notifications）
