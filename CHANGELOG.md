@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(store): お知らせ削除ボタンが運営の全テナント一斉お知らせで非表示になる不具合
+- fix: `app/admin/reports/page.tsx` `AnnouncementRow` の削除ボタン表示条件を `!isStore || targetTenants.length>0` → `isMaster || targetTenants.length>0` に変更。運営(master)が /store から送った全テナント一斉(対象テナント空)のお知らせで削除ボタンが出なかった問題を修正（API側はmaster全件削除可なのにUIだけ隠れていた）
+- 影響範囲: 管理画面（/store・/admin レポート送付 送信履歴）
+
 ## 2026-05-29 – fix(infra): 運動DBを staging/本番で分離
 - 事象: `NOTION_EXERCISE_DB_ID` が Production/Preview 共通の単一レコード＝staging と本番が同じ運動DB(`36e7034a…`)を共有していた（お知らせDBに続く未分離の残り1件）
 - 対処: staging 専用運動DB `運動記録 (staging)` (`36fa47a8…b5d3`) をアプリ連携トークンで新規作成し、Vercel Preview(staging) に branch 上書き env を追加。本番(Production)の値は無変更

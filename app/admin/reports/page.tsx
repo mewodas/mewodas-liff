@@ -807,6 +807,7 @@ function Inner() {
                       key={a.id}
                       announcement={a}
                       isStore={isStore}
+                      isMaster={isMaster}
                       onChanged={loadAnnouncements}
                     />
                   ))}
@@ -852,18 +853,21 @@ function TemplateChip({
 function AnnouncementRow({
   announcement: a,
   isStore,
+  isMaster,
   onChanged,
 }: {
   announcement: Announcement;
   isStore: boolean;
+  isMaster: boolean;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
 
-  // 店舗は自テナント宛のお知らせのみ削除可（全テナント一斉＝運営発は対象外）。運営は全件削除可。
-  const canDelete = !isStore || a.targetTenants.length > 0;
+  // 削除可否: 運営(master)は全件可。店舗(tenant_admin)は自テナント宛のみ（全テナント一斉＝運営発は対象外）。
+  // ※ サーバ側(/api/admin/announcements DELETE)でも同じ権限を強制している。
+  const canDelete = isMaster || a.targetTenants.length > 0;
 
   async function handleDelete() {
     if (deleting) return;
