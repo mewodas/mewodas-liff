@@ -6,6 +6,7 @@ import { saveImagesToDriveAsync } from '@/lib/drive';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getApplicableCalibration } from '@/lib/tenantResolver';
 import { withLiffTenant } from '@/lib/withTenant';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -111,6 +112,17 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
         })
       );
     }
+
+    logAuditEvent({
+      action: 'meal.create',
+      outcome: 'success',
+      actorType: 'customer',
+      actorId: verifiedLineUserId,
+      tenantId: tenant.id,
+      targetType: 'meal_record',
+      targetId: notionRes?.id ?? undefined,
+      metadata: { mealType },
+    });
 
     return NextResponse.json({ ok: true, pfc });
   } catch (e) {

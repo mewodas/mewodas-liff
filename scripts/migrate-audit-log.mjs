@@ -1,6 +1,6 @@
 /**
- * Neon Postgres へ監査ログテーブルを作成するマイグレーションスクリプト。
- * 冪等 (IF NOT EXISTS) なので何度実行しても安全。
+ * Neon Postgres へ監査ログマイグレーションを適用するスクリプト。
+ * lib/db/migrations/*.sql をファイル名昇順で全て実行する（冪等）。
  *
  * 実行方法:
  *   DATABASE_URL=postgres://... node scripts/migrate-audit-log.mjs
@@ -10,7 +10,7 @@
  *   vercel env pull .env.local && node scripts/migrate-audit-log.mjs
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { neon } from '@neondatabase/serverless';
@@ -29,26 +29,29 @@ if (!url) {
 }
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const sql_text = readFileSync(
-  join(__dir, '../lib/db/migrations/001_audit_log.sql'),
-  'utf8'
-);
+const migrationsDir = join(__dir, '../lib/db/migrations');
+
+const files = readdirSync(migrationsDir)
+  .filter((f) => f.endsWith('.sql'))
+  .sort();
 
 const sql = neon(url);
 
-// Neon の HTTP ドライバは複数文を一度に実行できず、tagged-template か
-// sql.query() のみを受け付ける。';' で分割して 1 文ずつ実行する（冪等 DDL 前提）。
-const statements = sql_text
-  .split(';')
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-try {
-  for (const stmt of statements) {
-    await sql.query(stmt);
+for (const file of files) {
+  const sqlText = readFileSync(join(migrationsDir, file), 'utf8');
+  const statements = sqlText
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  try {
+    for (const stmt of statements) {
+      await sql.query(stmt);
+    }
+    console.log(`migration ${file}: 完了 (${statements.length} 文)`);
+  } catch (err) {
+    console.error(`migration ${file}: 失敗`, err);
+    process.exit(1);
   }
-  console.log(`migration 001_audit_log: 完了 (${statements.length} 文)`);
-} catch (err) {
-  console.error('migration 001_audit_log: 失敗', err);
-  process.exit(1);
 }
+
+console.log('全マイグレーション完了');

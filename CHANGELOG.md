@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(infra): 運動DBを staging/本番で分離
+- 事象: `NOTION_EXERCISE_DB_ID` が Production/Preview 共通の単一レコード＝staging と本番が同じ運動DB(`36e7034a…`)を共有していた（お知らせDBに続く未分離の残り1件）
+- 対処: staging 専用運動DB `運動記録 (staging)` (`36fa47a8…b5d3`) をアプリ連携トークンで新規作成し、Vercel Preview(staging) に branch 上書き env を追加。本番(Production)の値は無変更
+- 影響範囲: staging のみ（本番ゼロ変更）。これで全 Notion DB が staging/本番で分離完了
+- 補足: 運動記録は lineUserId フィルタのため broadcast 漏れは元々無いが、テスト顧客のLINE ID重複時の混線リスクを排除
+
+## 2026-05-29 – feat(audit): 監査ログ Phase 1 残タスク3点（env分離・閲覧UI・LIFF記録拡張）
+- add: `lib/db/migrations/002_audit_log_env.sql` — audit_log に env カラム追加＋複合インデックス（staging/本番分離用）
+- change: `scripts/migrate-audit-log.mjs` — lib/db/migrations/*.sql をファイル名昇順で全適用する汎用スクリプトに変更（冪等・001も002も再実行安全）
+- change: `lib/auditLog.ts` — INSERT に env カラム追加。値は VERCEL_TARGET_ENV || VERCEL_ENV || 'development'
+- add: `lib/repository/auditLog.ts` — Neon から audit_log を読む `listAuditLogs(filter)` / `isDbConnected()`（パラメータ化クエリ、DB未設定時は空配列返却）
+- add: `app/api/admin/audit-logs/route.ts` — `withMasterOnly` ラップのGET API（action/outcome/env/from/to/limit フィルタ）
+- fix: `audit-logs` API の limit を `Math.max(1, Math.min(Number||100, 500))` に堅牢化（負数/NaN で 500 になる QA 指摘の修正）
+- add: `app/admin/audit/page.tsx` — master 専用監査ログ閲覧ページ。failure を赤強調、DB未接続時は案内メッセージ表示
+- change: `app/admin/AdminShell.tsx` — 「監査ログ」タブを masterOnly/storeHidden で追加（ShieldCheck アイコン）
+- change: `app/api/record/route.ts` — 保存成功後に meal.create をログ（actorId=lineUserId, tenantId, targetId=notionPageId）
+- change: `app/api/record/update/route.ts` — 更新成功後に meal.update をログ
+- change: `app/api/delete/route.ts` — 削除成功後に meal.delete をログ
+- change: `app/api/customer/me/route.ts` — PATCH 成功後に profile.update をログ（metadata.fields に変更フィールド名のみ）
+- 影響範囲: DB（002マイグレーション要実行）/ 管理画面（master のみ新タブ）/ API サーバー側ログ追加。顧客側レスポンス・挙動変更なし
+
 ## 2026-05-29 – fix(security): 監査ログ マイグレーションスクリプトを Neon ドライバ対応に修正
 - fix: `scripts/migrate-audit-log.mjs` — Neon HTTP ドライバは `sql(string)` 形式・複数文一括実行を受け付けないため、SQL を `;` で分割し `sql.query()` で 1 文ずつ実行する形に修正。本番 Neon に対し実行し audit_log テーブル＋3インデックスを作成済み（テストINSERT/DELETEで動作確認、現行行数0）
 - chore: `.gitignore` に `.env*.local` を追加（Neon 連携が生成する接続文字列ファイルの誤コミット防止）
