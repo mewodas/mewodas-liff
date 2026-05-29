@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(customer/store): 所属店舗の店舗ID(gotanda)生表示を店舗名に統一＋契約タブをstore限定
+- fix(customer): `app/profile/page.tsx` 顧客プロフィールの「所属店舗」が storeId（gotanda）を生表示していたのを店舗名（メヲダス五反田店）に修正。`/api/customer/me` で `getStoreByStoreId()` により storeName を解決して返す（失敗時 null→UIで storeId にフォールバック）
+- change(store): `app/admin/AdminShell.tsx` 「契約(/billing)」タブに storeOnly を付与。運営(master/admin)文脈では非表示、店舗(/store)でのみ表示
+- 影響範囲: 顧客側 LIFF（プロフィール）/ 管理画面ナビ
+
 ## 2026-05-29 – feat(store): お知らせの削除機能を追加（アーカイブボタン未実装の修正）
 - feat: `/store/reports`・`/admin/reports` のお知らせ送信履歴で、各お知らせを展開→「削除」ボタンで削除可能に（confirm付き）。従来はボタン自体が未描画で操作不能だった
 - feat: `lib/announcements.ts` に `deleteAnnouncement`（Notionページをゴミ箱へ移動＝送信履歴・顧客表示の両方から消える。Notionゴミ箱で30日復元可）、`app/api/admin/announcements` に `DELETE` ハンドラを追加（店舗=自テナント宛のみ削除可・運営=全件、権限はサーバ強制）

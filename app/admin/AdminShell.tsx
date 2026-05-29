@@ -45,6 +45,7 @@ const TABS: Tab[] = [
     label: '契約',
     Icon: CreditCard,
     match: (p, base) => p.startsWith(`${base}/billing`),
+    storeOnly: true,
   },
   {
     suffix: '/stores',
