@@ -8,6 +8,11 @@
 - fix: `app/admin/reports/page.tsx` の Announcement 型に `createdAt` 追加。`formatAnnDate` 関数（防御版）を追加。送信履歴 `AnnouncementRow` の日時表示を `publishedAt` → `formatAnnDate(a.createdAt)` に変更。
 - 影響範囲: 顧客LIFF（/notifications）/ 管理画面（/store/announcements・/admin/reports・/store/reports）/ lib
 
+## 2026-05-29 – chore: 本番 mewodas に山田花子(DEMO_FITMEAL_SAMPLE)シード完了・一時ファイル削除
+- chore: Notion MCP で本番 mewodas テナントに顧客1件・食事25件・体重9件・個人シート1件を直接投入。シード完了確認済み。
+- chore: `app/api/admin/seed-demo/route.ts`（一時エンドポイント）を削除。`SEED_DEMO_TOKEN` を production env から削除済み。
+- 影響範囲: Notion データのみ（コード変更なし）
+
 ## 2026-05-29 – fix(store): 受信inbox/ベルを「店舗向け」お知らせのみに絞る
 - fix: `app/store/announcements/page.tsx`・`lib/useStoreAnnouncementUnread.ts` で取得結果を `audience==='店舗向け'` でフィルタ。店舗が送った顧客向け一斉お知らせが自店舗の受信ベルにも出てしまう不具合(QA BUG-1)を修正。
 - 影響範囲: 管理画面（/store/announcements・店舗ヘッダーベル）
