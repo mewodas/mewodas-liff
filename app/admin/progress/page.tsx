@@ -140,7 +140,7 @@ export default function ProgressPage() {
   }
 
   return (
-    <AdminShell title={`進捗管理（${realCount}名）`}>
+    <AdminShell title="進捗管理">
       <div className="space-y-3">
         {/* フィルタバー（食事管理と同じ構成） */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">

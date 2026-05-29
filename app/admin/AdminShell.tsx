@@ -156,8 +156,6 @@ export default function AdminShell({
     return true;
   });
 
-  const headerIconColor = isStore ? 'text-violet-600' : 'text-emerald-600';
-
   const activeTab = visibleTabs.find((t) => t.match(pathname, base));
   const accentBorder = isStore ? 'border-violet-600' : 'border-emerald-600';
   const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
@@ -167,7 +165,7 @@ export default function AdminShell({
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30" ref={menuRef}>
         <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            {back ? (
+            {back && (
               <Link
                 href={back.href}
                 className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
@@ -175,11 +173,17 @@ export default function AdminShell({
               >
                 <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
               </Link>
-            ) : isStore ? (
-              <Building2 className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
-            ) : (
-              <Users className={`w-5 h-5 ${headerIconColor} flex-shrink-0`} strokeWidth={2.2} />
             )}
+            {/* FitMeal ロゴ（HPと同じ）。クリックで進捗管理へ */}
+            <Link
+              href={`${base}/progress`}
+              className="flex items-center flex-shrink-0"
+              aria-label="進捗管理へ"
+            >
+              <img src="/fitmeal-icon.png" alt="" className="h-10 w-10 object-contain" />
+              <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-2 h-6 w-auto" />
+            </Link>
+            <span className="h-5 w-px bg-stone-200 flex-shrink-0" aria-hidden />
             <h1 className="text-sm font-bold text-stone-900 truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">

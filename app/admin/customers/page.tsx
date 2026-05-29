@@ -203,7 +203,13 @@ export default function AdminCustomersPage() {
   );
 
   return (
-    <AdminShell title={`顧客設定（${realCustomers.length}名）`}>
+    <AdminShell
+      title={
+        seatInfo?.seatLimit != null
+          ? `顧客設定（${realCustomers.length}/${seatInfo.seatLimit}名）`
+          : `顧客設定（${realCustomers.length}名）`
+      }
+    >
       {/* プレビューモーダル */}
       {previewTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -391,25 +397,26 @@ export default function AdminCustomersPage() {
                             <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
                           )}
                           <StatusBadge status={c.foodStatus} />
+                          {c.lineUserId ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" strokeWidth={2.4} />
+                              LINE 連携済み
+                            </span>
+                          ) : null}
                           {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
                             <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
                               {storeNameById.get(c.storeId)}
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-stone-600 mt-0.5 truncate">
+                        <div className="text-[11px] text-stone-600 mt-0.5">
                           {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
                           {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
                           {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
+                          {c.goals.kcal > 0 ? ` ・ 目標PFC P${c.goals.P}・F${c.goals.F}・C${c.goals.C}g` : ''}
                         </div>
-                        <div className="mt-1.5 flex gap-2 flex-wrap items-center">
-                          {c.lineUserId ? (
-                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                              <Check className="w-3 h-3" strokeWidth={2.4} />
-                              LINE 連携済み
-                            </span>
-                          ) : null}
-                          {isPending && (
+                        {isPending && (
+                          <div className="mt-1.5 flex gap-2 flex-wrap items-center">
                             <button
                               type="button"
                               onClick={(e) => approveCustomer(e, c.pageId, c.name)}
@@ -423,8 +430,8 @@ export default function AdminCustomersPage() {
                               <UserCheck className="w-3 h-3" strokeWidth={2.4} />
                               {approvingId === c.pageId ? '承認中…' : '承認'}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </Link>
                     {isSample && (
@@ -462,11 +469,11 @@ function StatusBadge({ status }: { status: string | null }) {
     status === '承認待ち'
       ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
       : status === '進行中'
-      ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+      ? 'bg-orange-100 text-orange-700 border-orange-300'
       : status === '休止中'
-      ? 'bg-amber-100 text-amber-800 border-amber-300'
-      : status === '卒業'
       ? 'bg-sky-100 text-sky-700 border-sky-300'
+      : status === '卒業'
+      ? 'bg-stone-100 text-stone-600 border-stone-300'
       : 'bg-stone-100 text-stone-700 border-stone-300';
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${cls}`}>

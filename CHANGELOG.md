@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
+- change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）
+- change: `app/admin/progress/page.tsx` ヘッダーを `進捗管理（X名）` → `進捗管理`（件数表記を削除。本文のフィルタ結果件数表示は存置）
+- 影響範囲: 管理画面（/store・/admin の顧客設定・進捗管理ヘッダー）
+
+## 2026-05-29 – change(admin/store): 顧客一覧の表示改善（LINE連携バッジ移動・進行中の色・目標PFC表示）
+- change: `app/admin/customers/page.tsx`（/admin・/store 共有の顧客一覧）
+  - 「LINE 連携済み」バッジを名前行のステータス（進行中等）の隣に移動。従来の下段の別行バッジは削除し、下段は承認ボタンがある時だけ表示
+  - ステータスバッジの色を整理：進行中=orange、休止中=sky(青)、卒業=stone(グレー)（承認待ち=yellow、LINE連携済み=emerald と全て別色に。隣接時の判別性向上）
+  - 目標PFC（P/F/C グラム）を「目標kcal/日」の横（同じ行）に inline 表示（`… ・ 目標 ○kcal/日 ・ 目標PFC P○・F○・C○g`。目標kcal>0 のとき）。行が伸びるため当該行の truncate を解除し折り返し可に
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
+- change: `app/admin/AdminShell.tsx` ヘッダー左上に FitMeal ロゴ(アイコン+ワードマーク `/fitmeal-icon.png` `/fitmeal-wordmark.png`)を表示。クリックで `${base}/progress`(進捗管理)へ遷移。ページタイトルはロゴの右に区切り線付きで配置。従来の Building2/Users アイコンは置き換え
+- add: `public/fitmeal-icon.png` `public/fitmeal-wordmark.png`(LP fitmeal.jp と同一アセットをコピー)
+- 影響範囲: 管理画面（/store・/admin 全ページの共通ヘッダー AdminShell）。顧客LIFFは対象外
+
 ## 2026-05-29 – change(store): お知らせ送信を運営(/admin)専用化・店舗(/store)はレポートのみ
 - change: `app/admin/reports/page.tsx` 店舗(/store)では [レポート/お知らせ] トグルを非表示にしレポートモード固定（`?mode=announcement` 直叩きも report に強制）。お知らせ送信モードは運営(/admin)のみ表示
 - change: `app/api/admin/announcements/route.ts` POST を運営(master)専用に。非master(店舗)からの作成は 403（サーバ側強制）。従来は店舗も自テナント宛で送信可だった
