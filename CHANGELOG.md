@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 顧客分析の運動記録を1行表示（日付込み・時間削除）
+- change: `app/admin/analysis/page.tsx` 運動記録リストを「1記録=1行（日付＋種目を同一行）」のフラット表示に。日別グループ見出し・カード枠・「時間: —」表示・ExerciseRow を撤去（種目別集計バナーは存置）
+- 影響範囲: 管理画面（/store・/admin の顧客分析 運動記録）
+
 ## 2026-05-29 – change(liff): 週次分析ページのヘッダーに説明文を追加
 - change: `app/weekly/page.tsx` PageHeader に subtitle「直近7日間の食事・体重の振り返り」を追加（タイトルのみで説明文がなかったため）
 - 影響範囲: 顧客側 LIFF（/weekly）
