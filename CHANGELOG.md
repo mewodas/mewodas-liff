@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-05-29 – change(admin): 顧客設定→顧客管理に改称・全メニューの横ズレ修正
+- change: 「顧客設定」→「顧客管理」に改称（`app/admin/AdminShell.tsx` タブ・`app/admin/customers/page.tsx` ヘッダー）。ヘッダーは契約席数があれば `顧客管理（実顧客数/契約席数名）`、未設定なら `顧客管理（X名）`
+- fix: `app/globals.css` html に `scrollbar-gutter: stable` を追加。ページ内容の高さでスクロールバーが出る/出ないにより中央寄せ(`max-w-5xl mx-auto`)が左右にズレていたのを全ページで統一
+- 影響範囲: 管理画面（/store・/admin の全ページ共通ヘッダー/幅）
+
+## 2026-05-29 – change(admin/store): ナビに「設定」ドロップダウンを追加・関連メニューを集約
+- change: `app/admin/AdminShell.tsx`（/store・/admin 共有のヘッダーナビ）
+  - トップタブを「顧客設定 / 進捗管理 / 顧客分析 / レポート送付」に絞り、それ以外を「設定」ドロップダウン配下に集約（クリックで展開、PCは下向きパネル・モバイルはメニュー内の「設定」セクション）
+  - store の設定配下: LINE連携設定 / 契約 / テンプレ管理 / 店舗（表示順）
+  - admin の設定配下: テンプレ管理 / テナント / プラン管理 / 監査ログ（master のみ）
+  - rename: store「セットアップ」→「LINE連携設定」（`/onboarding` のラベルのみ変更、パスは不変）
+  - 設定配下のいずれかがアクティブな時は「設定」タブをアクティブ表示。デスクトップナビの overflow をドロップダウンが隠れないよう visible に変更
+- 影響範囲: 管理画面（/store・/admin のヘッダーナビ）
+
 ## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
 - change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）
 - change: `app/admin/progress/page.tsx` ヘッダーを `進捗管理（X名）` → `進捗管理`（件数表記を削除。本文のフィルタ結果件数表示は存置）

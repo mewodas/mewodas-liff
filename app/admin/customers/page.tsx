@@ -206,8 +206,8 @@ export default function AdminCustomersPage() {
     <AdminShell
       title={
         seatInfo?.seatLimit != null
-          ? `顧客設定（${realCustomers.length}/${seatInfo.seatLimit}名）`
-          : `顧客設定（${realCustomers.length}名）`
+          ? `顧客管理（${realCustomers.length}/${seatInfo.seatLimit}名）`
+          : `顧客管理（${realCustomers.length}名）`
       }
     >
       {/* プレビューモーダル */}

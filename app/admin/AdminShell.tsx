@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, Settings, ChevronDown, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean };
+type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean; settings?: boolean };
 
 const TABS: Tab[] = [
   {
     suffix: '/customers',
-    label: '顧客設定',
+    label: '顧客管理',
     Icon: Users,
     match: (p, base) => p === base || p.startsWith(`${base}/customers`),
   },
@@ -34,11 +34,16 @@ const TABS: Tab[] = [
     Icon: Send,
     match: (p, base) => p.startsWith(`${base}/reports`),
   },
+  // --- 以下は「設定」ドロップダウン配下に表示 ---
+  // store 表示順: LINE連携設定 → 契約 → テンプレ管理 → 店舗
+  // admin 表示順: テンプレ管理 → テナント → プラン管理 → 監査ログ
   {
-    suffix: '/templates',
-    label: 'テンプレ管理',
-    Icon: FileText,
-    match: (p, base) => p.startsWith(`${base}/templates`),
+    suffix: '/onboarding',
+    label: 'LINE連携設定',
+    Icon: Rocket,
+    match: (p, base) => p.startsWith(`${base}/onboarding`),
+    storeOnly: true,
+    settings: true,
   },
   {
     suffix: '/billing',
@@ -46,6 +51,14 @@ const TABS: Tab[] = [
     Icon: CreditCard,
     match: (p, base) => p.startsWith(`${base}/billing`),
     storeOnly: true,
+    settings: true,
+  },
+  {
+    suffix: '/templates',
+    label: 'テンプレ管理',
+    Icon: FileText,
+    match: (p, base) => p.startsWith(`${base}/templates`),
+    settings: true,
   },
   {
     suffix: '/stores',
@@ -53,13 +66,7 @@ const TABS: Tab[] = [
     Icon: Store,
     match: (p, base) => p.startsWith(`${base}/stores`),
     storeOnly: true,
-  },
-  {
-    suffix: '/onboarding',
-    label: 'セットアップ',
-    Icon: Rocket,
-    match: (p, base) => p.startsWith(`${base}/onboarding`),
-    storeOnly: true,
+    settings: true,
   },
   {
     suffix: '/tenants',
@@ -68,6 +75,7 @@ const TABS: Tab[] = [
     match: (p, base) => p.startsWith(`${base}/tenants`),
     masterOnly: true,
     storeHidden: true,
+    settings: true,
   },
   {
     suffix: '/plans',
@@ -76,6 +84,7 @@ const TABS: Tab[] = [
     match: (p, base) => p.startsWith(`${base}/plans`),
     masterOnly: true,
     storeHidden: true,
+    settings: true,
   },
   {
     suffix: '/audit',
@@ -84,6 +93,7 @@ const TABS: Tab[] = [
     match: (p, base) => p.startsWith(`${base}/audit`),
     masterOnly: true,
     storeHidden: true,
+    settings: true,
   },
 ];
 
@@ -114,7 +124,9 @@ export default function AdminShell({
   const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(cachedMe);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -131,6 +143,7 @@ export default function AdminShell({
 
   useEffect(() => {
     setMenuOpen(false);
+    setSettingsOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -144,6 +157,17 @@ export default function AdminShell({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [settingsOpen]);
+
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
     router.replace(`${base}/login`);
@@ -156,9 +180,15 @@ export default function AdminShell({
     return true;
   });
 
+  const topTabs = visibleTabs.filter((t) => !t.settings);
+  const settingsTabs = visibleTabs.filter((t) => t.settings);
+
   const activeTab = visibleTabs.find((t) => t.match(pathname, base));
+  const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
   const accentBorder = isStore ? 'border-violet-600' : 'border-emerald-600';
   const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
+  const accentBg = isStore ? 'bg-violet-50' : 'bg-emerald-50';
+  const accentDot = isStore ? 'bg-violet-600' : 'bg-emerald-600';
 
   return (
     <div className="min-h-screen bg-stone-100">
@@ -241,9 +271,9 @@ export default function AdminShell({
         </div>
 
         {/* デスクトップ用タブナビ */}
-        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-x-auto overflow-y-hidden">
+        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-visible">
           <div className="flex gap-1 -mb-px min-w-max">
-            {visibleTabs.map((t) => {
+            {topTabs.map((t) => {
               const href = `${base}${t.suffix}`;
               const active = t.match(pathname, base);
               return (
@@ -261,6 +291,51 @@ export default function AdminShell({
                 </Link>
               );
             })}
+
+            {/* 設定ドロップダウン */}
+            {settingsTabs.length > 0 && (
+              <div className="relative" ref={settingsRef}>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen((v) => !v)}
+                  aria-expanded={settingsOpen}
+                  aria-haspopup="true"
+                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
+                    settingsActive || settingsOpen
+                      ? `${accentBorder} ${accentText}`
+                      : 'border-transparent text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
+                  設定
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+                    strokeWidth={2.2}
+                  />
+                </button>
+                {settingsOpen && (
+                  <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
+                    {settingsTabs.map((t) => {
+                      const href = `${base}${t.suffix}`;
+                      const active = t.match(pathname, base);
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
+                            active ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
+                          }`}
+                        >
+                          <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                          {t.label}
+                          {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </nav>
 
@@ -268,7 +343,7 @@ export default function AdminShell({
         {menuOpen && (
           <div className="sm:hidden border-t border-stone-100 bg-white shadow-lg">
             <nav className="px-3 py-2 space-y-0.5">
-              {visibleTabs.map((t) => {
+              {topTabs.map((t) => {
                 const href = `${base}${t.suffix}`;
                 const active = t.match(pathname, base);
                 return (
@@ -277,20 +352,45 @@ export default function AdminShell({
                     href={href}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
                       active
-                        ? isStore
-                          ? 'bg-violet-50 text-violet-700'
-                          : 'bg-emerald-50 text-emerald-700'
+                        ? `${accentBg} ${accentText}`
                         : 'text-stone-700 hover:bg-stone-50'
                     }`}
                   >
                     <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                     {t.label}
-                    {active && (
-                      <span className={`ml-auto w-1.5 h-1.5 rounded-full ${isStore ? 'bg-violet-600' : 'bg-emerald-600'}`} />
-                    )}
+                    {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
                   </Link>
                 );
               })}
+
+              {/* 設定セクション */}
+              {settingsTabs.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
+                    <Settings className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    設定
+                  </div>
+                  {settingsTabs.map((t) => {
+                    const href = `${base}${t.suffix}`;
+                    const active = t.match(pathname, base);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
+                          active
+                            ? `${accentBg} ${accentText}`
+                            : 'text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                        {t.label}
+                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </nav>
             <div className="border-t border-stone-100 px-3 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
