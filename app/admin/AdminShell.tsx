@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, CalendarClock, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -39,6 +39,12 @@ const TABS: Tab[] = [
     label: 'テンプレ管理',
     Icon: FileText,
     match: (p, base) => p.startsWith(`${base}/templates`),
+  },
+  {
+    suffix: '/scheduled-reports',
+    label: '定期レポート設定',
+    Icon: CalendarClock,
+    match: (p, base) => p.startsWith(`${base}/scheduled-reports`),
   },
   {
     suffix: '/billing',

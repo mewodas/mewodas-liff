@@ -420,7 +420,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                     disabled={!lineAutoSendEnabled}
                     className="bg-white border border-stone-300 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
-                  <span className="text-[10px] text-stone-500">JST に「メヲダス前日レポート」テンプレで全顧客へ送信</span>
+                  <span className="text-[10px] text-stone-500">※自動配信は「定期レポート設定」で管理（このフィールドは旧設定）</span>
                 </div>
               </div>
             </div>

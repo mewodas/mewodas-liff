@@ -14,6 +14,7 @@
 - feat(ui): `app/admin/AdminShell.tsx` に「定期レポート設定」タブ追加（CalendarClock アイコン・masterOnly なし）。
 - feat(cron): `app/api/cron/daily-reports/route.ts` を定期配信ルール走査方式に全面置換。listAllRules() → shouldFire() で発火判定（毎日/毎週(曜日)/毎月(末日フォールバック)）→ テナント設定取得 → 顧客絞り（全顧客/店舗）→ テンプレ名一致解決 → アプリ内保存・LINE送信をルールに従い制御。autoSendTime/lineAutoSendEnabled への依存を廃止。
 - change(ui): `app/admin/tenants/[id]/page.tsx` の autoSendTime フィールドに「※自動配信は「定期レポート設定」で管理（このフィールドは旧設定）」の注記を追加。
+- fix(cron): Hobbyプランのcronは日次1回(`0 21 * * *`=朝6時JST)のため、shouldFire から「時刻の時一致」判定を除去し「配信日(毎日/毎週曜日/毎月日)」のみで発火する方式に変更。時刻フィールドは保持するが当面は毎朝まとめて配信（時刻指定はPro移行で毎時化した際に有効化）。scheduled-reports UI の時刻入力に注記を追加。
 - 影響範囲: 管理画面（/admin・/store の定期レポート設定・テナント設定注記）/ API（/api/admin/scheduled-reports）/ Cron（daily-reports 置換）/ lib（scheduledReports.ts 新規）
 
 ## 2026-05-29 – change(demo): 読み取り専用の文言調整
