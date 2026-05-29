@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(infra): 運動DBを staging/本番で分離
+- 事象: `NOTION_EXERCISE_DB_ID` が Production/Preview 共通の単一レコード＝staging と本番が同じ運動DB(`36e7034a…`)を共有していた（お知らせDBに続く未分離の残り1件）
+- 対処: staging 専用運動DB `運動記録 (staging)` (`36fa47a8…b5d3`) をアプリ連携トークンで新規作成し、Vercel Preview(staging) に branch 上書き env を追加。本番(Production)の値は無変更
+- 影響範囲: staging のみ（本番ゼロ変更）。これで全 Notion DB が staging/本番で分離完了
+- 補足: 運動記録は lineUserId フィルタのため broadcast 漏れは元々無いが、テスト顧客のLINE ID重複時の混線リスクを排除
+
 ## 2026-05-29 – feat(audit): 監査ログ Phase 1 残タスク3点（env分離・閲覧UI・LIFF記録拡張）
 - add: `lib/db/migrations/002_audit_log_env.sql` — audit_log に env カラム追加＋複合インデックス（staging/本番分離用）
 - change: `scripts/migrate-audit-log.mjs` — lib/db/migrations/*.sql をファイル名昇順で全適用する汎用スクリプトに変更（冪等・001も002も再実行安全）
