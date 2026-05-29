@@ -1,14 +1,11 @@
 // DEMO_FITMEAL_SAMPLE 顧客を本番 mewodas テナントにシードする一時エンドポイント。
 // 使用後（シード完了確認後）に削除すること。
-// master only / withAdminTenant 認証必須。
+// CRON_SECRET Bearer 認証（一回限りのシード操作用）。
 
-import { NextResponse } from 'next/server';
-import { withAdminTenant } from '@/lib/withTenant';
-import { getCurrentTenant } from '@/lib/tenant';
+import { NextRequest, NextResponse } from 'next/server';
+import { checkCronAuth } from '@/lib/cronAuth';
 import { FITMEAL_TENANTS_PARENT_PAGE_ID } from '@/lib/tenant';
 import { refreshDemoDataForTenant } from '@/lib/refreshDemoData';
-import { listTenantRows } from '@/lib/notion';
-import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,8 +35,10 @@ function jstNow() {
   return d.toISOString();
 }
 
-export const POST = withAdminTenant(async () => {
-  const tenant = getCurrentTenant();
+export async function POST(req: NextRequest) {
+  const authError = checkCronAuth(req);
+  if (authError) return authError;
+
   const notionApiKey = process.env.NOTION_API_KEY || '';
   if (!notionApiKey) {
     return NextResponse.json({ error: 'NOTION_API_KEY 未設定' }, { status: 500 });
@@ -47,7 +46,6 @@ export const POST = withAdminTenant(async () => {
 
   const DEMO_LINE_USER_ID = 'DEMO_FITMEAL_SAMPLE';
 
-  // テナント DB から mewodas の DB IDs を取得（フォールバックは env/ハードコード）
   const customerDbId =
     process.env.NOTION_CUSTOMER_DB_ID || '2d6ec0c0531b4ef6a4c396baa6807546';
   const foodDbId = process.env.NOTION_FOOD_DB_ID || '8719d5ab23074ea5bf6e77fde352db86';
@@ -101,16 +99,14 @@ export const POST = withAdminTenant(async () => {
     process.env.FITMEAL_TENANTS_PARENT_PAGE_ID || FITMEAL_TENANTS_PARENT_PAGE_ID;
 
   // refreshDemoDataForTenant で食事・体重・個人シートを今日基準でシード/リフレッシュ
-  // この関数は SAMPLE_ / DEMO_ 両方を対象にするが、ここでは DEMO_FITMEAL_SAMPLE 顧客のみ存在するため1名分のみ処理される
   const refreshResult = await refreshDemoDataForTenant(
-    tenant.id,
+    'mewodas',
     { customerDbId, foodDbId, weightDbId },
     notionApiKey,
     parentPageId
   );
 
-  // refreshDemoDataForTenant の結果で customersProcessed が 0 の場合は
-  // DEMO_ プレフィックスで顧客が見つかっているはずなので確認
+  // 最終確認
   const finalCheck = await notionReq(notionApiKey, 'POST', `/databases/${customerDbId}/query`, {
     filter: { property: 'LINEユーザーID', rich_text: { equals: DEMO_LINE_USER_ID } },
     page_size: 5,
@@ -121,8 +117,8 @@ export const POST = withAdminTenant(async () => {
     mode,
     customerPageId,
     lineUserId: DEMO_LINE_USER_ID,
-    tenantId: tenant.id,
+    tenantId: 'mewodas',
     refreshResult,
     finalCheckCount: (finalCheck.results || []).length,
   });
-});
+}
