@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminTenant } from '@/lib/withTenant';
+import { withAdminTenant, currentSession } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
 import { generateInviteToken, type InviteKind } from '@/lib/inviteToken';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   const expiresInDays = Math.min(Math.max(body.expiresInDays ?? 7, 1), 30);
   const kind: InviteKind = body.kind === 'approval' ? 'approval' : 'individual';
 
+  const session = currentSession(req);
   const tenant = getCurrentTenant();
 
   let token: string;
@@ -29,6 +31,7 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  logAuditEvent({ action: 'invite.create', outcome: 'success', actorType: session?.role === 'master' ? 'master' : 'admin', actorId: session?.email, tenantId: tenant.id, metadata: { kind, expiresInDays } });
   return NextResponse.json({
     token,
     tenantId: tenant.id,

@@ -168,6 +168,7 @@ function Inner() {
   })();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [stores, setStores] = useState<{ storeId: string; name: string }[]>([]);
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [customerId, setCustomerId] = useState<string>(initialCustomerId);
   const [from, setFrom] = useState<string>(initialDate ?? today);
@@ -247,10 +248,15 @@ function Inner() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/admin/customers', { cache: 'no-store' });
+        const [res, sRes] = await Promise.all([
+          fetch('/api/admin/customers', { cache: 'no-store' }),
+          fetch('/api/admin/stores', { cache: 'no-store' }),
+        ]);
         if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
         const j = await res.json();
         setCustomers((j.customers || []).filter((c: Customer) => !!c.foodStatus));
+        const sJ = sRes.ok ? await sRes.json() : { stores: [] };
+        setStores(sJ.stores || []);
       } catch (e) {
         setDataError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -258,6 +264,13 @@ function Inner() {
       }
     })();
   }, []);
+
+  // 店舗ID → 表示名（メヲダス五反田店 等）。未登録なら storeId をそのまま使う
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of stores) m.set(s.storeId, s.name);
+    return m;
+  }, [stores]);
 
   // 店舗一覧（ユニーク）
   const storeOptions = useMemo(() => {
@@ -268,10 +281,10 @@ function Inner() {
       // 店舗未設定（空キー）はフィルタに出さない
       if (key === '' || seen.has(key)) continue;
       seen.add(key);
-      opts.push({ value: key, label: key });
+      opts.push({ value: key, label: storeNameById.get(key) || key });
     }
     return opts;
-  }, [customers]);
+  }, [customers, storeNameById]);
 
   // 絞り込み済み顧客一覧
   const filteredCustomers = useMemo(() => {

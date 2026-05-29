@@ -5,6 +5,7 @@ import {
   verifyPassword,
 } from '@/lib/adminAuth';
 import { findTenantAdminByEmail } from '@/lib/tenantResolver';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
   const masterCreds = getAdminCredentials();
   if (masterCreds && email === masterCreds.email.toLowerCase()) {
     if (verifyPassword(password, masterCreds.passwordHash)) {
+      logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'master', actorId: email, tenantId: 'mewodas' });
       const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
       const res = NextResponse.json({ ok: true, email, role: 'master', currentTenantId: 'mewodas' });
       res.cookies.set(cookie.name, cookie.value, cookie.options);
@@ -40,11 +42,14 @@ export async function POST(req: NextRequest) {
   try {
     const tenant = await findTenantAdminByEmail(email);
     if (!tenant) {
+      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, metadata: { reason: 'tenant_not_found' } });
       return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
     }
     if (!verifyPassword(password, tenant.passwordHash)) {
+      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, tenantId: tenant.tenantId, metadata: { reason: 'wrong_password' } });
       return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
     }
+    logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'admin', actorId: email, tenantId: tenant.tenantId });
     const cookie = createSessionCookie(email, { role: 'tenant_admin', currentTenantId: tenant.tenantId });
     const res = NextResponse.json({ ok: true, email, role: 'tenant_admin', currentTenantId: tenant.tenantId, tenantName: tenant.tenantName });
     res.cookies.set(cookie.name, cookie.value, cookie.options);

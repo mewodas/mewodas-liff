@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomer, patchCustomer, archiveCustomer, type CustomerPatch } from '@/lib/repository/customers';
-import { withAdminTenant } from '@/lib/withTenant';
+import { withAdminTenant, currentSession } from '@/lib/withTenant';
+import { logAuditEvent } from '@/lib/auditLog';
+import { getCurrentTenant } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,14 +21,17 @@ export const GET = withAdminTenant(async (_req, { params }: { params: Promise<{ 
   }
 });
 
-export const DELETE = withAdminTenant(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withAdminTenant(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const customer = await getCustomer(id);
     if (!customer) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
+    const session = currentSession(req);
+    const tenant = getCurrentTenant();
     await archiveCustomer(id);
+    logAuditEvent({ action: 'customer.delete', outcome: 'success', actorType: session?.role === 'master' ? 'master' : 'admin', actorId: session?.email, tenantId: tenant.id, targetType: 'customer', targetId: id });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });

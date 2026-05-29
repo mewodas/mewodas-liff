@@ -8,6 +8,7 @@ import {
 import { listTenantRows, setTenantPasswordHash } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { invalidateTenantCache } from '@/lib/tenantResolver';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
 
     // 現パスワード検証
     if (!verifyPassword(currentPassword, tenant.passwordHash)) {
+      logAuditEvent({ action: 'auth.password_change', outcome: 'failure', actorType: 'admin', actorId: session.email, tenantId: session.currentTenantId, metadata: { reason: 'wrong_current_password' } });
       return NextResponse.json({ error: '現在のパスワードが違います' }, { status: 401 });
     }
 
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
     await setTenantPasswordHash(tenant.pageId, newHash);
     invalidateTenantCache();
 
+    logAuditEvent({ action: 'auth.password_change', outcome: 'success', actorType: 'admin', actorId: session.email, tenantId: session.currentTenantId });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
