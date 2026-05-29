@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -74,6 +74,14 @@ const TABS: Tab[] = [
     label: 'プラン管理',
     Icon: ListChecks,
     match: (p, base) => p.startsWith(`${base}/plans`),
+    masterOnly: true,
+    storeHidden: true,
+  },
+  {
+    suffix: '/audit',
+    label: '監査ログ',
+    Icon: ShieldCheck,
+    match: (p, base) => p.startsWith(`${base}/audit`),
     masterOnly: true,
     storeHidden: true,
   },

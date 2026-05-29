@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateFoodRecord, assertFoodRecordOwnership } from '@/lib/notion';
 import { withLiffTenant } from '@/lib/withTenant';
+import { logAuditEvent } from '@/lib/auditLog';
+import { getCurrentTenant } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export const dynamic = 'force-dynamic';
 
-export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, _verifiedLineUserId: string) => {
+export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const body = await req.json();
     const { pageId, kcal, P, F, C, memo } = body;
@@ -35,6 +37,17 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, _veri
     }
     patch.correctedBy = '顧客';
     await updateFoodRecord(pageId, patch);
+
+    logAuditEvent({
+      action: 'meal.update',
+      outcome: 'success',
+      actorType: 'customer',
+      actorId: verifiedLineUserId,
+      tenantId: getCurrentTenant().id,
+      targetType: 'meal_record',
+      targetId: pageId,
+    });
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith('forbidden:')) {

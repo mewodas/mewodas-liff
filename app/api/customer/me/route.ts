@@ -3,6 +3,7 @@ import { getCustomerByLineId, updateCustomer } from '@/lib/notion';
 import { withLiffTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getStoreByStoreId } from '@/lib/stores';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,16 @@ export const PATCH = withLiffTenant(async (req: NextRequest, _ctx: unknown, veri
 
   if (Object.keys(patch).length > 0) {
     await updateCustomer(customer.pageId, patch);
+    logAuditEvent({
+      action: 'profile.update',
+      outcome: 'success',
+      actorType: 'customer',
+      actorId: verifiedLineUserId,
+      tenantId: getCurrentTenant().id,
+      targetType: 'customer',
+      targetId: customer.pageId,
+      metadata: { fields: Object.keys(patch) },
+    });
   }
 
   const updated = await getCustomerByLineId(verifiedLineUserId, { force: true });

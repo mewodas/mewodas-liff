@@ -25,12 +25,15 @@ const dbUrl =
 
 const sql = dbUrl ? neon(dbUrl) : null;
 
+const currentEnv =
+  process.env.VERCEL_TARGET_ENV || process.env.VERCEL_ENV || 'development';
+
 function insertAuditRow(e: AuditEvent): Promise<void> {
   if (!sql) return Promise.resolve();
   return sql.query(
     `INSERT INTO audit_log
-       (action, outcome, actor_type, actor_id, tenant_id, target_type, target_id, ip, user_agent, metadata)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+       (action, outcome, actor_type, actor_id, tenant_id, target_type, target_id, ip, user_agent, metadata, env)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [
       e.action,
       e.outcome,
@@ -42,6 +45,7 @@ function insertAuditRow(e: AuditEvent): Promise<void> {
       e.ip ?? null,
       e.userAgent ?? null,
       e.metadata ? JSON.stringify(e.metadata) : null,
+      currentEnv,
     ]
   )
     .then(() => undefined)
