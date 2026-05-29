@@ -110,7 +110,7 @@ export default function PredictionPage() {
       <PageHeader
         title="体重記録"
         Icon={TrendingDown}
-        subtitle="これまでの記録とAIによる今後の予測"
+        subtitle="過去記録とAI予測"
         back
       />
 
