@@ -149,13 +149,11 @@ export async function listAllRules(): Promise<ScheduledReportRule[]> {
   const hit = getCached<ScheduledReportRule[]>(cacheKey);
   if (hit) return hit;
 
+  // 全件取得（有効/無効問わず）。管理画面の一覧で無効ルールも編集/削除できるようにするため。
+  // cron 側は呼び出し後に r.enabled でフィルタするので発火対象は有効ルールのみ。
   const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
     page_size: 100,
     sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
-    filter: {
-      property: '有効',
-      checkbox: { equals: true },
-    },
   })) as {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     results?: Array<{ id: string; properties: Record<string, any> }>;
