@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗 体重の前日比文字サイズも他に合わせ拡大
+- change: `app/admin/progress/page.tsx` WeightDelta（前日比・+0.2kg 等）を text-xs に拡大し他の文字サイズに統一
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
+## 2026-05-29 – change(store): 進捗カードの文字サイズ拡大（ラベル/PFC/体重値）
+- change: `app/admin/progress/page.tsx` 「食事」「体重」ラベルと PFC チップを text-xs に、体重の数値を text-lg に拡大（視認性向上）
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
+## 2026-05-29 – change(store): 顧客分析の運動を体重の下に表示（常に縦積み）
+- change: `app/admin/analysis/page.tsx` WeightExercisePanel を常に縦積み（体重→運動）に。単日時の横2カラム分岐を撤去し、運動を必ず体重の下に表示
+- 影響範囲: 管理画面（/store・/admin の顧客分析）
+
+## 2026-05-29 – change(store): 進捗カードの文字/PFC表記・矢印位置・更新ボタン・プルダウン整合
+- change: `app/admin/progress/page.tsx` 食事カードの「/目標kcal」「達成%」を text-sm に拡大。PFCを「実測 / 目標g」表記に（`app/api/admin/progress/route.ts` で目標P/F/Cを返すよう追加）
+- change: 右矢印をカード（食事・体重）の中央高さに揃うよう行構造を変更（氏名を上段→カード行+矢印を items-center の同一行に）
+- change: 「N名」右の更新ボタンを削除（未使用 RefreshCw import も除去）
+- fix: 顧客プルダウンをステータス絞り込みにも連動（プルダウンに出るのに選ぶと0件になる不整合を解消）
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI・API）
+
+## 2026-05-29 – change(store): 進捗カードを食事4/5＋体重1/5の横並びに・運動カード削除
+- change: `app/admin/progress/page.tsx` 進捗一覧の顧客カードを「食事(4/5幅・kcal/%・バー・PFC)＋体重(1/5幅)」の横並び1段に。運動カード(ExerciseCard)を削除。食事カードの内部レイアウトは現状維持
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
 ## 2026-05-29 – change(store): 定期レポート設定・レポートのLINE送付UIを一時非表示（機能は存置）
 - change: `app/admin/AdminShell.tsx` ナビから「定期レポート設定」(/scheduled-reports) タブを削除（ページ・cron・lib は存置＝直URLでは到達可）。未使用 CalendarClock import も除去
 - change: `app/admin/reports/page.tsx` レポート送付の「顧客の LINE にも送信」チェックボックスを非表示（`{false &&}`）＋既定を sendLinePush=false に（アプリ内保存のみ）。LINEプッシュ機能自体は存置

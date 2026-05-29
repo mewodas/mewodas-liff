@@ -56,6 +56,9 @@ type ProgressItem = {
     intakeF: number;
     intakeC: number;
     targetKcal: number;
+    targetP: number;
+    targetF: number;
+    targetC: number;
     mealCount: number;
     mealTarget: number;
   };
@@ -100,6 +103,9 @@ export const GET = withAdminTenant(async (req) => {
         intakeF: 0,
         intakeC: 0,
         targetKcal: c.goals?.kcal || 0,
+        targetP: c.goals?.P || 0,
+        targetF: c.goals?.F || 0,
+        targetC: c.goals?.C || 0,
         mealCount: 0,
         mealTarget: 4,
       },
