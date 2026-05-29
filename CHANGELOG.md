@@ -1,9 +1,9 @@
 # CHANGELOG
 
-## 2026-05-29 – feat(admin): DEMO_FITMEAL_SAMPLE シード用一時エンドポイント追加
-- feat: `app/api/admin/seed-demo/route.ts` を追加。本番 mewodas テナントに山田花子(DEMO_FITMEAL_SAMPLE)をシードするための master only 一時エンドポイント。
-- 使用後: 本番シード確認後に当該ファイルを削除する。
-- 影響範囲: admin API のみ（顧客側 LIFF に影響なし）
+## 2026-05-29 – chore: 本番 mewodas に山田花子(DEMO_FITMEAL_SAMPLE)シード完了・一時ファイル削除
+- chore: Notion MCP で本番 mewodas テナントに顧客1件・食事25件・体重9件・個人シート1件を直接投入。シード完了確認済み。
+- chore: `app/api/admin/seed-demo/route.ts`（一時エンドポイント）を削除。`SEED_DEMO_TOKEN` を production env から削除済み。
+- 影響範囲: Notion データのみ（コード変更なし）
 
 ## 2026-05-29 – fix(store): 受信inbox/ベルを「店舗向け」お知らせのみに絞る
 - fix: `app/store/announcements/page.tsx`・`lib/useStoreAnnouncementUnread.ts` で取得結果を `audience==='店舗向け'` でフィルタ。店舗が送った顧客向け一斉お知らせが自店舗の受信ベルにも出てしまう不具合(QA BUG-1)を修正。
