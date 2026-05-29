@@ -882,8 +882,8 @@ function ExerciseSection({
 }) {
   if (exerciseLogs.length === 0) return null;
 
-  const totalMin = exerciseLogs.reduce((a, b) => a + b.durationMin, 0);
-  const totalKcal = exerciseLogs.reduce((a, b) => a + b.estimatedKcal, 0);
+  const totalMin = exerciseLogs.reduce((a, b) => a + (b.durationMin || 0), 0);
+  const totalKcal = exerciseLogs.reduce((a, b) => a + (b.estimatedKcal || 0), 0);
 
   // 種目別の集計（回数・合計時間・合計消費kcal）
   const byExercise = new Map<string, { count: number; min: number; kcal: number }>();
@@ -924,8 +924,8 @@ function ExerciseSection({
       {/* 全体サマリ */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold text-emerald-800 flex flex-wrap gap-x-4 gap-y-1">
         <span>計 {exerciseLogs.length} 回</span>
-        <span>合計 {totalMin} 分</span>
-        <span>消費 {Math.round(totalKcal)} kcal</span>
+        {totalMin > 0 && <span>合計 {totalMin} 分</span>}
+        {totalKcal > 0 && <span>消費 {Math.round(totalKcal)} kcal</span>}
       </div>
 
       {/* 種目別集計（複数種目かつ期間表示の場合のみ） */}
@@ -935,7 +935,9 @@ function ExerciseSection({
             <div key={name} className="flex items-center justify-between px-3 py-1.5 text-xs">
               <span className="font-bold text-stone-800">{name}</span>
               <span className="text-stone-500">
-                {v.count}回 ・ {v.min}分 ・ {Math.round(v.kcal)}kcal
+                {v.count}回
+                {v.min > 0 && <> ・ {v.min}分</>}
+                {v.kcal > 0 && <> ・ {Math.round(v.kcal)}kcal</>}
               </span>
             </div>
           ))}
@@ -975,7 +977,7 @@ function ExerciseRow({ ex, showDate }: { ex: ExerciseLog; showDate: boolean }) {
         {showDate && <span className="text-stone-400">{shortDate(ex.date)}</span>}
       </div>
       <div className="text-stone-600 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-        <span>{ex.durationMin}分</span>
+        {ex.durationMin > 0 ? <span>{ex.durationMin}分</span> : <span className="text-stone-400">時間: —</span>}
         {ex.intensity && <span>強度: {ex.intensity}</span>}
         {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
         {ex.category && <span className="text-emerald-600">{ex.category}</span>}

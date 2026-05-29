@@ -153,6 +153,7 @@ export default function WeeklyPage() {
       <PageHeader
         title="週次分析"
         Icon={TrendingUp}
+        subtitle="直近7日間の食事・体重の振り返り"
         back
       />
       {/* 更新中インジケーター（あすけん風・中央オーバーレイ） */}
