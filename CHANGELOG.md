@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗カードの文字/PFC表記・矢印位置・更新ボタン・プルダウン整合
+- change: `app/admin/progress/page.tsx` 食事カードの「/目標kcal」「達成%」を text-sm に拡大。PFCを「実測 / 目標g」表記に（`app/api/admin/progress/route.ts` で目標P/F/Cを返すよう追加）
+- change: 右矢印をカード（食事・体重）の中央高さに揃うよう行構造を変更（氏名を上段→カード行+矢印を items-center の同一行に）
+- change: 「N名」右の更新ボタンを削除（未使用 RefreshCw import も除去）
+- fix: 顧客プルダウンをステータス絞り込みにも連動（プルダウンに出るのに選ぶと0件になる不整合を解消）
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI・API）
+
 ## 2026-05-29 – change(store): 進捗カードを食事4/5＋体重1/5の横並びに・運動カード削除
 - change: `app/admin/progress/page.tsx` 進捗一覧の顧客カードを「食事(4/5幅・kcal/%・バー・PFC)＋体重(1/5幅)」の横並び1段に。運動カード(ExerciseCard)を削除。食事カードの内部レイアウトは現状維持
 - 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）

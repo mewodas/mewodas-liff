@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Circle, ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { Circle, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
@@ -19,6 +19,9 @@ type ProgressItem = {
     intakeF: number;
     intakeC: number;
     targetKcal: number;
+    targetP: number;
+    targetF: number;
+    targetC: number;
     mealCount: number;
     mealTarget: number;
   };
@@ -107,13 +110,15 @@ export default function ProgressPage() {
     return m;
   }, [stores]);
 
-  // 顧客 select 用リスト（storeFilter 適用後）
+  // 顧客 select 用リスト（storeFilter + statusFilter 適用後＝一覧と同じ絞り込み。
+  // ステータス連動しないとプルダウンに出るのに選ぶと0件になる不整合が起きるため）
   const customerOptions = useMemo(() => {
     return progress.filter((p) => {
+      if (statusFilter !== 'すべて' && p.foodStatus !== statusFilter) return false;
       if (storeFilter && p.storeId !== storeFilter) return false;
       return true;
     });
-  }, [progress, storeFilter]);
+  }, [progress, storeFilter, statusFilter]);
 
   const filtered = useMemo(() => {
     return progress.filter((p) => {
@@ -212,19 +217,8 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-stone-500">
-            {!loading && `${realCount}名`}
-          </div>
-          <button
-            type="button"
-            onClick={() => load(selectedDate)}
-            disabled={loading}
-            className="flex items-center gap-1 text-xs font-bold text-stone-600 px-3 py-1.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} strokeWidth={2.2} />
-            更新
-          </button>
+        <div className="text-xs text-stone-500">
+          {!loading && `${realCount}名`}
         </div>
 
         {error && (
@@ -244,22 +238,23 @@ export default function ProgressPage() {
                   <button
                     type="button"
                     onClick={() => handleRowClick(item.pageId)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
+                    className="w-full block px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <div className="text-sm font-bold text-stone-900">{item.name}</div>
-                        {isSample && (
-                          <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
-                        )}
-                        <StatusBadge status={item.foodStatus} />
-                        {item.storeId && storeNameById.get(item.storeId) && stores.length > 1 && (
-                          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
-                            {storeNameById.get(item.storeId)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-5 gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <div className="text-sm font-bold text-stone-900">{item.name}</div>
+                      {isSample && (
+                        <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                      )}
+                      <StatusBadge status={item.foodStatus} />
+                      {item.storeId && storeNameById.get(item.storeId) && stores.length > 1 && (
+                        <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                          {storeNameById.get(item.storeId)}
+                        </span>
+                      )}
+                    </div>
+                    {/* カード行 + 矢印（矢印はカードの中央高さに揃う） */}
+                    <div className="flex items-center gap-3">
+                      <div className="grid grid-cols-5 gap-2 text-xs flex-1 min-w-0">
                         {/* 食事カード（4/5幅・PFC内訳付き） */}
                         <div className="col-span-4">
                           <MealCard
@@ -269,6 +264,9 @@ export default function ProgressPage() {
                             intakeP={item.today.intakeP}
                             intakeF={item.today.intakeF}
                             intakeC={item.today.intakeC}
+                            targetP={item.today.targetP}
+                            targetF={item.today.targetF}
+                            targetC={item.today.targetC}
                           />
                         </div>
                         {/* 体重カード（1/5幅） */}
@@ -279,8 +277,8 @@ export default function ProgressPage() {
                           />
                         </div>
                       </div>
+                      <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
                   </button>
                 </li>
               );
@@ -299,6 +297,9 @@ function MealCard({
   intakeP,
   intakeF,
   intakeC,
+  targetP,
+  targetF,
+  targetC,
 }: {
   intakeKcal: number;
   targetKcal: number;
@@ -306,6 +307,9 @@ function MealCard({
   intakeP: number;
   intakeF: number;
   intakeC: number;
+  targetP: number;
+  targetF: number;
+  targetC: number;
 }) {
   const pct = targetKcal > 0 ? Math.min(150, Math.round((intakeKcal / targetKcal) * 100)) : null;
   const barColor =
@@ -323,8 +327,8 @@ function MealCard({
             <div className="flex items-baseline gap-1.5 flex-wrap">
               <span className="text-[10px] font-bold text-emerald-700">食事</span>
               <span className="text-base font-bold text-stone-900 leading-none">{intakeKcal}</span>
-              <span className="text-[10px] text-stone-500">{targetKcal > 0 ? `/ ${targetKcal} kcal` : 'kcal'}</span>
-              {pct !== null && <span className="text-[10px] font-bold text-stone-600">{pct}%</span>}
+              <span className="text-sm text-stone-500">{targetKcal > 0 ? `/ ${targetKcal} kcal` : 'kcal'}</span>
+              {pct !== null && <span className="text-sm font-bold text-stone-600">{pct}%</span>}
             </div>
             <span className="text-[10px] text-stone-500">{mealCount}食記録</span>
           </div>
@@ -337,9 +341,9 @@ function MealCard({
             </div>
           )}
           <div className="flex items-center gap-2 text-[10px] text-stone-600">
-            <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 text-rose-700 px-1 py-0.5">P <b className="text-rose-800">{Math.round(intakeP)}</b>g</span>
-            <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1 py-0.5">F <b className="text-amber-800">{Math.round(intakeF)}</b>g</span>
-            <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 text-sky-700 px-1 py-0.5">C <b className="text-sky-800">{Math.round(intakeC)}</b>g</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 text-rose-700 px-1 py-0.5">P <b className="text-rose-800">{Math.round(intakeP)}</b> / {Math.round(targetP)}g</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1 py-0.5">F <b className="text-amber-800">{Math.round(intakeF)}</b> / {Math.round(targetF)}g</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 text-sky-700 px-1 py-0.5">C <b className="text-sky-800">{Math.round(intakeC)}</b> / {Math.round(targetC)}g</span>
           </div>
         </>
       ) : (
