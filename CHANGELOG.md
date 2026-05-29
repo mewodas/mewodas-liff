@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(liff): 週次分析ページのヘッダーに説明文を追加
+- change: `app/weekly/page.tsx` PageHeader に subtitle「直近7日間の食事・体重の振り返り」を追加（タイトルのみで説明文がなかったため）
+- 影響範囲: 顧客側 LIFF（/weekly）
+
 ## 2026-05-29 – fix(admin): 顧客分析に個人シート系の運動記録を統合
 - fix: `app/api/admin/customers/[id]/analysis/data/route.ts` — `getRangeExtras` で個人シート運動を取得し、運動DB(listExerciseLogsByLineUser)と重複排除マージ。同一日付は運動DB優先
 - fix: `app/admin/analysis/page.tsx` ExerciseSection/ExerciseRow — durationMin/estimatedKcal が 0（シート由来）のエントリを「時間: —」で表示。サマリは実数値のみ加算
