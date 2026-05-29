@@ -9,7 +9,6 @@ import {
   RefreshCw,
   Check,
   FileText,
-  MessageCircle,
   Megaphone,
   AlertTriangle,
   Pin,
@@ -148,8 +147,9 @@ function Inner() {
   const [body, setBody] = useState(initialDraft);
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
-  const [sendingLine, setSendingLine] = useState(false);
-  const [sendLinePush, setSendLinePush] = useState(true);
+  const [saveInApp, setSaveInApp] = useState(true);
+  // LINE送付は現在UI非表示（機能は存置）。既定OFFでアプリ内保存のみ。
+  const [sendLinePush, setSendLinePush] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
   const templateBaselineRef = useRef<{ title: string; body: string }>({ title: '', body: initialDraft });
@@ -312,6 +312,10 @@ function Inner() {
       setError('顧客・タイトル・本文すべて必要');
       return;
     }
+    if (!saveInApp && !sendLinePush) {
+      setError('送信先を1つ以上選択してください');
+      return;
+    }
     setSending(true);
     setError(null);
     setResultMsg(null);
@@ -330,6 +334,7 @@ function Inner() {
           title: title.trim(),
           body: bodyText,
           staffName: customerStore?.name || '',
+          saveInApp,
           sendLinePush,
         }),
       });
@@ -338,60 +343,26 @@ function Inner() {
         throw new Error(j?.error || `送信失敗（${res.status}）`);
       }
       const j = await res.json();
-      if (j?.push?.pushed) {
-        setResultMsg('送信完了（LINEプッシュあり）');
+      const saved = saveInApp && j?.notification;
+      const pushed = j?.push?.pushed;
+      if (saved && pushed) {
+        setResultMsg('送信完了（アプリ保存 + LINEプッシュ）');
+        toast.success('送信しました');
+      } else if (saved) {
+        setResultMsg('保存完了（アプリ内のみ）');
+        toast.success('保存しました');
+      } else if (pushed) {
+        setResultMsg('LINE送信しました（アプリ内保存なし）');
         toast.success('送信しました');
       } else {
-        setResultMsg('保存完了（LINEプッシュ未送信）');
-        toast.success('保存しました');
+        setResultMsg('送信完了');
+        toast.success('完了しました');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
       toast.error(e instanceof Error ? e.message : '送信に失敗しました');
     } finally {
       setSending(false);
-    }
-  }
-
-  async function sendLine() {
-    if (!customerId || !title.trim() || !body.trim()) {
-      setError('顧客・タイトル・本文すべて必要');
-      return;
-    }
-    setSendingLine(true);
-    setError(null);
-    setResultMsg(null);
-    try {
-      const sig = customerStore?.signature?.trim() || '';
-      const bodyText = sig && !body.includes(sig) ? `${body.trim()}\n\n— ${sig}` : body.trim();
-      const res = await fetch('/api/admin/reports/send-line', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId,
-          title: title.trim(),
-          body: bodyText,
-          staffName: customerStore?.name || '',
-          category: selectedTemplate?.category || 'アドバイス',
-        }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || `LINE 送信失敗（${res.status}）`);
-      }
-      const j = await res.json();
-      if (j?.push?.pushed) {
-        setResultMsg('LINE 送信しました');
-        toast.success('送信しました');
-      } else {
-        setResultMsg(`失敗: ${j?.push?.reason || '不明'}`);
-        toast.error(`LINE 送信失敗: ${j?.push?.reason || '不明'}`);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'エラー');
-      toast.error(e instanceof Error ? e.message : 'LINE 送信に失敗しました');
-    } finally {
-      setSendingLine(false);
     }
   }
 
@@ -629,35 +600,37 @@ function Inner() {
 
             {/* 送信 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-              <label className="flex items-center gap-2 text-xs">
+              <div className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">送信先</div>
+              <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={sendLinePush}
-                  onChange={(e) => setSendLinePush(e.target.checked)}
+                  checked={saveInApp}
+                  onChange={(e) => setSaveInApp(e.target.checked)}
                   className="w-4 h-4 accent-emerald-500"
                 />
-                <span className="text-stone-700">LINE プッシュ通知も同時送信</span>
+                <span className="text-stone-700">FitMeal アプリ内に保存</span>
               </label>
+              {/* LINE送付は現在非表示（機能は存置） */}
+              {false && (
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendLinePush}
+                    onChange={(e) => setSendLinePush(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-500"
+                  />
+                  <span className="text-stone-700">顧客の LINE にも送信</span>
+                </label>
+              )}
               <button
                 type="button"
                 onClick={send}
-                disabled={sending || !customerId || !title.trim() || !body.trim()}
+                disabled={sending || !customerId || !title.trim() || !body.trim() || (!saveInApp && !sendLinePush)}
                 className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
               >
                 <Send className="w-4 h-4" strokeWidth={2.2} />
                 {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} 様に送信`}
               </button>
-              {sendingLine !== undefined && (
-                <button
-                  type="button"
-                  onClick={sendLine}
-                  disabled={sendingLine || !customerId || !title.trim() || !body.trim()}
-                  className="hidden w-full bg-[#06C755] text-white font-bold py-3 rounded-xl disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-4 h-4" strokeWidth={2.2} />
-                  {sendingLine ? 'LINE送信中…' : 'LINE のみ送信'}
-                </button>
-              )}
             </section>
           </>
         )}

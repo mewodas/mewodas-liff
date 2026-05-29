@@ -111,6 +111,10 @@ export const POST = withAdminTenant(async (req) => {
 
       let aiComments: Record<string, string> = {};
       if (aiVars.size > 0) {
+        const mealItems = records.map((r) => ({
+          mealType: r.mealType,
+          name: (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim().slice(0, 50),
+        })).filter((item) => item.name);
         try {
           aiComments = await generateReportComments({
             customerName: customer.name,
@@ -120,6 +124,7 @@ export const POST = withAdminTenant(async (req) => {
             currentWeight: customer.currentWeight,
             targetWeight: customer.targetWeight,
             requiredKeys: Array.from(aiVars),
+            mealItems,
           });
         } catch (e) {
           // AI 失敗時はプレースホルダのまま残す（送信時に手動で書き換え可）

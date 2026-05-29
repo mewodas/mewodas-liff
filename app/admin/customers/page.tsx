@@ -216,7 +216,7 @@ export default function AdminCustomersPage() {
                     <span className="ml-2 text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">サンプル</span>
                   )}
                 </div>
-                <div className="text-[11px] text-stone-500">{previewTarget.name} — 読み取り専用（60分）</div>
+                <div className="text-[11px] text-stone-500">{previewTarget.name} — 読み取り専用</div>
               </div>
               <button type="button" onClick={closePreview} className="p-1 rounded-lg hover:bg-stone-100">
                 <X className="w-4 h-4 text-stone-600" strokeWidth={2.2} />

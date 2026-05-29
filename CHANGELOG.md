@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 定期レポート設定・レポートのLINE送付UIを一時非表示（機能は存置）
+- change: `app/admin/AdminShell.tsx` ナビから「定期レポート設定」(/scheduled-reports) タブを削除（ページ・cron・lib は存置＝直URLでは到達可）。未使用 CalendarClock import も除去
+- change: `app/admin/reports/page.tsx` レポート送付の「顧客の LINE にも送信」チェックボックスを非表示（`{false &&}`）＋既定を sendLinePush=false に（アプリ内保存のみ）。LINEプッシュ機能自体は存置
+- 影響範囲: 管理画面（/store・/admin のナビ・レポート送付）
+
+## 2026-05-29 – fix(cron): daily-reports を日次スケジュールに修正（全デプロイ失敗を解消）
+- fix: `vercel.json` の `/api/cron/daily-reports` を `0 * * * *`(毎時)→`0 21 * * *`(UTC21時=JST06:00・日次)に変更。Hobbyプランは「cronは1日1回まで」のため毎時cronで**全デプロイが失敗**していたのを解消（staging/本番とも約1h停止していた）
+- 注意: daily-reports ルートは送信時刻の"時"一致で発火する設計。日次cronはデフォルト送信時刻 `06:00` に合わせたため、06:00設定のテナントのみ自動送信される（毎時送信＝顧客別時刻にはPro必要）。現状 lineAutoSendEnabled は opt-in で全OFFのため実送信影響なし
+- 影響範囲: デプロイ基盤（cron）/ 前日レポート自動送信のスケジュール
+
+## 2026-05-29 – feat(scheduled-reports): 定期レポート送信管理機能を実装
+- feat(lib): `lib/scheduledReports.ts` 新規追加。`SCHEDULED_REPORTS_DB_ID` を使った定期配信ルール CRUD（listRulesForTenant / listAllRules / createRule / updateRule / deleteRule）。全テナント共有DB・tenant_id列で分離。1分キャッシュ。
+- feat(api): `app/api/admin/scheduled-reports/route.ts` 新規追加（GET・POST）。GET は master=全件、非 master=自テナントのみ。POST はテナント強制（非 master は getCurrentTenant().id 固定）・入力バリデーション付き。
+- feat(api): `app/api/admin/scheduled-reports/[id]/route.ts` 新規追加（PATCH・DELETE）。他テナントのルール操作を 403 で拒否。
+- feat(ui): `app/admin/scheduled-reports/page.tsx` 新規追加。ルール一覧（有効トグル・編集・削除）＋作成/編集フォームモーダル。master のみ対象テナント選択表示。store は自テナント固定。
+- feat(ui): `app/store/scheduled-reports/page.tsx` 新規追加（admin ページの 1行 re-export）。
+- feat(ui): `app/admin/AdminShell.tsx` に「定期レポート設定」タブ追加（CalendarClock アイコン・masterOnly なし）。
+- feat(cron): `app/api/cron/daily-reports/route.ts` を定期配信ルール走査方式に全面置換。listAllRules() → shouldFire() で発火判定（毎日/毎週(曜日)/毎月(末日フォールバック)）→ テナント設定取得 → 顧客絞り（全顧客/店舗）→ テンプレ名一致解決 → アプリ内保存・LINE送信をルールに従い制御。autoSendTime/lineAutoSendEnabled への依存を廃止。
+- change(ui): `app/admin/tenants/[id]/page.tsx` の autoSendTime フィールドに「※自動配信は「定期レポート設定」で管理（このフィールドは旧設定）」の注記を追加。
+- fix(cron): Hobbyプランのcronは日次1回(`0 21 * * *`=朝6時JST)のため、shouldFire から「時刻の時一致」判定を除去し「配信日(毎日/毎週曜日/毎月日)」のみで発火する方式に変更。時刻フィールドは保持するが当面は毎朝まとめて配信（時刻指定はPro移行で毎時化した際に有効化）。scheduled-reports UI の時刻入力に注記を追加。
+- fix(lib): `listAllRules()` の「有効=true」Notionフィルタを除去し全件返すよう修正（QA指摘: master の一覧で無効ルールが消えて編集/削除できない不具合）。cron は呼び出し後 `r.enabled && shouldFire` でフィルタ済みのため発火対象は有効ルールのみで動作不変。
+- 影響範囲: 管理画面（/admin・/store の定期レポート設定・テナント設定注記）/ API（/api/admin/scheduled-reports）/ Cron（daily-reports 置換）/ lib（scheduledReports.ts 新規）
+
+## 2026-05-29 – change(demo): 読み取り専用の文言調整
+- change: `lib/withTenant.ts` デモ/プレビューの書き込み拒否(403)メッセージを `demo is read-only` → `読み取り専用です。` に変更（画像アップ等で出る文言を日本語化）
+- change: `app/admin/customers/page.tsx` プレビューモーダルのヘッダを「読み取り専用（60分）」→「読み取り専用」に（60分表記を削除）
+- 影響範囲: 管理画面（顧客プレビュー）・API（withLiffTenant のデモ403文言）
+
+## 2026-05-29 – improve(reports): 送信ボタンのチェックボックス化 + アドバイス質向上
+- change(admin): `app/admin/reports/page.tsx` の送信セクションを2チェックボックス（FitMealアプリ内保存・LINE送信）＋ボタン1つに変更。hidden の `sendLine()` を統合・削除。両方OFFでボタンdisabled。
+- change(api): `app/api/admin/notifications/route.ts` に `saveInApp` フラグ（既定 true）を追加。`saveInApp===false` 時は createNotification をスキップし pushLineMessage のみ実行。両方 false は 400 エラー。返却形式 `{ notification, push }` 維持（保存しない場合 notification は null）。
+- improve(lib): `lib/gemini.ts` の `generateReportComments` に `mealItems: Array<{mealType, name}>` パラメータを追加。プロンプトを食事区分別（朝食/昼食/夕食/間食）に整形して提示し、実際の料理名引用・具体的次の一手を求めるよう改訂。ai_advice を2〜3文に。食事記録なし時は記録促進コメントに誘導。
+- improve(api): `app/api/admin/reports/generate/route.ts` と `app/api/cron/daily-reports/route.ts` で records から mealItems を構築し generateReportComments に渡すよう変更。
+- 影響範囲: 管理画面（/admin/reports・/store/reports）/ API（/api/admin/notifications）/ lib（gemini.ts）/ Cron
+
 ## 2026-05-29 – feat(cron): 前日レポート自動配信(daily-reports)を有効化
 - feat: `vercel.json` の crons に `/api/cron/daily-reports`（schedule `0 * * * *`＝毎時0分）を追加。各テナントの「自動送付時刻」の時とJST現在時が一致したテナントだけ発火。
 - 注意: 発火条件は テナントの「LINE自動送付=ON」AND「LINE Channel Token 有」AND 契約状態≠解約 AND 顧客/食事DB有。現状全テナント「LINE自動送付=False」のため、ONにするまで誰にも送信されない（opt-in）。対象顧客は foodStatus='進行中' かつ LINE ID 有のみ。

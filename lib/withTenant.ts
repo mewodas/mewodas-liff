@@ -140,7 +140,7 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
       }
       // デモは読み取り専用: GET 以外を拒否
       if (req.method !== 'GET') {
-        return NextResponse.json({ error: 'demo is read-only' }, { status: 403 });
+        return NextResponse.json({ error: '読み取り専用です。' }, { status: 403 });
       }
       // テナントはトークン内 tenantId のみで解決（FITMEAL_TENANT_ID_OVERRIDE / x-tenant-id を無視）
       let demoTenant;

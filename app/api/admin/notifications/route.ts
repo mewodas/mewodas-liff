@@ -35,23 +35,30 @@ export const POST = withAdminTenant(async (req) => {
     const title = String(body.title || '').trim();
     const text = String(body.body || '').trim();
     const staffName = body.staffName ? String(body.staffName).trim() : '';
+    const saveInApp = body.saveInApp !== false; // 既定 true
     const sendLinePush = body.sendLinePush !== false; // 既定 true
     if (!customerId || !title || !text) {
       return NextResponse.json({ error: 'customerId / title / body が必要' }, { status: 400 });
+    }
+    if (!saveInApp && !sendLinePush) {
+      return NextResponse.json({ error: 'saveInApp と sendLinePush の両方が false（送信先なし）' }, { status: 400 });
     }
     const customer = await getCustomer(customerId);
     if (!customer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
     if (!customer.lineUserId) {
       return NextResponse.json({ error: '顧客のLINEユーザーID が未登録' }, { status: 400 });
     }
-    const notification = await createNotification({
-      lineUserId: customer.lineUserId,
-      customerName: customer.name,
-      category,
-      title,
-      body: text,
-      staffName: staffName || undefined,
-    });
+    let notification = null;
+    if (saveInApp) {
+      notification = await createNotification({
+        lineUserId: customer.lineUserId,
+        customerName: customer.name,
+        category,
+        title,
+        body: text,
+        staffName: staffName || undefined,
+      });
+    }
     let pushed: { pushed: boolean; reason?: string } = { pushed: false, reason: 'skipped' };
     if (sendLinePush) {
       pushed = await pushLineMessage(customer.lineUserId, title, text, staffName || undefined);
