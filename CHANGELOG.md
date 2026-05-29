@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(cron): 前日レポート自動配信(daily-reports)を有効化
+- feat: `vercel.json` の crons に `/api/cron/daily-reports`（schedule `0 * * * *`＝毎時0分）を追加。各テナントの「自動送付時刻」の時とJST現在時が一致したテナントだけ発火。
+- 注意: 発火条件は テナントの「LINE自動送付=ON」AND「LINE Channel Token 有」AND 契約状態≠解約 AND 顧客/食事DB有。現状全テナント「LINE自動送付=False」のため、ONにするまで誰にも送信されない（opt-in）。対象顧客は foodStatus='進行中' かつ LINE ID 有のみ。
+- 影響範囲: API/Cron（本番のみcron登録。Preview では実行されない）
+
+## 2026-05-29 – change(store): 進捗の件数からデモ顧客を除外
+- change: `app/admin/progress/page.tsx` 進捗管理の件数表記（タイトル・一覧上部）から SAMPLE_/DEMO_ のデモ顧客を除外（一覧表示は維持）。席数/請求カウント(lib/seats.ts)・顧客設定の件数は既に除外済みで、進捗の表記のみ漏れていたのを統一
+- 影響範囲: 管理画面（/store・/admin の進捗管理 件数表記）
+
 ## 2026-05-29 – fix(announcements): お知らせ送信日時(createdAt)追加・Invalid Date 修正
 - fix: `lib/announcements.ts` の `Announcement` 型に `createdAt: string`（Notion page.created_time）を追加。`pageToAnnouncement` が `created_time` を受け取りセット。全取得関数の result 型に `created_time` を追加。
 - fix: `listAnnouncementsForTenant` / `listAnnouncementsForStore` のソートを `publishedAt` 基準から `createdAt` 降順に変更（pinned 先頭は維持）。Notion query sort も `created_time` タイムスタンプ降順に統一。

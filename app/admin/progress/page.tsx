@@ -36,6 +36,10 @@ type Store = { pageId: string; storeId: string; name: string };
 
 const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
+// デモ/サンプル顧客（アカウント数にはカウントしない・一覧には表示する）
+const isSampleLineId = (id: string | null) =>
+  !!id && (id.startsWith('SAMPLE_') || id.startsWith('DEMO_'));
+
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -120,12 +124,18 @@ export default function ProgressPage() {
     });
   }, [progress, statusFilter, storeFilter, customerId]);
 
+  // 件数表記用：サンプル/デモ顧客を除いた実顧客数（一覧表示はサンプルも残す）
+  const realCount = useMemo(
+    () => filtered.filter((p) => !isSampleLineId(p.lineUserId)).length,
+    [filtered]
+  );
+
   function handleRowClick(pageId: string) {
     router.push(`${base}/analysis?customer=${pageId}&date=${selectedDate}`);
   }
 
   return (
-    <AdminShell title={`進捗管理（${filtered.length}名）`}>
+    <AdminShell title={`進捗管理（${realCount}名）`}>
       <div className="space-y-3">
         {/* フィルタバー（食事管理と同じ構成） */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
@@ -204,7 +214,7 @@ export default function ProgressPage() {
 
         <div className="flex items-center justify-between">
           <div className="text-xs text-stone-500">
-            {!loading && `${filtered.length}名`}
+            {!loading && `${realCount}名`}
           </div>
           <button
             type="button"
