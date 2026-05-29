@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 顧客分析の運動 種目別集計（重複）を削除
+- change: `app/admin/analysis/page.tsx` 「計N回」下の種目別集計（日付なし・1行記録リストと内容重複）を撤去。集計ロジック・未使用 isSingleDay も整理
+- 影響範囲: 管理画面（/store・/admin の顧客分析 運動記録）
+
 ## 2026-05-29 – change(store): 顧客分析の運動記録を1行表示（日付込み・時間削除）
 - change: `app/admin/analysis/page.tsx` 運動記録リストを「1記録=1行（日付＋種目を同一行）」のフラット表示に。日別グループ見出し・カード枠・「時間: —」表示・ExerciseRow を撤去（種目別集計バナーは存置）
 - 影響範囲: 管理画面（/store・/admin の顧客分析 運動記録）
