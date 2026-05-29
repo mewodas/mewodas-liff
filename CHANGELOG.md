@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗カードに運動を復活・体重は最新値表示を維持
+- change: `app/admin/progress/page.tsx` 進捗の顧客行を「食事（全幅・PFC内訳）＋ 体重・運動（2列）」レイアウトに。運動カード（ExerciseCard・当日の分数/件数）を復活
+- note: 体重は従来どおり最新エントリの値を表示（当日基準への変更は行わない＝社長要望「いままでの内容に戻して」）
+- 影響範囲: 管理画面（/store・/admin の進捗管理）
+
 ## 2026-05-29 – feat(announcement): お知らせ統合 — reports トグル復活・顧客受信再マージ・バッジ合算
 - feat: `app/admin/reports/page.tsx` に [レポート/お知らせ] トグルを復活（5403842 の設計を現行 reports に統合）。店舗モードは「自店舗の全顧客に一斉送信」案内のみ、master モードは宛先種別（顧客向け/店舗向け）＋対象店舗（全/特定）を選択可。送信履歴も表示。
 - feat: `app/admin/announcements/page.tsx` を `${base}/reports?mode=announcement` への router.replace redirect に変更（送信機能は reports に移管）。
