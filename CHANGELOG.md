@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(security): 監査ログ マイグレーションスクリプトを Neon ドライバ対応に修正
+- fix: `scripts/migrate-audit-log.mjs` — Neon HTTP ドライバは `sql(string)` 形式・複数文一括実行を受け付けないため、SQL を `;` で分割し `sql.query()` で 1 文ずつ実行する形に修正。本番 Neon に対し実行し audit_log テーブル＋3インデックスを作成済み（テストINSERT/DELETEで動作確認、現行行数0）
+- chore: `.gitignore` に `.env*.local` を追加（Neon 連携が生成する接続文字列ファイルの誤コミット防止）
+- 影響範囲: DB（audit_log テーブル作成）/ 開発スクリプトのみ。アプリ挙動・顧客側変更なし
+
 ## 2026-05-29 – fix(customer/store): 所属店舗の店舗ID(gotanda)生表示を店舗名に統一＋契約タブをstore限定
 - fix(customer): `app/profile/page.tsx` 顧客プロフィールの「所属店舗」が storeId（gotanda）を生表示していたのを店舗名（メヲダス五反田店）に修正。`/api/customer/me` で `getStoreByStoreId()` により storeName を解決して返す（失敗時 null→UIで storeId にフォールバック）
 - change(store): `app/admin/AdminShell.tsx` 「契約(/billing)」タブに storeOnly を付与。運営(master/admin)文脈では非表示、店舗(/store)でのみ表示

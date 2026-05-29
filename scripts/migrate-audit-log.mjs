@@ -36,9 +36,18 @@ const sql_text = readFileSync(
 
 const sql = neon(url);
 
+// Neon の HTTP ドライバは複数文を一度に実行できず、tagged-template か
+// sql.query() のみを受け付ける。';' で分割して 1 文ずつ実行する（冪等 DDL 前提）。
+const statements = sql_text
+  .split(';')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 try {
-  await sql(sql_text);
-  console.log('migration 001_audit_log: 完了');
+  for (const stmt of statements) {
+    await sql.query(stmt);
+  }
+  console.log(`migration 001_audit_log: 完了 (${statements.length} 文)`);
 } catch (err) {
   console.error('migration 001_audit_log: 失敗', err);
   process.exit(1);
