@@ -213,6 +213,16 @@ export async function createAnnouncement(params: CreateAnnouncementParams): Prom
 }
 
 /**
+ * お知らせを削除する。Notion ページをアーカイブ（ゴミ箱へ移動）し、
+ * 全テナントのお知らせ一覧キャッシュを無効化する。一覧・顧客側表示から消える。
+ * （Notion ゴミ箱に残るため誤削除は 30 日以内なら復元可能）
+ */
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await notionRequest('PATCH', `/pages/${id}`, { archived: true });
+  invalidate('announcements:');
+}
+
+/**
  * 店舗ダッシュボード向け: 宛先種別=店舗向け かつ（対象テナント空 or tenantId を含む）を返す。
  * Phase3 の店舗ダッシュボード実装時に利用する。
  */

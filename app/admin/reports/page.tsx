@@ -14,6 +14,7 @@ import {
   Pin,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import DateRangePicker from '../DateRangePicker';
@@ -802,7 +803,12 @@ function Inner() {
               {annConfigured && !annLoading && announcements.length > 0 && (
                 <div className="space-y-2">
                   {announcements.map((a) => (
-                    <AnnouncementRow key={a.id} announcement={a} isStore={isStore} />
+                    <AnnouncementRow
+                      key={a.id}
+                      announcement={a}
+                      isStore={isStore}
+                      onChanged={loadAnnouncements}
+                    />
                   ))}
                 </div>
               )}
@@ -843,8 +849,44 @@ function TemplateChip({
   );
 }
 
-function AnnouncementRow({ announcement: a, isStore }: { announcement: Announcement; isStore: boolean }) {
+function AnnouncementRow({
+  announcement: a,
+  isStore,
+  onChanged,
+}: {
+  announcement: Announcement;
+  isStore: boolean;
+  onChanged: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
+
+  // 店舗は自テナント宛のお知らせのみ削除可（全テナント一斉＝運営発は対象外）。運営は全件削除可。
+  const canDelete = !isStore || a.targetTenants.length > 0;
+
+  async function handleDelete() {
+    if (deleting) return;
+    if (!window.confirm(`「${a.title}」を削除しますか？\nこのお知らせは顧客の表示からも消えます。`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/announcements?id=${encodeURIComponent(a.id)}`, {
+        method: 'DELETE',
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(j.error || '削除に失敗しました');
+        return;
+      }
+      toast.success('お知らせを削除しました');
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '削除に失敗しました');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="border border-stone-200 rounded-xl overflow-hidden">
       <button
@@ -883,7 +925,7 @@ function AnnouncementRow({ announcement: a, isStore }: { announcement: Announcem
       {open && (
         <div className="border-t border-stone-100 px-3 py-2.5 bg-stone-50">
           <p className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">{a.body}</p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-2">
             <span
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
                 a.status === '公開'
@@ -895,6 +937,18 @@ function AnnouncementRow({ announcement: a, isStore }: { announcement: Announcem
             >
               {a.status}
             </span>
+            <div className="flex-1" />
+            {canDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} />
+                {deleting ? '削除中…' : '削除'}
+              </button>
+            )}
           </div>
         </div>
       )}
