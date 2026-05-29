@@ -24,12 +24,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'email/password 必須' }, { status: 400 });
   }
 
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || undefined;
+  const userAgent = req.headers.get('user-agent') ?? undefined;
+
   // ① マスタログイン（env ADMIN_EMAIL）— パスワード一致時のみ通す。
   //    一致しない場合は tenant_admin 認証へフォールバック（同じメールが両方に登録されているケースに対応）
   const masterCreds = getAdminCredentials();
   if (masterCreds && email === masterCreds.email.toLowerCase()) {
     if (verifyPassword(password, masterCreds.passwordHash)) {
-      logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'master', actorId: email, tenantId: 'mewodas' });
+      logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'master', actorId: email, tenantId: 'mewodas', ip, userAgent });
       const cookie = createSessionCookie(email, { role: 'master', currentTenantId: 'mewodas' });
       const res = NextResponse.json({ ok: true, email, role: 'master', currentTenantId: 'mewodas' });
       res.cookies.set(cookie.name, cookie.value, cookie.options);
@@ -42,14 +45,14 @@ export async function POST(req: NextRequest) {
   try {
     const tenant = await findTenantAdminByEmail(email);
     if (!tenant) {
-      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, metadata: { reason: 'tenant_not_found' } });
+      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, ip, userAgent, metadata: { reason: 'tenant_not_found' } });
       return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
     }
     if (!verifyPassword(password, tenant.passwordHash)) {
-      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, tenantId: tenant.tenantId, metadata: { reason: 'wrong_password' } });
+      logAuditEvent({ action: 'auth.login', outcome: 'failure', actorType: 'admin', actorId: email, tenantId: tenant.tenantId, ip, userAgent, metadata: { reason: 'wrong_password' } });
       return NextResponse.json({ error: 'メールアドレスまたはパスワードが違います' }, { status: 401 });
     }
-    logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'admin', actorId: email, tenantId: tenant.tenantId });
+    logAuditEvent({ action: 'auth.login', outcome: 'success', actorType: 'admin', actorId: email, tenantId: tenant.tenantId, ip, userAgent });
     const cookie = createSessionCookie(email, { role: 'tenant_admin', currentTenantId: tenant.tenantId });
     const res = NextResponse.json({ ok: true, email, role: 'tenant_admin', currentTenantId: tenant.tenantId, tenantName: tenant.tenantName });
     res.cookies.set(cookie.name, cookie.value, cookie.options);

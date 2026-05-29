@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(security): Phase 1 監査ログ Neon Postgres 永続化
+- add: `@neondatabase/serverless` ^1.1.0 を依存に追加（Neon HTTP serverless ドライバ）
+- add: `lib/db/migrations/001_audit_log.sql` — audit_log テーブル DDL（IF NOT EXISTS 冪等）、ts/tenant_id/action の3インデックス
+- add: `scripts/migrate-audit-log.mjs` — Neon へ 001_audit_log.sql を適用する単独スクリプト（DATABASE_URL 未設定時は即終了）
+- change: `lib/auditLog.ts` — Phase 0 の console.log/Sentry 挙動を維持したまま、`DATABASE_URL`/`POSTGRES_URL`/`POSTGRES_PRISMA_URL` が存在する場合に `audit_log` へ INSERT を追加。DB 書き込みは `waitUntil()` でレスポンス後 flush、env 未設定時は完全 no-op、INSERT 失敗は console.error 1行で握りつぶし。`AuditEvent` に `ip?`/`userAgent?` フィールドを追加
+- change: `app/api/admin/auth/login/route.ts` — `x-forwarded-for` と `user-agent` を取得し auth.login イベントに ip/userAgent を付与
+- 影響範囲: API（サーバー側ログのみ。顧客側 LIFF・既存 API レスポンス変更なし）
+- graceful 設計: `sql` は起動時に env が無ければ `null`。`insertAuditRow`/`logAuditEvent` いずれも `if (!sql)` で早期リターン。DB 例外は `.catch()` で握りつぶし。`waitUntil` 例外は `try/catch` でフォールバック
+
 ## 2026-05-29 – feat(store): お知らせの削除機能を追加（アーカイブボタン未実装の修正）
 - feat: `/store/reports`・`/admin/reports` のお知らせ送信履歴で、各お知らせを展開→「削除」ボタンで削除可能に（confirm付き）。従来はボタン自体が未描画で操作不能だった
 - feat: `lib/announcements.ts` に `deleteAnnouncement`（Notionページをゴミ箱へ移動＝送信履歴・顧客表示の両方から消える。Notionゴミ箱で30日復元可）、`app/api/admin/announcements` に `DELETE` ハンドラを追加（店舗=自テナント宛のみ削除可・運営=全件、権限はサーバ強制）

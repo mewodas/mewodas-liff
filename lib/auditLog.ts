@@ -1,4 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
+import { waitUntil } from '@vercel/functions';
+import { neon } from '@neondatabase/serverless';
 
 type AuditOutcome = 'success' | 'failure';
 
@@ -10,7 +12,42 @@ interface AuditEvent {
   tenantId?: string;
   targetType?: string;
   targetId?: string;
+  ip?: string;
+  userAgent?: string;
   metadata?: Record<string, unknown>;
+}
+
+const dbUrl =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  null;
+
+const sql = dbUrl ? neon(dbUrl) : null;
+
+function insertAuditRow(e: AuditEvent): Promise<void> {
+  if (!sql) return Promise.resolve();
+  return sql.query(
+    `INSERT INTO audit_log
+       (action, outcome, actor_type, actor_id, tenant_id, target_type, target_id, ip, user_agent, metadata)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [
+      e.action,
+      e.outcome,
+      e.actorType,
+      e.actorId ?? null,
+      e.tenantId ?? null,
+      e.targetType ?? null,
+      e.targetId ?? null,
+      e.ip ?? null,
+      e.userAgent ?? null,
+      e.metadata ? JSON.stringify(e.metadata) : null,
+    ]
+  )
+    .then(() => undefined)
+    .catch((err: unknown) => {
+      console.error('[auditLog] DB insert failed', err);
+    });
 }
 
 export function logAuditEvent(e: AuditEvent): void {
@@ -39,6 +76,16 @@ export function logAuditEvent(e: AuditEvent): void {
 
     if (e.action === 'auth.login' && e.outcome === 'failure') {
       Sentry.captureMessage(`audit: auth.login failure actorId=${e.actorId ?? 'unknown'}`, 'warning');
+    }
+
+    if (sql) {
+      const p = insertAuditRow(e);
+      try {
+        waitUntil(p);
+      } catch {
+        // waitUntil がリクエストコンテキスト外（cron 等）では throw する場合がある。
+        // floating promise のまま走らせる（.catch() は insertAuditRow 内に付与済み）。
+      }
     }
   } catch (err) {
     console.error('[auditLog] logging failed', err);
