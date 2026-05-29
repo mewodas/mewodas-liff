@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗 体重の前日比文字サイズも他に合わせ拡大
+- change: `app/admin/progress/page.tsx` WeightDelta（前日比・+0.2kg 等）を text-xs に拡大し他の文字サイズに統一
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
 ## 2026-05-29 – change(store): 進捗カードの文字サイズ拡大（ラベル/PFC/体重値）
 - change: `app/admin/progress/page.tsx` 「食事」「体重」ラベルと PFC チップを text-xs に、体重の数値を text-lg に拡大（視認性向上）
 - 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）

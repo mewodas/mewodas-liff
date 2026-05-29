@@ -379,10 +379,10 @@ function WeightCard({ latest, delta }: { latest: number | null; delta: number | 
 }
 
 function WeightDelta({ delta }: { delta: number | null }) {
-  if (delta === null) return <div className="text-[10px] text-stone-400">前日比 —</div>;
+  if (delta === null) return <div className="text-xs text-stone-400">前日比 —</div>;
   if (delta < 0) {
     return (
-      <div className="text-[10px] text-sky-600 font-bold inline-flex items-center gap-0.5">
+      <div className="text-xs text-sky-600 font-bold inline-flex items-center gap-0.5">
         <TrendingDown className="w-3 h-3" strokeWidth={2.4} />
         {delta}kg
       </div>
@@ -390,14 +390,14 @@ function WeightDelta({ delta }: { delta: number | null }) {
   }
   if (delta > 0) {
     return (
-      <div className="text-[10px] text-rose-500 font-bold inline-flex items-center gap-0.5">
+      <div className="text-xs text-rose-500 font-bold inline-flex items-center gap-0.5">
         <TrendingUp className="w-3 h-3" strokeWidth={2.4} />
         +{delta}kg
       </div>
     );
   }
   return (
-    <div className="text-[10px] text-stone-500 font-bold inline-flex items-center gap-0.5">
+    <div className="text-xs text-stone-500 font-bold inline-flex items-center gap-0.5">
       <Minus className="w-3 h-3" strokeWidth={2.4} />
       変化なし
     </div>
