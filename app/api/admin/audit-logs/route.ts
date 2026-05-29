@@ -17,7 +17,7 @@ export const GET = withMasterOnly(async (req: NextRequest) => {
     env: sp.get('env') || 'production',
     from: sp.get('from') || undefined,
     to: sp.get('to') || undefined,
-    limit: sp.get('limit') ? Math.min(Number(sp.get('limit')), 500) : 100,
+    limit: Math.max(1, Math.min(Number(sp.get('limit')) || 100, 500)),
   };
 
   try {

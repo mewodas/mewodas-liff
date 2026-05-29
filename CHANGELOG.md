@@ -6,6 +6,7 @@
 - change: `lib/auditLog.ts` — INSERT に env カラム追加。値は VERCEL_TARGET_ENV || VERCEL_ENV || 'development'
 - add: `lib/repository/auditLog.ts` — Neon から audit_log を読む `listAuditLogs(filter)` / `isDbConnected()`（パラメータ化クエリ、DB未設定時は空配列返却）
 - add: `app/api/admin/audit-logs/route.ts` — `withMasterOnly` ラップのGET API（action/outcome/env/from/to/limit フィルタ）
+- fix: `audit-logs` API の limit を `Math.max(1, Math.min(Number||100, 500))` に堅牢化（負数/NaN で 500 になる QA 指摘の修正）
 - add: `app/admin/audit/page.tsx` — master 専用監査ログ閲覧ページ。failure を赤強調、DB未接続時は案内メッセージ表示
 - change: `app/admin/AdminShell.tsx` — 「監査ログ」タブを masterOnly/storeHidden で追加（ShieldCheck アイコン）
 - change: `app/api/record/route.ts` — 保存成功後に meal.create をログ（actorId=lineUserId, tenantId, targetId=notionPageId）
