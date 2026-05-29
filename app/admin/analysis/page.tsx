@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   Cookie,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 import { daysUntil } from '@/lib/goalCalc';
@@ -48,7 +49,7 @@ import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null; lineUserId?: string };
 
 type Analysis = {
   summary: string;
@@ -77,6 +78,14 @@ type WeightLog = {
   date: string;
   weightKg: number;
   memo: string;
+};
+
+type BodyCompLog = {
+  id: string;
+  measureDate: string;
+  weightKg: number;
+  bodyFatPct: number;
+  muscleMassKg: number;
 };
 
 type ExerciseLog = {
@@ -186,6 +195,8 @@ function Inner() {
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [bodyCompLogs, setBodyCompLogs] = useState<BodyCompLog[]>([]);
+  const [bodyCompOpen, setBodyCompOpen] = useState(true);
 
   // AI サマリ
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -315,6 +326,7 @@ function Inner() {
     setAiMessage(null);
     setMealList(null);
     setMealListError(null);
+    setBodyCompLogs([]);
   }, []);
 
   // 顧客または日付が変わったら data API を自動フェッチ（デバウンス 300ms）
@@ -333,6 +345,21 @@ function Inner() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [customerId, from, to, fetchData, clearData]);
+
+  // 顧客が変わったら体組成データを取得（日付範囲は無関係：全履歴）
+  useEffect(() => {
+    if (!customerId) {
+      setBodyCompLogs([]);
+      return;
+    }
+    const customer = customers.find((c) => c.pageId === customerId);
+    const lineUserId = customer?.lineUserId;
+    if (!lineUserId) return;
+    fetch(`/api/admin/body-composition?lineUserId=${encodeURIComponent(lineUserId)}`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => { if (j?.logs) setBodyCompLogs(j.logs); })
+      .catch(() => {});
+  }, [customerId, customers]);
 
   async function runAi() {
     if (!customerId) return;
@@ -554,6 +581,16 @@ function Inner() {
             weightLogs={weightLogs}
             exerciseLogs={exerciseLogs}
             target={target}
+          />
+        )}
+
+        {/* ---- 体組成推移 ---- */}
+        {customerId && (
+          <BodyCompSection
+            logs={bodyCompLogs}
+            isOpen={bodyCompOpen}
+            onToggle={() => setBodyCompOpen((v) => !v)}
+            base={base}
           />
         )}
 
@@ -1297,5 +1334,157 @@ function Bullets({ items }: { items: string[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function BodyCompSection({
+  logs,
+  isOpen,
+  onToggle,
+  base,
+}: {
+  logs: BodyCompLog[];
+  isOpen: boolean;
+  onToggle: () => void;
+  base: string;
+}) {
+  const sorted = logs.slice().sort((a, b) => (a.measureDate < b.measureDate ? -1 : 1));
+  const latest = sorted[sorted.length - 1] ?? null;
+
+  const chartData = sorted.map((l) => ({
+    date: l.measureDate,
+    weight: l.weightKg,
+    fat: Math.round(l.bodyFatPct * 10) / 10,
+    muscle: Math.round(l.muscleMassKg * 10) / 10,
+  }));
+
+  const delta = (key: 'weight' | 'fat' | 'muscle') => {
+    if (sorted.length < 2) return null;
+    const first = sorted[0][key === 'weight' ? 'weightKg' : key === 'fat' ? 'bodyFatPct' : 'muscleMassKg'];
+    const last = latest![key === 'weight' ? 'weightKg' : key === 'fat' ? 'bodyFatPct' : 'muscleMassKg'];
+    return Math.round((last - first) * 10) / 10;
+  };
+
+  function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
+    if (v === null) return null;
+    const positive = invert ? v < 0 : v > 0;
+    const cls = v === 0 ? 'text-stone-500' : positive ? 'text-emerald-600' : 'text-rose-500';
+    return (
+      <span className={`text-[10px] font-bold ml-1 ${cls}`}>
+        {v > 0 ? '+' : ''}{v}{unit}
+      </span>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-3 active:bg-stone-50"
+      >
+        <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+          <Scale className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+          体組成推移
+          {logs.length > 0 && (
+            <span className="text-[11px] font-medium text-stone-500">（{logs.length}件）</span>
+          )}
+        </span>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="px-3 pb-3 space-y-3">
+          {logs.length === 0 ? (
+            <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
+          ) : (
+            <>
+              {/* 最新値 */}
+              {latest && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-sky-50 border border-sky-200 rounded-xl p-2.5 text-center">
+                    <div className="text-[10px] font-bold text-sky-700">体重(kg)</div>
+                    <div className="text-base font-bold text-sky-900 mt-0.5">
+                      {latest.weightKg}
+                      <DeltaBadge v={delta('weight')} unit="kg" invert />
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
+                    <div className="text-[10px] font-bold text-amber-700">体脂肪率(%)</div>
+                    <div className="text-base font-bold text-amber-900 mt-0.5">
+                      {latest.bodyFatPct}
+                      <DeltaBadge v={delta('fat')} unit="%" invert />
+                    </div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+                    <div className="text-[10px] font-bold text-emerald-700">筋肉量(kg)</div>
+                    <div className="text-base font-bold text-emerald-900 mt-0.5">
+                      {latest.muscleMassKg}
+                      <DeltaBadge v={delta('muscle')} unit="kg" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 推移グラフ（2件以上） */}
+              {chartData.length >= 2 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4 text-[10px] text-stone-500 flex-wrap">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block w-4 h-0.5 bg-sky-400" />体重
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block w-4 h-0.5 bg-amber-400" />体脂肪率
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block w-4 h-0.5 bg-emerald-500" />筋肉量
+                    </span>
+                  </div>
+                  <div className="w-full h-36">
+                    <ResponsiveContainer>
+                      <LineChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={shortDate}
+                          interval="preserveStartEnd"
+                          tick={{ fontSize: 10, fill: '#78716c' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+                          labelFormatter={(l) => shortDate(String(l))}
+                          formatter={(v, name) => [
+                            `${v}${name === 'fat' ? '%' : 'kg'}`,
+                            name === 'weight' ? '体重' : name === 'fat' ? '体脂肪率' : '筋肉量',
+                          ]}
+                        />
+                        <Line type="monotone" dataKey="weight" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3, fill: '#38bdf8' }} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="fat" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3, fill: '#fbbf24' }} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="muscle" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} isAnimationActive={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <Link
+            href={`${base}/measurements`}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900"
+          >
+            <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
+            体組成計測記録を見る
+          </Link>
+        </div>
+      )}
+    </section>
   );
 }

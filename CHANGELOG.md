@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 2（写真AI解析）・Phase 3（顧客分析体組成セクション）実装
+- feat: `app/api/admin/body-composition/analyze/route.ts` 新規作成（POST・`withAdminTenant`・Gemini Vision で体組成計/InBody写真から数値抽出・master/tenant_admin 両方可）
+- feat: `app/admin/measurements/page.tsx` に「写真から自動入力（AI）」UIを追加（画像選択→`lib/imageCompress.ts` で圧縮→analyze API呼び出し→フォームprefill・AIバッジ表示）
+- feat: `app/admin/analysis/page.tsx`（/store・/admin 共有）に体組成セクションを追加（`BodyCompSection`：体重・体脂肪率・筋肉量の最新値カード＋3指標推移折れ線グラフ・折りたたみ可・記録なし時は「記録がありません」表示・体組成計測記録ページへのリンク）
+- change: `app/admin/analysis/page.tsx` に `BodyCompLog` 型・`bodyCompLogs`/`bodyCompOpen` ステート追加。顧客選択時に `GET /api/admin/body-composition?lineUserId=` を自動フェッチ
+- 影響範囲: 管理画面（/store・/admin）・API（admin/body-composition/analyze）
+- 備考: Drive への元画像保存は未実装（analyze/route.ts に TODO コメントあり）
+
 ## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 1 実装
 - feat: `lib/notion.ts` に `createTenantBodyCompDb` 追加・`TenantRow`/`insertTenantRow`/`listTenantRows` に `bodyCompDbId` 列（`Notion 体組成DB ID`）追加
 - feat: `lib/tenant.ts` に `notionBodyCompDbId` フィールド追加（env: `NOTION_BODYCOMP_DB_ID`）

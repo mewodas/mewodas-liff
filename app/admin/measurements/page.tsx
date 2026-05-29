@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Scale,
   ChevronDown,
@@ -10,10 +10,13 @@ import {
   Plus,
   RefreshCw,
   Database,
+  Camera,
+  Sparkles,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
+import { compressImage } from '@/lib/imageCompress';
 
 type Customer = { pageId: string; name: string; lineUserId: string; foodStatus: string | null; storeId: string | null };
 
@@ -145,6 +148,11 @@ export default function MeasurementsPage() {
 
   const [detailLog, setDetailLog] = useState<BodyCompLog | null>(null);
 
+  const [aiFields, setAiFields] = useState<Set<string>>(new Set());
+  const [analyzing, setAnalyzing] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
@@ -224,11 +232,82 @@ export default function MeasurementsPage() {
     }
   }
 
+  async function analyzePhoto(file: File) {
+    setAnalyzing(true);
+    try {
+      const compressed = await compressImage(file, 1280, 0.85);
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(compressed);
+      });
+      setPhotoPreview(dataUrl);
+
+      const base64 = dataUrl.split(',')[1];
+      const mimeType = compressed.type || 'image/jpeg';
+
+      const res = await fetch('/api/admin/body-composition/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: [{ base64, mimeType }] }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || `解析失敗（${res.status}）`);
+
+      const r = j.result as Record<string, number | string | null>;
+      const filled = new Set<string>();
+      const numFields: Array<[keyof FormState, number | null]> = [
+        ['weightKg', r.weightKg as number | null],
+        ['bodyFatPct', r.bodyFatPct as number | null],
+        ['muscleMassKg', r.muscleMassKg as number | null],
+        ['bodyFatMassKg', r.bodyFatMassKg as number | null],
+        ['bodyWaterPct', r.bodyWaterPct as number | null],
+        ['bmi', r.bmi as number | null],
+        ['basalMetabolicKcal', r.basalMetabolicKcal as number | null],
+        ['visceralFatLevel', r.visceralFatLevel as number | null],
+        ['skeletalMuscleMassKg', r.skeletalMuscleMassKg as number | null],
+        ['rightArmMuscleKg', r.rightArmMuscleKg as number | null],
+        ['leftArmMuscleKg', r.leftArmMuscleKg as number | null],
+        ['rightLegMuscleKg', r.rightLegMuscleKg as number | null],
+        ['leftLegMuscleKg', r.leftLegMuscleKg as number | null],
+        ['trunkMuscleKg', r.trunkMuscleKg as number | null],
+      ];
+      const updates: Partial<FormState> = {};
+      for (const [key, val] of numFields) {
+        if (val !== null) {
+          updates[key] = String(Math.round(val * 10) / 10);
+          filled.add(key);
+        }
+      }
+      if (r.device && typeof r.device === 'string') {
+        updates.device = r.device;
+        filled.add('device');
+      }
+      if (filled.size === 0) {
+        toast.error('数値を読み取れませんでした。画像を確認してください。');
+      } else {
+        setForm((prev) => ({ ...prev, ...updates }));
+        setAiFields(filled);
+        if (r.rightArmMuscleKg !== null || r.leftArmMuscleKg !== null || r.rightLegMuscleKg !== null || r.leftLegMuscleKg !== null || r.trunkMuscleKg !== null) {
+          setExpandExtra(true);
+        }
+        toast.success(`${filled.size}項目を自動入力しました。内容を確認してください。`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '解析に失敗しました');
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   function openNewForm() {
     setEditingLog(null);
     setForm({ ...EMPTY_FORM, measureDate: jstToday() });
     setExpandExtra(false);
     setSaveError(null);
+    setAiFields(new Set());
+    setPhotoPreview(null);
     setShowForm(true);
   }
 
@@ -240,6 +319,8 @@ export default function MeasurementsPage() {
       !!(log.rightArmMuscleKg || log.leftArmMuscleKg || log.rightLegMuscleKg || log.leftLegMuscleKg || log.trunkMuscleKg)
     );
     setSaveError(null);
+    setAiFields(new Set());
+    setPhotoPreview(null);
     setShowForm(true);
   }
 
@@ -406,6 +487,69 @@ export default function MeasurementsPage() {
                   </button>
                 </div>
 
+                {/* 写真から自動入力 */}
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-2">
+                  <div className="text-xs font-bold text-sky-800 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    写真から自動入力（AI）
+                  </div>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) await analyzePhoto(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={analyzing}
+                      className="inline-flex items-center gap-1.5 bg-sky-600 text-white font-bold text-xs px-3 py-2 rounded-lg disabled:opacity-50"
+                    >
+                      {analyzing ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={2.2} />
+                          解析中…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" strokeWidth={2.2} />
+                          体組成計の写真を選択
+                        </>
+                      )}
+                    </button>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        onClick={() => { setPhotoPreview(null); setAiFields(new Set()); }}
+                        className="text-sky-500 text-xs underline"
+                      >
+                        リセット
+                      </button>
+                    )}
+                  </div>
+                  {photoPreview && (
+                    <img
+                      src={photoPreview}
+                      alt="選択した体組成計の写真"
+                      className="w-24 h-24 object-contain rounded-lg border border-sky-200 bg-white"
+                    />
+                  )}
+                  {aiFields.size > 0 && (
+                    <div className="text-[11px] text-sky-700">
+                      <span className="inline-flex items-center gap-0.5 bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5 font-bold">
+                        AI
+                      </span>{' '}
+                      バッジのフィールドはAIが読み取った値です。必ず確認・修正してから保存してください。
+                    </div>
+                  )}
+                </div>
+
                 {/* マスト入力 */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className="col-span-2 sm:col-span-1">
@@ -419,20 +563,27 @@ export default function MeasurementsPage() {
                       className="w-full border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-                  <FormNumField label="体重(kg)" required value={form.weightKg} onChange={(v) => setField('weightKg', v)} />
-                  <FormNumField label="体脂肪率(%)" required value={form.bodyFatPct} onChange={(v) => setField('bodyFatPct', v)} />
-                  <FormNumField label="筋肉量(kg)" required value={form.muscleMassKg} onChange={(v) => setField('muscleMassKg', v)} />
-                  <FormNumField label="体脂肪量(kg)" value={form.bodyFatMassKg} onChange={(v) => setField('bodyFatMassKg', v)} />
-                  <FormNumField label="体水分率(%)" value={form.bodyWaterPct} onChange={(v) => setField('bodyWaterPct', v)} />
-                  <FormNumField label="BMI" value={form.bmi} onChange={(v) => setField('bmi', v)} />
-                  <FormNumField label="基礎代謝(kcal)" value={form.basalMetabolicKcal} onChange={(v) => setField('basalMetabolicKcal', v)} />
-                  <FormNumField label="内臓脂肪レベル" value={form.visceralFatLevel} onChange={(v) => setField('visceralFatLevel', v)} />
-                  <FormNumField label="骨格筋量(kg)" value={form.skeletalMuscleMassKg} onChange={(v) => setField('skeletalMuscleMassKg', v)} />
+                  <FormNumField label="体重(kg)" required value={form.weightKg} onChange={(v) => setField('weightKg', v)} isAi={aiFields.has('weightKg')} />
+                  <FormNumField label="体脂肪率(%)" required value={form.bodyFatPct} onChange={(v) => setField('bodyFatPct', v)} isAi={aiFields.has('bodyFatPct')} />
+                  <FormNumField label="筋肉量(kg)" required value={form.muscleMassKg} onChange={(v) => setField('muscleMassKg', v)} isAi={aiFields.has('muscleMassKg')} />
+                  <FormNumField label="体脂肪量(kg)" value={form.bodyFatMassKg} onChange={(v) => setField('bodyFatMassKg', v)} isAi={aiFields.has('bodyFatMassKg')} />
+                  <FormNumField label="体水分率(%)" value={form.bodyWaterPct} onChange={(v) => setField('bodyWaterPct', v)} isAi={aiFields.has('bodyWaterPct')} />
+                  <FormNumField label="BMI" value={form.bmi} onChange={(v) => setField('bmi', v)} isAi={aiFields.has('bmi')} />
+                  <FormNumField label="基礎代謝(kcal)" value={form.basalMetabolicKcal} onChange={(v) => setField('basalMetabolicKcal', v)} isAi={aiFields.has('basalMetabolicKcal')} />
+                  <FormNumField label="内臓脂肪レベル" value={form.visceralFatLevel} onChange={(v) => setField('visceralFatLevel', v)} isAi={aiFields.has('visceralFatLevel')} />
+                  <FormNumField label="骨格筋量(kg)" value={form.skeletalMuscleMassKg} onChange={(v) => setField('skeletalMuscleMassKg', v)} isAi={aiFields.has('skeletalMuscleMassKg')} />
                 </div>
 
                 {/* 測定機器 */}
                 <div>
-                  <label className="text-[11px] font-bold text-stone-700 block mb-0.5">測定機器</label>
+                  <label className="text-[11px] font-bold text-stone-700 mb-0.5 flex items-center gap-1">
+                    測定機器
+                    {aiFields.has('device') && (
+                      <span className="ml-auto text-[9px] font-bold bg-sky-100 border border-sky-300 text-sky-700 rounded px-1 leading-tight">
+                        AI
+                      </span>
+                    )}
+                  </label>
                   <select
                     value={form.device}
                     onChange={(e) => setField('device', e.target.value)}
@@ -455,11 +606,11 @@ export default function MeasurementsPage() {
                 </button>
                 {expandExtra && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                    <FormNumField label="右腕筋肉量(kg)" value={form.rightArmMuscleKg} onChange={(v) => setField('rightArmMuscleKg', v)} />
-                    <FormNumField label="左腕筋肉量(kg)" value={form.leftArmMuscleKg} onChange={(v) => setField('leftArmMuscleKg', v)} />
-                    <FormNumField label="右脚筋肉量(kg)" value={form.rightLegMuscleKg} onChange={(v) => setField('rightLegMuscleKg', v)} />
-                    <FormNumField label="左脚筋肉量(kg)" value={form.leftLegMuscleKg} onChange={(v) => setField('leftLegMuscleKg', v)} />
-                    <FormNumField label="体幹筋肉量(kg)" value={form.trunkMuscleKg} onChange={(v) => setField('trunkMuscleKg', v)} />
+                    <FormNumField label="右腕筋肉量(kg)" value={form.rightArmMuscleKg} onChange={(v) => setField('rightArmMuscleKg', v)} isAi={aiFields.has('rightArmMuscleKg')} />
+                    <FormNumField label="左腕筋肉量(kg)" value={form.leftArmMuscleKg} onChange={(v) => setField('leftArmMuscleKg', v)} isAi={aiFields.has('leftArmMuscleKg')} />
+                    <FormNumField label="右脚筋肉量(kg)" value={form.rightLegMuscleKg} onChange={(v) => setField('rightLegMuscleKg', v)} isAi={aiFields.has('rightLegMuscleKg')} />
+                    <FormNumField label="左脚筋肉量(kg)" value={form.leftLegMuscleKg} onChange={(v) => setField('leftLegMuscleKg', v)} isAi={aiFields.has('leftLegMuscleKg')} />
+                    <FormNumField label="体幹筋肉量(kg)" value={form.trunkMuscleKg} onChange={(v) => setField('trunkMuscleKg', v)} isAi={aiFields.has('trunkMuscleKg')} />
                   </div>
                 )}
 
@@ -575,17 +726,24 @@ function FormNumField({
   required,
   value,
   onChange,
+  isAi,
 }: {
   label: string;
   required?: boolean;
   value: string;
   onChange: (v: string) => void;
+  isAi?: boolean;
 }) {
   return (
     <div>
-      <label className="text-[11px] font-bold text-stone-700 block mb-0.5">
+      <label className="text-[11px] font-bold text-stone-700 block mb-0.5 flex items-center gap-1">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
+        {isAi && (
+          <span className="ml-auto text-[9px] font-bold bg-sky-100 border border-sky-300 text-sky-700 rounded px-1 leading-tight">
+            AI
+          </span>
+        )}
       </label>
       <input
         type="number"
@@ -594,7 +752,11 @@ function FormNumField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="0"
-        className="w-full border border-stone-300 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        className={`w-full border rounded-xl p-2 text-sm focus:outline-none focus:ring-2 ${
+          isAi
+            ? 'border-sky-400 bg-sky-50 focus:ring-sky-400'
+            : 'border-stone-300 focus:ring-emerald-500'
+        }`}
       />
     </div>
   );
