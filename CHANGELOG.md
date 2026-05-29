@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 席数上限の警告を常時バナー→招待ボタンのホバーツールチップ化
+- change: `app/admin/customers/page.tsx` 顧客一覧の「席数上限到達」警告を、常時表示の赤バナーから「招待URLをコピー」ボタンにマウスホバーした時のツールチップに変更（上限到達時のみ）。内容（利用可能/使用数・上限到達・プランを変更するリンク）は従来バナーと同一。ボタンは従来通り上限時 disabled（コピー不可）
+- 実装: ボタンを `relative group` でラップし `group-hover` で表示。`pb-2` でボタンと密着させ、ツールチップ内の「プランを変更する」リンクへマウス移動してもホバーが途切れないように
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。残り1席バナーは従来通り常時表示。顧客側 LIFF 変更なし
+
 ## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 2（写真AI解析）・Phase 3（顧客分析体組成セクション）実装
 - feat: `app/api/admin/body-composition/analyze/route.ts` 新規作成（POST・`withAdminTenant`・Gemini Vision で体組成計/InBody写真から数値抽出・master/tenant_admin 両方可）
 - feat: `app/admin/measurements/page.tsx` に「写真から自動入力（AI）」UIを追加（画像選択→`lib/imageCompress.ts` で圧縮→analyze API呼び出し→フォームprefill・AIバッジ表示）
