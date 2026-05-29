@@ -15,6 +15,7 @@ type CustomerProfile = {
   email: string | null;
   phone: string | null;
   storeId: string | null;
+  storeName: string | null;
   currentWeight: number | null;
   targetWeight: number | null;
   targetDate: string | null;
@@ -80,6 +81,7 @@ export default function ProfilePage() {
           email: c.email,
           phone: c.phone,
           storeId: c.storeId,
+          storeName: j.storeName ?? null,
           currentWeight: c.currentWeight,
           targetWeight: c.targetWeight,
           targetDate: c.targetDate,
@@ -144,7 +146,7 @@ export default function ProfilePage() {
 
             {profile.storeId && (
               <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                <ReadOnlyRow label="所属店舗" value={profile.storeId} last />
+                <ReadOnlyRow label="所属店舗" value={profile.storeName || profile.storeId} last />
               </section>
             )}
 

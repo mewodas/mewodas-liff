@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCustomerByLineId, updateCustomer } from '@/lib/notion';
 import { withLiffTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
+import { getStoreByStoreId } from '@/lib/stores';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,16 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
   const customer = await getCustomerByLineId(verifiedLineUserId, { force: true });
   if (!customer) return NextResponse.json({ error: 'not found' }, { status: 404 });
   const tenant = getCurrentTenant();
-  return NextResponse.json({ customer, officialLineUrl: tenant.officialLineUrl ?? null });
+  // 所属店舗は内部キー(storeId)ではなく表示名で返す。失敗時は null（UI 側で storeId にフォールバック）
+  let storeName: string | null = null;
+  if (customer.storeId) {
+    try {
+      storeName = (await getStoreByStoreId(customer.storeId))?.name ?? null;
+    } catch {
+      storeName = null;
+    }
+  }
+  return NextResponse.json({ customer, storeName, officialLineUrl: tenant.officialLineUrl ?? null });
 });
 
 export const PATCH = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {

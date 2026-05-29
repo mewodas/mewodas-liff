@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(customer/store): 所属店舗の店舗ID(gotanda)生表示を店舗名に統一＋契約タブをstore限定
+- fix(customer): `app/profile/page.tsx` 顧客プロフィールの「所属店舗」が storeId（gotanda）を生表示していたのを店舗名（メヲダス五反田店）に修正。`/api/customer/me` で `getStoreByStoreId()` により storeName を解決して返す（失敗時 null→UIで storeId にフォールバック）
+- change(store): `app/admin/AdminShell.tsx` 「契約(/billing)」タブに storeOnly を付与。運営(master/admin)文脈では非表示、店舗(/store)でのみ表示
+- 影響範囲: 顧客側 LIFF（プロフィール）/ 管理画面ナビ。※ staging 検証必須
+
 ## 2026-05-29 – feat(security): Phase 1 監査ログ Neon Postgres 永続化
 - add: `@neondatabase/serverless` ^1.1.0 を依存に追加（Neon HTTP serverless ドライバ）
 - add: `lib/db/migrations/001_audit_log.sql` — audit_log テーブル DDL（IF NOT EXISTS 冪等）、ts/tenant_id/action の3インデックス
