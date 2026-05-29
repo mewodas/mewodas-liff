@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗カードを食事4/5＋体重1/5の横並びに・運動カード削除
+- change: `app/admin/progress/page.tsx` 進捗一覧の顧客カードを「食事(4/5幅・kcal/%・バー・PFC)＋体重(1/5幅)」の横並び1段に。運動カード(ExerciseCard)を削除。食事カードの内部レイアウトは現状維持
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
 ## 2026-05-29 – change(store): 定期レポート設定・レポートのLINE送付UIを一時非表示（機能は存置）
 - change: `app/admin/AdminShell.tsx` ナビから「定期レポート設定」(/scheduled-reports) タブを削除（ページ・cron・lib は存置＝直URLでは到達可）。未使用 CalendarClock import も除去
 - change: `app/admin/reports/page.tsx` レポート送付の「顧客の LINE にも送信」チェックボックスを非表示（`{false &&}`）＋既定を sendLinePush=false に（アプリ内保存のみ）。LINEプッシュ機能自体は存置
