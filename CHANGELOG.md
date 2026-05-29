@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(cron): daily-reports を日次スケジュールに修正（全デプロイ失敗を解消）
+- fix: `vercel.json` の `/api/cron/daily-reports` を `0 * * * *`(毎時)→`0 21 * * *`(UTC21時=JST06:00・日次)に変更。Hobbyプランは「cronは1日1回まで」のため毎時cronで**全デプロイが失敗**していたのを解消（staging/本番とも約1h停止していた）
+- 注意: daily-reports ルートは送信時刻の"時"一致で発火する設計。日次cronはデフォルト送信時刻 `06:00` に合わせたため、06:00設定のテナントのみ自動送信される（毎時送信＝顧客別時刻にはPro必要）。現状 lineAutoSendEnabled は opt-in で全OFFのため実送信影響なし
+- 影響範囲: デプロイ基盤（cron）/ 前日レポート自動送信のスケジュール
+
+## 2026-05-29 – feat(scheduled-reports): 定期レポート送信管理機能を実装
+- feat(lib): `lib/scheduledReports.ts` 新規追加。`SCHEDULED_REPORTS_DB_ID` を使った定期配信ルール CRUD（listRulesForTenant / listAllRules / createRule / updateRule / deleteRule）。全テナント共有DB・tenant_id列で分離。1分キャッシュ。
+- feat(api): `app/api/admin/scheduled-reports/route.ts` 新規追加（GET・POST）。GET は master=全件、非 master=自テナントのみ。POST はテナント強制（非 master は getCurrentTenant().id 固定）・入力バリデーション付き。
+- feat(api): `app/api/admin/scheduled-reports/[id]/route.ts` 新規追加（PATCH・DELETE）。他テナントのルール操作を 403 で拒否。
+- feat(ui): `app/admin/scheduled-reports/page.tsx` 新規追加。ルール一覧（有効トグル・編集・削除）＋作成/編集フォームモーダル。master のみ対象テナント選択表示。store は自テナント固定。
+- feat(ui): `app/store/scheduled-reports/page.tsx` 新規追加（admin ページの 1行 re-export）。
+- feat(ui): `app/admin/AdminShell.tsx` に「定期レポート設定」タブ追加（CalendarClock アイコン・masterOnly なし）。
+- feat(cron): `app/api/cron/daily-reports/route.ts` を定期配信ルール走査方式に全面置換。listAllRules() → shouldFire() で発火判定（毎日/毎週(曜日)/毎月(末日フォールバック)）→ テナント設定取得 → 顧客絞り（全顧客/店舗）→ テンプレ名一致解決 → アプリ内保存・LINE送信をルールに従い制御。autoSendTime/lineAutoSendEnabled への依存を廃止。
+- change(ui): `app/admin/tenants/[id]/page.tsx` の autoSendTime フィールドに「※自動配信は「定期レポート設定」で管理（このフィールドは旧設定）」の注記を追加。
+- 影響範囲: 管理画面（/admin・/store の定期レポート設定・テナント設定注記）/ API（/api/admin/scheduled-reports）/ Cron（daily-reports 置換）/ lib（scheduledReports.ts 新規）
+
 ## 2026-05-29 – change(demo): 読み取り専用の文言調整
 - change: `lib/withTenant.ts` デモ/プレビューの書き込み拒否(403)メッセージを `demo is read-only` → `読み取り専用です。` に変更（画像アップ等で出る文言を日本語化）
 - change: `app/admin/customers/page.tsx` プレビューモーダルのヘッダを「読み取り専用（60分）」→「読み取り専用」に（60分表記を削除）
