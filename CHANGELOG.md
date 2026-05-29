@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 顧客分析の運動を体重の下に表示（常に縦積み）
+- change: `app/admin/analysis/page.tsx` WeightExercisePanel を常に縦積み（体重→運動）に。単日時の横2カラム分岐を撤去し、運動を必ず体重の下に表示
+- 影響範囲: 管理画面（/store・/admin の顧客分析）
+
 ## 2026-05-29 – change(store): 進捗カードの文字/PFC表記・矢印位置・更新ボタン・プルダウン整合
 - change: `app/admin/progress/page.tsx` 食事カードの「/目標kcal」「達成%」を text-sm に拡大。PFCを「実測 / 目標g」表記に（`app/api/admin/progress/route.ts` で目標P/F/Cを返すよう追加）
 - change: 右矢印をカード（食事・体重）の中央高さに揃うよう行構造を変更（氏名を上段→カード行+矢印を items-center の同一行に）

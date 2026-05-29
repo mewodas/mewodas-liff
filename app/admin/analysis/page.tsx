@@ -713,22 +713,12 @@ function WeightExercisePanel({
   const hasWeight = weightLogs.length > 0;
   const hasExercise = exerciseLogs.length > 0;
 
-  // 単日かつ両方ある場合は横2カラム
-  if (isSingleDay && hasWeight && hasExercise) {
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
-        <ExerciseSection isSingleDay={isSingleDay} exerciseLogs={exerciseLogs} />
-      </div>
-    );
-  }
-
-  // 期間表示 or 片方だけの場合は縦積み（体重→運動の順）
+  // 体重→運動の順で常に縦積み（運動は体重の下に表示）
   return (
-    <>
+    <div className="space-y-3">
       {hasWeight && <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />}
       {hasExercise && <ExerciseSection isSingleDay={isSingleDay} exerciseLogs={exerciseLogs} />}
-    </>
+    </div>
   );
 }
 
