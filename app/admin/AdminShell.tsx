@@ -180,8 +180,8 @@ export default function AdminShell({
               className="flex items-center flex-shrink-0"
               aria-label="進捗管理へ"
             >
-              <img src="/fitmeal-icon.png" alt="" className="h-8 w-8 object-contain" />
-              <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-5 w-auto" />
+              <img src="/fitmeal-icon.png" alt="" className="h-10 w-10 object-contain" />
+              <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-2 h-6 w-auto" />
             </Link>
             <span className="h-5 w-px bg-stone-200 flex-shrink-0" aria-hidden />
             <h1 className="text-sm font-bold text-stone-900 truncate">{title}</h1>
