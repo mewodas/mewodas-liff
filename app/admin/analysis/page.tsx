@@ -717,7 +717,7 @@ function WeightExercisePanel({
   return (
     <div className="space-y-3">
       {hasWeight && <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />}
-      {hasExercise && <ExerciseSection isSingleDay={isSingleDay} exerciseLogs={exerciseLogs} />}
+      {hasExercise && <ExerciseSection exerciseLogs={exerciseLogs} />}
     </div>
   );
 }
@@ -874,10 +874,8 @@ function WeightSection({
 const INTENSITY_ORDER: Record<string, number> = { 高: 3, 中: 2, 低: 1 };
 
 function ExerciseSection({
-  isSingleDay,
   exerciseLogs,
 }: {
-  isSingleDay: boolean;
   exerciseLogs: ExerciseLog[];
 }) {
   if (exerciseLogs.length === 0) return null;
@@ -885,19 +883,7 @@ function ExerciseSection({
   const totalMin = exerciseLogs.reduce((a, b) => a + (b.durationMin || 0), 0);
   const totalKcal = exerciseLogs.reduce((a, b) => a + (b.estimatedKcal || 0), 0);
 
-  // 種目別の集計（回数・合計時間・合計消費kcal）
-  const byExercise = new Map<string, { count: number; min: number; kcal: number }>();
-  for (const ex of exerciseLogs) {
-    const key = ex.exercise || '（種目名なし）';
-    const cur = byExercise.get(key) || { count: 0, min: 0, kcal: 0 };
-    cur.count += 1;
-    cur.min += ex.durationMin;
-    cur.kcal += ex.estimatedKcal;
-    byExercise.set(key, cur);
-  }
-  const exerciseSummary = Array.from(byExercise.entries()).sort((a, b) => b[1].count - a[1].count);
-
-  // 日別グループ（日付昇順、同日内は強度の高い順）
+  // 日付昇順、同日内は強度の高い順
   const sorted = exerciseLogs
     .slice()
     .sort((a, b) =>
@@ -919,22 +905,6 @@ function ExerciseSection({
         {totalMin > 0 && <span>合計 {totalMin} 分</span>}
         {totalKcal > 0 && <span>消費 {Math.round(totalKcal)} kcal</span>}
       </div>
-
-      {/* 種目別集計（複数種目かつ期間表示の場合のみ） */}
-      {!isSingleDay && exerciseSummary.length > 1 && (
-        <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
-          {exerciseSummary.map(([name, v]) => (
-            <div key={name} className="flex items-center justify-between px-3 py-1.5 text-xs">
-              <span className="font-bold text-stone-800">{name}</span>
-              <span className="text-stone-500">
-                {v.count}回
-                {v.min > 0 && <> ・ {v.min}分</>}
-                {v.kcal > 0 && <> ・ {Math.round(v.kcal)}kcal</>}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* 記録リスト — 1運動記録を1行（日付＋種目）で表示。時間は表示しない */}
       <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
