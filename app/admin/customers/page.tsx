@@ -403,16 +403,12 @@ export default function AdminCustomersPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-stone-600 mt-0.5 truncate">
+                        <div className="text-[11px] text-stone-600 mt-0.5">
                           {c.currentWeight !== null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
                           {c.targetWeight !== null ? ` → 目標 ${c.targetWeight}kg` : ''}
                           {c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
+                          {c.goals.kcal > 0 ? ` ・ 目標PFC P${c.goals.P}・F${c.goals.F}・C${c.goals.C}g` : ''}
                         </div>
-                        {c.goals.kcal > 0 && (
-                          <div className="text-[11px] text-stone-500 mt-0.5 truncate">
-                            目標PFC　P {c.goals.P}・F {c.goals.F}・C {c.goals.C}（g）
-                          </div>
-                        )}
                         {isPending && (
                           <div className="mt-1.5 flex gap-2 flex-wrap items-center">
                             <button
@@ -467,7 +463,7 @@ function StatusBadge({ status }: { status: string | null }) {
     status === '承認待ち'
       ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
       : status === '進行中'
-      ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+      ? 'bg-orange-100 text-orange-700 border-orange-300'
       : status === '休止中'
       ? 'bg-amber-100 text-amber-800 border-amber-300'
       : status === '卒業'

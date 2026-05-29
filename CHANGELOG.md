@@ -3,8 +3,8 @@
 ## 2026-05-29 – change(admin/store): 顧客一覧の表示改善（LINE連携バッジ移動・進行中の色・目標PFC表示）
 - change: `app/admin/customers/page.tsx`（/admin・/store 共有の顧客一覧）
   - 「LINE 連携済み」バッジを名前行のステータス（進行中等）の隣に移動。従来の下段の別行バッジは削除し、下段は承認ボタンがある時だけ表示
-  - 「進行中」ステータスバッジの色を emerald→indigo に変更（隣の LINE 連携済み＝emerald と区別）
-  - 目標PFC（P/F/C グラム）を一覧の各行に表示（kcal 行の下に `目標PFC P○・F○・C○（g）`。目標kcal>0 のとき表示）
+  - 「進行中」ステータスバッジの色を emerald→orange に変更（隣の LINE 連携済み＝emerald と区別）
+  - 目標PFC（P/F/C グラム）を「目標kcal/日」の横（同じ行）に inline 表示（`… ・ 目標 ○kcal/日 ・ 目標PFC P○・F○・C○g`。目標kcal>0 のとき）。行が伸びるため当該行の truncate を解除し折り返し可に
 - 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
 - change: `app/admin/AdminShell.tsx` ヘッダー左上に FitMeal ロゴ(アイコン+ワードマーク `/fitmeal-icon.png` `/fitmeal-wordmark.png`)を表示。クリックで `${base}/progress`(進捗管理)へ遷移。ページタイトルはロゴの右に区切り線付きで配置。従来の Building2/Users アイコンは置き換え
 - add: `public/fitmeal-icon.png` `public/fitmeal-wordmark.png`(LP fitmeal.jp と同一アセットをコピー)
