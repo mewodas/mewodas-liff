@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(demo): 読み取り専用の文言調整
+- change: `lib/withTenant.ts` デモ/プレビューの書き込み拒否(403)メッセージを `demo is read-only` → `読み取り専用です。` に変更（画像アップ等で出る文言を日本語化）
+- change: `app/admin/customers/page.tsx` プレビューモーダルのヘッダを「読み取り専用（60分）」→「読み取り専用」に（60分表記を削除）
+- 影響範囲: 管理画面（顧客プレビュー）・API（withLiffTenant のデモ403文言）
+
 ## 2026-05-29 – improve(reports): 送信ボタンのチェックボックス化 + アドバイス質向上
 - change(admin): `app/admin/reports/page.tsx` の送信セクションを2チェックボックス（FitMealアプリ内保存・LINE送信）＋ボタン1つに変更。hidden の `sendLine()` を統合・削除。両方OFFでボタンdisabled。
 - change(api): `app/api/admin/notifications/route.ts` に `saveInApp` フラグ（既定 true）を追加。`saveInApp===false` 時は createNotification をスキップし pushLineMessage のみ実行。両方 false は 400 エラー。返却形式 `{ notification, push }` 維持（保存しない場合 notification は null）。
