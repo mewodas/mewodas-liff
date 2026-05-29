@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(announcements): お知らせ送信日時(createdAt)追加・Invalid Date 修正
+- fix: `lib/announcements.ts` の `Announcement` 型に `createdAt: string`（Notion page.created_time）を追加。`pageToAnnouncement` が `created_time` を受け取りセット。全取得関数の result 型に `created_time` を追加。
+- fix: `listAnnouncementsForTenant` / `listAnnouncementsForStore` のソートを `publishedAt` 基準から `createdAt` 降順に変更（pinned 先頭は維持）。Notion query sort も `created_time` タイムスタンプ降順に統一。
+- fix: `app/notifications/page.tsx` の `formatDate` に Invalid Date 防御を追加（空文字なら `''`、`isNaN` なら `''`）。お知らせの `createdAt` を `a.createdAt || a.publishedAt || ''` で優先参照。
+- fix: `app/store/announcements/page.tsx` の Announcement 型に `createdAt` 追加。`formatDate` に Invalid Date 防御追加。日時表示を `publishedAt` → `createdAt` に変更。
+- fix: `app/admin/reports/page.tsx` の Announcement 型に `createdAt` 追加。`formatAnnDate` 関数（防御版）を追加。送信履歴 `AnnouncementRow` の日時表示を `publishedAt` → `formatAnnDate(a.createdAt)` に変更。
+- 影響範囲: 顧客LIFF（/notifications）/ 管理画面（/store/announcements・/admin/reports・/store/reports）/ lib
+
 ## 2026-05-29 – fix(store): 受信inbox/ベルを「店舗向け」お知らせのみに絞る
 - fix: `app/store/announcements/page.tsx`・`lib/useStoreAnnouncementUnread.ts` で取得結果を `audience==='店舗向け'` でフィルタ。店舗が送った顧客向け一斉お知らせが自店舗の受信ベルにも出てしまう不具合(QA BUG-1)を修正。
 - 影響範囲: 管理画面（/store/announcements・店舗ヘッダーベル）

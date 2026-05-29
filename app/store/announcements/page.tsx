@@ -14,6 +14,7 @@ type Announcement = {
   importance: AnnouncementImportance;
   audience: string;
   pinned: boolean;
+  createdAt: string;
   publishedAt: string | null;
   status: string;
   targetTenants: string[];
@@ -23,9 +24,10 @@ function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
     return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   } catch {
-    return iso;
+    return '—';
   }
 }
 
@@ -117,7 +119,7 @@ export default function StoreAnnouncementsPage() {
                       )}
                       <div className="flex items-center gap-1 ml-auto">
                         <Bell className="w-3 h-3 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
-                        <span className="text-[11px] text-stone-500">{formatDate(a.publishedAt)}</span>
+                        <span className="text-[11px] text-stone-500">{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

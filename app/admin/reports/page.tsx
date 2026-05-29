@@ -35,6 +35,7 @@ type Announcement = {
   importance: AnnouncementImportance;
   audience: AnnouncementAudience;
   pinned: boolean;
+  createdAt: string;
   publishedAt: string | null;
   status: string;
   targetTenants: string[];
@@ -45,6 +46,17 @@ type Me = {
   currentTenantId: string;
   availableTenants: { id: string; name: string }[];
 };
+
+function formatAnnDate(iso: string | null): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '—';
+  }
+}
 
 function jstToday(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -887,7 +899,7 @@ function AnnouncementRow({ announcement: a, isStore }: { announcement: Announcem
           {a.targetTenants.length > 0 && (
             <span className="text-[10px] text-stone-500">{a.targetTenants.join(', ')}</span>
           )}
-          <span className="text-[10px] text-stone-400">{a.publishedAt || '—'}</span>
+          <span className="text-[10px] text-stone-400">{formatAnnDate(a.createdAt)}</span>
           {open ? (
             <ChevronUp className="w-3.5 h-3.5 text-stone-400" strokeWidth={2.2} />
           ) : (

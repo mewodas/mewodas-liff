@@ -45,6 +45,7 @@ function matchTab(tab: Tab, item: InboxItem): boolean {
 }
 
 function formatDate(iso: string): string {
+  if (!iso) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
     try {
       const [, m, d] = iso.split('-').map(Number);
@@ -55,9 +56,10 @@ function formatDate(iso: string): string {
   }
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   } catch {
-    return iso;
+    return '';
   }
 }
 
@@ -112,14 +114,14 @@ export default function NotificationsPage() {
         if (annRes.ok) {
           const j = await annRes.json();
           const readIds = getReadAnnouncementIds('customer');
-          annItems = (j.announcements || []).map((a: { id: string; title: string; body: string; importance: '通常' | '重要'; publishedAt: string | null }) => ({
+          annItems = (j.announcements || []).map((a: { id: string; title: string; body: string; importance: '通常' | '重要'; createdAt: string; publishedAt: string | null }) => ({
             id: a.id,
             category: 'お知らせ' as const,
             title: a.title,
             body: a.body,
             read: readIds.has(a.id),
             readAt: null,
-            createdAt: a.publishedAt || '',
+            createdAt: a.createdAt || a.publishedAt || '',
             source: 'announcement' as const,
             importance: a.importance,
           }));
