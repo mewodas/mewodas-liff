@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(admin): 管理画面ヘッダー左上にFitMealロゴ（HPと同じ）追加・クリックで進捗管理へ
+- change: `app/admin/AdminShell.tsx` ヘッダー左上に FitMeal ロゴ(アイコン+ワードマーク `/fitmeal-icon.png` `/fitmeal-wordmark.png`)を表示。クリックで `${base}/progress`(進捗管理)へ遷移。ページタイトルはロゴの右に区切り線付きで配置。従来の Building2/Users アイコンは置き換え
+- add: `public/fitmeal-icon.png` `public/fitmeal-wordmark.png`(LP fitmeal.jp と同一アセットをコピー)
+- 影響範囲: 管理画面（/store・/admin 全ページの共通ヘッダー AdminShell）。顧客LIFFは対象外
+
 ## 2026-05-29 – change(store): お知らせ送信を運営(/admin)専用化・店舗(/store)はレポートのみ
 - change: `app/admin/reports/page.tsx` 店舗(/store)では [レポート/お知らせ] トグルを非表示にしレポートモード固定（`?mode=announcement` 直叩きも report に強制）。お知らせ送信モードは運営(/admin)のみ表示
 - change: `app/api/admin/announcements/route.ts` POST を運営(master)専用に。非master(店舗)からの作成は 403（サーバ側強制）。従来は店舗も自テナント宛で送信可だった
