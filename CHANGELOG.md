@@ -1,9 +1,23 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(security): 監査ログ マイグレーションスクリプトを Neon ドライバ対応に修正
+- fix: `scripts/migrate-audit-log.mjs` — Neon HTTP ドライバは `sql(string)` 形式・複数文一括実行を受け付けないため、SQL を `;` で分割し `sql.query()` で 1 文ずつ実行する形に修正。本番 Neon に対し実行し audit_log テーブル＋3インデックスを作成済み（テストINSERT/DELETEで動作確認、現行行数0）
+- chore: `.gitignore` に `.env*.local` を追加（Neon 連携が生成する接続文字列ファイルの誤コミット防止）
+- 影響範囲: DB（audit_log テーブル作成）/ 開発スクリプトのみ。アプリ挙動・顧客側変更なし
+
 ## 2026-05-29 – fix(customer/store): 所属店舗の店舗ID(gotanda)生表示を店舗名に統一＋契約タブをstore限定
 - fix(customer): `app/profile/page.tsx` 顧客プロフィールの「所属店舗」が storeId（gotanda）を生表示していたのを店舗名（メヲダス五反田店）に修正。`/api/customer/me` で `getStoreByStoreId()` により storeName を解決して返す（失敗時 null→UIで storeId にフォールバック）
 - change(store): `app/admin/AdminShell.tsx` 「契約(/billing)」タブに storeOnly を付与。運営(master/admin)文脈では非表示、店舗(/store)でのみ表示
-- 影響範囲: 顧客側 LIFF（プロフィール）/ 管理画面ナビ
+- 影響範囲: 顧客側 LIFF（プロフィール）/ 管理画面ナビ。※ staging 検証必須
+
+## 2026-05-29 – feat(security): Phase 1 監査ログ Neon Postgres 永続化
+- add: `@neondatabase/serverless` ^1.1.0 を依存に追加（Neon HTTP serverless ドライバ）
+- add: `lib/db/migrations/001_audit_log.sql` — audit_log テーブル DDL（IF NOT EXISTS 冪等）、ts/tenant_id/action の3インデックス
+- add: `scripts/migrate-audit-log.mjs` — Neon へ 001_audit_log.sql を適用する単独スクリプト（DATABASE_URL 未設定時は即終了）
+- change: `lib/auditLog.ts` — Phase 0 の console.log/Sentry 挙動を維持したまま、`DATABASE_URL`/`POSTGRES_URL`/`POSTGRES_PRISMA_URL` が存在する場合に `audit_log` へ INSERT を追加。DB 書き込みは `waitUntil()` でレスポンス後 flush、env 未設定時は完全 no-op、INSERT 失敗は console.error 1行で握りつぶし。`AuditEvent` に `ip?`/`userAgent?` フィールドを追加
+- change: `app/api/admin/auth/login/route.ts` — `x-forwarded-for` と `user-agent` を取得し auth.login イベントに ip/userAgent を付与
+- 影響範囲: API（サーバー側ログのみ。顧客側 LIFF・既存 API レスポンス変更なし）
+- graceful 設計: `sql` は起動時に env が無ければ `null`。`insertAuditRow`/`logAuditEvent` いずれも `if (!sql)` で早期リターン。DB 例外は `.catch()` で握りつぶし。`waitUntil` 例外は `try/catch` でフォールバック
 
 ## 2026-05-29 – feat(store): お知らせの削除機能を追加（アーカイブボタン未実装の修正）
 - feat: `/store/reports`・`/admin/reports` のお知らせ送信履歴で、各お知らせを展開→「削除」ボタンで削除可能に（confirm付き）。従来はボタン自体が未描画で操作不能だった

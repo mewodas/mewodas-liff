@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-24（承認制モード Phase 2 d04d705/34c3050 追加）
+最終更新: 2026-05-29（Phase 0 監査ログ 2d762a0 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -212,6 +212,44 @@
 | TID5 | /home/register の 401 リトライ: NEXT_PUBLIC_LIFF_ID で再 init・無限ループしない | [M] | CORE |
 | TID6 | sessionStorage への tenantId 保存: ページ遷移後も tenantId が引き継がれる | [M] | SCOPE |
 
+### 監査ログ（Phase 0）— 2026-05-29 追加（commit 2d762a0）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| AUD1 | POST /api/admin/auth/login: 正しいmaster認証情報 → 200 + `{"ok":true,"role":"master"}` | [A] | CORE |
+| AUD2 | POST /api/admin/auth/login: 正しいtenant_admin認証情報 → 200 + `{"ok":true,"role":"tenant_admin"}` | [A] | CORE |
+| AUD3 | POST /api/admin/auth/login: 不正パスワード → 401 + `{"error":"メールアドレスまたはパスワードが違います"}` | [A] | CORE |
+| AUD4 | POST /api/admin/auth/login: 存在しないメール → 401 + 同エラーメッセージ | [A] | CORE |
+| AUD5 | POST /api/admin/auth/change-password: 誤った現在パスワード → 401（レスポンス変化なし） | [A] コード確認済み | CORE |
+| AUD6 | POST /api/admin/auth/change-password: 正常変更 → 200 + `{"ok":true}` | [A] コード確認済み | CORE |
+| AUD7 | DELETE /api/admin/customers/[id]: 存在する顧客 → 200 + `{"ok":true}`（アーカイブ後にログ出力） | [A] コード確認済み | CORE |
+| AUD8 | DELETE /api/admin/customers/[id]: 存在しない顧客 → 404（ログ呼ばれない） | [A] コード確認済み | CORE |
+| AUD9 | POST /api/stripe/update-seats: 正常席数変更 → 200 + `{"ok":true,"newSeats":N}` | [A] コード確認済み | CORE |
+| AUD10 | POST /api/admin/invites/create: 正常発行 → 200 + token/tenantId/expiresAt を含む JSON | [A] コード確認済み | CORE |
+| AUD11 | 監査ログに password/currentPassword/newPassword/passwordHash/token が含まれていないこと | [A] コード確認済み | CORE（セキュリティ） |
+| AUD12 | logAuditEvent 内で例外が発生しても本体レスポンスが止まらない（fire-and-forget） | [A] コード確認済み | CORE |
+| AUD13 | 顧客側 LIFF 全エンドポイント（/api/liff/*）が今回のコミットで無変更 | [A] コード確認済み | CORE |
+
+### 監査ログ（Phase 1 Neon 永続化）— 2026-05-29 追加（commit 4acc80b）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| AUD14 | DATABASE_URL 系 env 未設定の staging で login API → 400/401 が従来通り返る（DB 書き込みスキップで 500 にならない） | [A] staging 実機確認済み ✅ | CORE（最重要） |
+| AUD15 | POST /api/admin/auth/login: 空ボディ → 400 `{"error":"email/password 必須"}`（graceful 担保） | [A] staging ✅ HTTP 400 確認 | CORE |
+| AUD16 | POST /api/admin/auth/login: 存在しないメール → 401 `{"error":"メールアドレスまたはパスワードが違います"}`（graceful 担保） | [A] staging ✅ HTTP 401 確認 | CORE |
+| AUD17 | audit_log テーブルへの INSERT が `sql.query(text, params)` パラメータ化クエリで実装されていること | [A] コード確認済み ✅ | CORE（セキュリティ） |
+| AUD18 | `sql === null` 時に `insertAuditRow` が即 `Promise.resolve()` で返ること（env 未設定は完全 no-op） | [A] コード確認済み ✅ | CORE（最重要） |
+| AUD19 | `waitUntil(p)` を `try { } catch { }` でラップし、リクエストコンテキスト外 throw を握り潰していること | [A] コード確認済み ✅ | CORE |
+| AUD20 | `insertAuditRow` の `.catch()` で DB 書き込み失敗がログのみで本体に伝播しないこと | [A] コード確認済み ✅ | CORE |
+| AUD21 | login route の ip 取得: `x-forwarded-for` ヘッダーがない場合 `undefined`（空文字でなく）になること | [A] コード確認済み ✅ | CORE |
+| AUD22 | login route の userAgent 取得: `user-agent` ヘッダーがない場合 `undefined` になること | [A] コード確認済み ✅ | CORE |
+| AUD23 | 本番 Neon 接続後: audit_log テーブルが DDL 通りに作成されること（scripts/migrate-audit-log.mjs 実行） | 本番 Neon 接続後に実施 | CORE |
+| AUD24 | 本番 Neon 接続後: login 成功時に audit_log へ 1 行 INSERT されていること（SELECT で確認） | 本番 Neon 接続後に実施 | CORE |
+| AUD25 | 本番 Neon 接続後: login 失敗時に audit_log へ outcome='failure' で INSERT されていること | 本番 Neon 接続後に実施 | CORE |
+| AUD26 | 本番 Neon 接続後: ip / user_agent カラムに実際の値が入っていること（NULL でないこと） | 本番 Neon 接続後に実施 | CORE |
+| AUD27 | 本番 Neon 接続後: password / passwordHash / token が audit_log の metadata カラムに含まれていないこと | 本番 Neon 接続後に実施 | CORE（セキュリティ） |
+| AUD28 | 本番 Neon 接続後: Neon DB 書き込み遅延（waitUntil）で login レスポンスタイムが増加していないこと | 本番 Neon 接続後に実施 | CORE（パフォーマンス） |
+
 ### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
 
 | # | 確認項目 | 方法 | 優先度 |
@@ -252,6 +290,8 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-05-29 | Phase 1 監査ログ Neon 永続化（@neondatabase/serverless 追加・waitUntil flush・ip/userAgent 収集） | 4acc80b | GO（TSコンパイル通過・graceful 設計コード確認済み・staging API 実機確認 HTTP 400/401 正常・顧客LIFF無変更・社長手動確認不要） |
+| 2026-05-29 | Phase 0 監査ログ（5エンドポイントに fire-and-forget ログ追加） | 2d762a0 | GO（TSコンパイル通過・機密非漏洩確認済み・顧客LIFF無変更・社長手動確認不要） |
 | 2026-05-24 | 承認制モード Phase 2（招待方式切替UI・承認制公開URL・承認操作・LiffGate承認待ち画面） | d04d705/34c3050 | 条件付き GO（自動検証全通過・APV1〜APV4/APV15 コード確認済み。社長手動確認カード発行済み） |
 | 2026-05-22 | セルフサーブ・オンボーディング Phase 1（ジム経営者向け LINE 連携ウィザード） | 5bd2977 | 条件付き GO（自動検証全通過・ONB1〜ONB13/ONB8〜ONB12・ONB14 コード確認済み。社長手動確認カード発行済み） |
 | 2026-05-22 | 本番スモーク: merge c6a39e4（課金制御フル実装・席数UI改修・Notionバグ修正 7コミット） | c6a39e4 | 本番スモーク OK（自動検証全通過）・社長手動確認カード発行済み（SEAT7/REG4/BL12〜BL18） |
