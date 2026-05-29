@@ -5,7 +5,7 @@
 // Stripe Subscription の per-user item quantity / price を更新する
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminTenant } from '@/lib/withTenant';
+import { withAdminTenant, currentSession } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   getStripe,
@@ -14,6 +14,7 @@ import {
 import { listTenantRows, getPlanByCode } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { getSeatStatus } from '@/lib/seats';
+import { logAuditEvent } from '@/lib/auditLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   const newSeats = Number(body.seats);
   const planCodeInput = body.planCode as string | undefined;
 
+  const session = currentSession(req);
   const tenant = getCurrentTenant();
   const stripe = getStripe();
 
@@ -82,5 +84,6 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     metadata: { seats: String(newSeats), planCode: effectivePlanCode },
   });
 
+  logAuditEvent({ action: 'billing.update_seats', outcome: 'success', actorType: session?.role === 'master' ? 'master' : 'admin', actorId: session?.email, tenantId: tenant.id, targetType: 'subscription', targetId: tenantRow.stripeSubscriptionId, metadata: { newSeats, planCode: effectivePlanCode } });
   return NextResponse.json({ ok: true, newSeats, planCode: effectivePlanCode });
 });
