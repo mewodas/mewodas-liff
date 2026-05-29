@@ -108,9 +108,9 @@ export default function PredictionPage() {
   return (
     <main className="min-h-screen bg-stone-100 pb-24">
       <PageHeader
-        title="体重推移・AI予測"
+        title="体重記録"
         Icon={TrendingDown}
-        subtitle="直近30日の体重推移とAI予測"
+        subtitle="これまでの記録とAIによる今後の予測"
         back
       />
 

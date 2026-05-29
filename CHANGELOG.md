@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – change(liff): メニュー名称変更（週次分析・体重記録）
+- change: `app/menu/page.tsx` メニューラベルを「週次レポート」→「週次分析」、「体重推移・予測」→「体重記録」(sub も「これまでの記録とAI予測」に)
+- change: `app/weekly/page.tsx` ページタイトル「週次レポート」→「週次分析」
+- change: `app/prediction/page.tsx` ページタイトル「体重推移・AI予測」→「体重記録」、subtitle を「これまでの記録とAIによる今後の予測」に（記録閲覧＋AI予測の両方が見られる旨を明確化）
+- 影響範囲: 顧客側 LIFF（/menu /weekly /prediction）
+- 備考: 通知カテゴリ「週次レポート」(Notion select値・データ契約) は据え置き
+
 ## 2026-05-29 – change(store): 進捗 体重の前日比文字サイズも他に合わせ拡大
 - change: `app/admin/progress/page.tsx` WeightDelta（前日比・+0.2kg 等）を text-xs に拡大し他の文字サイズに統一
 - 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）

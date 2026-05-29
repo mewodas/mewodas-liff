@@ -151,7 +151,7 @@ export default function WeeklyPage() {
   return (
     <main className="min-h-screen bg-stone-100 pb-28">
       <PageHeader
-        title="週次レポート"
+        title="週次分析"
         Icon={TrendingUp}
         back
       />
