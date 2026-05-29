@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – feat(store): お知らせの削除機能を追加（アーカイブボタン未実装の修正）
+- feat: `/store/reports`・`/admin/reports` のお知らせ送信履歴で、各お知らせを展開→「削除」ボタンで削除可能に（confirm付き）。従来はボタン自体が未描画で操作不能だった
+- feat: `lib/announcements.ts` に `deleteAnnouncement`（Notionページをゴミ箱へ移動＝送信履歴・顧客表示の両方から消える。Notionゴミ箱で30日復元可）、`app/api/admin/announcements` に `DELETE` ハンドラを追加（店舗=自テナント宛のみ削除可・運営=全件、権限はサーバ強制）
+- 影響範囲: 管理画面(/store・/admin reports)・API(/api/admin/announcements)・顧客表示（削除されたお知らせは /announcements からも消える）
+
 ## 2026-05-29 – fix(store): 顧客分析の店舗チップが店舗ID（gotanda）を表示する不具合
 - fix: `app/admin/analysis/page.tsx` 店舗フィルタのラベルを storeId そのままから表示名（メヲダス五反田店 等）に修正。`/api/admin/stores` を取得し storeId→name マップでラベル解決（進捗管理と同方式）。未登録店舗は storeId をフォールバック表示
 - 影響範囲: 管理画面（/store・/admin の顧客分析 店舗フィルタ）
