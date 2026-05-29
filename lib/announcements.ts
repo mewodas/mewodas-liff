@@ -32,6 +32,7 @@ export type Announcement = {
   importance: AnnouncementImportance;
   audience: AnnouncementAudience;
   pinned: boolean;
+  createdAt: string;
   publishedAt: string | null;
   publishUntil: string | null;
   status: AnnouncementStatus;
@@ -75,7 +76,7 @@ async function notionRequest(method: string, path: string, body?: object): Promi
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pageToAnnouncement(page: { id: string; properties: Record<string, any> }): Announcement {
+function pageToAnnouncement(page: { id: string; created_time?: string; properties: Record<string, any> }): Announcement {
   const p = page.properties;
   return {
     id: page.id,
@@ -86,6 +87,7 @@ function pageToAnnouncement(page: { id: string; properties: Record<string, any> 
     // 宛先種別: 未設定（旧データ互換）は '顧客向け' をデフォルトにする
     audience: (p['宛先種別']?.select?.name as AnnouncementAudience) || '顧客向け',
     pinned: !!p['ピン留め']?.checkbox,
+    createdAt: page.created_time || '',
     publishedAt: p['公開日']?.date?.start || null,
     publishUntil: p['公開終了日']?.date?.start || null,
     status: (p['公開ステータス']?.select?.name as AnnouncementStatus) || '公開',
@@ -126,13 +128,13 @@ export async function listAnnouncementsForTenant(tenantId: string): Promise<Anno
   // Notion 側で複雑フィルタを書くのも可だが、列挙して JS で絞った方が変更に強い
   const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
     page_size: 50,
-    sorts: [{ property: '公開日', direction: 'descending' }],
+    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
     filter: {
       property: '公開ステータス',
       select: { equals: '公開' },
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  })) as { results?: Array<{ id: string; properties: Record<string, any> }> };
+  })) as { results?: Array<{ id: string; created_time?: string; properties: Record<string, any> }> };
 
   const today = new Date().toISOString().slice(0, 10);
   const all = (res.results || []).map(pageToAnnouncement);
@@ -145,12 +147,10 @@ export async function listAnnouncementsForTenant(tenantId: string): Promise<Anno
     return true;
   });
 
-  // ピン留めを最上部、続いて公開日降順
+  // ピン留めを最上部、続いて送信日時(createdAt)降順
   filtered.sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    const aDate = a.publishedAt || '';
-    const bDate = b.publishedAt || '';
-    return bDate.localeCompare(aDate);
+    return b.createdAt.localeCompare(a.createdAt);
   });
 
   setCached(cacheKey, filtered, 60_000);
@@ -206,10 +206,10 @@ export async function createAnnouncement(params: CreateAnnouncementParams): Prom
   const page = (await notionRequest('POST', '/pages', {
     parent: { database_id: dbId },
     properties: props,
-  })) as { id: string; properties: Record<string, unknown> };
+  })) as { id: string; created_time?: string; properties: Record<string, unknown> };
   // キャッシュ invalidate（全テナントのお知らせキャッシュ＝`announcements:` 接頭辞すべて）
   invalidate('announcements:');
-  return pageToAnnouncement(page as { id: string; properties: Record<string, unknown> });
+  return pageToAnnouncement(page);
 }
 
 /**
@@ -227,14 +227,14 @@ export async function listAnnouncementsForStore(tenantId: string): Promise<Annou
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
     page_size: 50,
-    sorts: [{ property: '公開日', direction: 'descending' }],
+    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
     filter: {
       and: [
         { property: '公開ステータス', select: { equals: '公開' } },
         { property: '宛先種別', select: { equals: '店舗向け' } },
       ],
     },
-  })) as { results?: Array<{ id: string; properties: Record<string, unknown> }> };
+  })) as { results?: Array<{ id: string; created_time?: string; properties: Record<string, unknown> }> };
 
   const today = new Date().toISOString().slice(0, 10);
   const all = (res.results || []).map(pageToAnnouncement);
@@ -245,11 +245,10 @@ export async function listAnnouncementsForStore(tenantId: string): Promise<Annou
     return true;
   });
 
+  // ピン留めを最上部、続いて送信日時(createdAt)降順
   filtered.sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    const aDate = a.publishedAt || '';
-    const bDate = b.publishedAt || '';
-    return bDate.localeCompare(aDate);
+    return b.createdAt.localeCompare(a.createdAt);
   });
 
   setCached(cacheKey, filtered, 60_000);
@@ -263,7 +262,7 @@ export async function listAllAnnouncementsAdmin(): Promise<Announcement[]> {
   const res = (await notionRequest('POST', `/databases/${dbId}/query`, {
     page_size: 100,
     sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-  })) as { results?: Array<{ id: string; properties: Record<string, unknown> }> };
+  })) as { results?: Array<{ id: string; created_time?: string; properties: Record<string, unknown> }> };
   return (res.results || []).map(pageToAnnouncement);
 }
 
@@ -273,6 +272,7 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
   try {
     const page = (await notionRequest('GET', `/pages/${id}`)) as {
       id: string;
+      created_time?: string;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       properties: Record<string, any>;
     };

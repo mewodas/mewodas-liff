@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { initLiff, getLineProfile } from '@/lib/liff';
-import { useNotificationsUnread } from '@/lib/useNotificationsUnread';
+import { useInboxUnread } from '@/lib/useInboxUnread';
 import {
   BookOpen,
   TrendingUp,
@@ -81,7 +81,7 @@ const sections: Section[] = [
 
 export default function MenuPage() {
   const [userId, setUserId] = useState<string | null>(null);
-  const unreadCount = useNotificationsUnread(userId);
+  const unreadCount = useInboxUnread(userId);
 
   useEffect(() => {
     (async () => {

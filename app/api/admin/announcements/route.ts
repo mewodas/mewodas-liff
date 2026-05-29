@@ -20,10 +20,7 @@ export const GET = withAdminTenant(async (req) => {
   const session = currentSession(req);
   const isMaster = session?.role === 'master';
   let announcements = await listAllAnnouncementsAdmin();
-  // 店舗向けのみ返す（顧客向けは過去データ混入防止のため除外）
-  announcements = announcements.filter((a) => a.audience === '店舗向け');
   if (!isMaster) {
-    // 店舗は「自テナント宛 or 全テナント共通」のお知らせのみ閲覧（他店舗のお知らせを隠す）
     const tenantId = getCurrentTenant().id;
     announcements = announcements.filter(
       (a) => a.targetTenants.length === 0 || a.targetTenants.includes(tenantId)
@@ -42,12 +39,9 @@ export const POST = withAdminTenant(async (req) => {
   try {
     const body = await req.json();
 
-    // お知らせ送信は運営(master)専用。店舗(tenant_admin)は受信のみで送信不可。
     const session = currentSession(req);
     const isMaster = session?.role === 'master';
-    if (!isMaster) {
-      return NextResponse.json({ error: 'お知らせ送信は運営専用です' }, { status: 403 });
-    }
+    const contextTenantId = getCurrentTenant().id;
 
     const title = String(body.title || '').trim();
     const bodyText = String(body.body || '').trim();
@@ -58,14 +52,20 @@ export const POST = withAdminTenant(async (req) => {
       return NextResponse.json({ error: 'title / body が必要' }, { status: 400 });
     }
 
-    // 宛先は店舗向け固定（顧客向け一斉は廃止）。対象テナントはリクエスト値（全店舗 or 特定店舗）。
-    const audience: AnnouncementAudience = '店舗向け';
+    let audience: AnnouncementAudience;
     let targetTenants: string[];
-    const scope: string = body.scope || 'all';
-    if (scope === 'tenant' && body.targetTenantId) {
-      targetTenants = [String(body.targetTenantId)];
+
+    if (isMaster) {
+      audience = (body.audience as AnnouncementAudience) || '顧客向け';
+      const scope: string = body.scope || 'all';
+      if (scope === 'tenant' && body.targetTenantId) {
+        targetTenants = [String(body.targetTenantId)];
+      } else {
+        targetTenants = [];
+      }
     } else {
-      targetTenants = [];
+      audience = '顧客向け';
+      targetTenants = [contextTenantId];
     }
 
     const announcement = await createAnnouncement({

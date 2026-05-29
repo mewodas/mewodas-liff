@@ -12,7 +12,9 @@ type Announcement = {
   title: string;
   body: string;
   importance: AnnouncementImportance;
+  audience: string;
   pinned: boolean;
+  createdAt: string;
   publishedAt: string | null;
   status: string;
   targetTenants: string[];
@@ -22,9 +24,10 @@ function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
     return d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   } catch {
-    return iso;
+    return '—';
   }
 }
 
@@ -42,10 +45,14 @@ export default function StoreAnnouncementsPage() {
         if (!res.ok) return;
         const j = await res.json();
         setConfigured(j.configured !== false);
-        setAnnouncements(j.announcements || []);
+        // 受信inboxは運営→店舗の「店舗向け」のみ表示（店舗が送った顧客向けは除外）
+        const storeAnns = ((j.announcements || []) as Announcement[]).filter(
+          (a) => a.audience === '店舗向け'
+        );
+        setAnnouncements(storeAnns);
         const ids = new Set<string>();
-        for (const a of (j.announcements || []) as Announcement[]) {
-          if (isAnnouncementRead(a.id)) ids.add(a.id);
+        for (const a of storeAnns) {
+          if (isAnnouncementRead(a.id, 'store')) ids.add(a.id);
         }
         setReadIds(ids);
       } catch {
@@ -60,7 +67,7 @@ export default function StoreAnnouncementsPage() {
     const next = openId === a.id ? null : a.id;
     setOpenId(next);
     if (next === a.id && !readIds.has(a.id)) {
-      markAnnouncementRead(a.id);
+      markAnnouncementRead(a.id, 'store');
       setReadIds((prev) => new Set([...prev, a.id]));
     }
   }
@@ -112,7 +119,7 @@ export default function StoreAnnouncementsPage() {
                       )}
                       <div className="flex items-center gap-1 ml-auto">
                         <Bell className="w-3 h-3 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
-                        <span className="text-[11px] text-stone-500">{formatDate(a.publishedAt)}</span>
+                        <span className="text-[11px] text-stone-500">{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

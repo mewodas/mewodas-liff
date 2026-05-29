@@ -13,10 +13,13 @@ export function useStoreAnnouncementUnread(): number {
         const res = await fetch('/api/admin/announcements', { cache: 'no-store' });
         if (!res.ok) return;
         const j = await res.json();
-        const announcements: { id: string }[] = j.announcements ?? [];
+        // 受信ベルは運営→店舗の「店舗向け」のみカウント（店舗自身が送った顧客向けは除外）
+        const announcements: { id: string; audience?: string }[] = j.announcements ?? [];
         if (cancelled) return;
-        const readIds = getReadAnnouncementIds();
-        setCount(announcements.filter((a) => !readIds.has(a.id)).length);
+        const readIds = getReadAnnouncementIds('store');
+        setCount(
+          announcements.filter((a) => a.audience === '店舗向け' && !readIds.has(a.id)).length
+        );
       } catch {
         // ネットワーク失敗時は 0 を維持
       }

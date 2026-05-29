@@ -249,23 +249,25 @@ export default function ProgressPage() {
                           </span>
                         )}
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        {/* 食事カード（3/4幅・PFC内訳付き） */}
-                        <div className="col-span-3">
-                          <MealCard
-                            intakeKcal={item.today.intakeKcal}
-                            targetKcal={item.today.targetKcal}
-                            mealCount={item.today.mealCount}
-                            intakeP={item.today.intakeP}
-                            intakeF={item.today.intakeF}
-                            intakeC={item.today.intakeC}
-                          />
-                        </div>
-                        {/* 体重カード（1/4幅・コンパクト） */}
-                        <div className="col-span-1">
+                      <div className="space-y-2 text-xs">
+                        {/* 食事カード（全幅・PFC内訳付き） */}
+                        <MealCard
+                          intakeKcal={item.today.intakeKcal}
+                          targetKcal={item.today.targetKcal}
+                          mealCount={item.today.mealCount}
+                          intakeP={item.today.intakeP}
+                          intakeF={item.today.intakeF}
+                          intakeC={item.today.intakeC}
+                        />
+                        {/* 体重・運動 */}
+                        <div className="grid grid-cols-2 gap-2">
                           <WeightCard
                             latest={item.weight.latest}
                             delta={item.weight.deltaFromYesterday}
+                          />
+                          <ExerciseCard
+                            count={item.exercise.todayCount}
+                            minutes={item.exercise.todayMinutes}
                           />
                         </div>
                       </div>
@@ -357,6 +359,26 @@ function WeightCard({ latest, delta }: { latest: number | null; delta: number | 
       ) : (
         <div className="flex items-baseline gap-1.5">
           <span className="text-[10px] font-bold text-sky-700">体重</span>
+          <span className="text-[11px] text-stone-400">未記録</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExerciseCard({ count, minutes }: { count: number; minutes: number }) {
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 flex flex-col gap-1 h-full justify-center">
+      {count > 0 ? (
+        <div className="flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-[10px] font-bold text-violet-700">運動</span>
+          <span className="text-base font-bold text-stone-900 leading-none">{minutes}</span>
+          <span className="text-[10px] text-stone-500">分</span>
+          <span className="text-[10px] text-stone-500">／{count}件</span>
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[10px] font-bold text-violet-700">運動</span>
           <span className="text-[11px] text-stone-400">未記録</span>
         </div>
       )}

@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { initLiffWithTenant } from '@/lib/tenantLiff';
 import { apiFetch } from '@/lib/apiFetch';
-import { useNotificationsUnread } from '@/lib/useNotificationsUnread';
+import { useInboxUnread } from '@/lib/useInboxUnread';
 import { isDemoMode } from '@/lib/demoClient';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
@@ -45,7 +45,7 @@ function LiffGateInner() {
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
-  const unreadCount = useNotificationsUnread(userId);
+  const unreadCount = useInboxUnread(userId);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [foodStatus, setFoodStatus] = useState<string | null>(null);
