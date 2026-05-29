@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 09:00 claude/sec-fix-6543739
+- fix: `lib/notion.ts` `notionFetch` に 502/503/504/429 対象の指数バックオフリトライ（最大3回）を追加
+- 影響範囲: API（Notion 経由の全エンドポイント）
+- 関連: Slack #security-alerts 1780070684.745729（Sentry: Notion API 502 at /api/admin/billing/info）
+
 ## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
 - change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）
 - change: `app/admin/progress/page.tsx` ヘッダーを `進捗管理（X名）` → `進捗管理`（件数表記を削除。本文のフィルタ結果件数表示は存置）
