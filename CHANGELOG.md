@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(admin): 顧客分析に個人シート系の運動記録を統合
+- fix: `app/api/admin/customers/[id]/analysis/data/route.ts` — `getRangeExtras` で個人シート運動を取得し、運動DB(listExerciseLogsByLineUser)と重複排除マージ。同一日付は運動DB優先
+- fix: `app/admin/analysis/page.tsx` ExerciseSection/ExerciseRow — durationMin/estimatedKcal が 0（シート由来）のエントリを「時間: —」で表示。サマリは実数値のみ加算
+- 影響範囲: 管理画面 /admin/analysis、/store/analysis（顧客側 UI 変更なし）
+
 ## 2026-05-29 – change(liff): メニュー名称変更（週次分析・体重記録）
 - change: `app/menu/page.tsx` メニューラベルを「週次レポート」→「週次分析」、「体重推移・予測」→「体重記録」(sub「過去記録とAI予測」)
 - change: `app/weekly/page.tsx` ページタイトル「週次レポート」→「週次分析」
