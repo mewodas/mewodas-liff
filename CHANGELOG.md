@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(store): 顧客分析の店舗チップが店舗ID（gotanda）を表示する不具合
+- fix: `app/admin/analysis/page.tsx` 店舗フィルタのラベルを storeId そのままから表示名（メヲダス五反田店 等）に修正。`/api/admin/stores` を取得し storeId→name マップでラベル解決（進捗管理と同方式）。未登録店舗は storeId をフォールバック表示
+- 影響範囲: 管理画面（/store・/admin の顧客分析 店舗フィルタ）
+
 ## 2026-05-29 – feat(security): Phase 0 監査ログ実装
 - add: `lib/auditLog.ts` — `logAuditEvent()` 新規作成。console.log(JSON) + Sentry breadcrumb。ログイン失敗時は captureMessage も発火。fire-and-forget (try/catch 握りつぶし)
 - instrument: `app/api/admin/auth/login/route.ts` — master/tenant_admin ログイン成功・失敗を記録
