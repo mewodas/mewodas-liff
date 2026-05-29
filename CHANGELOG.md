@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
+- change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）
+- change: `app/admin/progress/page.tsx` ヘッダーを `進捗管理（X名）` → `進捗管理`（件数表記を削除。本文のフィルタ結果件数表示は存置）
+- 影響範囲: 管理画面（/store・/admin の顧客設定・進捗管理ヘッダー）
+
 ## 2026-05-29 – change(admin/store): 顧客一覧の表示改善（LINE連携バッジ移動・進行中の色・目標PFC表示）
 - change: `app/admin/customers/page.tsx`（/admin・/store 共有の顧客一覧）
   - 「LINE 連携済み」バッジを名前行のステータス（進行中等）の隣に移動。従来の下段の別行バッジは削除し、下段は承認ボタンがある時だけ表示

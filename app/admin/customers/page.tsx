@@ -203,7 +203,13 @@ export default function AdminCustomersPage() {
   );
 
   return (
-    <AdminShell title={`顧客設定（${realCustomers.length}名）`}>
+    <AdminShell
+      title={
+        seatInfo?.seatLimit != null
+          ? `顧客設定（${realCustomers.length}/${seatInfo.seatLimit}名）`
+          : `顧客設定（${realCustomers.length}名）`
+      }
+    >
       {/* プレビューモーダル */}
       {previewTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -465,9 +471,9 @@ function StatusBadge({ status }: { status: string | null }) {
       : status === '進行中'
       ? 'bg-orange-100 text-orange-700 border-orange-300'
       : status === '休止中'
-      ? 'bg-amber-100 text-amber-800 border-amber-300'
-      : status === '卒業'
       ? 'bg-sky-100 text-sky-700 border-sky-300'
+      : status === '卒業'
+      ? 'bg-stone-100 text-stone-600 border-stone-300'
       : 'bg-stone-100 text-stone-700 border-stone-300';
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${cls}`}>
