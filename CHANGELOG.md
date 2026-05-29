@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 1 実装
+- feat: `lib/notion.ts` に `createTenantBodyCompDb` 追加・`TenantRow`/`insertTenantRow`/`listTenantRows` に `bodyCompDbId` 列（`Notion 体組成DB ID`）追加
+- feat: `lib/tenant.ts` に `notionBodyCompDbId` フィールド追加（env: `NOTION_BODYCOMP_DB_ID`）
+- feat: `lib/tenantResolver.ts` に `notionBodyCompDbId` 配線
+- feat: `lib/provisionTenant.ts` で新規テナント作成時に体組成DB（4本目）を並列作成
+- feat: `lib/repository/bodyComposition.ts` 新規作成（`BodyCompositionLog` 型・CRUD・同一顧客×同日上書き）
+- feat: `app/api/admin/body-composition/route.ts` 新規作成（GET/POST/DELETE + provision-db アクション）
+- feat: `app/admin/measurements/page.tsx` 新規作成（体組成計測記録ページ・顧客選択・フォーム・履歴テーブル・詳細モーダル）
+- feat: `app/store/measurements/page.tsx` 新規作成（admin 側を re-export）
+- change: `app/admin/AdminShell.tsx` 進捗管理をドロップダウン化（配下: 進捗管理/食事一覧/体組成計測記録）・食事一覧をナビに正式追加・openMenu state を 'progress'|'settings'|null に一般化
+- 影響範囲: 管理画面（/store・/admin）・lib（テナントプロビジョニング）
+
 ## 2026-05-29 – change(admin): 顧客管理ヘッダーを「進行中/全顧客数」表記に
 - change: `app/admin/customers/page.tsx` ヘッダーを `顧客管理（進行中数/全顧客数名）` に変更（例 8/10名）。従来は `実顧客数/契約席数`(=10/8) で分子分母の意味が逆だった。契約席数とは別軸で、アクティブ会員が全体の何名かを表示
 - 影響範囲: 管理画面（/store・/admin 顧客管理ヘッダー）

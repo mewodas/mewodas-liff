@@ -578,6 +578,50 @@ export async function createTenantWeightDb(
   return res.id as string;
 }
 
+// 新規ジム用の「{ジム名} 体組成計測記録」DB を作成。
+export async function createTenantBodyCompDb(
+  tenantName: string,
+  parentPageId: string
+): Promise<string> {
+  const res = await notionRequest('POST', '/databases', {
+    parent: { type: 'page_id', page_id: parentPageId },
+    title: [{ type: 'text', text: { content: `${tenantName} 体組成計測記録` } }],
+    properties: {
+      計測日: { title: {} },
+      顧客名: { rich_text: {} },
+      LINEユーザーID: { rich_text: {} },
+      '体重(kg)': { number: {} },
+      '体脂肪率(%)': { number: {} },
+      '筋肉量(kg)': { number: {} },
+      '体脂肪量(kg)': { number: {} },
+      '体水分率(%)': { number: {} },
+      BMI: { number: {} },
+      '基礎代謝(kcal)': { number: {} },
+      内臓脂肪レベル: { number: {} },
+      '骨格筋量(kg)': { number: {} },
+      '右腕筋肉量(kg)': { number: {} },
+      '左腕筋肉量(kg)': { number: {} },
+      '右脚筋肉量(kg)': { number: {} },
+      '左脚筋肉量(kg)': { number: {} },
+      '体幹筋肉量(kg)': { number: {} },
+      測定機器: {
+        select: {
+          options: [
+            { name: 'InBody', color: 'blue' },
+            { name: '体組成計', color: 'green' },
+            { name: '体重計', color: 'yellow' },
+            { name: 'その他', color: 'gray' },
+          ],
+        },
+      },
+      メモ: { rich_text: {} },
+      登録者: { rich_text: {} },
+      元画像: { files: {} },
+    },
+  });
+  return res.id as string;
+}
+
 // テナントDBに新規行を追加
 export async function insertTenantRow(
   tenantsDbId: string,
@@ -588,6 +632,7 @@ export async function insertTenantRow(
     customerDbId: string;
     foodDbId: string;
     weightDbId?: string;
+    bodyCompDbId?: string;
     ownerEmail: string;
     startDate: string;
     note?: string;
@@ -606,6 +651,9 @@ export async function insertTenantRow(
   };
   if (row.weightDbId) {
     properties['Notion 体重DB ID'] = { rich_text: [{ type: 'text', text: { content: row.weightDbId } }] };
+  }
+  if (row.bodyCompDbId) {
+    properties['Notion 体組成DB ID'] = { rich_text: [{ type: 'text', text: { content: row.bodyCompDbId } }] };
   }
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: tenantsDbId },
@@ -664,6 +712,8 @@ export type TenantRow = {
   ownerLineUserId: string | null;
   /** 招待モード（Phase 2）。'個別招待'=トレーナー1件ずつURL発行、'承認制'=公開URL+ジムが承認 */
   inviteMode: 'individual' | 'approval' | null;
+  /** 体組成計測記録 DB ID */
+  bodyCompDbId: string | null;
 };
 
 export async function updateTenantRow(
@@ -868,6 +918,7 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
         if (v === '個別招待') return 'individual' as const;
         return null;
       })(),
+      bodyCompDbId: p['Notion 体組成DB ID']?.rich_text?.[0]?.plain_text || null,
     };
   });
 }

@@ -31,7 +31,7 @@ export const POST = withAdminTenant(async () => {
   try {
     await seedSampleCustomer(
       tenant.id,
-      { customerDbId: row.customerDbId, foodDbId: row.foodDbId, weightDbId: row.weightDbId },
+      { customerDbId: row.customerDbId, foodDbId: row.foodDbId, weightDbId: row.weightDbId, bodyCompDbId: row.bodyCompDbId || '' },
       notionApiKey
     );
     return NextResponse.json({ ok: true, tenantId: tenant.id });

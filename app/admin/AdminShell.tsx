@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, Settings, ChevronDown, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, Settings, ChevronDown, Scale, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean; settings?: boolean };
+type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean; settings?: boolean; progress?: boolean };
 
 const TABS: Tab[] = [
   {
@@ -21,6 +21,21 @@ const TABS: Tab[] = [
     label: '進捗管理',
     Icon: TrendingUp,
     match: (p, base) => p.startsWith(`${base}/progress`),
+    progress: true,
+  },
+  {
+    suffix: '/meals',
+    label: '食事一覧',
+    Icon: UtensilsCrossed,
+    match: (p, base) => p.startsWith(`${base}/meals`),
+    progress: true,
+  },
+  {
+    suffix: '/measurements',
+    label: '体組成計測記録',
+    Icon: Scale,
+    match: (p, base) => p.startsWith(`${base}/measurements`),
+    progress: true,
   },
   {
     suffix: '/analysis',
@@ -124,8 +139,9 @@ export default function AdminShell({
   const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(cachedMe);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<'progress' | 'settings' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const storeUnread = useStoreAnnouncementUnread();
 
@@ -143,7 +159,7 @@ export default function AdminShell({
 
   useEffect(() => {
     setMenuOpen(false);
-    setSettingsOpen(false);
+    setOpenMenu(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -158,15 +174,17 @@ export default function AdminShell({
   }, [menuOpen]);
 
   useEffect(() => {
-    if (!settingsOpen) return;
+    if (!openMenu) return;
     function handleClick(e: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
+      const insideProgress = progressRef.current && progressRef.current.contains(e.target as Node);
+      const insideSettings = settingsRef.current && settingsRef.current.contains(e.target as Node);
+      if (!insideProgress && !insideSettings) {
+        setOpenMenu(null);
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [settingsOpen]);
+  }, [openMenu]);
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
@@ -180,10 +198,12 @@ export default function AdminShell({
     return true;
   });
 
-  const topTabs = visibleTabs.filter((t) => !t.settings);
+  const topTabs = visibleTabs.filter((t) => !t.settings && !t.progress);
+  const progressTabs = visibleTabs.filter((t) => t.progress);
   const settingsTabs = visibleTabs.filter((t) => t.settings);
 
   const activeTab = visibleTabs.find((t) => t.match(pathname, base));
+  const progressActive = progressTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
   const accentBorder = isStore ? 'border-violet-600' : 'border-emerald-600';
   const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
@@ -292,16 +312,61 @@ export default function AdminShell({
               );
             })}
 
+            {/* 進捗管理ドロップダウン */}
+            {progressTabs.length > 0 && (
+              <div className="relative" ref={progressRef}>
+                <button
+                  type="button"
+                  onClick={() => setOpenMenu((v) => (v === 'progress' ? null : 'progress'))}
+                  aria-expanded={openMenu === 'progress'}
+                  aria-haspopup="true"
+                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
+                    progressActive || openMenu === 'progress'
+                      ? `${accentBorder} ${accentText}`
+                      : 'border-transparent text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
+                  進捗管理
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform ${openMenu === 'progress' ? 'rotate-180' : ''}`}
+                    strokeWidth={2.2}
+                  />
+                </button>
+                {openMenu === 'progress' && (
+                  <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
+                    {progressTabs.map((t) => {
+                      const href = `${base}${t.suffix}`;
+                      const active = t.match(pathname, base);
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
+                            active ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
+                          }`}
+                        >
+                          <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                          {t.label}
+                          {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 設定ドロップダウン */}
             {settingsTabs.length > 0 && (
               <div className="relative" ref={settingsRef}>
                 <button
                   type="button"
-                  onClick={() => setSettingsOpen((v) => !v)}
-                  aria-expanded={settingsOpen}
+                  onClick={() => setOpenMenu((v) => (v === 'settings' ? null : 'settings'))}
+                  aria-expanded={openMenu === 'settings'}
                   aria-haspopup="true"
                   className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                    settingsActive || settingsOpen
+                    settingsActive || openMenu === 'settings'
                       ? `${accentBorder} ${accentText}`
                       : 'border-transparent text-stone-600 hover:text-stone-900'
                   }`}
@@ -309,11 +374,11 @@ export default function AdminShell({
                   <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
                   設定
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+                    className={`w-3.5 h-3.5 transition-transform ${openMenu === 'settings' ? 'rotate-180' : ''}`}
                     strokeWidth={2.2}
                   />
                 </button>
-                {settingsOpen && (
+                {openMenu === 'settings' && (
                   <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
                     {settingsTabs.map((t) => {
                       const href = `${base}${t.suffix}`;
@@ -362,6 +427,35 @@ export default function AdminShell({
                   </Link>
                 );
               })}
+
+              {/* 進捗管理セクション */}
+              {progressTabs.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
+                    <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    進捗管理
+                  </div>
+                  {progressTabs.map((t) => {
+                    const href = `${base}${t.suffix}`;
+                    const active = t.match(pathname, base);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
+                          active
+                            ? `${accentBg} ${accentText}`
+                            : 'text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                        {t.label}
+                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* 設定セクション */}
               {settingsTabs.length > 0 && (
