@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 定期レポート設定・レポートのLINE送付UIを一時非表示（機能は存置）
+- change: `app/admin/AdminShell.tsx` ナビから「定期レポート設定」(/scheduled-reports) タブを削除（ページ・cron・lib は存置＝直URLでは到達可）。未使用 CalendarClock import も除去
+- change: `app/admin/reports/page.tsx` レポート送付の「顧客の LINE にも送信」チェックボックスを非表示（`{false &&}`）＋既定を sendLinePush=false に（アプリ内保存のみ）。LINEプッシュ機能自体は存置
+- 影響範囲: 管理画面（/store・/admin のナビ・レポート送付）
+
 ## 2026-05-29 – fix(cron): daily-reports を日次スケジュールに修正（全デプロイ失敗を解消）
 - fix: `vercel.json` の `/api/cron/daily-reports` を `0 * * * *`(毎時)→`0 21 * * *`(UTC21時=JST06:00・日次)に変更。Hobbyプランは「cronは1日1回まで」のため毎時cronで**全デプロイが失敗**していたのを解消（staging/本番とも約1h停止していた）
 - 注意: daily-reports ルートは送信時刻の"時"一致で発火する設計。日次cronはデフォルト送信時刻 `06:00` に合わせたため、06:00設定のテナントのみ自動送信される（毎時送信＝顧客別時刻にはPro必要）。現状 lineAutoSendEnabled は opt-in で全OFFのため実送信影響なし

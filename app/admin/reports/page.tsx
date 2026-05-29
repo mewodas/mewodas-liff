@@ -148,7 +148,8 @@ function Inner() {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [saveInApp, setSaveInApp] = useState(true);
-  const [sendLinePush, setSendLinePush] = useState(true);
+  // LINE送付は現在UI非表示（機能は存置）。既定OFFでアプリ内保存のみ。
+  const [sendLinePush, setSendLinePush] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
   const templateBaselineRef = useRef<{ title: string; body: string }>({ title: '', body: initialDraft });
@@ -609,15 +610,18 @@ function Inner() {
                 />
                 <span className="text-stone-700">FitMeal アプリ内に保存</span>
               </label>
-              <label className="flex items-center gap-2 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sendLinePush}
-                  onChange={(e) => setSendLinePush(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500"
-                />
-                <span className="text-stone-700">顧客の LINE にも送信</span>
-              </label>
+              {/* LINE送付は現在非表示（機能は存置） */}
+              {false && (
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendLinePush}
+                    onChange={(e) => setSendLinePush(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-500"
+                  />
+                  <span className="text-stone-700">顧客の LINE にも送信</span>
+                </label>
+              )}
               <button
                 type="button"
                 onClick={send}
