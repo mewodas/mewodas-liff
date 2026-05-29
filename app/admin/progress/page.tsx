@@ -325,7 +325,7 @@ function MealCard({
         <>
           <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-[10px] font-bold text-emerald-700">食事</span>
+              <span className="text-xs font-bold text-emerald-700">食事</span>
               <span className="text-base font-bold text-stone-900 leading-none">{intakeKcal}</span>
               <span className="text-sm text-stone-500">{targetKcal > 0 ? `/ ${targetKcal} kcal` : 'kcal'}</span>
               {pct !== null && <span className="text-sm font-bold text-stone-600">{pct}%</span>}
@@ -340,7 +340,7 @@ function MealCard({
               />
             </div>
           )}
-          <div className="flex items-center gap-2 text-[10px] text-stone-600">
+          <div className="flex items-center gap-2 text-xs text-stone-600">
             <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 text-rose-700 px-1 py-0.5">P <b className="text-rose-800">{Math.round(intakeP)}</b> / {Math.round(targetP)}g</span>
             <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1 py-0.5">F <b className="text-amber-800">{Math.round(intakeF)}</b> / {Math.round(targetF)}g</span>
             <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 text-sky-700 px-1 py-0.5">C <b className="text-sky-800">{Math.round(intakeC)}</b> / {Math.round(targetC)}g</span>
@@ -348,7 +348,7 @@ function MealCard({
         </>
       ) : (
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[10px] font-bold text-emerald-700">食事</span>
+          <span className="text-xs font-bold text-emerald-700">食事</span>
           <span className="text-[11px] text-stone-400">未記録</span>
         </div>
       )}
@@ -362,15 +362,15 @@ function WeightCard({ latest, delta }: { latest: number | null; delta: number | 
       {latest !== null ? (
         <>
           <div className="flex items-baseline gap-1.5 flex-wrap">
-            <span className="text-[10px] font-bold text-sky-700">体重</span>
-            <span className="text-base font-bold text-stone-900 leading-none">{latest}</span>
-            <span className="text-[10px] text-stone-500">kg</span>
+            <span className="text-xs font-bold text-sky-700">体重</span>
+            <span className="text-lg font-bold text-stone-900 leading-none">{latest}</span>
+            <span className="text-xs text-stone-500">kg</span>
           </div>
           <WeightDelta delta={delta} />
         </>
       ) : (
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[10px] font-bold text-sky-700">体重</span>
+          <span className="text-xs font-bold text-sky-700">体重</span>
           <span className="text-[11px] text-stone-400">未記録</span>
         </div>
       )}

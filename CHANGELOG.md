@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): 進捗カードの文字サイズ拡大（ラベル/PFC/体重値）
+- change: `app/admin/progress/page.tsx` 「食事」「体重」ラベルと PFC チップを text-xs に、体重の数値を text-lg に拡大（視認性向上）
+- 影響範囲: 管理画面（/store・/admin の進捗管理 一覧UI）
+
 ## 2026-05-29 – change(store): 顧客分析の運動を体重の下に表示（常に縦積み）
 - change: `app/admin/analysis/page.tsx` WeightExercisePanel を常に縦積み（体重→運動）に。単日時の横2カラム分岐を撤去し、運動を必ず体重の下に表示
 - 影響範囲: 管理画面（/store・/admin の顧客分析）
