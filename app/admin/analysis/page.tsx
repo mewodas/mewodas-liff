@@ -906,14 +906,6 @@ function ExerciseSection({
         : (INTENSITY_ORDER[b.intensity] ?? 0) - (INTENSITY_ORDER[a.intensity] ?? 0)
     );
 
-  const byDate = new Map<string, ExerciseLog[]>();
-  for (const ex of sorted) {
-    const arr = byDate.get(ex.date) ?? [];
-    arr.push(ex);
-    byDate.set(ex.date, arr);
-  }
-  const groupedByDate = Array.from(byDate.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1));
-
   return (
     <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
       <h3 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
@@ -944,46 +936,22 @@ function ExerciseSection({
         </div>
       )}
 
-      {/* 記録リスト — 単日はフラット表示、期間は日別グループ */}
-      {isSingleDay ? (
-        <div className="space-y-1.5">
-          {sorted.map((ex) => (
-            <ExerciseRow key={ex.id} ex={ex} showDate={false} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {groupedByDate.map(([date, list]) => (
-            <div key={date}>
-              <div className="text-[11px] font-bold text-stone-500 mb-1 px-0.5">{shortDate(date)}</div>
-              <div className="space-y-1">
-                {list.map((ex) => (
-                  <ExerciseRow key={ex.id} ex={ex} showDate={false} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* 記録リスト — 1運動記録を1行（日付＋種目）で表示。時間は表示しない */}
+      <div className="border border-stone-200 rounded-xl divide-y divide-stone-100">
+        {sorted.map((ex) => (
+          <div key={ex.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+            <span className="min-w-0 truncate">
+              <span className="font-bold text-stone-500 mr-2">{shortDate(ex.date)}</span>
+              <span className="font-bold text-stone-900">{ex.exercise || '（種目名なし）'}</span>
+            </span>
+            <span className="flex-shrink-0 flex items-center gap-2 text-stone-500">
+              {ex.intensity && <span>{ex.intensity}</span>}
+              {ex.estimatedKcal > 0 && <span>{ex.estimatedKcal}kcal</span>}
+            </span>
+          </div>
+        ))}
+      </div>
     </section>
-  );
-}
-
-function ExerciseRow({ ex, showDate }: { ex: ExerciseLog; showDate: boolean }) {
-  return (
-    <div className="border border-stone-200 rounded-xl p-2.5 text-xs">
-      <div className="flex items-center justify-between">
-        <span className="font-bold text-stone-900">{ex.exercise || '（種目名なし）'}</span>
-        {showDate && <span className="text-stone-400">{shortDate(ex.date)}</span>}
-      </div>
-      <div className="text-stone-600 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-        {ex.durationMin > 0 ? <span>{ex.durationMin}分</span> : <span className="text-stone-400">時間: —</span>}
-        {ex.intensity && <span>強度: {ex.intensity}</span>}
-        {ex.estimatedKcal > 0 && <span>消費 {ex.estimatedKcal} kcal</span>}
-        {ex.category && <span className="text-emerald-600">{ex.category}</span>}
-      </div>
-      {ex.memo && <div className="text-stone-400 mt-0.5">{ex.memo}</div>}
-    </div>
   );
 }
 
