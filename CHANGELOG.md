@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(store): 受信inbox/ベルを「店舗向け」お知らせのみに絞る
+- fix: `app/store/announcements/page.tsx`・`lib/useStoreAnnouncementUnread.ts` で取得結果を `audience==='店舗向け'` でフィルタ。店舗が送った顧客向け一斉お知らせが自店舗の受信ベルにも出てしまう不具合(QA BUG-1)を修正。
+- 影響範囲: 管理画面（/store/announcements・店舗ヘッダーベル）
+
 ## 2026-05-29 – change(store): 進捗カードに運動を復活・体重は最新値表示を維持
 - change: `app/admin/progress/page.tsx` 進捗の顧客行を「食事（全幅・PFC内訳）＋ 体重・運動（2列）」レイアウトに。運動カード（ExerciseCard・当日の分数/件数）を復活
 - note: 体重は従来どおり最新エントリの値を表示（当日基準への変更は行わない＝社長要望「いままでの内容に戻して」）

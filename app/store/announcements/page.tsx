@@ -12,6 +12,7 @@ type Announcement = {
   title: string;
   body: string;
   importance: AnnouncementImportance;
+  audience: string;
   pinned: boolean;
   publishedAt: string | null;
   status: string;
@@ -42,9 +43,13 @@ export default function StoreAnnouncementsPage() {
         if (!res.ok) return;
         const j = await res.json();
         setConfigured(j.configured !== false);
-        setAnnouncements(j.announcements || []);
+        // 受信inboxは運営→店舗の「店舗向け」のみ表示（店舗が送った顧客向けは除外）
+        const storeAnns = ((j.announcements || []) as Announcement[]).filter(
+          (a) => a.audience === '店舗向け'
+        );
+        setAnnouncements(storeAnns);
         const ids = new Set<string>();
-        for (const a of (j.announcements || []) as Announcement[]) {
+        for (const a of storeAnns) {
           if (isAnnouncementRead(a.id, 'store')) ids.add(a.id);
         }
         setReadIds(ids);
