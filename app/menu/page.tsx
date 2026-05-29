@@ -46,8 +46,8 @@ const sections: Section[] = [
     iconColor: 'text-emerald-600',
     items: [
       { href: '/history', Icon: BookOpen, color: 'text-emerald-600', label: '履歴', sub: '過去の記録を確認' },
-      { href: '/weekly', Icon: TrendingUp, color: 'text-emerald-600', label: '週次レポート', sub: '7日間の振り返り' },
-      { href: '/prediction', Icon: TrendingDown, color: 'text-emerald-600', label: '体重推移・予測', sub: 'グラフ＋AI推測' },
+      { href: '/weekly', Icon: TrendingUp, color: 'text-emerald-600', label: '週次分析', sub: '7日間の振り返り' },
+      { href: '/prediction', Icon: TrendingDown, color: 'text-emerald-600', label: '体重記録', sub: '過去記録とAI予測' },
     ],
   },
   {
