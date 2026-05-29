@@ -43,7 +43,7 @@ export default function AdminStoresPage() {
   }, []);
 
   return (
-    <AdminShell title={`店舗管理（${stores.length}件）`}>
+    <AdminShell title={`店舗一覧（${stores.length}件）`}>
       <div className="space-y-3">
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>

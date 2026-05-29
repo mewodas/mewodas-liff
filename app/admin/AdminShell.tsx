@@ -47,7 +47,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/billing',
-    label: '契約',
+    label: '契約管理',
     Icon: CreditCard,
     match: (p, base) => p.startsWith(`${base}/billing`),
     storeOnly: true,
@@ -62,7 +62,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/stores',
-    label: '店舗',
+    label: '店舗一覧',
     Icon: Store,
     match: (p, base) => p.startsWith(`${base}/stores`),
     storeOnly: true,

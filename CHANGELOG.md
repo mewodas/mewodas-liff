@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-29 – change(admin): タブ改称（契約→契約管理・店舗→店舗一覧）
+- change: `app/admin/AdminShell.tsx` タブラベル「契約」→「契約管理」、「店舗」→「店舗一覧」
+- change: `app/admin/stores/page.tsx` ページタイトル「店舗管理（X件）」→「店舗一覧（X件）」（タブと統一）
+- 影響範囲: 管理画面（/store・/admin ナビ）
+
 ## 2026-05-29 – change(admin): 顧客設定→顧客管理に改称・全メニューの横ズレ修正
 - change: 「顧客設定」→「顧客管理」に改称（`app/admin/AdminShell.tsx` タブ・`app/admin/customers/page.tsx` ヘッダー）。ヘッダーは契約席数があれば `顧客管理（実顧客数/契約席数名）`、未設定なら `顧客管理（X名）`
 - fix: `app/globals.css` html に `scrollbar-gutter: stable` を追加。ページ内容の高さでスクロールバーが出る/出ないにより中央寄せ(`max-w-5xl mx-auto`)が左右にズレていたのを全ページで統一
