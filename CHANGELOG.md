@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – change(store): お知らせ送信を運営(/admin)専用化・店舗(/store)はレポートのみ
+- change: `app/admin/reports/page.tsx` 店舗(/store)では [レポート/お知らせ] トグルを非表示にしレポートモード固定（`?mode=announcement` 直叩きも report に強制）。お知らせ送信モードは運営(/admin)のみ表示
+- change: `app/api/admin/announcements/route.ts` POST を運営(master)専用に。非master(店舗)からの作成は 403（サーバ側強制）。従来は店舗も自テナント宛で送信可だった
+- 維持: 運営→店舗のお知らせ受信(/store/announcements・ベル)は従来通り継続。店舗から顧客への「送信」のみ撤去
+- 影響範囲: 管理画面（/store レポート送付からお知らせ送信導線が消える）・API
+- 背景: 店舗と運営が同一お知らせDBを参照し同期されて紛らわしいため、送信は運営に一本化。将来テナント店舗の送信が必要になれば再開可
+
 ## 2026-05-29 – fix(store): お知らせ削除ボタンが運営の全テナント一斉お知らせで非表示になる不具合
 - fix: `app/admin/reports/page.tsx` `AnnouncementRow` の削除ボタン表示条件を `!isStore || targetTenants.length>0` → `isMaster || targetTenants.length>0` に変更。運営(master)が /store から送った全テナント一斉(対象テナント空)のお知らせで削除ボタンが出なかった問題を修正（API側はmaster全件削除可なのにUIだけ隠れていた）
 - 影響範囲: 管理画面（/store・/admin レポート送付 送信履歴）

@@ -43,7 +43,15 @@ export const POST = withAdminTenant(async (req) => {
 
     const session = currentSession(req);
     const isMaster = session?.role === 'master';
-    const contextTenantId = getCurrentTenant().id;
+
+    // お知らせ送信は運営(master)専用。店舗(tenant_admin)からの作成は不可。
+    // 店舗はレポート送付のみ。運営→店舗のお知らせ受信は別機能(/store/announcements)で継続。
+    if (!isMaster) {
+      return NextResponse.json(
+        { error: 'お知らせの送信は運営のみ可能です' },
+        { status: 403 }
+      );
+    }
 
     const title = String(body.title || '').trim();
     const bodyText = String(body.body || '').trim();
@@ -54,21 +62,10 @@ export const POST = withAdminTenant(async (req) => {
       return NextResponse.json({ error: 'title / body が必要' }, { status: 400 });
     }
 
-    let audience: AnnouncementAudience;
-    let targetTenants: string[];
-
-    if (isMaster) {
-      audience = (body.audience as AnnouncementAudience) || '顧客向け';
-      const scope: string = body.scope || 'all';
-      if (scope === 'tenant' && body.targetTenantId) {
-        targetTenants = [String(body.targetTenantId)];
-      } else {
-        targetTenants = [];
-      }
-    } else {
-      audience = '顧客向け';
-      targetTenants = [contextTenantId];
-    }
+    const audience: AnnouncementAudience = (body.audience as AnnouncementAudience) || '顧客向け';
+    const scope: string = body.scope || 'all';
+    const targetTenants: string[] =
+      scope === 'tenant' && body.targetTenantId ? [String(body.targetTenantId)] : [];
 
     const announcement = await createAnnouncement({
       title,

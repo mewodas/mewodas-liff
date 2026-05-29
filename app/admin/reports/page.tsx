@@ -126,7 +126,10 @@ function Inner() {
   const pathname = usePathname() || '';
   const isStore = pathname.startsWith('/store');
   const modeParam = sp.get('mode');
-  const [mode, setMode] = useState<'report' | 'announcement'>(modeParam === 'announcement' ? 'announcement' : 'report');
+  // お知らせ送信は運営(/admin)専用。店舗(/store)は常にレポートモードのみ。
+  const [mode, setMode] = useState<'report' | 'announcement'>(
+    !isStore && modeParam === 'announcement' ? 'announcement' : 'report'
+  );
 
   // --- レポートモード state ---
   const initialCustomerId = sp.get('customerId') || '';
@@ -420,33 +423,35 @@ function Inner() {
   return (
     <AdminShell title="レポート送付">
       <div className="space-y-3">
-        {/* モードトグル */}
-        <div className="flex gap-1.5 bg-stone-100 p-1 rounded-2xl w-fit">
-          <button
-            type="button"
-            onClick={() => setMode('report')}
-            className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
-              mode === 'report'
-                ? 'bg-white text-stone-900 shadow-sm'
-                : 'text-stone-500 hover:text-stone-700'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" strokeWidth={2.2} />
-            レポート
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('announcement')}
-            className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
-              mode === 'announcement'
-                ? 'bg-white text-stone-900 shadow-sm'
-                : 'text-stone-500 hover:text-stone-700'
-            }`}
-          >
-            <Megaphone className="w-3.5 h-3.5" strokeWidth={2.2} />
-            お知らせ
-          </button>
-        </div>
+        {/* モードトグル（お知らせ送信は運営専用のため店舗では非表示＝レポートのみ） */}
+        {!isStore && (
+          <div className="flex gap-1.5 bg-stone-100 p-1 rounded-2xl w-fit">
+            <button
+              type="button"
+              onClick={() => setMode('report')}
+              className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
+                mode === 'report'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" strokeWidth={2.2} />
+              レポート
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('announcement')}
+              className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
+                mode === 'announcement'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <Megaphone className="w-3.5 h-3.5" strokeWidth={2.2} />
+              お知らせ
+            </button>
+          </div>
+        )}
 
         {/* ===== レポートモード ===== */}
         {mode === 'report' && (
@@ -636,8 +641,8 @@ function Inner() {
           </>
         )}
 
-        {/* ===== お知らせモード ===== */}
-        {mode === 'announcement' && (
+        {/* ===== お知らせモード（運営専用・店舗では非表示） ===== */}
+        {!isStore && mode === 'announcement' && (
           <>
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800">
               <span className="font-bold">アプリ内お知らせのみ送信されます。</span>
