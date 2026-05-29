@@ -1,9 +1,8 @@
 // DEMO_FITMEAL_SAMPLE 顧客を本番 mewodas テナントにシードする一時エンドポイント。
-// 使用後（シード完了確認後）に削除すること。
-// CRON_SECRET Bearer 認証（一回限りのシード操作用）。
+// 使用後（シード完了確認後）に削除し、SEED_DEMO_TOKEN env も削除すること。
+// 認証: Authorization: Bearer <SEED_DEMO_TOKEN> または CRON_SECRET
 
 import { NextRequest, NextResponse } from 'next/server';
-import { checkCronAuth } from '@/lib/cronAuth';
 import { FITMEAL_TENANTS_PARENT_PAGE_ID } from '@/lib/tenant';
 import { refreshDemoDataForTenant } from '@/lib/refreshDemoData';
 
@@ -36,8 +35,17 @@ function jstNow() {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = checkCronAuth(req);
-  if (authError) return authError;
+  // SEED_DEMO_TOKEN（一時トークン）または CRON_SECRET で認証
+  const seedToken = process.env.SEED_DEMO_TOKEN || '';
+  const cronSecret = process.env.CRON_SECRET || '';
+  const authHeader = req.headers.get('authorization') || '';
+  const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const isAuthorized =
+    (seedToken && provided === seedToken) ||
+    (cronSecret && provided === cronSecret);
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
 
   const notionApiKey = process.env.NOTION_API_KEY || '';
   if (!notionApiKey) {
