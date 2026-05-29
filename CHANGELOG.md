@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – improve(reports): 送信ボタンのチェックボックス化 + アドバイス質向上
+- change(admin): `app/admin/reports/page.tsx` の送信セクションを2チェックボックス（FitMealアプリ内保存・LINE送信）＋ボタン1つに変更。hidden の `sendLine()` を統合・削除。両方OFFでボタンdisabled。
+- change(api): `app/api/admin/notifications/route.ts` に `saveInApp` フラグ（既定 true）を追加。`saveInApp===false` 時は createNotification をスキップし pushLineMessage のみ実行。両方 false は 400 エラー。返却形式 `{ notification, push }` 維持（保存しない場合 notification は null）。
+- improve(lib): `lib/gemini.ts` の `generateReportComments` に `mealItems: Array<{mealType, name}>` パラメータを追加。プロンプトを食事区分別（朝食/昼食/夕食/間食）に整形して提示し、実際の料理名引用・具体的次の一手を求めるよう改訂。ai_advice を2〜3文に。食事記録なし時は記録促進コメントに誘導。
+- improve(api): `app/api/admin/reports/generate/route.ts` と `app/api/cron/daily-reports/route.ts` で records から mealItems を構築し generateReportComments に渡すよう変更。
+- 影響範囲: 管理画面（/admin/reports・/store/reports）/ API（/api/admin/notifications）/ lib（gemini.ts）/ Cron
+
 ## 2026-05-29 – feat(cron): 前日レポート自動配信(daily-reports)を有効化
 - feat: `vercel.json` の crons に `/api/cron/daily-reports`（schedule `0 * * * *`＝毎時0分）を追加。各テナントの「自動送付時刻」の時とJST現在時が一致したテナントだけ発火。
 - 注意: 発火条件は テナントの「LINE自動送付=ON」AND「LINE Channel Token 有」AND 契約状態≠解約 AND 顧客/食事DB有。現状全テナント「LINE自動送付=False」のため、ONにするまで誰にも送信されない（opt-in）。対象顧客は foodStatus='進行中' かつ LINE ID 有のみ。

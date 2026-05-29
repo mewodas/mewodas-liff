@@ -138,6 +138,11 @@ export async function GET(req: NextRequest) {
           });
           const sum = { kcal: Number(vars.kcal), P: Number(vars.P), F: Number(vars.F), C: Number(vars.C) };
 
+          const mealItems = records.map((r) => ({
+            mealType: r.mealType,
+            name: (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim().slice(0, 50),
+          })).filter((item) => item.name);
+
           let body = applyVars(dailyTemplate.bodyTemplate, vars);
           const aiVars = Array.from(new Set(Array.from(body.matchAll(/\{(ai_\w+)\}/g), (m) => m[1])));
           if (aiVars.length > 0) {
@@ -150,6 +155,7 @@ export async function GET(req: NextRequest) {
                 currentWeight: customer.currentWeight,
                 targetWeight: customer.targetWeight,
                 requiredKeys: aiVars,
+                mealItems,
               });
               body = body.replace(/\{(ai_\w+)\}/g, (_, k) => aiComments[k] ?? `{${k}}`);
             } catch (e) {

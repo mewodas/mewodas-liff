@@ -1561,6 +1561,7 @@ export async function generateReportComments(input: {
   currentWeight: number | null;
   targetWeight: number | null;
   requiredKeys: string[]; // 例: ["ai_good_points", "ai_advice"]
+  mealItems?: Array<{ mealType: string; name: string }>; // 食事内容（食事区分 + 料理名）
 }): Promise<Record<string, string>> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY 未設定");
@@ -1568,21 +1569,42 @@ export async function generateReportComments(input: {
 
   // 各 AI 変数の意味（プロンプトで AI に伝える）
   const DESCS: Record<string, string> = {
-    ai_summary: "全体の評価を1-2行で。達成状況や全体感を一言でまとめる",
-    ai_good_points: "良かった点を1-2点、箇条書きで具体的に（食事名・数字含めて）",
-    ai_advice: "今日のアドバイスを1点、実行しやすい具体行動で",
+    ai_summary: "全体の評価を2文で。達成状況と今日の食事の特徴を踏まえて総括する",
+    ai_good_points: "良かった点を1-2点、箇条書きで具体的に（食べた料理名・数字を引用して）",
+    ai_advice: "実際に食べたものを踏まえた具体的アドバイスを2〜3文で。何をどう変えるか明示する（例：夕食の揚げ物を焼き物に / 昼にタンパク質を追加）。ただし冗長にならない",
     ai_one_word: "応援の一言メッセージ（1行、明るく前向き）",
-    ai_keep_doing: "続けてほしいことを1点",
-    ai_improvement: "改善ポイントを1点",
+    ai_keep_doing: "続けてほしいことを1点。食事内容に言及して具体的に",
+    ai_improvement: "改善ポイントを1点。実際に食べたものと紐付けて具体的に",
   };
 
   const desc = input.requiredKeys
-    .map((k) => `- ${k}: ${DESCS[k] || "1-2文で適切なコメント"}`)
+    .map((k) => `- ${k}: ${DESCS[k] || "2〜3文で適切なコメント。実際の食事内容に言及して具体的に"}`)
     .join("\n");
 
   const weightStr = input.currentWeight !== null ? `${input.currentWeight}kg` : "未測定";
   const targetWStr = input.targetWeight !== null ? `${input.targetWeight}kg` : "未設定";
   const ratio = input.goals.kcal > 0 ? Math.round((input.sum.kcal / input.goals.kcal) * 100) : 0;
+
+  // 食事区分別にグループ化
+  let mealSection = "";
+  if (input.mealItems && input.mealItems.length > 0) {
+    const groups: Record<string, string[]> = {};
+    for (const item of input.mealItems) {
+      if (!groups[item.mealType]) groups[item.mealType] = [];
+      groups[item.mealType].push(item.name);
+    }
+    const ORDER = ["朝食", "昼食", "夕食", "間食"];
+    const lines = ORDER
+      .filter((t) => groups[t])
+      .map((t) => `${t}: ${groups[t].join(" / ")}`);
+    // ORDER に含まれない区分も追加
+    for (const [t, names] of Object.entries(groups)) {
+      if (!ORDER.includes(t)) lines.push(`${t}: ${names.join(" / ")}`);
+    }
+    mealSection = `\n【食事内容】\n${lines.join("\n")}`;
+  } else {
+    mealSection = "\n【食事内容】記録なし（食事の記録がない日です。記録を促す方向でコメントしてください）";
+  }
 
   const prompt = `あなたはパーソナルトレーナーです。以下の顧客データを元に、レポートの各コメントセクションを書いてください。
 
@@ -1590,7 +1612,7 @@ export async function generateReportComments(input: {
 【日付】${input.date}
 【摂取】${input.sum.kcal}kcal / P${input.sum.P}g / F${input.sum.F}g / C${input.sum.C}g
 【目標】${input.goals.kcal}kcal / P${input.goals.P}g / F${input.goals.F}g / C${input.goals.C}g（達成率${ratio}%）
-【体重】現在${weightStr} → 目標${targetWStr}
+【体重】現在${weightStr} → 目標${targetWStr}${mealSection}
 
 【生成してほしいセクション】
 ${desc}
@@ -1598,7 +1620,9 @@ ${desc}
 【出力ルール】
 - JSON形式で、各キーに上記説明に沿った日本語の文章を入れる
 - 敬体、トレーナー目線、優しく前向きに
-- 1セクションあたり1-2行、箇条書き指定ありなら「・」で始める
+- **食事内容に記録がある場合は必ず実際の料理名・食材名を1つ以上引用してコメントする**（「今日は○○を食べられましたね」「△△が良い選択でした」など）
+- ai_advice は「具体的な指摘 + 次の一手の提案」を2〜3文でまとめる。冗長にしない
+- 箇条書き指定ありなら「・」で始める
 - 絵文字は控えめに（必要なら1個まで）
 
 出力例:
