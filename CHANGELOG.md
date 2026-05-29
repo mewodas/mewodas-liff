@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-29 – fix(infra): お知らせDBを staging/本番で分離（データ漏れ修正）
+- 事象: staging と本番が同一の `NOTION_ANNOUNCEMENTS_DB_ID`(ae40c5c3…755d) を共有していたため、staging で作成した顧客向けテストお知らせ（対象テナント＝空＝全配信）が本番顧客の /announcements に表示されていた
+- 対処1: staging 専用お知らせDB(36fa47a8…f98)を新規作成（アプリ連携「メヲダス_GAS連携」所有で作成・アクセス確認済）、Vercel Preview(staging) の `NOTION_ANNOUNCEMENTS_DB_ID` を差し替え。本番(Production)の値は変更なし
+- 対処2: 共有DBのテストお知らせ全6件を「アーカイブ」化（本番顧客向け漏れ1件・本番/store管理画面に出ていた店舗向け3件・staging限定/下書き2件）
+- 影響範囲: 顧客側LIFF(/announcements 表示)・本番/store・staging
+- 補足: 通知DB(NOTIFICATIONS)は元から staging/本番で別ID。今回お知らせ(ANNOUNCEMENTS)のみ未分離だった
+
 ## 2026-05-29 – change(store): 顧客分析の運動 種目別集計（重複）を削除
 - change: `app/admin/analysis/page.tsx` 「計N回」下の種目別集計（日付なし・1行記録リストと内容重複）を撤去。集計ロジック・未使用 isSingleDay も整理
 - 影響範囲: 管理画面（/store・/admin の顧客分析 運動記録）
