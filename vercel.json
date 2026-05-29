@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/refresh-demo-data",
       "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/daily-reports",
+      "schedule": "0 * * * *"
     }
   ]
 }
