@@ -201,13 +201,18 @@ export default function AdminCustomersPage() {
     () => customers.filter((c) => !(c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_'))),
     [customers]
   );
+  // ヘッダー表記: 進行中（アクティブ）/ 全顧客数（サンプル・デモ除外）
+  const activeCount = useMemo(
+    () => realCustomers.filter((c) => c.foodStatus === '進行中').length,
+    [realCustomers]
+  );
 
   return (
     <AdminShell
       title={
-        seatInfo?.seatLimit != null
-          ? `顧客管理（${realCustomers.length}/${seatInfo.seatLimit}名）`
-          : `顧客管理（${realCustomers.length}名）`
+        realCustomers.length > 0
+          ? `顧客管理（${activeCount}/${realCustomers.length}名）`
+          : '顧客管理'
       }
     >
       {/* プレビューモーダル */}
