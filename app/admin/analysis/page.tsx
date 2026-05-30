@@ -1401,20 +1401,7 @@ function BodyCompSection({
     { key: 'trunkMuscleKg', label: '体幹筋肉量', unit: 'kg', color: '#0891b2', invert: false },
   ];
 
-  // 既定では主要3項目のみ表示し、線が混むのを防ぐ。凡例タップで各項目を表示/非表示できる。
-  const DEFAULT_VISIBLE = ['weightKg', 'bodyFatPct', 'muscleMassKg'];
-  const [hidden, setHidden] = useState<Set<string>>(
-    () => new Set(METRICS.map((m) => m.key as string).filter((k) => !DEFAULT_VISIBLE.includes(k)))
-  );
-  const toggleMetric = (k: string) =>
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k);
-      else next.add(k);
-      return next;
-    });
-
-  // 各項目の絶対値の最新/初回/増減（凡例用）を算出。記録のある項目のみ。
+  // 各項目ごとに、実数値の推移ポイント・最新値・初回→最新の増減を算出。記録のある項目のみ表示。
   const metricInfo = METRICS.map((m) => {
     const points = sorted
       .map((l) => ({ date: l.measureDate, value: l[m.key] as number | null }))
@@ -1424,22 +1411,6 @@ function BodyCompSection({
     const deltaVal = points.length >= 2 && latest !== null && baseline !== null ? round1(latest - baseline) : null;
     return { ...m, points, baseline, latest, deltaVal };
   }).filter((m) => m.points.length > 0);
-
-  // 初回測定を 0% とした変化率で全項目を1グラフに重ねる（スケール差を吸収して比較可能に）。
-  const chartMetrics = metricInfo.filter((m) => m.baseline !== null && m.baseline !== 0);
-  const chartData = sorted.map((l) => {
-    const row: Record<string, number | string | null> = { date: l.measureDate };
-    for (const m of chartMetrics) {
-      const v = l[m.key] as number | null;
-      row[m.key] =
-        typeof v === 'number' && !Number.isNaN(v) && m.baseline
-          ? round1(((v - m.baseline) / m.baseline) * 100)
-          : null;
-    }
-    return row;
-  });
-  const visibleChartMetrics = chartMetrics.filter((m) => !hidden.has(m.key as string));
-  const canChart = sorted.length >= 2 && chartMetrics.length > 0;
 
   function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
     if (v === null) return null;
@@ -1478,63 +1449,41 @@ function BodyCompSection({
           {logs.length === 0 ? (
             <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
           ) : (
-            <>
-              {/* 初回測定を 0% とした変化率で全項目を1グラフに統合（スケール差を吸収） */}
-              {canChart ? (
-                <div className="space-y-1">
-                  <div className="text-[10px] text-stone-500">初回測定を 0% とした変化率（単位の違う項目をまとめて比較）</div>
-                  <div className="w-full h-52">
-                    <ResponsiveContainer>
-                      <LineChart data={chartData} margin={{ top: 4, right: 6, left: -8, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                        <XAxis dataKey="date" tickFormatter={shortDate} interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={40} />
-                        <ReferenceLine y={0} stroke="#a8a29e" strokeDasharray="4 4" />
-                        <Tooltip
-                          contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-                          labelFormatter={(l) => shortDate(String(l))}
-                          formatter={(v, key) => {
-                            const m = chartMetrics.find((mm) => String(mm.key) === String(key));
-                            return [`${(v as number) > 0 ? '+' : ''}${v}%`, m?.label ?? String(key)];
-                          }}
-                        />
-                        {visibleChartMetrics.map((m) => (
-                          <Line key={m.key} type="linear" dataKey={m.key as string} stroke={m.color} strokeWidth={2} dot={{ r: 2.5, fill: m.color }} connectNulls isAnimationActive={false} />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {metricInfo.map((m) => (
+                <div key={m.key} className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11px] font-bold text-stone-600 inline-flex items-center gap-1 min-w-0">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
+                      <span className="truncate">{m.label}</span>
+                    </span>
+                    <span className="text-base font-bold text-stone-900 whitespace-nowrap">
+                      {m.latest !== null ? round1(m.latest) : '—'}
+                      {m.unit && <span className="text-[10px] font-medium text-stone-500 ml-0.5">{m.unit}</span>}
+                      <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
+                    </span>
                   </div>
+                  {m.points.length >= 2 ? (
+                    <div className="w-full h-16 mt-1.5">
+                      <ResponsiveContainer>
+                        <LineChart data={m.points} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                          <YAxis hide domain={['auto', 'auto']} />
+                          <XAxis dataKey="date" hide />
+                          <Tooltip
+                            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+                            labelFormatter={(l) => shortDate(String(l))}
+                            formatter={(v) => [`${v}${m.unit}`, m.label]}
+                          />
+                          <Line type="linear" dataKey="value" stroke={m.color} strokeWidth={2} dot={{ r: 2.5, fill: m.color }} isAnimationActive={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-stone-400 mt-1.5">推移は2回以上の計測で表示</div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-[11px] text-stone-400">推移グラフは2回以上の計測で表示されます</div>
-              )}
-
-              {/* 凡例（タップで表示切替）＋最新値＋増減（絶対値で一目） */}
-              <div className="space-y-1 pt-1">
-                <div className="text-[10px] text-stone-400">凡例をタップでグラフの表示/非表示を切り替え</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
-                  {metricInfo.map((m) => {
-                    const off = hidden.has(m.key as string);
-                    return (
-                      <button
-                        key={m.key}
-                        type="button"
-                        onClick={() => toggleMetric(m.key as string)}
-                        className={`flex items-center gap-1.5 min-w-0 py-0.5 text-left ${off ? 'opacity-40' : ''}`}
-                        aria-pressed={!off}
-                      >
-                        <span className={`inline-block w-3 h-0.5 rounded flex-shrink-0 ${off ? 'bg-stone-300' : ''}`} style={off ? undefined : { backgroundColor: m.color }} />
-                        <span className="text-[11px] text-stone-600 truncate">{m.label}</span>
-                        <span className="text-[11px] font-bold text-stone-900 ml-auto whitespace-nowrap">
-                          {m.latest !== null ? round1(m.latest) : '—'}{m.unit}
-                          <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+              ))}
+            </div>
           )}
 
           <Link

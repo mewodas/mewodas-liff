@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 体組成推移を項目別の個別グラフに戻す（実数値＋ホバー＋全項目）
+- change: `app/admin/analysis/page.tsx` 体組成を「初回比%の統合1グラフ」から、**項目ごとの個別ミニグラフのカード一覧**に変更（1つにまとめず、わかりやすさ優先）
+- change: 各カードに**実数値の最新値**＋初回からの増減バッジを表示。グラフは実数値の推移で、**マウスホバーで日付＋実数値**をツールチップ表示
+- change: 主要3項目に絞らず**記録のある全項目**を表示。折れ線は直線(linear)
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
 ## 2026-05-30 – change(admin/store): 顧客リスク表示を顧客管理→進捗管理へ移動（ステータス横ラベル）
 - change: `app/admin/progress/page.tsx` 進捗管理の各顧客のステータス（進行中等）バッジの横に、リスクラベル（🔴記録漏れ/🟡体重停滞）を表示。`/api/admin/customers/risk-summary` を fetch し pageId で突合（失敗しても本体表示は壊さない graceful）
 - change: `app/admin/customers/page.tsx` 顧客管理ページからリスク表示（要注意顧客サマリパネル＋行バッジ＋risk-summary fetch）を削除。未使用化した ChevronUp/ChevronDown import も除去
