@@ -13,6 +13,6 @@ export default async function AdminRootPage() {
     redirect('/admin/login');
   }
 
-  // 初期表示は顧客設定（/admin/customers）
+  // 初期表示は顧客管理（/admin/customers）
   redirect('/admin/customers');
 }

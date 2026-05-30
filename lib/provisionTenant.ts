@@ -13,6 +13,7 @@ import {
   createTenantCustomerDb,
   createTenantFoodDb,
   createTenantWeightDb,
+  createTenantBodyCompDb,
   insertTenantRow,
   updateTenantRow,
   setTenantPasswordHash,
@@ -65,7 +66,7 @@ function jstDateOffset(daysAgo: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-type SeedDbIds = { customerDbId: string; foodDbId: string; weightDbId: string };
+type SeedDbIds = { customerDbId: string; foodDbId: string; weightDbId: string; bodyCompDbId: string };
 
 async function getSampleCustomerInfo(
   apiKey: string,
@@ -347,6 +348,7 @@ export type ProvisionResult = {
   customerDbId: string;
   foodDbId: string;
   weightDbId: string;
+  bodyCompDbId: string;
   defaultStoreId: string | null;
   // 平文初期PW (mail 送信失敗時にのみマスタへ返却)。mail.sent === true の時は undefined。
   initialPassword?: string;
@@ -401,6 +403,7 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
         customerDbId: existing.customerDbId || '',
         foodDbId: existing.foodDbId || '',
         weightDbId: existing.weightDbId || '',
+        bodyCompDbId: existing.bodyCompDbId || '',
         defaultStoreId: null,
         mail: { sent: false, reason: 'reused' },
         reused: true,
@@ -410,11 +413,12 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
 
   const tenantId = genTenantId(input.name);
 
-  // Notion 3DB を並列作成
-  const [customerDbId, foodDbId, weightDbId] = await Promise.all([
+  // Notion 4DB を並列作成
+  const [customerDbId, foodDbId, weightDbId, bodyCompDbId] = await Promise.all([
     createTenantCustomerDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
     createTenantFoodDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
     createTenantWeightDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
+    createTenantBodyCompDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
   ]);
 
   // テナント行作成 (基本フィールドのみ)
@@ -425,6 +429,7 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
     customerDbId,
     foodDbId,
     weightDbId,
+    bodyCompDbId,
     ownerEmail: input.ownerEmail,
     startDate: jstToday(),
     note: input.note || '',
@@ -496,7 +501,7 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
   // サンプル顧客シード（best-effort: 失敗してもテナント作成は成功扱い）
   const notionApiKey = process.env.NOTION_API_KEY || '';
   if (notionApiKey && customerDbId && foodDbId && weightDbId) {
-    seedSampleCustomer(tenantId, { customerDbId, foodDbId, weightDbId }, notionApiKey).catch((e) => {
+    seedSampleCustomer(tenantId, { customerDbId, foodDbId, weightDbId, bodyCompDbId }, notionApiKey).catch((e) => {
       console.error('[provisionTenant] seedSampleCustomer failed (non-critical):', e);
     });
   }
@@ -507,6 +512,7 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
     customerDbId,
     foodDbId,
     weightDbId,
+    bodyCompDbId,
     defaultStoreId,
     initialPassword: mail.sent ? undefined : initialPassword,
     mail,
