@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – feat(admin): ログイン画面でログイン済みなら自動リダイレクト
+- feat: `app/admin/login/page.tsx` マウント時に `/api/admin/auth/me` を確認し、**ログイン済みなら `from`（既定ダッシュボード）へ自動リダイレクト**。確認中は「読み込み中…」表示でフォームのチラつき防止。ログイン済みでログイン画面を開くと再ログインを求められていた問題を解消（/admin・/store 共通）
+- 補足: セッション保持は従来通り `admin_session` Cookie 7日間有効（HMAC署名・httpOnly・secure・sameSite=lax）。保持時間・トークン方式は変更なし＝セキュリティリスク増なし
+- 影響範囲: 管理画面 /admin/login・/store/login
+
 ## 2026-05-30 – change(admin/store): 顧客分析の体組成推移を改善（表示タイミング・全項目・各推移グラフ）
 - fix: `app/admin/analysis/page.tsx` 体組成推移セクションの表示ゲートを `!dataLoading` に変更。メイン解析が「データ取得中…」の間に体組成だけ先に出ていたのを、他の結果と一緒に表示されるよう修正
 - change: `BodyCompSection` を全登録項目の一覧表示に刷新（体重/体脂肪率/筋肉量に加え 体脂肪量・体水分率・BMI・基礎代謝・内臓脂肪レベル・骨格筋量・部位別筋肉量）。記録のある項目のみカード表示
