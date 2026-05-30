@@ -4,7 +4,49 @@
 - change: `app/admin/customers/page.tsx` 顧客一覧の「席数上限到達」警告を、常時表示の赤バナーから「招待URLをコピー」ボタンにマウスホバーした時のツールチップに変更（上限到達時のみ）。内容（利用可能/使用数・上限到達・プランを変更するリンク）は従来バナーと同一。ボタンは従来通り上限時 disabled（コピー不可）
 - 実装: ボタンを `relative group` でラップし `group-hover` で表示。`pb-2` でボタンと密着させ、ツールチップ内の「プランを変更する」リンクへマウス移動してもホバーが途切れないように
 - 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。残り1席バナーは従来通り常時表示。顧客側 LIFF 変更なし
-- 備考: cherry-pick で本変更のみ本番反映（体組成計測記録機能は staging で別途待機）
+
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 2（写真AI解析）・Phase 3（顧客分析体組成セクション）実装
+- feat: `app/api/admin/body-composition/analyze/route.ts` 新規作成（POST・`withAdminTenant`・Gemini Vision で体組成計/InBody写真から数値抽出・master/tenant_admin 両方可）
+- feat: `app/admin/measurements/page.tsx` に「写真から自動入力（AI）」UIを追加（画像選択→`lib/imageCompress.ts` で圧縮→analyze API呼び出し→フォームprefill・AIバッジ表示）
+- feat: `app/admin/analysis/page.tsx`（/store・/admin 共有）に体組成セクションを追加（`BodyCompSection`：体重・体脂肪率・筋肉量の最新値カード＋3指標推移折れ線グラフ・折りたたみ可・記録なし時は「記録がありません」表示・体組成計測記録ページへのリンク）
+- change: `app/admin/analysis/page.tsx` に `BodyCompLog` 型・`bodyCompLogs`/`bodyCompOpen` ステート追加。顧客選択時に `GET /api/admin/body-composition?lineUserId=` を自動フェッチ
+- 影響範囲: 管理画面（/store・/admin）・API（admin/body-composition/analyze）
+- 備考: Drive への元画像保存は未実装（analyze/route.ts に TODO コメントあり）
+
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 1 実装
+- feat: `lib/notion.ts` に `createTenantBodyCompDb` 追加・`TenantRow`/`insertTenantRow`/`listTenantRows` に `bodyCompDbId` 列（`Notion 体組成DB ID`）追加
+- feat: `lib/tenant.ts` に `notionBodyCompDbId` フィールド追加（env: `NOTION_BODYCOMP_DB_ID`）
+- feat: `lib/tenantResolver.ts` に `notionBodyCompDbId` 配線
+- feat: `lib/provisionTenant.ts` で新規テナント作成時に体組成DB（4本目）を並列作成
+- feat: `lib/repository/bodyComposition.ts` 新規作成（`BodyCompositionLog` 型・CRUD・同一顧客×同日上書き）
+- feat: `app/api/admin/body-composition/route.ts` 新規作成（GET/POST/DELETE + provision-db アクション）
+- feat: `app/admin/measurements/page.tsx` 新規作成（体組成計測記録ページ・顧客選択・フォーム・履歴テーブル・詳細モーダル）
+- feat: `app/store/measurements/page.tsx` 新規作成（admin 側を re-export）
+- change: `app/admin/AdminShell.tsx` 進捗管理をドロップダウン化（配下: 進捗管理/食事一覧/体組成計測記録）・食事一覧をナビに正式追加・openMenu state を 'progress'|'settings'|null に一般化
+- 影響範囲: 管理画面（/store・/admin）・lib（テナントプロビジョニング）
+
+## 2026-05-29 – change(admin): 顧客管理ヘッダーを「進行中/全顧客数」表記に
+- change: `app/admin/customers/page.tsx` ヘッダーを `顧客管理（進行中数/全顧客数名）` に変更（例 8/10名）。従来は `実顧客数/契約席数`(=10/8) で分子分母の意味が逆だった。契約席数とは別軸で、アクティブ会員が全体の何名かを表示
+- 影響範囲: 管理画面（/store・/admin 顧客管理ヘッダー）
+
+## 2026-05-29 – change(admin): タブ改称（契約→契約管理・店舗→店舗一覧）
+- change: `app/admin/AdminShell.tsx` タブラベル「契約」→「契約管理」、「店舗」→「店舗一覧」
+- change: `app/admin/stores/page.tsx` ページタイトル「店舗管理（X件）」→「店舗一覧（X件）」（タブと統一）
+- 影響範囲: 管理画面（/store・/admin ナビ）
+
+## 2026-05-29 – change(admin): 顧客設定→顧客管理に改称・全メニューの横ズレ修正
+- change: 「顧客設定」→「顧客管理」に改称（`app/admin/AdminShell.tsx` タブ・`app/admin/customers/page.tsx` ヘッダー）。ヘッダーは契約席数があれば `顧客管理（実顧客数/契約席数名）`、未設定なら `顧客管理（X名）`
+- fix: `app/globals.css` html に `scrollbar-gutter: stable` を追加。ページ内容の高さでスクロールバーが出る/出ないにより中央寄せ(`max-w-5xl mx-auto`)が左右にズレていたのを全ページで統一
+- 影響範囲: 管理画面（/store・/admin の全ページ共通ヘッダー/幅）
+
+## 2026-05-29 – change(admin/store): ナビに「設定」ドロップダウンを追加・関連メニューを集約
+- change: `app/admin/AdminShell.tsx`（/store・/admin 共有のヘッダーナビ）
+  - トップタブを「顧客管理 / 進捗管理 / 顧客分析 / レポート送付」に絞り、それ以外を「設定」ドロップダウン配下に集約（クリックで展開、PCは下向きパネル・モバイルはメニュー内の「設定」セクション）
+  - store の設定配下: LINE連携設定 / 契約 / テンプレ管理 / 店舗（表示順）
+  - admin の設定配下: テンプレ管理 / テナント / プラン管理 / 監査ログ（master のみ）
+  - rename: store「セットアップ」→「LINE連携設定」（`/onboarding` のラベルのみ変更、パスは不変）
+  - 設定配下のいずれかがアクティブな時は「設定」タブをアクティブ表示。デスクトップナビの overflow をドロップダウンが隠れないよう visible に変更
+- 影響範囲: 管理画面（/store・/admin のヘッダーナビ）
 
 ## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
 - change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）
