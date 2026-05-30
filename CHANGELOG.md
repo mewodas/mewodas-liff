@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 記録漏れアラートのしきい値を3日→2日連続に
+- change: `lib/risk.ts` `NO_RECORD_THRESHOLD_DAYS` を 3→2 に変更。「今日と昨日の2日連続で食事記録なし（最終記録2日以上前）」で記録漏れと判定。社長フィードバック（2日サボった顧客も早めに検知したい）反映
+- 影響範囲: 顧客リスク判定（進捗管理の記録漏れラベル）。本番反映後に cron 再計算で反映
+
 ## 2026-05-30 – fix(admin/store): 体組成記録の編集が複製される不具合＋写真AI解析の高負荷エラー対策
 - fix: 体組成記録の編集で計測日を変えると別レコードが複製され元データが残っていた不具合を修正。編集時は対象レコードIDで上書き更新するように（`lib/repository/bodyComposition.ts` に `updateBodyCompositionLog` 追加、`app/api/admin/body-composition/route.ts` が `id` 指定時は更新、`app/admin/measurements/page.tsx` が編集時に `id` を送信）
 - fix: 写真AI解析の「Gemini API 503 UNAVAILABLE（高負荷）」エラー対策。`analyze/route.ts` に自動リトライ（gemini-2.5-flash×2回→2.0-flash×1回・指数バックオフ）＋一時的高負荷時は「混み合っています。少し待って再試行」の親切な文言を返すように（内部のGeminiエラーJSONを露出しない）

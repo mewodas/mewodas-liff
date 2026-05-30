@@ -1,4 +1,5 @@
-const NO_RECORD_THRESHOLD_DAYS = 3;
+// 「2日連続記録なし」= 今日と昨日の2日記録なし = 最終記録が2日以上前
+const NO_RECORD_THRESHOLD_DAYS = 2;
 const STALL_MOVEMENT_KG = 0.1;
 
 export type RecordGapResult = {
