@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, Settings, ChevronDown, Scale, UtensilsCrossed, type LucideIcon } from 'lucide-react';
@@ -297,65 +297,66 @@ export default function AdminShell({
               const href = `${base}${t.suffix}`;
               const active = t.match(pathname, base);
               return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                    active
-                      ? `${accentBorder} ${accentText}`
-                      : 'border-transparent text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <t.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
-                  {t.label}
-                </Link>
+                <Fragment key={href}>
+                  <Link
+                    href={href}
+                    className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
+                      active
+                        ? `${accentBorder} ${accentText}`
+                        : 'border-transparent text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <t.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
+                    {t.label}
+                  </Link>
+
+                  {/* 進捗管理ドロップダウン（顧客管理の直後に配置） */}
+                  {t.suffix === '/customers' && progressTabs.length > 0 && (
+                    <div className="relative" ref={progressRef}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenu((v) => (v === 'progress' ? null : 'progress'))}
+                        aria-expanded={openMenu === 'progress'}
+                        aria-haspopup="true"
+                        className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
+                          progressActive || openMenu === 'progress'
+                            ? `${accentBorder} ${accentText}`
+                            : 'border-transparent text-stone-600 hover:text-stone-900'
+                        }`}
+                      >
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
+                        進捗管理
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform ${openMenu === 'progress' ? 'rotate-180' : ''}`}
+                          strokeWidth={2.2}
+                        />
+                      </button>
+                      {openMenu === 'progress' && (
+                        <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
+                          {progressTabs.map((pt) => {
+                            const phref = `${base}${pt.suffix}`;
+                            const pactive = pt.match(pathname, base);
+                            return (
+                              <Link
+                                key={phref}
+                                href={phref}
+                                className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
+                                  pactive ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
+                                }`}
+                              >
+                                <pt.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                                {pt.label}
+                                {pactive && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Fragment>
               );
             })}
-
-            {/* 進捗管理ドロップダウン */}
-            {progressTabs.length > 0 && (
-              <div className="relative" ref={progressRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpenMenu((v) => (v === 'progress' ? null : 'progress'))}
-                  aria-expanded={openMenu === 'progress'}
-                  aria-haspopup="true"
-                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                    progressActive || openMenu === 'progress'
-                      ? `${accentBorder} ${accentText}`
-                      : 'border-transparent text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
-                  進捗管理
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform ${openMenu === 'progress' ? 'rotate-180' : ''}`}
-                    strokeWidth={2.2}
-                  />
-                </button>
-                {openMenu === 'progress' && (
-                  <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
-                    {progressTabs.map((t) => {
-                      const href = `${base}${t.suffix}`;
-                      const active = t.match(pathname, base);
-                      return (
-                        <Link
-                          key={href}
-                          href={href}
-                          className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
-                            active ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
-                          }`}
-                        >
-                          <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                          {t.label}
-                          {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* 設定ドロップダウン */}
             {settingsTabs.length > 0 && (
@@ -412,50 +413,51 @@ export default function AdminShell({
                 const href = `${base}${t.suffix}`;
                 const active = t.match(pathname, base);
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
-                      active
-                        ? `${accentBg} ${accentText}`
-                        : 'text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                    {t.label}
-                    {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                  </Link>
+                  <Fragment key={href}>
+                    <Link
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
+                        active
+                          ? `${accentBg} ${accentText}`
+                          : 'text-stone-700 hover:bg-stone-50'
+                      }`}
+                    >
+                      <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                      {t.label}
+                      {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                    </Link>
+
+                    {/* 進捗管理セクション（顧客管理の直後に配置） */}
+                    {t.suffix === '/customers' && progressTabs.length > 0 && (
+                      <div className="pt-2">
+                        <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
+                          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
+                          進捗管理
+                        </div>
+                        {progressTabs.map((pt) => {
+                          const phref = `${base}${pt.suffix}`;
+                          const pactive = pt.match(pathname, base);
+                          return (
+                            <Link
+                              key={phref}
+                              href={phref}
+                              className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
+                                pactive
+                                  ? `${accentBg} ${accentText}`
+                                  : 'text-stone-700 hover:bg-stone-50'
+                              }`}
+                            >
+                              <pt.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                              {pt.label}
+                              {pactive && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Fragment>
                 );
               })}
-
-              {/* 進捗管理セクション */}
-              {progressTabs.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
-                    <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
-                    進捗管理
-                  </div>
-                  {progressTabs.map((t) => {
-                    const href = `${base}${t.suffix}`;
-                    const active = t.match(pathname, base);
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
-                          active
-                            ? `${accentBg} ${accentText}`
-                            : 'text-stone-700 hover:bg-stone-50'
-                        }`}
-                      >
-                        <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                        {t.label}
-                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
 
               {/* 設定セクション */}
               {settingsTabs.length > 0 && (

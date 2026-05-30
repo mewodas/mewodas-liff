@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-30 – change/fix(admin/store): 進捗管理を顧客管理の隣へ・体組成 複数写真+拡大表示・写真AI解析のJSONエラー修正
+- change: `app/admin/AdminShell.tsx` ナビの「進捗管理」ドロップダウンを「顧客管理」の直後に配置（従来はレポート送付の後ろ）。デスクトップ/モバイル両方。Fragment で顧客管理タブの直後に差し込む形にリファクタ
+- feat: `app/admin/measurements/page.tsx` 体組成計測記録の「写真から自動入力(AI)」で複数写真アップロードに対応（`multiple`・蓄積した全枚を1リクエストで統合解析）。サムネイル一覧＋各写真の削除(×)
+- feat: 写真サムネイルクリックで拡大ライトボックス表示（全画面オーバーレイ・クリック/×で閉じる）
+- fix: `app/api/admin/body-composition/analyze/route.ts` 写真AI解析の「Unterminated string in JSON」エラーを修正。gemini-2.5-flash の thinking を無効化(`thinkingConfig.thinkingBudget:0`)し maxOutputTokens を 2048 に増やして JSON 途中切れを防止。パース失敗時も内部エラーを露出せず親切な文言を返す
+- 影響範囲: 管理画面（/store・/admin のナビ・体組成計測記録）・API（body-composition/analyze）
+
 ## 2026-05-30 – fix(admin/store): 読み込み中の招待URLコピーを防止（席数情報未取得時の誤コピー対策）
 - fix: `app/admin/customers/page.tsx` 顧客一覧の読み込み中（`loading`・`seatInfo` 未取得）は「招待URLをコピー」ボタンを無効化（グレー＋ラベル「読み込み中…」）。従来は読み込み中の一瞬ボタンが有効で、上限到達テナントでも招待URLをコピーできてしまっていた
 - 実装: `disabled` と className に `loading` を追加、`copyApplyLink` 冒頭にも `if (loading || seatInfo?.isOverLimit) return` ガード。読み込み後は従来通り（上限時のみ無効。billing API 失敗で seatInfo が null でも fail-open で招待は可能）
