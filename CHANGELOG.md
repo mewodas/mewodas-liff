@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 顧客リスク表示を顧客管理→進捗管理へ移動（ステータス横ラベル）
+- change: `app/admin/progress/page.tsx` 進捗管理の各顧客のステータス（進行中等）バッジの横に、リスクラベル（🔴記録漏れ/🟡体重停滞）を表示。`/api/admin/customers/risk-summary` を fetch し pageId で突合（失敗しても本体表示は壊さない graceful）
+- change: `app/admin/customers/page.tsx` 顧客管理ページからリスク表示（要注意顧客サマリパネル＋行バッジ＋risk-summary fetch）を削除。未使用化した ChevronUp/ChevronDown import も除去
+- 影響範囲: 管理画面（運営/admin・店舗/store の進捗管理・顧客管理）。顧客側 LIFF 変更なし
+
 ## 2026-05-30 – change(admin/store): 体組成推移グラフを見やすく（既定3項目＋凡例トグル＋直線）
 - change: `app/admin/analysis/page.tsx` 体組成統合グラフを既定で主要3項目（体重・体脂肪率・筋肉量）のみ表示に。線が7本重なって判別しづらかったのを解消
 - change: 凡例をタップで各項目の表示/非表示を切替できるように（非表示はグレーアウト）。必要な項目だけ重ねて比較可能
