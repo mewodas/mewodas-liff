@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
 import { withAdminTenant } from '@/lib/withTenant';
 import { getCurrentTenant } from '@/lib/tenant';
+import { runInTenantContext } from '@/lib/tenantContext';
 import {
   listCustomerRiskByTenant,
   latestComputedAt,
@@ -31,7 +32,11 @@ export const GET = withAdminTenant(async (_req: NextRequest) => {
 
   if (isStale) {
     try {
-      waitUntil(computeAndStoreTenantRisk());
+      // waitUntil はレスポンス後に実行されテナント context を引き継がない可能性があるため、
+      // 取得済み tenant を runInTenantContext で再ラップしてバックグラウンド再計算する
+      waitUntil(
+        Promise.resolve(runInTenantContext(tenant, () => computeAndStoreTenantRisk()))
+      );
     } catch {
       // waitUntil がコンテキスト外で throw する場合のフォールバック
     }
