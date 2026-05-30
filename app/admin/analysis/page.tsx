@@ -1401,15 +1401,31 @@ function BodyCompSection({
     { key: 'trunkMuscleKg', label: '体幹筋肉量', unit: 'kg', color: '#0891b2', invert: false },
   ];
 
-  const metricCards = METRICS.map((m) => {
+  // 各項目の絶対値の最新/初回/増減（凡例用）を算出。記録のある項目のみ。
+  const metricInfo = METRICS.map((m) => {
     const points = sorted
       .map((l) => ({ date: l.measureDate, value: l[m.key] as number | null }))
       .filter((p): p is { date: string; value: number } => typeof p.value === 'number' && !Number.isNaN(p.value));
+    const baseline = points.length > 0 ? points[0].value : null;
     const latest = points.length > 0 ? points[points.length - 1].value : null;
-    const first = points.length > 0 ? points[0].value : null;
-    const deltaVal = points.length >= 2 && latest !== null && first !== null ? round1(latest - first) : null;
-    return { ...m, points, latest, deltaVal };
+    const deltaVal = points.length >= 2 && latest !== null && baseline !== null ? round1(latest - baseline) : null;
+    return { ...m, points, baseline, latest, deltaVal };
   }).filter((m) => m.points.length > 0);
+
+  // 初回測定を 0% とした変化率で全項目を1グラフに重ねる（スケール差を吸収して比較可能に）。
+  const chartMetrics = metricInfo.filter((m) => m.baseline !== null && m.baseline !== 0);
+  const chartData = sorted.map((l) => {
+    const row: Record<string, number | string | null> = { date: l.measureDate };
+    for (const m of chartMetrics) {
+      const v = l[m.key] as number | null;
+      row[m.key] =
+        typeof v === 'number' && !Number.isNaN(v) && m.baseline
+          ? round1(((v - m.baseline) / m.baseline) * 100)
+          : null;
+    }
+    return row;
+  });
+  const canChart = sorted.length >= 2 && chartMetrics.length > 0;
 
   function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
     if (v === null) return null;
@@ -1448,36 +1464,51 @@ function BodyCompSection({
           {logs.length === 0 ? (
             <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {metricCards.map((m) => (
-                <div key={m.key} className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
-                  <div className="text-[11px] font-bold text-stone-600 truncate">{m.label}</div>
-                  <div className="text-base font-bold text-stone-900 leading-tight">
-                    {m.latest !== null ? round1(m.latest) : '—'}
-                    {m.unit && <span className="text-[10px] font-medium text-stone-500 ml-0.5">{m.unit}</span>}
-                    <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
+            <>
+              {/* 初回測定を 0% とした変化率で全項目を1グラフに統合（スケール差を吸収） */}
+              {canChart ? (
+                <div className="space-y-1">
+                  <div className="text-[10px] text-stone-500">初回測定を 0% とした変化率（単位の違う項目をまとめて比較）</div>
+                  <div className="w-full h-52">
+                    <ResponsiveContainer>
+                      <LineChart data={chartData} margin={{ top: 4, right: 6, left: -8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+                        <XAxis dataKey="date" tickFormatter={shortDate} interval="preserveStartEnd" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={40} />
+                        <ReferenceLine y={0} stroke="#a8a29e" strokeDasharray="4 4" />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+                          labelFormatter={(l) => shortDate(String(l))}
+                          formatter={(v, key) => {
+                            const m = chartMetrics.find((mm) => String(mm.key) === String(key));
+                            return [`${(v as number) > 0 ? '+' : ''}${v}%`, m?.label ?? String(key)];
+                          }}
+                        />
+                        {chartMetrics.map((m) => (
+                          <Line key={m.key} type="monotone" dataKey={m.key as string} stroke={m.color} strokeWidth={2} dot={{ r: 2, fill: m.color }} connectNulls isAnimationActive={false} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                  {m.points.length >= 2 ? (
-                    <div className="w-full h-14 mt-1">
-                      <ResponsiveContainer>
-                        <LineChart data={m.points} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
-                          <YAxis hide domain={['auto', 'auto']} />
-                          <XAxis dataKey="date" hide />
-                          <Tooltip
-                            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-                            labelFormatter={(l) => shortDate(String(l))}
-                            formatter={(v) => [`${v}${m.unit}`, m.label]}
-                          />
-                          <Line type="monotone" dataKey="value" stroke={m.color} strokeWidth={2} dot={{ r: 2, fill: m.color }} isAnimationActive={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-stone-400 mt-2">推移は2件以上で表示</div>
-                  )}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="text-[11px] text-stone-400">推移グラフは2回以上の計測で表示されます</div>
+              )}
+
+              {/* 凡例＋最新値＋増減（絶対値で一目） */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5 pt-1">
+                {metricInfo.map((m) => (
+                  <div key={m.key} className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-block w-3 h-0.5 rounded flex-shrink-0" style={{ backgroundColor: m.color }} />
+                    <span className="text-[11px] text-stone-600 truncate">{m.label}</span>
+                    <span className="text-[11px] font-bold text-stone-900 ml-auto whitespace-nowrap">
+                      {m.latest !== null ? round1(m.latest) : '—'}{m.unit}
+                      <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           <Link
