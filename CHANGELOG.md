@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-05-30 – feat(admin/store): 顧客リスクアラート Phase 1 MVP
+- feat: `lib/risk.ts` 純粋関数2種（記録漏れ判定・体重停滞判定）を新規作成
+- feat: `lib/db/migrations/003_customer_risk.sql` customer_risk テーブル DDL を追加
+- feat: `lib/repository/customerRisk.ts` Neon 接続によるリスクデータの upsert/list/latestComputedAt
+- feat: `lib/customerRiskService.ts` テナント文脈内で全顧客のリスク計算→Neon保存するオーケストレーション
+- feat: `app/api/cron/compute-customer-risk/route.ts` 全テナントループで risk 計算の cron ハンドラ（vercel.json 追加は Hobby 上限3本のため見送り）
+- feat: `app/api/admin/customers/risk-summary/route.ts` withAdminTenant でテナント隔離し Neon からリスク行を返す API（12時間超で waitUntil による裏側再計算）
+- feat: `app/admin/customers/page.tsx` 顧客行に記録漏れ（rose）・体重停滞（amber）バッジ追加、上部に要注意顧客折りたたみサマリ
+- 影響範囲: 管理画面（/admin・/store 顧客一覧）、API、lib、DB マイグレーション（003）。顧客側 LIFF 変更なし
+
 ## 2026-05-30 – feat(admin/store): 体組成DBを保存時に自動プロビジョニング（手動設定不要）
 - feat: `app/api/admin/body-composition/route.ts` `ensureBodyCompDbId` を追加し、記録の保存時にテナントの体組成DBが未作成なら自動で作成→レジストリ(`Notion 体組成DB ID`)へ書込→キャッシュ無効化してから保存する（master/店舗どちらでも・冪等）。「Notion 体組成DB ID 未設定」エラーで保存できない問題を解消
 - change: `provision-db` アクションも同ヘルパーに統一（手動「体組成DBを作成」ボタンは予備として存置）。未使用の `currentSession` import を削除

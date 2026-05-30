@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck, Monitor, X } from 'lucide-react';
+import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck, Monitor, X, ChevronDown, ChevronUp } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
@@ -12,6 +12,14 @@ type SeatInfo = {
   currentSeats: number;
   isOverLimit: boolean;
   isNearLimit: boolean;
+};
+
+type RiskRow = {
+  customerPageId: string;
+  lineUserId: string | null;
+  noRecord: boolean;
+  daysSinceLastRecord: number | null;
+  weightStalled: boolean;
 };
 
 type Customer = {
@@ -51,6 +59,8 @@ export default function AdminCustomersPage() {
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState<'sample' | 'real'>('sample');
+  const [riskMap, setRiskMap] = useState<Map<string, RiskRow>>(new Map());
+  const [riskSummaryOpen, setRiskSummaryOpen] = useState(true);
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -58,11 +68,12 @@ export default function AdminCustomersPage() {
         fetch('/api/admin/customers', { cache: 'no-store' }),
         fetch('/api/admin/stores', { cache: 'no-store' }),
         fetch('/api/admin/billing/info', { cache: 'no-store' }),
+        fetch('/api/admin/customers/risk-summary', { cache: 'no-store' }),
       ];
       if (isStore) {
         requests.push(fetch('/api/store/onboarding/state', { cache: 'no-store' }));
       }
-      const [cRes, sRes, bRes, oRes] = await Promise.all(requests);
+      const [cRes, sRes, bRes, rRes, oRes] = await Promise.all(requests);
       if (!cRes.ok) throw new Error(`取得失敗（${cRes.status}）`);
       const cJ = await cRes.json();
       const sJ = sRes.ok ? await sRes.json() : { stores: [] };
@@ -76,6 +87,16 @@ export default function AdminCustomersPage() {
           isOverLimit: bJ.isOverLimit,
           isNearLimit: bJ.isNearLimit,
         });
+      }
+      if (rRes && rRes.ok) {
+        const rJ = await rRes.json().catch(() => null);
+        if (rJ && Array.isArray(rJ.rows)) {
+          const m = new Map<string, RiskRow>();
+          for (const row of rJ.rows as RiskRow[]) {
+            m.set(row.customerPageId, row);
+          }
+          setRiskMap(m);
+        }
       }
       if (oRes) {
         const oJ = oRes.ok ? await oRes.json() : null;
@@ -163,6 +184,16 @@ export default function AdminCustomersPage() {
     for (const s of stores) m.set(s.storeId, s.name);
     return m;
   }, [stores]);
+
+  const riskCustomers = useMemo(() => {
+    if (riskMap.size === 0) return [];
+    return customers
+      .filter((c) => {
+        const r = riskMap.get(c.pageId);
+        return r && (r.noRecord || r.weightStalled);
+      })
+      .map((c) => ({ customer: c, risk: riskMap.get(c.pageId)! }));
+  }, [customers, riskMap]);
 
   async function copyApplyLink(e: React.MouseEvent) {
     e.preventDefault();
@@ -321,6 +352,57 @@ export default function AdminCustomersPage() {
         </div>
 
 
+        {riskCustomers.length > 0 && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              type="button"
+              onClick={() => setRiskSummaryOpen((v) => !v)}
+              className="flex items-center justify-between w-full px-4 py-3 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" strokeWidth={2.2} />
+                <span className="text-sm font-bold text-rose-900">
+                  要注意顧客（{riskCustomers.length}名）
+                </span>
+              </div>
+              {riskSummaryOpen ? (
+                <ChevronUp className="w-4 h-4 text-rose-400" strokeWidth={2.2} />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-rose-400" strokeWidth={2.2} />
+              )}
+            </button>
+            {riskSummaryOpen && (
+              <ul className="divide-y divide-rose-100 border-t border-rose-100">
+                {riskCustomers.map(({ customer, risk }) => (
+                  <li key={customer.pageId}>
+                    <Link
+                      href={`${base}/customers/${customer.pageId}`}
+                      className="flex items-center justify-between px-4 py-2.5 hover:bg-rose-100"
+                    >
+                      <div>
+                        <span className="text-sm font-bold text-stone-900">{customer.name}</span>
+                        <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                          {risk.noRecord && (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-100 border border-rose-300 px-1.5 py-0.5 rounded-full">
+                              記録漏れ{risk.daysSinceLastRecord !== null ? ` ${risk.daysSinceLastRecord}日` : ''}
+                            </span>
+                          )}
+                          {risk.weightStalled && (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full">
+                              体重停滞
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0" strokeWidth={2.2} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />
@@ -406,6 +488,26 @@ export default function AdminCustomersPage() {
                             <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
                           )}
                           <StatusBadge status={c.foodStatus} />
+                          {(() => {
+                            const risk = riskMap.get(c.pageId);
+                            if (!risk) return null;
+                            return (
+                              <>
+                                {risk.noRecord && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-rose-100 text-rose-700 border-rose-300">
+                                    <AlertTriangle className="w-2.5 h-2.5" strokeWidth={2.4} />
+                                    記録漏れ
+                                  </span>
+                                )}
+                                {risk.weightStalled && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-100 text-amber-700 border-amber-300">
+                                    <AlertTriangle className="w-2.5 h-2.5" strokeWidth={2.4} />
+                                    体重停滞
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                           {c.lineUserId ? (
                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
                               <Check className="w-2.5 h-2.5" strokeWidth={2.4} />
