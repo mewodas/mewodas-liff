@@ -86,6 +86,17 @@ type BodyCompLog = {
   weightKg: number;
   bodyFatPct: number;
   muscleMassKg: number;
+  bodyFatMassKg: number | null;
+  bodyWaterPct: number | null;
+  bmi: number | null;
+  basalMetabolicKcal: number | null;
+  visceralFatLevel: number | null;
+  skeletalMuscleMassKg: number | null;
+  rightArmMuscleKg: number | null;
+  leftArmMuscleKg: number | null;
+  rightLegMuscleKg: number | null;
+  leftLegMuscleKg: number | null;
+  trunkMuscleKg: number | null;
 };
 
 type ExerciseLog = {
@@ -584,8 +595,8 @@ function Inner() {
           />
         )}
 
-        {/* ---- 体組成推移 ---- */}
-        {customerId && (
+        {/* ---- 体組成推移（メイン結果の読み込み完了後に他結果と一緒に表示） ---- */}
+        {customerId && !dataLoading && (
           <BodyCompSection
             logs={bodyCompLogs}
             isOpen={bodyCompOpen}
@@ -1349,21 +1360,36 @@ function BodyCompSection({
   base: string;
 }) {
   const sorted = logs.slice().sort((a, b) => (a.measureDate < b.measureDate ? -1 : 1));
-  const latest = sorted[sorted.length - 1] ?? null;
+  const round1 = (n: number) => Math.round(n * 10) / 10;
 
-  const chartData = sorted.map((l) => ({
-    date: l.measureDate,
-    weight: l.weightKg,
-    fat: Math.round(l.bodyFatPct * 10) / 10,
-    muscle: Math.round(l.muscleMassKg * 10) / 10,
-  }));
+  // 登録されている全項目を、各推移グラフ＋変化(初回→最新)で一覧化する。
+  // invert=true は「下がると良い」項目（増減バッジの色を反転）。
+  const METRICS: { key: keyof BodyCompLog; label: string; unit: string; color: string; invert: boolean }[] = [
+    { key: 'weightKg', label: '体重', unit: 'kg', color: '#0ea5e9', invert: true },
+    { key: 'bodyFatPct', label: '体脂肪率', unit: '%', color: '#f59e0b', invert: true },
+    { key: 'muscleMassKg', label: '筋肉量', unit: 'kg', color: '#10b981', invert: false },
+    { key: 'bodyFatMassKg', label: '体脂肪量', unit: 'kg', color: '#fb923c', invert: true },
+    { key: 'bodyWaterPct', label: '体水分率', unit: '%', color: '#06b6d4', invert: false },
+    { key: 'bmi', label: 'BMI', unit: '', color: '#a855f7', invert: true },
+    { key: 'basalMetabolicKcal', label: '基礎代謝', unit: 'kcal', color: '#ef4444', invert: false },
+    { key: 'visceralFatLevel', label: '内臓脂肪レベル', unit: '', color: '#f97316', invert: true },
+    { key: 'skeletalMuscleMassKg', label: '骨格筋量', unit: 'kg', color: '#22c55e', invert: false },
+    { key: 'rightArmMuscleKg', label: '右腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false },
+    { key: 'leftArmMuscleKg', label: '左腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false },
+    { key: 'rightLegMuscleKg', label: '右脚筋肉量', unit: 'kg', color: '#0d9488', invert: false },
+    { key: 'leftLegMuscleKg', label: '左脚筋肉量', unit: 'kg', color: '#0d9488', invert: false },
+    { key: 'trunkMuscleKg', label: '体幹筋肉量', unit: 'kg', color: '#0891b2', invert: false },
+  ];
 
-  const delta = (key: 'weight' | 'fat' | 'muscle') => {
-    if (sorted.length < 2) return null;
-    const first = sorted[0][key === 'weight' ? 'weightKg' : key === 'fat' ? 'bodyFatPct' : 'muscleMassKg'];
-    const last = latest![key === 'weight' ? 'weightKg' : key === 'fat' ? 'bodyFatPct' : 'muscleMassKg'];
-    return Math.round((last - first) * 10) / 10;
-  };
+  const metricCards = METRICS.map((m) => {
+    const points = sorted
+      .map((l) => ({ date: l.measureDate, value: l[m.key] as number | null }))
+      .filter((p): p is { date: string; value: number } => typeof p.value === 'number' && !Number.isNaN(p.value));
+    const latest = points.length > 0 ? points[points.length - 1].value : null;
+    const first = points.length > 0 ? points[0].value : null;
+    const deltaVal = points.length >= 2 && latest !== null && first !== null ? round1(latest - first) : null;
+    return { ...m, points, latest, deltaVal };
+  }).filter((m) => m.points.length > 0);
 
   function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
     if (v === null) return null;
@@ -1402,78 +1428,36 @@ function BodyCompSection({
           {logs.length === 0 ? (
             <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
           ) : (
-            <>
-              {/* 最新値 */}
-              {latest && (
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-sky-50 border border-sky-200 rounded-xl p-2.5 text-center">
-                    <div className="text-[10px] font-bold text-sky-700">体重(kg)</div>
-                    <div className="text-base font-bold text-sky-900 mt-0.5">
-                      {latest.weightKg}
-                      <DeltaBadge v={delta('weight')} unit="kg" invert />
-                    </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {metricCards.map((m) => (
+                <div key={m.key} className="bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+                  <div className="text-[11px] font-bold text-stone-600 truncate">{m.label}</div>
+                  <div className="text-base font-bold text-stone-900 leading-tight">
+                    {m.latest !== null ? round1(m.latest) : '—'}
+                    {m.unit && <span className="text-[10px] font-medium text-stone-500 ml-0.5">{m.unit}</span>}
+                    <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
-                    <div className="text-[10px] font-bold text-amber-700">体脂肪率(%)</div>
-                    <div className="text-base font-bold text-amber-900 mt-0.5">
-                      {latest.bodyFatPct}
-                      <DeltaBadge v={delta('fat')} unit="%" invert />
+                  {m.points.length >= 2 ? (
+                    <div className="w-full h-14 mt-1">
+                      <ResponsiveContainer>
+                        <LineChart data={m.points} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+                          <YAxis hide domain={['auto', 'auto']} />
+                          <XAxis dataKey="date" hide />
+                          <Tooltip
+                            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
+                            labelFormatter={(l) => shortDate(String(l))}
+                            formatter={(v) => [`${v}${m.unit}`, m.label]}
+                          />
+                          <Line type="monotone" dataKey="value" stroke={m.color} strokeWidth={2} dot={{ r: 2, fill: m.color }} isAnimationActive={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
-                  </div>
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
-                    <div className="text-[10px] font-bold text-emerald-700">筋肉量(kg)</div>
-                    <div className="text-base font-bold text-emerald-900 mt-0.5">
-                      {latest.muscleMassKg}
-                      <DeltaBadge v={delta('muscle')} unit="kg" />
-                    </div>
-                  </div>
+                  ) : (
+                    <div className="text-[10px] text-stone-400 mt-2">推移は2件以上で表示</div>
+                  )}
                 </div>
-              )}
-
-              {/* 推移グラフ（2件以上） */}
-              {chartData.length >= 2 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4 text-[10px] text-stone-500 flex-wrap">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-block w-4 h-0.5 bg-sky-400" />体重
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-block w-4 h-0.5 bg-amber-400" />体脂肪率
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-block w-4 h-0.5 bg-emerald-500" />筋肉量
-                    </span>
-                  </div>
-                  <div className="w-full h-36">
-                    <ResponsiveContainer>
-                      <LineChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={shortDate}
-                          interval="preserveStartEnd"
-                          tick={{ fontSize: 10, fill: '#78716c' }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
-                        <Tooltip
-                          contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-                          labelFormatter={(l) => shortDate(String(l))}
-                          formatter={(v, name) => [
-                            `${v}${name === 'fat' ? '%' : 'kg'}`,
-                            name === 'weight' ? '体重' : name === 'fat' ? '体脂肪率' : '筋肉量',
-                          ]}
-                        />
-                        <Line type="monotone" dataKey="weight" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3, fill: '#38bdf8' }} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="fat" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3, fill: '#fbbf24' }} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="muscle" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} isAnimationActive={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           <Link

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 顧客分析の体組成推移を改善（表示タイミング・全項目・各推移グラフ）
+- fix: `app/admin/analysis/page.tsx` 体組成推移セクションの表示ゲートを `!dataLoading` に変更。メイン解析が「データ取得中…」の間に体組成だけ先に出ていたのを、他の結果と一緒に表示されるよう修正
+- change: `BodyCompSection` を全登録項目の一覧表示に刷新（体重/体脂肪率/筋肉量に加え 体脂肪量・体水分率・BMI・基礎代謝・内臓脂肪レベル・骨格筋量・部位別筋肉量）。記録のある項目のみカード表示
+- change: 各項目を体重推移と同様にミニ折れ線グラフ化し、初回→最新の増減バッジ（下がると良い項目は色反転）で変化が一目で分かるように。`BodyCompLog` 型に全カラムを追加
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
 ## 2026-05-30 – feat(admin/store): 顧客リスクアラート Phase 1 MVP
 - feat: `lib/risk.ts` 純粋関数2種（記録漏れ判定・体重停滞判定）を新規作成
 - feat: `lib/db/migrations/003_customer_risk.sql` customer_risk テーブル DDL を追加
