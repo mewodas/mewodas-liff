@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – fix(admin/store): 読み込み中の招待URLコピーを防止（席数情報未取得時の誤コピー対策）
+- fix: `app/admin/customers/page.tsx` 顧客一覧の読み込み中（`loading`・`seatInfo` 未取得）は「招待URLをコピー」ボタンを無効化（グレー＋ラベル「読み込み中…」）。従来は読み込み中の一瞬ボタンが有効で、上限到達テナントでも招待URLをコピーできてしまっていた
+- 実装: `disabled` と className に `loading` を追加、`copyApplyLink` 冒頭にも `if (loading || seatInfo?.isOverLimit) return` ガード。読み込み後は従来通り（上限時のみ無効。billing API 失敗で seatInfo が null でも fail-open で招待は可能）
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
+
 ## 2026-05-30 – fix(admin/store): 席数上限ツールチップをボタン下に表示（上端見切れ修正）
 - fix: `app/admin/customers/page.tsx` 招待ボタンの上限到達ホバーツールチップを上方向(`bottom-full`/`pb-2`)→下方向(`top-full`/`pt-2`)に変更。ボタンがページ上部にありヘッダーで見切れていたため
 - 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
