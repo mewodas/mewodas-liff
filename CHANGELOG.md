@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – feat(admin/store): 体組成DBを保存時に自動プロビジョニング（手動設定不要）
+- feat: `app/api/admin/body-composition/route.ts` `ensureBodyCompDbId` を追加し、記録の保存時にテナントの体組成DBが未作成なら自動で作成→レジストリ(`Notion 体組成DB ID`)へ書込→キャッシュ無効化してから保存する（master/店舗どちらでも・冪等）。「Notion 体組成DB ID 未設定」エラーで保存できない問題を解消
+- change: `provision-db` アクションも同ヘルパーに統一（手動「体組成DBを作成」ボタンは予備として存置）。未使用の `currentSession` import を削除
+- 影響範囲: API（admin/body-composition）・管理画面（/store・/admin 体組成計測記録の保存）
+
 ## 2026-05-30 – change/fix(admin/store): 進捗管理を顧客管理の隣へ・体組成 複数写真+拡大表示・写真AI解析のJSONエラー修正
 - change: `app/admin/AdminShell.tsx` ナビの「進捗管理」ドロップダウンを「顧客管理」の直後に配置（従来はレポート送付の後ろ）。デスクトップ/モバイル両方。Fragment で顧客管理タブの直後に差し込む形にリファクタ
 - feat: `app/admin/measurements/page.tsx` 体組成計測記録の「写真から自動入力(AI)」で複数写真アップロードに対応（`multiple`・蓄積した全枚を1リクエストで統合解析）。サムネイル一覧＋各写真の削除(×)

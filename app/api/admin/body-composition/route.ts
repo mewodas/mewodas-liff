@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminTenant, currentSession } from '@/lib/withTenant';
+import { withAdminTenant } from '@/lib/withTenant';
 import {
   listBodyCompositionLogsByLineUser,
   createBodyCompositionLog,
@@ -37,6 +37,24 @@ async function notionPatch(pageId: string, properties: Record<string, unknown>):
   }
 }
 
+// 体組成DBが未作成なら自動作成し、レジストリ行へ ID を書き込んで返す（冪等）。
+// 同一リクエスト内で repository が参照できるよう、現テナントオブジェクトにも反映する。
+async function ensureBodyCompDbId(tenant: ReturnType<typeof getCurrentTenant>): Promise<string> {
+  if (tenant.notionBodyCompDbId) return tenant.notionBodyCompDbId;
+
+  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  const row = rows.find((r) => r.tenantId === tenant.id);
+  if (!row) throw new Error('テナント行が見つかりません（体組成DBの自動作成に失敗）');
+
+  const dbId = await createTenantBodyCompDb(tenant.name, FITMEAL_TENANTS_PARENT_PAGE_ID);
+  await notionPatch(row.pageId, {
+    'Notion 体組成DB ID': { rich_text: [{ type: 'text', text: { content: dbId } }] },
+  });
+  invalidateTenantCache();
+  (tenant as { notionBodyCompDbId?: string }).notionBodyCompDbId = dbId;
+  return dbId;
+}
+
 export const GET = withAdminTenant(async (req: NextRequest) => {
   try {
     const url = new URL(req.url);
@@ -61,30 +79,10 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     const action = body.action as string | undefined;
 
     if (action === 'provision-db') {
-      const session = currentSession(req);
-      if (!session || session.role !== 'master') {
-        return NextResponse.json({ error: 'master only' }, { status: 403 });
-      }
-
       const tenant = getCurrentTenant();
-      if (tenant.notionBodyCompDbId) {
-        return NextResponse.json({ ok: true, alreadyExists: true, dbId: tenant.notionBodyCompDbId });
-      }
-
-      const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
-      const row = rows.find((r) => r.tenantId === tenant.id);
-      if (!row) {
-        return NextResponse.json({ error: 'テナント行が見つかりません' }, { status: 404 });
-      }
-
-      const dbId = await createTenantBodyCompDb(tenant.name, FITMEAL_TENANTS_PARENT_PAGE_ID);
-      await notionPatch(row.pageId, {
-        'Notion 体組成DB ID': { rich_text: [{ type: 'text', text: { content: dbId } }] },
-      });
-
-      invalidateTenantCache();
-
-      return NextResponse.json({ ok: true, alreadyExists: false, dbId });
+      const already = !!tenant.notionBodyCompDbId;
+      const dbId = await ensureBodyCompDbId(tenant);
+      return NextResponse.json({ ok: true, alreadyExists: already, dbId });
     }
 
     const input: CreateBodyCompositionInput = {
@@ -117,6 +115,9 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     if (isNaN(input.weightKg) || input.weightKg <= 0) {
       return NextResponse.json({ error: '体重(kg) は正の数で入力してください' }, { status: 400 });
     }
+
+    // 体組成DBが未作成のテナントでも、保存時に自動でDBを作成してから記録する（手動設定不要）
+    await ensureBodyCompDbId(getCurrentTenant());
 
     const log = await createBodyCompositionLog(input);
     return NextResponse.json({ ok: true, log });
