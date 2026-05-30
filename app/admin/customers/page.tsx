@@ -167,7 +167,8 @@ export default function AdminCustomersPage() {
   async function copyApplyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (seatInfo?.isOverLimit) return;
+    // 読み込み中は席数情報が未取得のため、上限テナントでも誤コピーできないようガード
+    if (loading || seatInfo?.isOverLimit) return;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
       // 個別招待モードで 7日有効の URL を発行。承認制モードは UI 未公開（バックエンドのみ実装）。
@@ -307,15 +308,15 @@ export default function AdminCustomersPage() {
           <button
             type="button"
             onClick={copyApplyLink}
-            disabled={!!seatInfo?.isOverLimit}
+            disabled={loading || !!seatInfo?.isOverLimit}
             className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
-              seatInfo?.isOverLimit
+              loading || seatInfo?.isOverLimit
                 ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
                 : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
             }`}
           >
             <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-            招待URLをコピー
+            {loading ? '読み込み中…' : '招待URLをコピー'}
           </button>
         </div>
 
