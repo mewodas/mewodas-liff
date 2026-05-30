@@ -1368,17 +1368,17 @@ function BodyCompSection({
 }) {
   const round1 = (n: number) => Math.round(n * 10) / 10;
 
-  // axis: 'kg'(左軸) / 'pct'(右軸) / 'none'(グラフ非表示・数値カードのみ)。
-  // invert=true は「下がると良い」項目（増減バッジの色を反転）。
-  const METRICS: { key: keyof BodyCompLog; label: string; unit: string; color: string; invert: boolean; axis: 'kg' | 'pct' | 'none' }[] = [
+  // axis: 'kg'(左軸) / 'pct'(右軸=%・BMI・内臓脂肪レベル) / 'kcal'(基礎代謝専用の隠し軸=自分のスケールで推移を表示)。
+  // 全項目を1グラフに線で表示できるが、スケール差を壊さないため軸を分ける。invert=true は「下がると良い」項目。
+  const METRICS: { key: keyof BodyCompLog; label: string; unit: string; color: string; invert: boolean; axis: 'kg' | 'pct' | 'kcal' }[] = [
     { key: 'weightKg', label: '体重', unit: 'kg', color: '#0ea5e9', invert: true, axis: 'kg' },
     { key: 'bodyFatPct', label: '体脂肪率', unit: '%', color: '#f59e0b', invert: true, axis: 'pct' },
     { key: 'muscleMassKg', label: '筋肉量', unit: 'kg', color: '#10b981', invert: false, axis: 'kg' },
     { key: 'bodyFatMassKg', label: '体脂肪量', unit: 'kg', color: '#fb923c', invert: true, axis: 'kg' },
     { key: 'bodyWaterPct', label: '体水分率', unit: '%', color: '#06b6d4', invert: false, axis: 'pct' },
-    { key: 'bmi', label: 'BMI', unit: '', color: '#a855f7', invert: true, axis: 'none' },
-    { key: 'basalMetabolicKcal', label: '基礎代謝', unit: 'kcal', color: '#ef4444', invert: false, axis: 'none' },
-    { key: 'visceralFatLevel', label: '内臓脂肪レベル', unit: '', color: '#f97316', invert: true, axis: 'none' },
+    { key: 'bmi', label: 'BMI', unit: '', color: '#a855f7', invert: true, axis: 'pct' },
+    { key: 'basalMetabolicKcal', label: '基礎代謝', unit: 'kcal', color: '#ef4444', invert: false, axis: 'kcal' },
+    { key: 'visceralFatLevel', label: '内臓脂肪レベル', unit: '', color: '#f97316', invert: true, axis: 'pct' },
     { key: 'skeletalMuscleMassKg', label: '骨格筋量', unit: 'kg', color: '#22c55e', invert: false, axis: 'kg' },
     { key: 'rightArmMuscleKg', label: '右腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false, axis: 'kg' },
     { key: 'leftArmMuscleKg', label: '左腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false, axis: 'kg' },
@@ -1433,13 +1433,15 @@ function BodyCompSection({
     return [Math.max(0, Math.floor(Math.min(...vals) - 2)), Math.ceil(Math.max(...vals) + 2)];
   }, [sorted, visible]);
 
-  const lineMetrics = metricInfo.filter((m) => m.axis !== 'none'); // グラフに線化できる項目（kg/pct）
-  const cardMetrics = metricInfo.filter((m) => m.axis === 'none'); // 外れ値（基礎代謝/BMI/内臓脂肪）＝数値カード
+  const lineMetrics = metricInfo; // 全項目が線として表示可能（軸は kg/pct/kcal に振り分け）
   const dataKeys = new Set(metricInfo.map((m) => m.key as string));
   const canChart = sorted.length >= 2 && lineMetrics.length > 0;
-  // 実際に描画される軸だけ表示（kg系を全部OFFにした時に空のkg軸が残らないように）
-  const hasKgAxis = METRICS.some((m) => m.axis === 'kg' && visible.has(m.key as string) && dataKeys.has(m.key as string));
-  const hasPctAxis = METRICS.some((m) => m.axis === 'pct' && visible.has(m.key as string) && dataKeys.has(m.key as string));
+  // 実際に描画される軸だけ表示（その系列を全部OFFにした時に空の軸が残らないように）
+  const axisActive = (axis: 'kg' | 'pct' | 'kcal') =>
+    METRICS.some((m) => m.axis === axis && visible.has(m.key as string) && dataKeys.has(m.key as string));
+  const hasKgAxis = axisActive('kg');
+  const hasPctAxis = axisActive('pct');
+  const hasKcalAxis = axisActive('kcal');
 
   function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
     if (v === null) return null;
@@ -1479,7 +1481,7 @@ function BodyCompSection({
             <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
           ) : (
             <>
-              {/* 2軸統合グラフ（左=kg / 右=%・実数値のまま）。2回以上の計測で表示 */}
+              {/* 統合グラフ（左軸=kg / 右軸=%・BMI・内臓脂肪 / 基礎代謝は隠しkcal軸・実数値のまま）。2回以上の計測で表示 */}
               {canChart ? (
                 <div className="w-full h-56">
                   <ResponsiveContainer>
@@ -1490,8 +1492,10 @@ function BodyCompSection({
                         <YAxis yAxisId="kg" domain={leftDomain} width={28} tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
                       )}
                       {hasPctAxis && (
-                        <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} width={24} tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="pct" orientation="right" domain={[0, 'auto']} width={24} tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
                       )}
+                      {/* 基礎代謝(kcal)は桁違いなので専用の隠し軸で自分のスケールに合わせて推移だけ描画 */}
+                      {hasKcalAxis && <YAxis yAxisId="kcal" hide domain={['auto', 'auto']} />}
                       <Tooltip
                         contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e7e5e4', backgroundColor: '#fafaf8' }}
                         labelFormatter={(l) => shortDate(String(l))}
@@ -1500,8 +1504,8 @@ function BodyCompSection({
                           return m ? [`${round1(Number(value))}${m.unit}`, m.label] : [value as number, String(name)];
                         }}
                       />
-                      {METRICS.filter((m) => m.axis !== 'none' && visible.has(m.key as string) && dataKeys.has(m.key as string)).map((m) => (
-                        <Line key={m.key} yAxisId={m.axis as 'kg' | 'pct'} type="linear" dataKey={m.key as string} name={m.key as string} stroke={m.color} strokeWidth={2} dot={{ r: 2.5, fill: m.color }} connectNulls isAnimationActive={false} />
+                      {METRICS.filter((m) => visible.has(m.key as string) && dataKeys.has(m.key as string)).map((m) => (
+                        <Line key={m.key} yAxisId={m.axis} type="linear" dataKey={m.key as string} name={m.key as string} stroke={m.color} strokeWidth={2} dot={{ r: 2.5, fill: m.color }} connectNulls isAnimationActive={false} />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
@@ -1513,7 +1517,7 @@ function BodyCompSection({
               {/* 凡例（チェックで線を表示切替）＋最新の実数値・増減 */}
               {lineMetrics.length > 0 && (
                 <div className="space-y-1">
-                  <div className="text-[10px] text-stone-400">チェックでグラフ表示を切替（左軸=kg・右軸=%）</div>
+                  <div className="text-[10px] text-stone-400">チェックでグラフ表示を切替（基礎代謝・BMI・内臓脂肪レベルもスケールに合わせて表示。実数値はホバー/右側の数値で確認）</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
                     {lineMetrics.map((m) => {
                       const on = visible.has(m.key as string);
@@ -1545,25 +1549,6 @@ function BodyCompSection({
                 </div>
               )}
 
-              {/* 外れ値項目（基礎代謝/BMI/内臓脂肪レベル）はスケールが違うため数値カードで表示 */}
-              {cardMetrics.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {cardMetrics.map((m) => (
-                    <div key={m.key} className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-center">
-                      <div className="text-[10px] font-bold text-stone-600 truncate">{m.label}</div>
-                      <div className="text-sm font-bold text-stone-900 mt-0.5 whitespace-nowrap">
-                        {m.latest !== null ? round1(m.latest) : '—'}
-                        {m.unit && <span className="text-[9px] font-medium text-stone-500 ml-0.5">{m.unit}</span>}
-                      </div>
-                      {m.deltaVal !== null && (
-                        <div className="leading-none">
-                          <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </>
           )}
 
