@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-30 – fix(admin/store): 顧客分析の体組成推移が読み込み中に一瞬先行表示されるのを解消
+- fix: `app/admin/analysis/page.tsx` 体組成セクションのゲートを `bodyCompFetchedId === customerId` 同一性判定に変更。`!dataLoading` だけでは顧客選択後のデバウンス(300ms)中に dataLoading がまだ false のため一瞬表示されていた。現在の顧客の体組成フェッチ完了まで描画しないことで先行表示/前顧客データのちらつきを根絶。顧客切替時は前データを即クリア＋フェッチに cancel ガード追加
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
 ## 2026-05-30 – feat(admin): ログイン画面でログイン済みなら自動リダイレクト
 - feat: `app/admin/login/page.tsx` マウント時に `/api/admin/auth/me` を確認し、**ログイン済みなら `from`（既定ダッシュボード）へ自動リダイレクト**。確認中は「読み込み中…」表示でフォームのチラつき防止。ログイン済みでログイン画面を開くと再ログインを求められていた問題を解消（/admin・/store 共通）
 - 補足: セッション保持は従来通り `admin_session` Cookie 7日間有効（HMAC署名・httpOnly・secure・sameSite=lax）。保持時間・トークン方式は変更なし＝セキュリティリスク増なし

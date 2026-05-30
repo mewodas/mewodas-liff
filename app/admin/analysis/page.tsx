@@ -207,6 +207,9 @@ function Inner() {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const [bodyCompLogs, setBodyCompLogs] = useState<BodyCompLog[]>([]);
+  // 現在表示中の体組成データがどの顧客のものか（フェッチ完了の同一性判定用）。
+  // これが customerId と一致するまでセクションを描画しない＝読み込み中の先行表示/前顧客データのちらつきを防ぐ。
+  const [bodyCompFetchedId, setBodyCompFetchedId] = useState<string | null>(null);
   const [bodyCompOpen, setBodyCompOpen] = useState(true);
 
   // AI サマリ
@@ -361,15 +364,32 @@ function Inner() {
   useEffect(() => {
     if (!customerId) {
       setBodyCompLogs([]);
+      setBodyCompFetchedId(null);
       return;
     }
     const customer = customers.find((c) => c.pageId === customerId);
     const lineUserId = customer?.lineUserId;
     if (!lineUserId) return;
+    // 顧客切替時は前データを即クリアし、完了IDも一旦リセット（前顧客データの先行表示を防ぐ）
+    setBodyCompLogs([]);
+    setBodyCompFetchedId(null);
+    const cid = customerId;
+    let cancelled = false;
     fetch(`/api/admin/body-composition?lineUserId=${encodeURIComponent(lineUserId)}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((j) => { if (j?.logs) setBodyCompLogs(j.logs); })
-      .catch(() => {});
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled) return;
+        setBodyCompLogs(j?.logs || []);
+        setBodyCompFetchedId(cid);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBodyCompLogs([]);
+        setBodyCompFetchedId(cid);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [customerId, customers]);
 
   async function runAi() {
@@ -595,8 +615,8 @@ function Inner() {
           />
         )}
 
-        {/* ---- 体組成推移（メイン結果の読み込み完了後に他結果と一緒に表示） ---- */}
-        {customerId && !dataLoading && (
+        {/* ---- 体組成推移（メイン結果の読み込み完了＋当該顧客の体組成フェッチ完了後に表示） ---- */}
+        {customerId && !dataLoading && bodyCompFetchedId === customerId && (
           <BodyCompSection
             logs={bodyCompLogs}
             isOpen={bodyCompOpen}
