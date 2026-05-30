@@ -285,9 +285,9 @@ export default function AdminCustomersPage() {
         )}
 
         <div className="relative group w-full">
-          {/* 上限到達時のみ: 招待ボタンにホバーで増枠案内ツールチップ（pb-2 でボタンと接して hover が途切れない） */}
+          {/* 上限到達時のみ: 招待ボタンにホバーで増枠案内ツールチップ（ボタン下に表示。pt-2 でボタンと接して hover が途切れない） */}
           {seatInfo?.isOverLimit && (
-            <div className="absolute bottom-full left-0 right-0 pb-2 hidden group-hover:block z-20">
+            <div className="absolute top-full left-0 right-0 pt-2 hidden group-hover:block z-20">
               <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex gap-2 items-start shadow-lg">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
                 <div className="flex-1">
