@@ -3,6 +3,7 @@ import { withAdminTenant } from '@/lib/withTenant';
 import {
   listBodyCompositionLogsByLineUser,
   createBodyCompositionLog,
+  updateBodyCompositionLog,
   deleteBodyCompositionLog,
   type CreateBodyCompositionInput,
 } from '@/lib/repository/bodyComposition';
@@ -116,7 +117,13 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
       return NextResponse.json({ error: '体重(kg) は正の数で入力してください' }, { status: 400 });
     }
 
-    // 体組成DBが未作成のテナントでも、保存時に自動でDBを作成してから記録する（手動設定不要）
+    // 編集（id 指定）は対象レコードを直接上書き。計測日を変えても複製されず元データが更新される。
+    if (body.id) {
+      const log = await updateBodyCompositionLog(String(body.id), input);
+      return NextResponse.json({ ok: true, log });
+    }
+
+    // 新規（同一顧客×同一計測日があれば upsert）。体組成DB未作成なら自動作成してから保存。
     await ensureBodyCompDbId(getCurrentTenant());
 
     const log = await createBodyCompositionLog(input);

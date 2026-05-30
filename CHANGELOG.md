@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-30 – fix(admin/store): 体組成記録の編集が複製される不具合＋写真AI解析の高負荷エラー対策
+- fix: 体組成記録の編集で計測日を変えると別レコードが複製され元データが残っていた不具合を修正。編集時は対象レコードIDで上書き更新するように（`lib/repository/bodyComposition.ts` に `updateBodyCompositionLog` 追加、`app/api/admin/body-composition/route.ts` が `id` 指定時は更新、`app/admin/measurements/page.tsx` が編集時に `id` を送信）
+- fix: 写真AI解析の「Gemini API 503 UNAVAILABLE（高負荷）」エラー対策。`analyze/route.ts` に自動リトライ（gemini-2.5-flash×2回→2.0-flash×1回・指数バックオフ）＋一時的高負荷時は「混み合っています。少し待って再試行」の親切な文言を返すように（内部のGeminiエラーJSONを露出しない）
+- 影響範囲: 管理画面（/store・/admin 体組成計測記録）・API（body-composition, body-composition/analyze）
+
 ## 2026-05-30 – change(admin/store): 体組成推移を体重推移の直下に配置＋既定で畳む
 - change: `app/admin/analysis/page.tsx` 顧客分析のセクション順を「体重推移 → 体組成推移 → 運動記録」に変更（従来は体重→運動→体組成）。WeightExercisePanel を展開し体組成を体重の直下へ
 - change: 体組成推移セクションを既定で**畳んだ状態**で表示（`bodyCompOpen` 初期値 false）。ヘッダーをタップで展開

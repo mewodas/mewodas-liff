@@ -341,6 +341,8 @@ export default function MeasurementsPage() {
     setSaveError(null);
     try {
       const payload: Record<string, unknown> = {
+        // 編集時は対象レコードIDを送り、元データを上書き（計測日を変えても複製しない）
+        id: editingLog?.id,
         lineUserId: selectedCustomer.lineUserId,
         customerName: selectedCustomer.name,
         measureDate: form.measureDate,

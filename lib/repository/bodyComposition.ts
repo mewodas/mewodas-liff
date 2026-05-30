@@ -180,6 +180,17 @@ export async function createBodyCompositionLog(input: CreateBodyCompositionInput
   return pageToLog(page);
 }
 
+// 既存レコードを ID 指定で上書き更新（編集用）。計測日(title)も含めて全項目を上書きするため、
+// 計測日を変更しても新規複製されず元のレコードがそのまま更新される。
+export async function updateBodyCompositionLog(
+  id: string,
+  input: CreateBodyCompositionInput
+): Promise<BodyCompositionLog> {
+  const properties = buildProperties(input, true);
+  const page = await notionRequest('PATCH', `/pages/${id}`, { properties });
+  return pageToLog(page);
+}
+
 export async function listBodyCompositionLogsByLineUser(
   lineUserId: string,
   startDate?: string,

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 type BodyCompAnalysisResult = {
@@ -131,30 +132,57 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     }));
     parts.push({ text: prompt });
 
-    const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-    const geminiRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          // gemini-2.5-flash は既定で thinking が有効。思考トークンが maxOutputTokens を
-          // 食い潰すと JSON が途中で切れて "Unterminated string" になるため明示的に無効化し、
-          // 余裕を持たせる（複数枚＝項目増にも対応）。
-          maxOutputTokens: 2048,
-          temperature: 0.1,
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
+    const requestBody = JSON.stringify({
+      contents: [{ role: 'user', parts }],
+      generationConfig: {
+        // gemini-2.5-flash は既定で thinking が有効。思考トークンが maxOutputTokens を
+        // 食い潰すと JSON が途中で切れて "Unterminated string" になるため明示的に無効化し、
+        // 余裕を持たせる（複数枚＝項目増にも対応）。
+        maxOutputTokens: 2048,
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini API ${geminiRes.status}: ${errText.slice(0, 300)}`);
+    // 一時的な高負荷（503/429/500）に備え、リトライ＋フォールバックモデルで成功率を上げる。
+    // 2.5-flash を2回 → それでも駄目なら 2.0-flash を1回。一時的エラー以外（400等）は即中断。
+    type GeminiResp = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const ATTEMPT_MODELS = [GEMINI_MODEL, GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    let geminiData: GeminiResp | null = null;
+    let lastStatus = 0;
+    let lastErr = '';
+    for (let i = 0; i < ATTEMPT_MODELS.length; i++) {
+      const res = await fetch(`${GEMINI_API_BASE}/${ATTEMPT_MODELS[i]}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+      });
+      if (res.ok) {
+        geminiData = (await res.json()) as GeminiResp;
+        break;
+      }
+      lastStatus = res.status;
+      lastErr = (await res.text()).slice(0, 200);
+      // 一時的エラー以外（400/401/403 等の恒久エラー）はリトライしても無駄なので即中断
+      if (![429, 500, 503].includes(res.status)) break;
+      if (i < ATTEMPT_MODELS.length - 1) await sleep(700 * (i + 1));
     }
 
-    const geminiData = await geminiRes.json();
+    if (!geminiData) {
+      const overloaded = lastStatus === 429 || lastStatus === 503;
+      console.error(`[body-composition/analyze] Gemini failed: ${lastStatus} ${lastErr}`);
+      return NextResponse.json(
+        {
+          error: overloaded
+            ? 'AI解析が一時的に混み合っています。30秒ほど待ってからもう一度お試しください。'
+            : `AI解析に失敗しました（${lastStatus || '通信エラー'}）。時間をおいて再試行してください。`,
+        },
+        { status: 503 }
+      );
+    }
+
     const rawText: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     if (!rawText) throw new Error('Gemini から空レスポンス');
 
