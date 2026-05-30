@@ -210,7 +210,7 @@ function Inner() {
   // 現在表示中の体組成データがどの顧客のものか（フェッチ完了の同一性判定用）。
   // これが customerId と一致するまでセクションを描画しない＝読み込み中の先行表示/前顧客データのちらつきを防ぐ。
   const [bodyCompFetchedId, setBodyCompFetchedId] = useState<string | null>(null);
-  const [bodyCompOpen, setBodyCompOpen] = useState(true);
+  const [bodyCompOpen, setBodyCompOpen] = useState(false);
 
   // AI サマリ
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -605,17 +605,12 @@ function Inner() {
           </section>
         ) : null}
 
-        {/* ---- ④ 体重 ＋ ⑤ 運動記録（体重の直後に並べる） ---- */}
-        {hasData && (weightLogs.length > 0 || exerciseLogs.length > 0) && (
-          <WeightExercisePanel
-            isSingleDay={isSingleDay}
-            weightLogs={weightLogs}
-            exerciseLogs={exerciseLogs}
-            target={target}
-          />
+        {/* ---- ④ 体重推移 ---- */}
+        {hasData && weightLogs.length > 0 && (
+          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
         )}
 
-        {/* ---- 体組成推移（メイン結果の読み込み完了＋当該顧客の体組成フェッチ完了後に表示） ---- */}
+        {/* ---- 体組成推移（体重推移の直下に配置・メイン結果＋当該顧客の体組成フェッチ完了後に表示） ---- */}
         {customerId && !dataLoading && bodyCompFetchedId === customerId && (
           <BodyCompSection
             logs={bodyCompLogs}
@@ -623,6 +618,11 @@ function Inner() {
             onToggle={() => setBodyCompOpen((v) => !v)}
             base={base}
           />
+        )}
+
+        {/* ---- ⑤ 運動記録（体組成の下） ---- */}
+        {hasData && exerciseLogs.length > 0 && (
+          <ExerciseSection exerciseLogs={exerciseLogs} />
         )}
 
         {/* ---- ⑤ 食事一覧ボタン + AI サマリ作成ボタン ---- */}
@@ -775,31 +775,6 @@ function Inner() {
         )}
       </div>
     </AdminShell>
-  );
-}
-
-// ---- 体重＋運動パネル（横並び or 縦積み） ----
-
-function WeightExercisePanel({
-  isSingleDay,
-  weightLogs,
-  exerciseLogs,
-  target,
-}: {
-  isSingleDay: boolean;
-  weightLogs: WeightLog[];
-  exerciseLogs: ExerciseLog[];
-  target: TargetInfo | null;
-}) {
-  const hasWeight = weightLogs.length > 0;
-  const hasExercise = exerciseLogs.length > 0;
-
-  // 体重→運動の順で常に縦積み（運動は体重の下に表示）
-  return (
-    <div className="space-y-3">
-      {hasWeight && <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />}
-      {hasExercise && <ExerciseSection exerciseLogs={exerciseLogs} />}
-    </div>
   );
 }
 

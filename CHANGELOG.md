@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-30 – change(admin/store): 体組成推移を体重推移の直下に配置＋既定で畳む
+- change: `app/admin/analysis/page.tsx` 顧客分析のセクション順を「体重推移 → 体組成推移 → 運動記録」に変更（従来は体重→運動→体組成）。WeightExercisePanel を展開し体組成を体重の直下へ
+- change: 体組成推移セクションを既定で**畳んだ状態**で表示（`bodyCompOpen` 初期値 false）。ヘッダーをタップで展開
+- chore: 未使用になった `WeightExercisePanel` を削除
+- 影響範囲: 管理画面（/store・/admin 顧客分析）
+
 ## 2026-05-30 – change(admin/store): 体組成推移を項目別の個別グラフに戻す（実数値＋ホバー＋全項目）
 - change: `app/admin/analysis/page.tsx` 体組成を「初回比%の統合1グラフ」から、**項目ごとの個別ミニグラフのカード一覧**に変更（1つにまとめず、わかりやすさ優先）
 - change: 各カードに**実数値の最新値**＋初回からの増減バッジを表示。グラフは実数値の推移で、**マウスホバーで日付＋実数値**をツールチップ表示
