@@ -150,7 +150,8 @@ export default function MeasurementsPage() {
 
   const [aiFields, setAiFields] = useState<Set<string>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<{ dataUrl: string; base64: string; mimeType: string }[]>([]);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -232,25 +233,29 @@ export default function MeasurementsPage() {
     }
   }
 
-  async function analyzePhoto(file: File) {
+  async function addPhotos(files: File[]) {
+    if (files.length === 0) return;
     setAnalyzing(true);
     try {
-      const compressed = await compressImage(file, 1280, 0.85);
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(compressed);
-      });
-      setPhotoPreview(dataUrl);
+      const added: { dataUrl: string; base64: string; mimeType: string }[] = [];
+      for (const file of files) {
+        const compressed = await compressImage(file, 1280, 0.85);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(compressed);
+        });
+        added.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: compressed.type || 'image/jpeg' });
+      }
+      const allPhotos = [...photos, ...added];
+      setPhotos(allPhotos);
 
-      const base64 = dataUrl.split(',')[1];
-      const mimeType = compressed.type || 'image/jpeg';
-
+      // 蓄積した全写真を1リクエストで解析（複数枚＝表裏/別項目を統合読み取り）
       const res = await fetch('/api/admin/body-composition/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images: [{ base64, mimeType }] }),
+        body: JSON.stringify({ images: allPhotos.map((p) => ({ base64: p.base64, mimeType: p.mimeType })) }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || `解析失敗（${res.status}）`);
@@ -307,7 +312,8 @@ export default function MeasurementsPage() {
     setExpandExtra(false);
     setSaveError(null);
     setAiFields(new Set());
-    setPhotoPreview(null);
+    setPhotos([]);
+    setLightboxSrc(null);
     setShowForm(true);
   }
 
@@ -320,7 +326,8 @@ export default function MeasurementsPage() {
     );
     setSaveError(null);
     setAiFields(new Set());
-    setPhotoPreview(null);
+    setPhotos([]);
+    setLightboxSrc(null);
     setShowForm(true);
   }
 
@@ -497,10 +504,11 @@ export default function MeasurementsPage() {
                     ref={photoInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (f) await analyzePhoto(f);
+                      const files = Array.from(e.target.files ?? []);
+                      if (files.length > 0) await addPhotos(files);
                       e.target.value = '';
                     }}
                   />
@@ -519,26 +527,47 @@ export default function MeasurementsPage() {
                       ) : (
                         <>
                           <Sparkles className="w-3.5 h-3.5" strokeWidth={2.2} />
-                          体組成計の写真を選択
+                          {photos.length > 0 ? '写真を追加' : '体組成計の写真を選択（複数可）'}
                         </>
                       )}
                     </button>
-                    {photoPreview && (
+                    {photos.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => { setPhotoPreview(null); setAiFields(new Set()); }}
+                        onClick={() => { setPhotos([]); setAiFields(new Set()); }}
                         className="text-sky-500 text-xs underline"
                       >
                         リセット
                       </button>
                     )}
                   </div>
-                  {photoPreview && (
-                    <img
-                      src={photoPreview}
-                      alt="選択した体組成計の写真"
-                      className="w-24 h-24 object-contain rounded-lg border border-sky-200 bg-white"
-                    />
+                  {photos.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {photos.map((p, i) => (
+                        <div key={i} className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => setLightboxSrc(p.dataUrl)}
+                            className="block"
+                            title="拡大表示"
+                          >
+                            <img
+                              src={p.dataUrl}
+                              alt={`体組成計の写真 ${i + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border border-sky-200 bg-white cursor-zoom-in"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-stone-700 text-white flex items-center justify-center shadow"
+                            aria-label="この写真を削除"
+                          >
+                            <X className="w-3 h-3" strokeWidth={2.6} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                   {aiFields.size > 0 && (
                     <div className="text-[11px] text-sky-700">
@@ -715,6 +744,31 @@ export default function MeasurementsPage() {
             onDelete={() => doDelete(detailLog.id, detailLog.measureDate)}
             base={base}
           />
+        )}
+
+        {/* 写真拡大ライトボックス */}
+        {lightboxSrc && (
+          <div
+            className="fixed inset-0 bg-black/80 z-[90] flex items-center justify-center p-4"
+            onClick={() => setLightboxSrc(null)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              type="button"
+              onClick={() => setLightboxSrc(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
+              aria-label="閉じる"
+            >
+              <X className="w-5 h-5" strokeWidth={2.4} />
+            </button>
+            <img
+              src={lightboxSrc}
+              alt="体組成計の写真（拡大）"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         )}
       </div>
     </AdminShell>

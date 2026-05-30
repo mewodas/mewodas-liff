@@ -138,9 +138,13 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
       body: JSON.stringify({
         contents: [{ role: 'user', parts }],
         generationConfig: {
-          maxOutputTokens: 1024,
+          // gemini-2.5-flash は既定で thinking が有効。思考トークンが maxOutputTokens を
+          // 食い潰すと JSON が途中で切れて "Unterminated string" になるため明示的に無効化し、
+          // 余裕を持たせる（複数枚＝項目増にも対応）。
+          maxOutputTokens: 2048,
           temperature: 0.1,
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -159,9 +163,19 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
     try {
       parsed = JSON.parse(cleaned);
     } catch {
+      // 余分な前置き等で素のparseが失敗した場合、最初の { から最後の } までを抽出して再試行
       const start = cleaned.indexOf('{');
-      if (start === -1) throw new Error('JSON解析失敗');
-      parsed = JSON.parse(cleaned.slice(start));
+      const end = cleaned.lastIndexOf('}');
+      try {
+        if (start === -1 || end === -1 || end <= start) throw new Error('no-json');
+        parsed = JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        // それでも壊れている（応答が途中で切れた等）場合は内部エラーを露出せず親切な文言を返す
+        return NextResponse.json(
+          { error: '写真の解析結果を読み取れませんでした。もう一度お試しください（鮮明な写真・1枚ずつ等）。' },
+          { status: 502 }
+        );
+      }
     }
 
     const DEVICE_OPTIONS = ['InBody', '体組成計', '体重計', 'その他'];
