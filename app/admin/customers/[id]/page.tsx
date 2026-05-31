@@ -10,6 +10,7 @@ import {
   Hourglass,
   Info,
   Circle,
+  RotateCcw,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
@@ -76,6 +77,7 @@ export default function CustomerDetailPage({
   const isFromProgress = pathname.includes('/progress/');
   const toast = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [resettingOnboard, setResettingOnboard] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -314,6 +316,23 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : '削除失敗');
       toast.error(e instanceof Error ? e.message : '削除に失敗しました');
       setDeleting(false);
+    }
+  }
+
+  async function resetOnboarding() {
+    if (!confirm('ホーム＋食事記録ツアーをリセットします。\n顧客は次回 LIFF を開いたときに、再度ツアーが表示されます。')) {
+      return;
+    }
+    setResettingOnboard(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
+      toast.success('リセット完了。顧客側で次回起動時から再表示されます');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'リセット失敗');
+      toast.error(e instanceof Error ? e.message : 'リセットに失敗しました');
+    } finally {
+      setResettingOnboard(false);
     }
   }
 
@@ -711,6 +730,27 @@ export default function CustomerDetailPage({
             >
               <Save className="w-4 h-4" strokeWidth={2.2} />
               {saving ? '保存中…' : '変更を保存'}
+            </button>
+          </section>
+
+          {/* ツアーリセット */}
+          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
+              <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+              ツアーリセット
+            </h3>
+            <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
+              ホーム初回ガイド・食事記録ガイドを再表示します。顧客が次回 LIFF を開いたときから再表示されます。
+              目標値・体重・性別などの基本情報は保持されます。
+            </p>
+            <button
+              type="button"
+              onClick={resetOnboarding}
+              disabled={resettingOnboard}
+              className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
+              {resettingOnboard ? 'リセット中…' : 'ホーム＋食事記録ツアーを再表示'}
             </button>
           </section>
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセットボタンを復活（staging / 本番にも同時反映）
+- feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` 更新 → 顧客の次回 LIFF 起動でツアー再表示
+- 配置: 目標(PFC)直下・アカウント削除の直上。顧客管理のみ。`0132322` で消えた実装を当時のまま復元（`RotateCcw` import 追加）
+- 影響範囲: 管理画面のみ。顧客側UI・DB変更なし。tsc／本番build パス
+- 関連: 社長依頼。本番 main にも反映済（commit f977e75）
+
 ## 2026-05-31 – chore: ファビコンを FitMeal ロゴに統一（branch: staging / 全画面ブラウザタブ）
 - chore: ブラウザタブ/PWA アイコンを旧 `/icon.svg`（緑「メ」）から FitMeal ロゴに変更。`public/fitmeal-favicon.png`（fitmeal-icon.png を 256px 化）を新規追加し、`app/layout.tsx` の `metadata.icons`（icon/apple）と `app/manifest.ts` の icons を差し替え。`app/favicon.ico`（Next 規約・/favicon.ico 自動配信）も fitmeal-icon.png からマルチサイズ再生成し、ブラウザのデフォルト取得先も FitMeal ロゴに統一
 - 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）。staging 検証 → 社長OK後に main
