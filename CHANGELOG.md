@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 – chore: ファビコンを FitMeal ロゴに統一（main直反映・社長指示 / commit 49f6d91）
+- chore: ブラウザタブ/PWA アイコンを旧 `/icon.svg`（緑「メ」）から FitMeal ロゴに変更。`public/fitmeal-favicon.png`（256px）追加、`app/layout.tsx` の `metadata.icons`・`app/manifest.ts`・`app/store/manifest.ts` の icons を差し替え、`app/favicon.ico` を fitmeal-icon.png から再生成
+- 反映方法: staging(4d0fc60)検証済 → 社長OK後、favicon関連の **対象5ファイルのみ** main に取り込み（staging の未承認機能=リスク配信/アカウント削除カスケード等は持ち込まない）
+- 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）
+
 ## 2026-05-31 – hardening(notion): notionFetch に 30s タイムアウトを追加
 - hardening: `lib/notion.ts` `notionFetch` の各 fetch に `AbortSignal.timeout(30_000)` を設定し、Notion 応答ハング時に Vercel Function を掴み続けない様に。タイムアウト/ネットワーク断は catch して既存の指数バックオフリトライ対象に組み込み（最大3回）。リトライ自体は PR #36 で導入済のため本変更は timeout ガードのみ
 - 影響範囲: API（Notion を呼ぶ全エンドポイント）。正常時の挙動は不変（30s 超過は実質ハングのみ）
