@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 – hardening(notion): notionFetch に 30s タイムアウトを追加
+- hardening: `lib/notion.ts` `notionFetch` の各 fetch に `AbortSignal.timeout(30_000)` を設定し、Notion 応答ハング時に Vercel Function を掴み続けない様に。タイムアウト/ネットワーク断は catch して既存の指数バックオフリトライ対象に組み込み（最大3回）。リトライ自体は PR #36 で導入済のため本変更は timeout ガードのみ
+- 影響範囲: API（Notion を呼ぶ全エンドポイント）。正常時の挙動は不変（30s 超過は実質ハングのみ）
+- 関連: Sentry 週次レポート Notion API 502 / PR #37（#36 と重複のためクローズ、本PRで timeout 部分のみ救済）
+
 ## 2026-05-31 – perf(notion): billing/info の listTenantRows 重複呼び出しを解消（2→1）
 - perf: `lib/seats.ts` `getSeatStatus` に `tenantRows`（取得済みテナント行 or その Promise）オプションを追加。`app/api/admin/billing/info/route.ts` は `listTenantRows` を 1 回だけ呼び、その Promise を `getSeatStatus` にも共有することで、1 リクエストで同一 Notion クエリが 2 本飛んでいた状態を 1 本に削減（Promise 共有のため並列性・レスポンス時間は維持、キャッシュ挙動・他の getSeatStatus 呼び出し元は不変）
 - 影響範囲: API（/api/admin/billing/info）・lib バックエンド。顧客側 UI 影響なし

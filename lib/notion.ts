@@ -85,6 +85,8 @@ export type FoodRecord = {
 
 // 502/503/504/429 は Notion 側の一時障害のため指数バックオフで最大 3 回リトライ
 const NOTION_RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+// 1 リクエストあたりの上限。Notion 応答ハング時に Function を掴み続けないよう打ち切る
+const NOTION_FETCH_TIMEOUT_MS = 30_000;
 
 async function notionFetch(
   method: string,
@@ -98,15 +100,23 @@ async function notionFetch(
     if (attempt > 0) {
       await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
     }
-    const res = await fetch(`${NOTION_BASE}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Notion-Version': NOTION_API_VERSION,
-      },
-      body: payload ? JSON.stringify(payload) : undefined,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${NOTION_BASE}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': NOTION_API_VERSION,
+        },
+        body: payload ? JSON.stringify(payload) : undefined,
+        signal: AbortSignal.timeout(NOTION_FETCH_TIMEOUT_MS),
+      });
+    } catch (e) {
+      // タイムアウト(TimeoutError)・ネットワーク断も一時障害として次の試行へ
+      lastError = e instanceof Error ? e : new Error(String(e));
+      continue;
+    }
     if (res.ok) return res.json();
     const text = await res.text();
     const err = new Error(`Notion API ${res.status}: ${text.slice(0, 300)}`);
