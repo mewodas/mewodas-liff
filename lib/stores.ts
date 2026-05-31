@@ -108,7 +108,10 @@ export async function listAllStores(): Promise<Store[]> {
 export async function getStore(pageId: string): Promise<Store | null> {
   try {
     const res = await notionRequest('GET', `/pages/${pageId}`);
-    return pageToStore(res);
+    const store = pageToStore(res);
+    // ★ クロステナント防止: 店舗DBは全テナント横断。取得店舗が現テナントに属さなければ null。
+    if (store.tenantId !== getCurrentTenant().id) return null;
+    return store;
   } catch {
     return null;
   }
@@ -173,6 +176,9 @@ export async function updateStore(
     active?: boolean;
   }
 ): Promise<void> {
+  // ★ クロステナント改竄防止: 店舗が現テナントに属することを保証（getStore は現テナント以外 null）
+  const existing = await getStore(pageId);
+  if (!existing) throw new Error('forbidden: store does not belong to tenant');
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:stores:`);
   const properties: Record<string, unknown> = {};
@@ -189,6 +195,9 @@ export async function updateStore(
 }
 
 export async function deleteStore(pageId: string): Promise<void> {
+  // ★ クロステナント削除防止: 店舗が現テナントに属することを保証
+  const existing = await getStore(pageId);
+  if (!existing) throw new Error('forbidden: store does not belong to tenant');
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:stores:`);
   await notionRequest('PATCH', `/pages/${pageId}`, { archived: true });

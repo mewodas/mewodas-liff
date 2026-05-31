@@ -4,6 +4,7 @@ import { getDefaultTenant } from '@/lib/tenant';
 import { runInTenantContext } from '@/lib/tenantContext';
 import { createCustomer } from '@/lib/repository/customers';
 import { calcGoals } from '@/lib/goalCalc';
+import { getSeatStatus } from '@/lib/seats';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -89,16 +90,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'メールアドレスの形式が正しくありません' }, { status: 400, headers: CORS_HEADERS });
     }
 
-    // テナント解決
+    // テナント解決（指定があり解決できない場合は、既定(mewodas)へ誤登録せず明示的に拒否）
     let tenant = getDefaultTenant();
     const slugOrId = String(body.tenantSlug || body.tenantId || '').trim();
     if (slugOrId) {
-      const found = await findTenantBySlugOrId(slugOrId);
-      if (found) tenant = found;
-      else {
-        const byId = await getTenantByIdAsync(slugOrId);
-        if (byId) tenant = byId;
+      const found = (await findTenantBySlugOrId(slugOrId)) || (await getTenantByIdAsync(slugOrId));
+      if (!found) {
+        return NextResponse.json({ error: '指定された店舗が見つかりません' }, { status: 404, headers: CORS_HEADERS });
       }
+      tenant = found;
     }
 
     const gender = String(body.gender || '').trim() || undefined;
@@ -130,6 +130,15 @@ export async function POST(req: NextRequest) {
     });
 
     return await runInTenantContext(tenant, async () => {
+      // ★ 課金整合性: 席数上限を超える無認証登録を拒否（seat バイパス・スパム防止）。
+      //   seatLimit 未設定（契約前）テナントは isOverLimit=false なので正規申込はブロックしない。
+      const seat = await getSeatStatus({ noCache: true });
+      if (seat.isOverLimit) {
+        return NextResponse.json(
+          { error: '現在この店舗は受付上限に達しています。店舗にお問い合わせください' },
+          { status: 409, headers: CORS_HEADERS }
+        );
+      }
       const customer = await createCustomer({
         name,
         foodStatus: '進行中',

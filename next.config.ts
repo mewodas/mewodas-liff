@@ -9,7 +9,9 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   // camera needed for meal-photo capture in LIFF
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
-  // staging で enforce 検証中。問題なければ main にも同じ enforce で展開
+  // CSP は Report-Only 据え置き（enforce は2回 LIFF を壊したため凍結）。
+  // report-uri で実違反を /api/csp-report に収集 → allowlist を実データで完成 → その後 enforce。
+  // 下記 allowlist は現時点の最善（GAS=画像アップロード, *.ingest.sentry.io=リージョンDSN を補強済）。
   {
     key: 'Content-Security-Policy-Report-Only',
     value: [
@@ -18,10 +20,12 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.line-scdn.net https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      // LIFF SDK は api.line.me 以外に access.line.me / liff-subwindow.line.me / uts-front.line-apps.com も叩く
-      "connect-src 'self' https://*.line.me https://*.line-apps.com https://api.notion.com https://generativelanguage.googleapis.com https://o*.ingest.sentry.io https://va.vercel-scripts.com",
+      // LIFF SDK は api.line.me 以外に access.line.me / liff-subwindow.line.me / uts-front.line-apps.com も叩く。
+      // GAS(script.google*)=食事写真アップロード, *.ingest.sentry.io=Sentry リージョン別DSN。
+      "connect-src 'self' https://*.line.me https://*.line-apps.com https://api.notion.com https://generativelanguage.googleapis.com https://*.ingest.sentry.io https://va.vercel-scripts.com https://script.google.com https://script.googleusercontent.com",
       "frame-src 'self' https://*.line.me",
       "font-src 'self' data:",
+      "report-uri /api/csp-report",
     ].join('; '),
   },
 ];

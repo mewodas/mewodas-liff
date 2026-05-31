@@ -9,6 +9,7 @@ import {
   updateCustomer as notionUpdateCustomer,
   createCustomer as notionCreateCustomer,
   archiveCustomer as notionArchiveCustomer,
+  assertCustomerOwnership,
   type Customer,
 } from '@/lib/notion';
 import { getCached, setCached, invalidate } from '@/lib/cache';
@@ -52,6 +53,8 @@ export async function getCustomer(pageId: string): Promise<Customer | null> {
 }
 
 export async function patchCustomer(pageId: string, patch: CustomerPatch): Promise<void> {
+  // クロステナント改竄防止: pageId が現テナントの顧客DBに属することを保証（不一致は forbidden: で throw）
+  await assertCustomerOwnership(pageId);
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:customers:`);
   return notionUpdateCustomer(pageId, patch);
@@ -82,6 +85,8 @@ export async function createCustomer(input: CustomerCreateInput): Promise<Custom
 }
 
 export async function archiveCustomer(pageId: string): Promise<void> {
+  // クロステナント削除防止: pageId が現テナントの顧客DBに属することを保証
+  await assertCustomerOwnership(pageId);
   const tenantId = getCurrentTenant().id;
   invalidate(`${tenantId}:customers:`);
   return notionArchiveCustomer(pageId);

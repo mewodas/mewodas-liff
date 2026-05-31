@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Lock, LogIn, Store } from 'lucide-react';
@@ -16,6 +16,27 @@ function LoginInner() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ログイン済みでログイン画面を開いたら自動で遷移。確認中はフォームを出さずチラつき防止。
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/auth/me', { cache: 'no-store' });
+        if (!cancelled && res.ok) {
+          router.replace(from);
+          return; // 認証済み → リダイレクト中はフォームを描画しない
+        }
+      } catch {
+        // 失敗時はフォーム表示にフォールバック
+      }
+      if (!cancelled) setChecking(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, from]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,6 +58,14 @@ function LoginInner() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-stone-100 text-stone-500 text-sm">
+        読み込み中…
+      </main>
+    );
   }
 
   return (

@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
 
+// CSRF 対策: Cookie セッション認証の状態変更は同一オリジンからのみ許可する。
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isSameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin');
+  if (!origin) return false; // ブラウザの状態変更リクエストは Origin を必ず送る。欠落は拒否。
+  try {
+    return new URL(origin).host === request.headers.get('host');
+  } catch {
+    return false;
+  }
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -9,6 +22,13 @@ export function proxy(request: NextRequest) {
   const isStore = pathname.startsWith('/store') || pathname.startsWith('/api/store');
   if (!isAdmin && !isStore) {
     return NextResponse.next();
+  }
+
+  // CSRF: /admin・/store の状態変更（POST/PUT/PATCH/DELETE）は同一オリジン必須。
+  //   Cookie 認証のため外部サイト起点の強制リクエストを Origin 照合で拒否する。
+  //   顧客 LIFF(/api/record 等)は Bearer 認証で CSRF 非該当、Stripe webhook/cron は別パス・別認証。
+  if (MUTATING_METHODS.has(request.method) && !isSameOrigin(request)) {
+    return NextResponse.json({ error: 'csrf_origin_mismatch' }, { status: 403 });
   }
 
   // ログイン・パスワード再設定ページとAPIは素通し（未ログイン状態で必要）

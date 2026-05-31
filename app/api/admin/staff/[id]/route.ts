@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 import { updateStaff, deleteStaff, isStaffConfigured } from '@/lib/staff';
-import { withAdminTenant } from '@/lib/withTenant';
+import { withAdminTenant, currentSession } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+// スタッフDBはテナント横断（tenant_id 列なし）。テナント別分離が入るまでは運営(master)専用に限定。
+function ensureMaster(req: import('next/server').NextRequest): NextResponse | null {
+  const session = currentSession(req);
+  if (session?.role !== 'master') {
+    return NextResponse.json({ error: 'master only' }, { status: 403 });
+  }
+  return null;
+}
+
 export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
+  const denied = ensureMaster(req);
+  if (denied) return denied;
   if (!isStaffConfigured()) return NextResponse.json({ error: 'NOTION_STAFF_DB_ID 未設定' }, { status: 503 });
   try {
     const { id } = await params;
@@ -23,7 +34,9 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
   }
 });
 
-export const DELETE = withAdminTenant(async (_req, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withAdminTenant(async (req, { params }: { params: Promise<{ id: string }> }) => {
+  const denied = ensureMaster(req);
+  if (denied) return denied;
   try {
     const { id } = await params;
     await deleteStaff(id);

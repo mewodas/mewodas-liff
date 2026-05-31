@@ -14,6 +14,7 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  Check,
   Flame,
   Target as TargetIcon,
   CalendarCheck,
@@ -25,6 +26,7 @@ import {
   Sun,
   Moon,
   Cookie,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 import { daysUntil } from '@/lib/goalCalc';
@@ -48,7 +50,7 @@ import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 
-type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null };
+type Customer = { pageId: string; name: string; foodStatus: string | null; storeId: string | null; lineUserId?: string };
 
 type Analysis = {
   summary: string;
@@ -77,6 +79,25 @@ type WeightLog = {
   date: string;
   weightKg: number;
   memo: string;
+};
+
+type BodyCompLog = {
+  id: string;
+  measureDate: string;
+  weightKg: number;
+  bodyFatPct: number;
+  muscleMassKg: number;
+  bodyFatMassKg: number | null;
+  bodyWaterPct: number | null;
+  bmi: number | null;
+  basalMetabolicKcal: number | null;
+  visceralFatLevel: number | null;
+  skeletalMuscleMassKg: number | null;
+  rightArmMuscleKg: number | null;
+  leftArmMuscleKg: number | null;
+  rightLegMuscleKg: number | null;
+  leftLegMuscleKg: number | null;
+  trunkMuscleKg: number | null;
 };
 
 type ExerciseLog = {
@@ -186,6 +207,13 @@ function Inner() {
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [bodyCompLogs, setBodyCompLogs] = useState<BodyCompLog[]>([]);
+  // 現在表示中の体組成データがどの顧客のものか（フェッチ完了の同一性判定用）。
+  // これが customerId と一致するまでセクションを描画しない＝読み込み中の先行表示/前顧客データのちらつきを防ぐ。
+  const [bodyCompFetchedId, setBodyCompFetchedId] = useState<string | null>(null);
+  const [bodyCompOpen, setBodyCompOpen] = useState(false);
+  // ユーザーが手動で開閉したら自動開閉を止める（顧客切替でリセット）。記録ありで自動展開・0件で畳む。
+  const bodyCompUserToggledRef = useRef(false);
 
   // AI サマリ
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -315,6 +343,7 @@ function Inner() {
     setAiMessage(null);
     setMealList(null);
     setMealListError(null);
+    setBodyCompLogs([]);
   }, []);
 
   // 顧客または日付が変わったら data API を自動フェッチ（デバウンス 300ms）
@@ -333,6 +362,44 @@ function Inner() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [customerId, from, to, fetchData, clearData]);
+
+  // 顧客が変わったら体組成データを取得（日付範囲は無関係：全履歴）
+  useEffect(() => {
+    if (!customerId) {
+      setBodyCompLogs([]);
+      setBodyCompFetchedId(null);
+      return;
+    }
+    const customer = customers.find((c) => c.pageId === customerId);
+    const lineUserId = customer?.lineUserId;
+    if (!lineUserId) return;
+    // 顧客切替時は前データを即クリアし、完了IDも一旦リセット（前顧客データの先行表示を防ぐ）。
+    // 自動開閉も新顧客のデータ有無で再判定するためフラグをリセット。
+    setBodyCompLogs([]);
+    setBodyCompFetchedId(null);
+    bodyCompUserToggledRef.current = false;
+    const cid = customerId;
+    let cancelled = false;
+    fetch(`/api/admin/body-composition?lineUserId=${encodeURIComponent(lineUserId)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled) return;
+        const fetched: BodyCompLog[] = j?.logs || [];
+        setBodyCompLogs(fetched);
+        setBodyCompFetchedId(cid);
+        // 記録があれば自動展開・0件なら畳む（ユーザーが手動操作していない場合のみ）
+        if (!bodyCompUserToggledRef.current) setBodyCompOpen(fetched.length > 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBodyCompLogs([]);
+        setBodyCompFetchedId(cid);
+        if (!bodyCompUserToggledRef.current) setBodyCompOpen(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, customers]);
 
   async function runAi() {
     if (!customerId) return;
@@ -547,14 +614,27 @@ function Inner() {
           </section>
         ) : null}
 
-        {/* ---- ④ 体重 ＋ ⑤ 運動記録（体重の直後に並べる） ---- */}
-        {hasData && (weightLogs.length > 0 || exerciseLogs.length > 0) && (
-          <WeightExercisePanel
-            isSingleDay={isSingleDay}
-            weightLogs={weightLogs}
-            exerciseLogs={exerciseLogs}
-            target={target}
+        {/* ---- ④ 体重推移 ---- */}
+        {hasData && weightLogs.length > 0 && (
+          <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />
+        )}
+
+        {/* ---- 体組成推移（体重推移の直下に配置・メイン結果＋当該顧客の体組成フェッチ完了後に表示） ---- */}
+        {customerId && !dataLoading && bodyCompFetchedId === customerId && (
+          <BodyCompSection
+            logs={bodyCompLogs}
+            isOpen={bodyCompOpen}
+            onToggle={() => {
+              bodyCompUserToggledRef.current = true;
+              setBodyCompOpen((v) => !v);
+            }}
+            base={base}
           />
+        )}
+
+        {/* ---- ⑤ 運動記録（体組成の下） ---- */}
+        {hasData && exerciseLogs.length > 0 && (
+          <ExerciseSection exerciseLogs={exerciseLogs} />
         )}
 
         {/* ---- ⑤ 食事一覧ボタン + AI サマリ作成ボタン ---- */}
@@ -707,31 +787,6 @@ function Inner() {
         )}
       </div>
     </AdminShell>
-  );
-}
-
-// ---- 体重＋運動パネル（横並び or 縦積み） ----
-
-function WeightExercisePanel({
-  isSingleDay,
-  weightLogs,
-  exerciseLogs,
-  target,
-}: {
-  isSingleDay: boolean;
-  weightLogs: WeightLog[];
-  exerciseLogs: ExerciseLog[];
-  target: TargetInfo | null;
-}) {
-  const hasWeight = weightLogs.length > 0;
-  const hasExercise = exerciseLogs.length > 0;
-
-  // 体重→運動の順で常に縦積み（運動は体重の下に表示）
-  return (
-    <div className="space-y-3">
-      {hasWeight && <WeightSection isSingleDay={isSingleDay} weightLogs={weightLogs} target={target} />}
-      {hasExercise && <ExerciseSection exerciseLogs={exerciseLogs} />}
-    </div>
   );
 }
 
@@ -1297,5 +1352,215 @@ function Bullets({ items }: { items: string[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function BodyCompSection({
+  logs,
+  isOpen,
+  onToggle,
+  base,
+}: {
+  logs: BodyCompLog[];
+  isOpen: boolean;
+  onToggle: () => void;
+  base: string;
+}) {
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+
+  // axis: 'kg'(左軸) / 'pct'(右軸=%・BMI・内臓脂肪レベル) / 'kcal'(基礎代謝専用の隠し軸=自分のスケールで推移を表示)。
+  // 全項目を1グラフに線で表示できるが、スケール差を壊さないため軸を分ける。invert=true は「下がると良い」項目。
+  const METRICS: { key: keyof BodyCompLog; label: string; unit: string; color: string; invert: boolean; axis: 'kg' | 'pct' | 'kcal' }[] = [
+    { key: 'weightKg', label: '体重', unit: 'kg', color: '#0ea5e9', invert: true, axis: 'kg' },
+    { key: 'bodyFatPct', label: '体脂肪率', unit: '%', color: '#f59e0b', invert: true, axis: 'pct' },
+    { key: 'muscleMassKg', label: '筋肉量', unit: 'kg', color: '#10b981', invert: false, axis: 'kg' },
+    { key: 'bodyFatMassKg', label: '体脂肪量', unit: 'kg', color: '#fb923c', invert: true, axis: 'kg' },
+    { key: 'bodyWaterPct', label: '体水分率', unit: '%', color: '#06b6d4', invert: false, axis: 'pct' },
+    { key: 'bmi', label: 'BMI', unit: '', color: '#a855f7', invert: true, axis: 'pct' },
+    { key: 'basalMetabolicKcal', label: '基礎代謝', unit: 'kcal', color: '#ef4444', invert: false, axis: 'kcal' },
+    { key: 'visceralFatLevel', label: '内臓脂肪レベル', unit: '', color: '#f97316', invert: true, axis: 'pct' },
+    { key: 'skeletalMuscleMassKg', label: '骨格筋量', unit: 'kg', color: '#22c55e', invert: false, axis: 'kg' },
+    { key: 'rightArmMuscleKg', label: '右腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false, axis: 'kg' },
+    { key: 'leftArmMuscleKg', label: '左腕筋肉量', unit: 'kg', color: '#2dd4bf', invert: false, axis: 'kg' },
+    { key: 'rightLegMuscleKg', label: '右脚筋肉量', unit: 'kg', color: '#0d9488', invert: false, axis: 'kg' },
+    { key: 'leftLegMuscleKg', label: '左脚筋肉量', unit: 'kg', color: '#0d9488', invert: false, axis: 'kg' },
+    { key: 'trunkMuscleKg', label: '体幹筋肉量', unit: 'kg', color: '#0891b2', invert: false, axis: 'kg' },
+  ];
+
+  const sorted = logs.slice().sort((a, b) => (a.measureDate < b.measureDate ? -1 : 1));
+
+  // 各項目の最新値・初回比増減・記録点数を算出（記録のある項目のみ）。
+  const metricInfo = METRICS.map((m) => {
+    const vals = sorted
+      .map((l) => l[m.key] as number | null)
+      .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v));
+    const baseline = vals.length > 0 ? vals[0] : null;
+    const latest = vals.length > 0 ? vals[vals.length - 1] : null;
+    const deltaVal = vals.length >= 2 && latest !== null && baseline !== null ? round1(latest - baseline) : null;
+    return { ...m, count: vals.length, latest, deltaVal };
+  }).filter((m) => m.count > 0);
+
+  // 既定は全項目を線表示。凡例チェックを外すと非表示にできる。
+  const [visible, setVisible] = useState<Set<string>>(() => new Set(METRICS.map((m) => m.key as string)));
+  const toggleMetric = (k: string) =>
+    setVisible((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+
+  // ワイド形式の chartData（1行=1計測日、各 key に実数値）。
+  const chartData = sorted.map((l) => {
+    const row: Record<string, number | string> = { fullDate: l.measureDate };
+    for (const m of METRICS) {
+      const v = l[m.key] as number | null;
+      if (typeof v === 'number' && !Number.isNaN(v)) row[m.key] = v;
+    }
+    return row;
+  });
+
+  // 表示中の左軸(kg)系列の実データから domain を算出（四肢 ON 時に体重が潰れる挙動を明示制御）。
+  const leftDomain = useMemo<[number, number | 'auto']>(() => {
+    const vals: number[] = [];
+    for (const l of sorted)
+      for (const m of METRICS)
+        if (m.axis === 'kg' && visible.has(m.key as string)) {
+          const v = l[m.key] as number | null;
+          if (typeof v === 'number' && !Number.isNaN(v)) vals.push(v);
+        }
+    if (!vals.length) return [0, 'auto'];
+    return [Math.max(0, Math.floor(Math.min(...vals) - 2)), Math.ceil(Math.max(...vals) + 2)];
+  }, [sorted, visible]);
+
+  const lineMetrics = metricInfo; // 全項目が線として表示可能（軸は kg/pct/kcal に振り分け）
+  const dataKeys = new Set(metricInfo.map((m) => m.key as string));
+  const canChart = sorted.length >= 2 && lineMetrics.length > 0;
+  // 実際に描画される軸だけ表示（その系列を全部OFFにした時に空の軸が残らないように）
+  const axisActive = (axis: 'kg' | 'pct' | 'kcal') =>
+    METRICS.some((m) => m.axis === axis && visible.has(m.key as string) && dataKeys.has(m.key as string));
+  const hasKgAxis = axisActive('kg');
+  const hasPctAxis = axisActive('pct');
+  const hasKcalAxis = axisActive('kcal');
+
+  function DeltaBadge({ v, unit, invert }: { v: number | null; unit: string; invert?: boolean }) {
+    if (v === null) return null;
+    const positive = invert ? v < 0 : v > 0;
+    const cls = v === 0 ? 'text-stone-500' : positive ? 'text-emerald-600' : 'text-rose-500';
+    return (
+      <span className={`text-[10px] font-bold ml-1 ${cls}`}>
+        {v > 0 ? '+' : ''}{v}{unit}
+      </span>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-3 active:bg-stone-50"
+      >
+        <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+          <Scale className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+          体組成推移
+          {logs.length > 0 && (
+            <span className="text-[11px] font-medium text-stone-500">（{logs.length}件）</span>
+          )}
+        </span>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="px-3 pb-3 space-y-3">
+          {logs.length === 0 ? (
+            <div className="text-xs text-stone-500 text-center py-4">体組成記録がありません</div>
+          ) : (
+            <>
+              {/* 統合グラフ（左軸=kg / 右軸=%・BMI・内臓脂肪 / 基礎代謝は隠しkcal軸・実数値のまま）。2回以上の計測で表示 */}
+              {canChart ? (
+                <div className="w-full h-56">
+                  <ResponsiveContainer>
+                    <LineChart data={chartData} margin={{ top: 8, right: 4, left: -14, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+                      <XAxis dataKey="fullDate" tickFormatter={shortDate} interval="preserveStartEnd" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                      {hasKgAxis && (
+                        <YAxis yAxisId="kg" domain={leftDomain} width={28} tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                      )}
+                      {hasPctAxis && (
+                        <YAxis yAxisId="pct" orientation="right" domain={[0, 'auto']} width={24} tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                      )}
+                      {/* 基礎代謝(kcal)は桁違いなので専用の隠し軸で自分のスケールに合わせて推移だけ描画 */}
+                      {hasKcalAxis && <YAxis yAxisId="kcal" hide domain={['auto', 'auto']} />}
+                      <Tooltip
+                        contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e7e5e4', backgroundColor: '#fafaf8' }}
+                        labelFormatter={(l) => shortDate(String(l))}
+                        formatter={(value, name) => {
+                          const m = METRICS.find((x) => x.key === name);
+                          return m ? [`${round1(Number(value))}${m.unit}`, m.label] : [value as number, String(name)];
+                        }}
+                      />
+                      {METRICS.filter((m) => visible.has(m.key as string) && dataKeys.has(m.key as string)).map((m) => (
+                        <Line key={m.key} yAxisId={m.axis} type="linear" dataKey={m.key as string} name={m.key as string} stroke={m.color} strokeWidth={2} dot={{ r: 2.5, fill: m.color }} connectNulls isAnimationActive={false} />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="text-[11px] text-stone-400">推移グラフは2回以上の計測で表示されます</div>
+              )}
+
+              {/* 凡例（チェックで線を表示切替）＋最新の実数値・増減 */}
+              {lineMetrics.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[10px] text-stone-400">既定は全項目を表示。チェックを外すとグラフから非表示（基礎代謝・BMI・内臓脂肪レベルも各スケールで表示。実数値はホバー/右の数値）</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
+                    {lineMetrics.map((m) => {
+                      const on = visible.has(m.key as string);
+                      const selectable = m.count >= 2;
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => selectable && toggleMetric(m.key as string)}
+                          disabled={!selectable}
+                          aria-pressed={on}
+                          className={`flex items-center gap-1.5 min-w-0 py-1 text-left ${selectable ? '' : 'opacity-50 cursor-default'}`}
+                        >
+                          <span
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${on ? 'border-transparent' : 'border-stone-300 bg-white'}`}
+                            style={on ? { backgroundColor: m.color } : undefined}
+                          >
+                            {on && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                          </span>
+                          <span className="text-[11px] text-stone-600 truncate">{m.label}</span>
+                          <span className="text-[11px] font-bold text-stone-900 ml-auto whitespace-nowrap">
+                            {m.latest !== null ? round1(m.latest) : '—'}{m.unit}
+                            <DeltaBadge v={m.deltaVal} unit={m.unit} invert={m.invert} />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+            </>
+          )}
+
+          <Link
+            href={`${base}/measurements`}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900"
+          >
+            <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
+            体組成計測記録を見る
+          </Link>
+        </div>
+      )}
+    </section>
   );
 }

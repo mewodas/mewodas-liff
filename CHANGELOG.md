@@ -1,9 +1,225 @@
 # CHANGELOG
 
+## 2026-05-31 – security(#6/#8): CSP違反収集エンドポイント＋Sentry PIIスクラブ強化
+- security(#6): `app/api/csp-report/route.ts` 新規（CSP違反の report-uri 受け口・無認証・本文16KB上限・https違反のみ console+Sentry に記録）。`next.config.ts` の CSP（Report-Only 据え置き）に `report-uri /api/csp-report` を追加し、connect-src に GAS(`script.google*`)・Sentry(`*.ingest.sentry.io`) を補強。**enforce 化はこの実違反データで allowlist を完成させてから再挑戦**（凍結継続）
+- security(#8): `lib/sentry.ts` `redactEvent` 強化。①画像 data URI 伏字の JSON 破壊バグ修正（旧実装は unredacted フォールバックしていた）②Bearer トークン/Authorization・Cookie ヘッダ/admin_session を伏字追加。`__tests__/lib/sentry-redact.test.ts`(6ケース) で回帰ロック
+- 影響範囲: CSP は Report-Only のまま顧客 LIFF 影響なし（report-uri 追加のみ）。Sentry/csp-report はバックエンド。本番ビルド・tsc・テスト通過
+- 関連: 監査 project_security_audit_2026_05_31 設計#6/#8、[[project_pending_security_2026_05_19]]
+
 ## 2026-05-30 09:00 claude/sec-fix-6543739
 - fix: `lib/notion.ts` `notionFetch` に 502/503/504/429 対象の指数バックオフリトライ（最大3回）を追加
 - 影響範囲: API（Notion 経由の全エンドポイント）
 - 関連: Slack #security-alerts 1780070684.745729（Sentry: Notion API 502 at /api/admin/billing/info）
+
+
+- security: `proxy.ts` で /admin・/store の状態変更（POST/PUT/PATCH/DELETE）を**同一オリジン必須**化（Origin ヘッダと Host を照合、不一致は 403 `csrf_origin_mismatch`）。Cookie セッション認証の外部サイト起点強制リクエスト（CSRF）を封鎖
+- 影響範囲: /api/admin・/api/store の状態変更のみ。顧客 LIFF は Bearer 認証で非該当、Stripe webhook/cron・GET は対象外。SameSite=lax 維持（CSRF 実装により strict 不要）
+- 補足: CSP enforce 化は LIFF「failed to fetch」で**見送り（Report-Only 据え置き）**。enforce は report-to による実違反収集後に再挑戦予定（[[project_pending_security_2026_05_19]]）
+- 関連: 監査 project_security_audit_2026_05_31 設計#6
+
+
+- test: `vitest`（+ `@vitest/coverage-v8`・`vite-tsconfig-paths`）を devDependency 追加、`vitest.config.ts`・`npm test` スクリプト整備
+- test: `__tests__/lib/auth-token-separation.test.ts` 追加（14 ケース・全パス）。P0 CRITICAL「リセット/招待/legacy/role欠落 トークンの admin_session 流用による master 昇格」が再発しないことを保証（verifySession は typ=session かつ role 有効のみ受理、verifyResetToken は逆方向の混同も拒否）
+- 影響範囲: 開発ツールのみ（本番ランタイム・顧客側に影響なし、`next build` は __tests__ を無視）。本番ビルド・tsc 通過確認済
+- 関連: 監査 project_security_audit_2026_05_31 設計#10（クロステナント pageId→403 の integration テストは Notion モックが要るため後続）
+
+
+- security: **同一テナント内クロス顧客 IDOR 封鎖**。`lib/notion.ts` `assertFoodRecordOwnership(pageId, expectedLineUserId?)` に所有者(LINE_UserID)照合を追加し、`app/api/record/update`・`app/api/delete` から `verifiedLineUserId` を渡す。他顧客の食事記録を pageId 指定で改竄/削除できる脆弱性を封鎖（管理API＝運営/店舗は省略でテナント所属チェックのみ＝全顧客操作可、不変）
+- security: **通知既読の IDOR 封鎖**。`lib/notifications.ts` `markNotificationRead(id, expectedLineUserId?)` に所有者(LINEユーザーID)照合を追加、`app/api/notifications/[id]/read` から `verifiedLineUserId` を渡す（他顧客通知の既読化を防止）。不一致は 403
+- security: **`/api/record/nutrition-label` 認証必須化**。素の POST を `withLiffTenant` で保護（無認証の Gemini コスト濫用を封鎖）。呼び出し元 `app/record/page.tsx` は apiFetch 経由で Bearer 付与済のため正常動作
+- 影響範囲: 顧客側 LIFF（記録編集/削除・通知既読・栄養成分ラベル解析）＋ バックエンド lib。**staging で fitmeal-qa 検証後、社長確認 → main**
+- 関連: 監査メモ project_security_audit_2026_05_31（P1 残の LIFF 系）
+
+
+- security: **Stripe プラン整合性**。`app/api/stripe/checkout`・`update-seats` で `getPlanByCode` 取得後に `!plan.published || !plan.active` を拒否（非公開/無効の内部・PoCプラン選択を封鎖）。最低席数を `Math.max(plan.minSeats, MIN_SEATS=3)` で下限固定（minSeats=1 等のバイパス防止）
+- security: **ログイン ブルートフォース対策**。`app/api/admin/auth/login` に per-email/IP の試行制限（15分で8回失敗→15分ロック、429+Retry-After）。成功で解除。reset-password と同じ in-memory 方式（永続化は設計#7で別途）
+- security: **`/api/public/apply` 無認証クロステナント登録**。`getSeatStatus().isOverLimit` 超過を 409 で拒否（seat バイパス・スパム抑止、契約前=seatLimit null は非ブロック）。指定テナント未解決時は既定(mewodas)へ誤登録せず 404
+- 影響範囲: API（/api/stripe/*・/api/admin/auth/login・/api/public/apply）。顧客側UI影響なし。再ログイン副作用なし（auth トークン形式は不変）
+- 挙動変更（要把握）: 非公開プランでの自己申込/席数変更は 403。席数上限到達テナントへの apply は 409。タイポ等で店舗未解決の apply は 404（従来は mewodas へ登録されていた）
+- 関連: 監査メモ project_security_audit_2026_05_31。LIFFレコード所有者照合/nutrition-label認証/notification read は顧客側=staging で別途
+
+
+- change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）のアカウント削除セクションから、赤カードの枠・見出し「アカウント削除」・説明文を撤去し、「アカウントを削除する」ボタン単体に変更（削除動作・確認ダイアログ `deleteAccount` は不変）
+- 影響範囲: 管理画面（/store・/admin 顧客詳細）。見た目のみ・DB/API/顧客側UI 影響なし
+- 検証: `tsc --noEmit` 0件 / `next build` パス
+
+## 2026-05-31 – fix(admin/store): 目標カロリー/PFC/％ 連動を改修（脂質連動バグ修正・整数化・100%案内）
+- fix: 目標カロリー変更時に脂質(F)を含む P/F/C すべてを各％から明示再計算するよう変更（従来のグラム比例スケールで脂質が動かないように見える問題を解消）。`app/admin/customers/[id]/page.tsx`
+- change: PFC(g) を整数表示に統一（小数廃止）。読込・自動計算・編集の全経路で `Math.round`、g入力の step を 1 に
+- change: 連動モデルを変更。①目標カロリー編集→各％維持で全 grams 再計算 ②PFC(g)編集→そのマクロの％のみ更新 ③％編集→そのマクロの grams のみ更新。**②③は他マクロを自動調整しない**（従来の按分・kcal再計算を廃止）
+- feat: PFC 合計が目標カロリー(=100%)とズレた際に案内バナー表示 — 超過=赤（+kcal）／未達=橙（残り％・kcal）／一致=緑。`macroTotal` を grams+kcal から算出
+- 影響範囲: 管理画面（/store・/admin 顧客詳細の目標カロリー/PFC 設定）。DB・保存ペイロード（goals.kcal/P/F/C）変更なし
+- 検証: `tsc --noEmit` 0件／挙動シミュレーション（kcal変更で F も連動・整数・超過/未達案内）確認済
+- 関連: 社長フィードバック（脂質が連動しない・小数不要・他％は連動せず100%超過/未達を案内）
+
+## 2026-05-31 – change(admin/store): 顧客詳細から 体重推移/運動記録/送信履歴/レポート送付/ツアーリセット の表示を削除
+- change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）から以下5セクションの表示を削除 — ①体重推移グラフ＋運動記録 ②運動記録（新DB）③送信履歴 ④レポート送付（前日レポート送付）⑤ツアーリセット
+- cleanup: 連動して不要になった state・ハンドラ（`loadWeightHistory`/`loadExerciseLogs`/`sendReport`/`resetOnboarding`）・型（`Notification`/`WeightEntry`/`ExerciseLog`）・通知取得 useEffect・ローカルチャート（`WeightLineChart`/`ExerciseBarChart`）・recharts と未使用 lucide import を撤去。`StatusInfoPopover`（ステータス説明ポップオーバー）は基本情報で継続使用のため維持
+- 影響範囲: 管理画面（/store・/admin 顧客詳細）。残存セクション = 基本情報／身体情報／目標(PFC)／アカウント削除。DB・API・顧客側 UI への影響なし（表示削除のみ）
+- 検証: `tsc --noEmit` 0件 / `next build` パス
+- 関連: 社長依頼（添付画面の「体重推移〜ツアーリセット」を非表示に）
+
+## 2026-05-31 – feat(admin/store): 目標カロリー・PFC(g)・％ を相互連動＋％を編集可能化
+- feat: `app/admin/customers/[id]/page.tsx` 顧客詳細の目標設定で、これまで読み取り専用だった PFC ％を編集可能な入力に変更
+- feat: 3者を相互連動。①目標カロリー編集→比率を保持してグラム比例再計算 ②PFC(g)編集→kcal=合計を再計算し％再導出 ③％編集→kcal固定で残り％を他2マクロの現比率に按分しグラム再計算
+- 実装: 正本は kcal+grams、％は grams/kcal から導出（編集中フィールドは sync effect で上書きしない）。`pRatio/fRatio/cRatio` の useMemo を撤去し `handleKcalChange/handleGramChange/handlePctChange` に置換
+- 影響範囲: 管理画面（/store・/admin 顧客詳細の目標カロリー/PFC 設定）。DB スキーマ・保存ペイロード（goals.kcal/P/F/C）は変更なし
+- 関連: 社長要望（カロリー変更で PFC も連動、％でも変更可能に）
+
+## 2026-05-31 – security(P0): テナント分離・トークン混同・管理者IDOR を修正（branch: security/p0-fixes / 未デプロイ）
+- security: **トークン purpose 分離**。`lib/adminAuth.ts` セッションに `typ:'session'` を必須化し、`verifySession` は `typ==='session'` のみ受理＋role欠落時の master 推定を廃止（fail-closed）。これにより、同一 `ADMIN_SESSION_SECRET` で署名されるパスワードリセットトークン（email+exp 保持）を `admin_session` Cookie に入れて master 昇格する **CRITICAL 脆弱性**を封鎖。`lib/passwordReset.ts`／`lib/inviteToken.ts` にも `typ`（reset/invite）判別を追加（既存トークンは後方互換で許容＝非破壊）
+- security: **クロステナント IDOR 修正（設計#2＝リポジトリ層集約）**。`lib/repository/customers.ts`(patch/archive)・`lib/repository/records.ts`(patch/archive) に `assertCustomerOwnership`／`assertFoodRecordOwnership` を内蔵。`lib/notion.ts` `getCustomerByPageId` に親DB照合を追加し、`getCustomer` 経由の全 admin サブルート（records/weight-history/notifications/analysis 等）のクロステナント読取を一括封鎖
+- security: **店舗マスタ**。`lib/stores.ts` `getStore` に tenant_id 自己照合、`updateStore`/`deleteStore` に前段ガード（他テナント店舗の改竄/削除を防止）
+- security: **スタッフ**。`app/api/admin/staff/*` を運営(master)専用に限定（DBがテナント横断・tenant_id列なしのため暫定。将来 tenant_id 列追加で店舗別解放）
+- security: 管理ルートでクロステナント試行時は 403（`forbidden:`）を返却
+- 影響範囲: API（/api/admin/customers・records・stores・staff）／バックエンド lib（認証・リポジトリ・notion・stores）。顧客側UIへの影響なし
+- 副作用: **デプロイ時に既存の管理者セッションが全て無効化 → 一度だけ再ログインが必要**（旧トークンに typ が無いため。意図的）。既発行のパスワードリセットリンクも無効化（1h TTL・再発行で対応）
+- 注意: 設計上の根本原因（全テナント単一 Notion キー共有／テナントがクライアントヘッダ由来）は別途ロードマップ（per-tenant token・identity→tenant 束縛・Postgres+RLS）で対応予定。本コミットはアプリ層の所有権チェックで封鎖
+- 関連: 監査メモ project_security_audit_2026_05_31。顧客側API（LIFFレコード所有者照合・nutrition-label認証・notification read）は staging で別途実装予定
+
+## 2026-05-31 – change(admin/store): 体組成グラフの既定表示を全項目に（チェックを外すと非表示）
+- change: `app/admin/analysis/page.tsx` 体組成推移グラフの初期表示を主要3本から**記録のある全項目**に変更。凡例チェックを外すとその項目だけグラフから消える挙動に統一
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-31 – feat(admin): 顧客リスクラベルを段階表示に拡張＋体重記載漏れ新規追加
+- feat: `lib/risk.ts` に `computeWeightRecordGap` 追加（最終体重記録からの日数差計算）
+- feat: `lib/repository/customerRisk.ts` 型・upsert・select に `days_since_last_weight` 追加
+- feat: `lib/customerRiskService.ts` 体重ログ最新日付から `daysSinceLastWeight` 算出して保存
+- feat: `app/api/admin/customers/risk-summary/route.ts` レスポンスに `daysSinceLastWeight` 追加
+- feat: `app/admin/progress/page.tsx` 食事記録漏れを3段階（1日=amber/2日=orange/3日以上orNull=rose）、体重記載漏れを同3段階で新規表示、体重停滞を violet に変更
+- chore: `lib/db/migrations/004_customer_risk_weight_gap.sql` 追加（CTO が手動実行）
+- 影響範囲: 管理画面（/admin・/store 進捗管理のラベル）、API（risk-summary）、DB（customer_risk テーブルにカラム追加要）
+
+## 2026-05-30 – change(admin/store): 記録漏れアラートのしきい値を3日→2日連続に
+- change: `lib/risk.ts` `NO_RECORD_THRESHOLD_DAYS` を 3→2 に変更。「今日と昨日の2日連続で食事記録なし（最終記録2日以上前）」で記録漏れと判定。社長フィードバック（2日サボった顧客も早めに検知したい）反映
+- 影響範囲: 顧客リスク判定（進捗管理の記録漏れラベル）。本番反映後に cron 再計算で反映
+
+## 2026-05-30 – fix(admin/store): 体組成記録の編集が複製される不具合＋写真AI解析の高負荷エラー対策
+- fix: 体組成記録の編集で計測日を変えると別レコードが複製され元データが残っていた不具合を修正。編集時は対象レコードIDで上書き更新するように（`lib/repository/bodyComposition.ts` に `updateBodyCompositionLog` 追加、`app/api/admin/body-composition/route.ts` が `id` 指定時は更新、`app/admin/measurements/page.tsx` が編集時に `id` を送信）
+- fix: 写真AI解析の「Gemini API 503 UNAVAILABLE（高負荷）」エラー対策。`analyze/route.ts` に自動リトライ（gemini-2.5-flash×2回→2.0-flash×1回・指数バックオフ）＋一時的高負荷時は「混み合っています。少し待って再試行」の親切な文言を返すように（内部のGeminiエラーJSONを露出しない）
+- 影響範囲: 管理画面（/store・/admin 体組成計測記録）・API（body-composition, body-composition/analyze）
+
+## 2026-05-30 – change(admin/store): 体組成推移を体重推移の直下に配置＋既定で畳む
+- change: `app/admin/analysis/page.tsx` 顧客分析のセクション順を「体重推移 → 体組成推移 → 運動記録」に変更（従来は体重→運動→体組成）。WeightExercisePanel を展開し体組成を体重の直下へ
+- change: 体組成推移セクションを既定で**畳んだ状態**で表示（`bodyCompOpen` 初期値 false）。ヘッダーをタップで展開
+- chore: 未使用になった `WeightExercisePanel` を削除
+- 影響範囲: 管理画面（/store・/admin 顧客分析）
+
+## 2026-05-30 – change(admin/store): 体組成推移を項目別の個別グラフに戻す（実数値＋ホバー＋全項目）
+- change: `app/admin/analysis/page.tsx` 体組成を「初回比%の統合1グラフ」から、**項目ごとの個別ミニグラフのカード一覧**に変更（1つにまとめず、わかりやすさ優先）
+- change: 各カードに**実数値の最新値**＋初回からの増減バッジを表示。グラフは実数値の推移で、**マウスホバーで日付＋実数値**をツールチップ表示
+- change: 主要3項目に絞らず**記録のある全項目**を表示。折れ線は直線(linear)
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-30 – change(admin/store): 顧客リスク表示を顧客管理→進捗管理へ移動（ステータス横ラベル）
+- change: `app/admin/progress/page.tsx` 進捗管理の各顧客のステータス（進行中等）バッジの横に、リスクラベル（🔴記録漏れ/🟡体重停滞）を表示。`/api/admin/customers/risk-summary` を fetch し pageId で突合（失敗しても本体表示は壊さない graceful）
+- change: `app/admin/customers/page.tsx` 顧客管理ページからリスク表示（要注意顧客サマリパネル＋行バッジ＋risk-summary fetch）を削除。未使用化した ChevronUp/ChevronDown import も除去
+- 影響範囲: 管理画面（運営/admin・店舗/store の進捗管理・顧客管理）。顧客側 LIFF 変更なし
+
+## 2026-05-30 – change(admin/store): 体組成推移グラフを見やすく（既定3項目＋凡例トグル＋直線）
+- change: `app/admin/analysis/page.tsx` 体組成統合グラフを既定で主要3項目（体重・体脂肪率・筋肉量）のみ表示に。線が7本重なって判別しづらかったのを解消
+- change: 凡例をタップで各項目の表示/非表示を切替できるように（非表示はグレーアウト）。必要な項目だけ重ねて比較可能
+- change: 折れ線を `monotone`(曲線) → `linear`(直線) に変更。少ない計測点で曲線が膨らんで誤解を招くのを防止
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-30 – change(admin/store): 顧客分析の体組成推移を「初回比%の統合1グラフ」に変更
+- change: `app/admin/analysis/page.tsx` 体組成セクションを項目別ミニグラフから、**全項目を初回測定=0%とした変化率で1つの線グラフに統合**（体重60kg/基礎代謝1400kcal/内臓脂肪レベル8 等のスケール差を吸収して一緒に比較可能に）。0%基準線(ReferenceLine)付き
+- change: グラフ下に凡例＝各項目の色・最新の絶対値・初回からの増減バッジ（下がると良い項目は色反転）を表示し、絶対値と変化が一目で分かるように
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-30 – fix(admin/store): 顧客分析の体組成推移が読み込み中に一瞬先行表示されるのを解消
+- fix: `app/admin/analysis/page.tsx` 体組成セクションのゲートを `bodyCompFetchedId === customerId` 同一性判定に変更。`!dataLoading` だけでは顧客選択後のデバウンス(300ms)中に dataLoading がまだ false のため一瞬表示されていた。現在の顧客の体組成フェッチ完了まで描画しないことで先行表示/前顧客データのちらつきを根絶。顧客切替時は前データを即クリア＋フェッチに cancel ガード追加
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-30 – feat(admin): ログイン画面でログイン済みなら自動リダイレクト
+- feat: `app/admin/login/page.tsx` マウント時に `/api/admin/auth/me` を確認し、**ログイン済みなら `from`（既定ダッシュボード）へ自動リダイレクト**。確認中は「読み込み中…」表示でフォームのチラつき防止。ログイン済みでログイン画面を開くと再ログインを求められていた問題を解消（/admin・/store 共通）
+- 補足: セッション保持は従来通り `admin_session` Cookie 7日間有効（HMAC署名・httpOnly・secure・sameSite=lax）。保持時間・トークン方式は変更なし＝セキュリティリスク増なし
+- 影響範囲: 管理画面 /admin/login・/store/login
+
+## 2026-05-30 – change(admin/store): 顧客分析の体組成推移を改善（表示タイミング・全項目・各推移グラフ）
+- fix: `app/admin/analysis/page.tsx` 体組成推移セクションの表示ゲートを `!dataLoading` に変更。メイン解析が「データ取得中…」の間に体組成だけ先に出ていたのを、他の結果と一緒に表示されるよう修正
+- change: `BodyCompSection` を全登録項目の一覧表示に刷新（体重/体脂肪率/筋肉量に加え 体脂肪量・体水分率・BMI・基礎代謝・内臓脂肪レベル・骨格筋量・部位別筋肉量）。記録のある項目のみカード表示
+- change: 各項目を体重推移と同様にミニ折れ線グラフ化し、初回→最新の増減バッジ（下がると良い項目は色反転）で変化が一目で分かるように。`BodyCompLog` 型に全カラムを追加
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
+## 2026-05-30 – feat(admin/store): 顧客リスクアラート Phase 1 MVP
+- feat: `lib/risk.ts` 純粋関数2種（記録漏れ判定・体重停滞判定）を新規作成
+- feat: `lib/db/migrations/003_customer_risk.sql` customer_risk テーブル DDL を追加
+- feat: `lib/repository/customerRisk.ts` Neon 接続によるリスクデータの upsert/list/latestComputedAt
+- feat: `lib/customerRiskService.ts` テナント文脈内で全顧客のリスク計算→Neon保存するオーケストレーション
+- feat: `app/api/cron/compute-customer-risk/route.ts` 全テナントループで risk 計算の cron ハンドラ（vercel.json 追加は Hobby 上限3本のため見送り）
+- feat: `app/api/admin/customers/risk-summary/route.ts` withAdminTenant でテナント隔離し Neon からリスク行を返す API（12時間超で waitUntil による裏側再計算）
+- feat: `app/admin/customers/page.tsx` 顧客行に記録漏れ（rose）・体重停滞（amber）バッジ追加、上部に要注意顧客折りたたみサマリ
+- 影響範囲: 管理画面（/admin・/store 顧客一覧）、API、lib、DB マイグレーション（003）。顧客側 LIFF 変更なし
+
+## 2026-05-30 – feat(admin/store): 体組成DBを保存時に自動プロビジョニング（手動設定不要）
+- feat: `app/api/admin/body-composition/route.ts` `ensureBodyCompDbId` を追加し、記録の保存時にテナントの体組成DBが未作成なら自動で作成→レジストリ(`Notion 体組成DB ID`)へ書込→キャッシュ無効化してから保存する（master/店舗どちらでも・冪等）。「Notion 体組成DB ID 未設定」エラーで保存できない問題を解消
+- change: `provision-db` アクションも同ヘルパーに統一（手動「体組成DBを作成」ボタンは予備として存置）。未使用の `currentSession` import を削除
+- 影響範囲: API（admin/body-composition）・管理画面（/store・/admin 体組成計測記録の保存）
+
+## 2026-05-30 – change/fix(admin/store): 進捗管理を顧客管理の隣へ・体組成 複数写真+拡大表示・写真AI解析のJSONエラー修正
+- change: `app/admin/AdminShell.tsx` ナビの「進捗管理」ドロップダウンを「顧客管理」の直後に配置（従来はレポート送付の後ろ）。デスクトップ/モバイル両方。Fragment で顧客管理タブの直後に差し込む形にリファクタ
+- feat: `app/admin/measurements/page.tsx` 体組成計測記録の「写真から自動入力(AI)」で複数写真アップロードに対応（`multiple`・蓄積した全枚を1リクエストで統合解析）。サムネイル一覧＋各写真の削除(×)
+- feat: 写真サムネイルクリックで拡大ライトボックス表示（全画面オーバーレイ・クリック/×で閉じる）
+- fix: `app/api/admin/body-composition/analyze/route.ts` 写真AI解析の「Unterminated string in JSON」エラーを修正。gemini-2.5-flash の thinking を無効化(`thinkingConfig.thinkingBudget:0`)し maxOutputTokens を 2048 に増やして JSON 途中切れを防止。パース失敗時も内部エラーを露出せず親切な文言を返す
+- 影響範囲: 管理画面（/store・/admin のナビ・体組成計測記録）・API（body-composition/analyze）
+
+## 2026-05-30 – fix(admin/store): 読み込み中の招待URLコピーを防止（席数情報未取得時の誤コピー対策）
+- fix: `app/admin/customers/page.tsx` 顧客一覧の読み込み中（`loading`・`seatInfo` 未取得）は「招待URLをコピー」ボタンを無効化（グレー＋ラベル「読み込み中…」）。従来は読み込み中の一瞬ボタンが有効で、上限到達テナントでも招待URLをコピーできてしまっていた
+- 実装: `disabled` と className に `loading` を追加、`copyApplyLink` 冒頭にも `if (loading || seatInfo?.isOverLimit) return` ガード。読み込み後は従来通り（上限時のみ無効。billing API 失敗で seatInfo が null でも fail-open で招待は可能）
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
+
+## 2026-05-30 – fix(admin/store): 席数上限ツールチップをボタン下に表示（上端見切れ修正）
+- fix: `app/admin/customers/page.tsx` 招待ボタンの上限到達ホバーツールチップを上方向(`bottom-full`/`pb-2`)→下方向(`top-full`/`pt-2`)に変更。ボタンがページ上部にありヘッダーで見切れていたため
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。顧客側 LIFF 変更なし
+
+## 2026-05-30 – change(admin/store): 席数上限の警告を常時バナー→招待ボタンのホバーツールチップ化
+- change: `app/admin/customers/page.tsx` 顧客一覧の「席数上限到達」警告を、常時表示の赤バナーから「招待URLをコピー」ボタンにマウスホバーした時のツールチップに変更（上限到達時のみ）。内容（利用可能/使用数・上限到達・プランを変更するリンク）は従来バナーと同一。ボタンは従来通り上限時 disabled（コピー不可）
+- 実装: ボタンを `relative group` でラップし `group-hover` で表示。`pb-2` でボタンと密着させ、ツールチップ内の「プランを変更する」リンクへマウス移動してもホバーが途切れないように
+- 影響範囲: 管理画面（運営/admin・店舗/store の顧客一覧）。残り1席バナーは従来通り常時表示。顧客側 LIFF 変更なし
+
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 2（写真AI解析）・Phase 3（顧客分析体組成セクション）実装
+- feat: `app/api/admin/body-composition/analyze/route.ts` 新規作成（POST・`withAdminTenant`・Gemini Vision で体組成計/InBody写真から数値抽出・master/tenant_admin 両方可）
+- feat: `app/admin/measurements/page.tsx` に「写真から自動入力（AI）」UIを追加（画像選択→`lib/imageCompress.ts` で圧縮→analyze API呼び出し→フォームprefill・AIバッジ表示）
+- feat: `app/admin/analysis/page.tsx`（/store・/admin 共有）に体組成セクションを追加（`BodyCompSection`：体重・体脂肪率・筋肉量の最新値カード＋3指標推移折れ線グラフ・折りたたみ可・記録なし時は「記録がありません」表示・体組成計測記録ページへのリンク）
+- change: `app/admin/analysis/page.tsx` に `BodyCompLog` 型・`bodyCompLogs`/`bodyCompOpen` ステート追加。顧客選択時に `GET /api/admin/body-composition?lineUserId=` を自動フェッチ
+- 影響範囲: 管理画面（/store・/admin）・API（admin/body-composition/analyze）
+- 備考: Drive への元画像保存は未実装（analyze/route.ts に TODO コメントあり）
+
+## 2026-05-30 – feat(admin/store): 体組成計測記録 Phase 1 実装
+- feat: `lib/notion.ts` に `createTenantBodyCompDb` 追加・`TenantRow`/`insertTenantRow`/`listTenantRows` に `bodyCompDbId` 列（`Notion 体組成DB ID`）追加
+- feat: `lib/tenant.ts` に `notionBodyCompDbId` フィールド追加（env: `NOTION_BODYCOMP_DB_ID`）
+- feat: `lib/tenantResolver.ts` に `notionBodyCompDbId` 配線
+- feat: `lib/provisionTenant.ts` で新規テナント作成時に体組成DB（4本目）を並列作成
+- feat: `lib/repository/bodyComposition.ts` 新規作成（`BodyCompositionLog` 型・CRUD・同一顧客×同日上書き）
+- feat: `app/api/admin/body-composition/route.ts` 新規作成（GET/POST/DELETE + provision-db アクション）
+- feat: `app/admin/measurements/page.tsx` 新規作成（体組成計測記録ページ・顧客選択・フォーム・履歴テーブル・詳細モーダル）
+- feat: `app/store/measurements/page.tsx` 新規作成（admin 側を re-export）
+- change: `app/admin/AdminShell.tsx` 進捗管理をドロップダウン化（配下: 進捗管理/食事一覧/体組成計測記録）・食事一覧をナビに正式追加・openMenu state を 'progress'|'settings'|null に一般化
+- 影響範囲: 管理画面（/store・/admin）・lib（テナントプロビジョニング）
+
+## 2026-05-29 – change(admin): 顧客管理ヘッダーを「進行中/全顧客数」表記に
+- change: `app/admin/customers/page.tsx` ヘッダーを `顧客管理（進行中数/全顧客数名）` に変更（例 8/10名）。従来は `実顧客数/契約席数`(=10/8) で分子分母の意味が逆だった。契約席数とは別軸で、アクティブ会員が全体の何名かを表示
+- 影響範囲: 管理画面（/store・/admin 顧客管理ヘッダー）
+
+## 2026-05-29 – change(admin): タブ改称（契約→契約管理・店舗→店舗一覧）
+- change: `app/admin/AdminShell.tsx` タブラベル「契約」→「契約管理」、「店舗」→「店舗一覧」
+- change: `app/admin/stores/page.tsx` ページタイトル「店舗管理（X件）」→「店舗一覧（X件）」（タブと統一）
+- 影響範囲: 管理画面（/store・/admin ナビ）
+
+## 2026-05-29 – change(admin): 顧客設定→顧客管理に改称・全メニューの横ズレ修正
+- change: 「顧客設定」→「顧客管理」に改称（`app/admin/AdminShell.tsx` タブ・`app/admin/customers/page.tsx` ヘッダー）。ヘッダーは契約席数があれば `顧客管理（実顧客数/契約席数名）`、未設定なら `顧客管理（X名）`
+- fix: `app/globals.css` html に `scrollbar-gutter: stable` を追加。ページ内容の高さでスクロールバーが出る/出ないにより中央寄せ(`max-w-5xl mx-auto`)が左右にズレていたのを全ページで統一
+- 影響範囲: 管理画面（/store・/admin の全ページ共通ヘッダー/幅）
+
+## 2026-05-29 – change(admin/store): ナビに「設定」ドロップダウンを追加・関連メニューを集約
+- change: `app/admin/AdminShell.tsx`（/store・/admin 共有のヘッダーナビ）
+  - トップタブを「顧客管理 / 進捗管理 / 顧客分析 / レポート送付」に絞り、それ以外を「設定」ドロップダウン配下に集約（クリックで展開、PCは下向きパネル・モバイルはメニュー内の「設定」セクション）
+  - store の設定配下: LINE連携設定 / 契約 / テンプレ管理 / 店舗（表示順）
+  - admin の設定配下: テンプレ管理 / テナント / プラン管理 / 監査ログ（master のみ）
+  - rename: store「セットアップ」→「LINE連携設定」（`/onboarding` のラベルのみ変更、パスは不変）
+  - 設定配下のいずれかがアクティブな時は「設定」タブをアクティブ表示。デスクトップナビの overflow をドロップダウンが隠れないよう visible に変更
+- 影響範囲: 管理画面（/store・/admin のヘッダーナビ）
 
 ## 2026-05-29 – change(admin): 顧客設定ヘッダーに契約席数を併記・進捗管理ヘッダーの件数を削除
 - change: `app/admin/customers/page.tsx` ヘッダーを `顧客設定（実顧客数/契約席数名）` 形式に（`seatInfo.seatLimit` がある場合。無制限プラン等で null のときは従来の `（X名）`）

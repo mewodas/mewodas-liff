@@ -13,6 +13,6 @@ export default async function StoreRootPage() {
     redirect('/store/login');
   }
 
-  // 初期表示は顧客設定（/store/customers）
+  // 初期表示は顧客管理（/store/customers）
   redirect('/store/customers');
 }

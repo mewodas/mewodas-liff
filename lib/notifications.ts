@@ -157,9 +157,18 @@ export async function listAllNotifications(limit: number = 100, opts?: { noCache
   return result;
 }
 
-export async function markNotificationRead(id: string): Promise<void> {
+export async function markNotificationRead(id: string, expectedLineUserId?: string): Promise<void> {
   const dbId = getDbId();
   if (!dbId) throw new Error('NOTION_NOTIFICATIONS_DB_ID 未設定');
+  // ★ LIFF（顧客）経路では、通知の所有者が検証済みユーザーと一致することを要求。
+  //   他顧客の通知を既読化する IDOR を防ぐ。
+  if (expectedLineUserId !== undefined) {
+    const page = await notionRequest('GET', `/pages/${id}`);
+    const owner = page?.properties?.['LINEユーザーID']?.rich_text?.[0]?.plain_text || '';
+    if (owner !== expectedLineUserId) {
+      throw new Error('forbidden: notification does not belong to user');
+    }
+  }
   await notionRequest('PATCH', `/pages/${id}`, {
     properties: {
       既読: { checkbox: true },

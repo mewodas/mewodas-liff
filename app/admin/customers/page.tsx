@@ -167,7 +167,8 @@ export default function AdminCustomersPage() {
   async function copyApplyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (seatInfo?.isOverLimit) return;
+    // 読み込み中は席数情報が未取得のため、上限テナントでも誤コピーできないようガード
+    if (loading || seatInfo?.isOverLimit) return;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.fitmeal.jp';
       // 個別招待モードで 7日有効の URL を発行。承認制モードは UI 未公開（バックエンドのみ実装）。
@@ -201,13 +202,18 @@ export default function AdminCustomersPage() {
     () => customers.filter((c) => !(c.lineUserId?.startsWith('SAMPLE_') || c.lineUserId?.startsWith('DEMO_'))),
     [customers]
   );
+  // ヘッダー表記: 進行中（アクティブ）/ 全顧客数（サンプル・デモ除外）
+  const activeCount = useMemo(
+    () => realCustomers.filter((c) => c.foodStatus === '進行中').length,
+    [realCustomers]
+  );
 
   return (
     <AdminShell
       title={
-        seatInfo?.seatLimit != null
-          ? `顧客設定（${realCustomers.length}/${seatInfo.seatLimit}名）`
-          : `顧客設定（${realCustomers.length}名）`
+        realCustomers.length > 0
+          ? `顧客管理（${activeCount}/${realCustomers.length}名）`
+          : '顧客管理'
       }
     >
       {/* プレビューモーダル */}
@@ -266,24 +272,6 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        {/* 席数上限バナー */}
-        {seatInfo?.isOverLimit && (
-          <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
-            <div className="flex-1">
-              <div className="font-bold">
-                利用可能アカウント数 {seatInfo.seatLimit}名 / 使用 {seatInfo.currentSeats}名 — 上限到達
-              </div>
-              <div>
-                新規招待には増枠が必要です。
-                <Link href={`${base}/billing`} className="text-rose-700 font-bold underline ml-1">
-                  プランを変更する →
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 残り1席バナー */}
         {!seatInfo?.isOverLimit && seatInfo?.isNearLimit && (
           <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
@@ -297,19 +285,41 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={copyApplyLink}
-          disabled={!!seatInfo?.isOverLimit}
-          className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
-            seatInfo?.isOverLimit
-              ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
-              : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
-          }`}
-        >
-          <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-          招待URLをコピー
-        </button>
+        <div className="relative group w-full">
+          {/* 上限到達時のみ: 招待ボタンにホバーで増枠案内ツールチップ（ボタン下に表示。pt-2 でボタンと接して hover が途切れない） */}
+          {seatInfo?.isOverLimit && (
+            <div className="absolute top-full left-0 right-0 pt-2 hidden group-hover:block z-20">
+              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex gap-2 items-start shadow-lg">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
+                <div className="flex-1">
+                  <div className="font-bold">
+                    利用可能アカウント数 {seatInfo.seatLimit}名 / 使用 {seatInfo.currentSeats}名 — 上限到達
+                  </div>
+                  <div>
+                    新規招待には増枠が必要です。
+                    <Link href={`${base}/billing`} className="text-rose-700 font-bold underline ml-1">
+                      プランを変更する →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={copyApplyLink}
+            disabled={loading || !!seatInfo?.isOverLimit}
+            className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
+              loading || seatInfo?.isOverLimit
+                ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
+                : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
+            }`}
+          >
+            <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+            {loading ? '読み込み中…' : '招待URLをコピー'}
+          </button>
+        </div>
+
 
 
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
