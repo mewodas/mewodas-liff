@@ -1,6 +1,14 @@
 # CHANGELOG
 
-## 2026-05-31 – change(admin/store): アカウント削除を枠/タイトル/説明なしのボタン単体に簡素化
+## 2026-05-31 – security(P1): 課金プラン詐称・ログインBF・無認証クロステナント登録を修正（branch: security/p1-fixes）
+- security: **Stripe プラン整合性**。`app/api/stripe/checkout`・`update-seats` で `getPlanByCode` 取得後に `!plan.published || !plan.active` を拒否（非公開/無効の内部・PoCプラン選択を封鎖）。最低席数を `Math.max(plan.minSeats, MIN_SEATS=3)` で下限固定（minSeats=1 等のバイパス防止）
+- security: **ログイン ブルートフォース対策**。`app/api/admin/auth/login` に per-email/IP の試行制限（15分で8回失敗→15分ロック、429+Retry-After）。成功で解除。reset-password と同じ in-memory 方式（永続化は設計#7で別途）
+- security: **`/api/public/apply` 無認証クロステナント登録**。`getSeatStatus().isOverLimit` 超過を 409 で拒否（seat バイパス・スパム抑止、契約前=seatLimit null は非ブロック）。指定テナント未解決時は既定(mewodas)へ誤登録せず 404
+- 影響範囲: API（/api/stripe/*・/api/admin/auth/login・/api/public/apply）。顧客側UI影響なし。再ログイン副作用なし（auth トークン形式は不変）
+- 挙動変更（要把握）: 非公開プランでの自己申込/席数変更は 403。席数上限到達テナントへの apply は 409。タイポ等で店舗未解決の apply は 404（従来は mewodas へ登録されていた）
+- 関連: 監査メモ project_security_audit_2026_05_31。LIFFレコード所有者照合/nutrition-label認証/notification read は顧客側=staging で別途
+
+
 - change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）のアカウント削除セクションから、赤カードの枠・見出し「アカウント削除」・説明文を撤去し、「アカウントを削除する」ボタン単体に変更（削除動作・確認ダイアログ `deleteAccount` は不変）
 - 影響範囲: 管理画面（/store・/admin 顧客詳細）。見た目のみ・DB/API/顧客側UI 影響なし
 - 検証: `tsc --noEmit` 0件 / `next build` パス

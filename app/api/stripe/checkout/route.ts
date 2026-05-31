@@ -9,6 +9,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import {
   getStripe,
   buildSubscriptionLineItems,
+  MIN_SEATS,
 } from '@/lib/stripe';
 import { listTenantRows, getPlanByCode } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
@@ -25,8 +26,14 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   if (!plan) {
     return NextResponse.json({ error: `プラン '${planCode}' が見つかりません` }, { status: 404 });
   }
+  // ★ 課金整合性: 非公開/無効プラン（内部・PoC・旧プラン等）を自己申込みで選択させない。
+  //   getPlanByCode は公開/有効フラグを無視して返すため、ここで弾かないと安価な内部プランで価格バイパス可能。
+  if (!plan.published || !plan.active) {
+    return NextResponse.json({ error: 'このプランは選択できません' }, { status: 403 });
+  }
 
-  const minSeats = plan.minSeats;
+  // 最低席数は「プラン定義」と「全社共通下限 MIN_SEATS」の大きい方を強制（minSeats=1 等での下限バイパス防止）
+  const minSeats = Math.max(plan.minSeats, MIN_SEATS);
   if (seats < minSeats) {
     return NextResponse.json({ error: `席数は${minSeats}名以上必須` }, { status: 400 });
   }

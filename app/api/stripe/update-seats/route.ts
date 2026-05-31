@@ -10,6 +10,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import {
   getStripe,
   buildSubscriptionLineItems,
+  MIN_SEATS,
 } from '@/lib/stripe';
 import { listTenantRows, getPlanByCode } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
@@ -49,9 +50,14 @@ export const POST = withAdminTenant(async (req: NextRequest) => {
   if (!plan) {
     return NextResponse.json({ error: `プラン '${effectivePlanCode}' が見つかりません` }, { status: 404 });
   }
+  // ★ 課金整合性: 非公開/無効プランへの自己変更を拒否（安価な内部プランでの価格・最低席数バイパス防止）
+  if (!plan.published || !plan.active) {
+    return NextResponse.json({ error: 'このプランは選択できません' }, { status: 403 });
+  }
 
-  if (!newSeats || newSeats < plan.minSeats) {
-    return NextResponse.json({ error: `席数は${plan.minSeats}名以上必須` }, { status: 400 });
+  const minSeats = Math.max(plan.minSeats, MIN_SEATS);
+  if (!newSeats || newSeats < minSeats) {
+    return NextResponse.json({ error: `席数は${minSeats}名以上必須` }, { status: 400 });
   }
 
   // 減枠ガード: 現使用席数より少ない枠は不可
