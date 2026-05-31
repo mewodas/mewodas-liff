@@ -6,6 +6,11 @@
 - 影響範囲: CSP は Report-Only のまま顧客 LIFF 影響なし（report-uri 追加のみ）。Sentry/csp-report はバックエンド。本番ビルド・tsc・テスト通過
 - 関連: 監査 project_security_audit_2026_05_31 設計#6/#8、[[project_pending_security_2026_05_19]]
 
+## 2026-05-30 09:00 claude/sec-fix-6543739
+- fix: `lib/notion.ts` `notionFetch` に 502/503/504/429 対象の指数バックオフリトライ（最大3回）を追加
+- 影響範囲: API（Notion 経由の全エンドポイント）
+- 関連: Slack #security-alerts 1780070684.745729（Sentry: Notion API 502 at /api/admin/billing/info）
+
 
 - security: `proxy.ts` で /admin・/store の状態変更（POST/PUT/PATCH/DELETE）を**同一オリジン必須**化（Origin ヘッダと Host を照合、不一致は 403 `csrf_origin_mismatch`）。Cookie セッション認証の外部サイト起点強制リクエスト（CSRF）を封鎖
 - 影響範囲: /api/admin・/api/store の状態変更のみ。顧客 LIFF は Bearer 認証で非該当、Stripe webhook/cron・GET は対象外。SameSite=lax 維持（CSRF 実装により strict 不要）

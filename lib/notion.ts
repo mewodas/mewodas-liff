@@ -83,6 +83,9 @@ export type FoodRecord = {
   lineUserId?: string;
 };
 
+// 502/503/504/429 は Notion 側の一時障害のため指数バックオフで最大 3 回リトライ
+const NOTION_RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+
 async function notionFetch(
   method: string,
   path: string,
@@ -90,20 +93,27 @@ async function notionFetch(
   payload?: object
 ): Promise<any> {
   if (!apiKey) throw new Error('NOTION_API_KEY（テナント設定）未設定');
-  const res = await fetch(`${NOTION_BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Notion-Version': NOTION_API_VERSION,
-    },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-  if (!res.ok) {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+    }
+    const res = await fetch(`${NOTION_BASE}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Notion-Version': NOTION_API_VERSION,
+      },
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    if (res.ok) return res.json();
     const text = await res.text();
-    throw new Error(`Notion API ${res.status}: ${text.slice(0, 300)}`);
+    const err = new Error(`Notion API ${res.status}: ${text.slice(0, 300)}`);
+    if (!NOTION_RETRYABLE_STATUS.has(res.status)) throw err;
+    lastError = err;
   }
-  return res.json();
+  throw lastError!;
 }
 
 async function notionRequest(
