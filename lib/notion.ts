@@ -423,13 +423,22 @@ export async function deleteFoodRecord(pageId: string): Promise<void> {
 }
 
 // pageId が現テナントの食事DBに属することを確認。不一致なら例外 throw
-export async function assertFoodRecordOwnership(pageId: string): Promise<void> {
+export async function assertFoodRecordOwnership(pageId: string, expectedLineUserId?: string): Promise<void> {
   const page = await notionRequest('GET', `/pages/${pageId}`);
   const parent = page?.parent;
   const expectedDbId = getTenantNotion().foodDbId.replace(/-/g, '');
   const actualDbId = (parent?.database_id || '').replace(/-/g, '');
   if (parent?.type !== 'database_id' || actualDbId !== expectedDbId) {
     throw new Error('forbidden: pageId does not belong to tenant');
+  }
+  // ★ LIFF（顧客）経路では、記録の所有者(LINE_UserID)が検証済みユーザーと一致することも要求。
+  //   同一テナント内で他顧客の食事記録を改竄/削除する IDOR を防ぐ。
+  //   運営/店舗の管理API は expectedLineUserId 省略でテナント所属チェックのみ（全顧客操作可）。
+  if (expectedLineUserId !== undefined) {
+    const ownerLineUserId = page?.properties?.['LINE_UserID']?.rich_text?.[0]?.plain_text || '';
+    if (ownerLineUserId !== expectedLineUserId) {
+      throw new Error('forbidden: food record does not belong to user');
+    }
   }
 }
 

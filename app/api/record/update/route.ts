@@ -18,7 +18,7 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     if (typeof pageId !== 'string' || pageId.length < 16) {
       return NextResponse.json({ error: 'pageId が不正です' }, { status: 400 });
     }
-    await assertFoodRecordOwnership(pageId);
+    await assertFoodRecordOwnership(pageId, verifiedLineUserId);
     const patch: {
       kcal?: number;
       P?: number;

@@ -1,6 +1,13 @@
 # CHANGELOG
 
-## 2026-05-31 – security(P1): 課金プラン詐称・ログインBF・無認証クロステナント登録を修正（branch: security/p1-fixes）
+## 2026-05-31 – security(顧客側): LIFF レコード/通知の所有者照合・nutrition-label 認証（branch: security/customer-liff / staging検証中）
+- security: **同一テナント内クロス顧客 IDOR 封鎖**。`lib/notion.ts` `assertFoodRecordOwnership(pageId, expectedLineUserId?)` に所有者(LINE_UserID)照合を追加し、`app/api/record/update`・`app/api/delete` から `verifiedLineUserId` を渡す。他顧客の食事記録を pageId 指定で改竄/削除できる脆弱性を封鎖（管理API＝運営/店舗は省略でテナント所属チェックのみ＝全顧客操作可、不変）
+- security: **通知既読の IDOR 封鎖**。`lib/notifications.ts` `markNotificationRead(id, expectedLineUserId?)` に所有者(LINEユーザーID)照合を追加、`app/api/notifications/[id]/read` から `verifiedLineUserId` を渡す（他顧客通知の既読化を防止）。不一致は 403
+- security: **`/api/record/nutrition-label` 認証必須化**。素の POST を `withLiffTenant` で保護（無認証の Gemini コスト濫用を封鎖）。呼び出し元 `app/record/page.tsx` は apiFetch 経由で Bearer 付与済のため正常動作
+- 影響範囲: 顧客側 LIFF（記録編集/削除・通知既読・栄養成分ラベル解析）＋ バックエンド lib。**staging で fitmeal-qa 検証後、社長確認 → main**
+- 関連: 監査メモ project_security_audit_2026_05_31（P1 残の LIFF 系）
+
+
 - security: **Stripe プラン整合性**。`app/api/stripe/checkout`・`update-seats` で `getPlanByCode` 取得後に `!plan.published || !plan.active` を拒否（非公開/無効の内部・PoCプラン選択を封鎖）。最低席数を `Math.max(plan.minSeats, MIN_SEATS=3)` で下限固定（minSeats=1 等のバイパス防止）
 - security: **ログイン ブルートフォース対策**。`app/api/admin/auth/login` に per-email/IP の試行制限（15分で8回失敗→15分ロック、429+Retry-After）。成功で解除。reset-password と同じ in-memory 方式（永続化は設計#7で別途）
 - security: **`/api/public/apply` 無認証クロステナント登録**。`getSeatStatus().isOverLimit` 超過を 409 で拒否（seat バイパス・スパム抑止、契約前=seatLimit null は非ブロック）。指定テナント未解決時は既定(mewodas)へ誤登録せず 404
