@@ -1,6 +1,13 @@
 # CHANGELOG
 
-## 2026-05-31 – security(#6/#8): CSP違反収集エンドポイント＋Sentry PIIスクラブ強化
+## 2026-05-31 – security(P1残): アカウント削除のPIIカスケード（branch: security/account-delete / staging検証前）
+- security: `DELETE /api/account`（顧客の自己アカウント削除）を、顧客アーカイブのみ → **全健康データの物理削除カスケード**に拡張。`verifiedLineUserId` に厳密スコープして食事記録(Notion)・体重ログ・体組成ログ・運動ログを削除し、Neon `customer_risk` 行も物理削除（`deleteCustomerRiskByLineUser` 追加）。個人情報保護法の「削除権」対応
+- 実装: 顧客アーカイブ＋customer_risk 削除は即時、健康データ一括削除は `waitUntil` で背景実行（maxDuration 60s）。各削除は try/catch で部分失敗でも続行、削除件数を `account.delete` 監査ログに記録
+- ⚠️ 既知の残課題: Drive 上の食事/体組成**写真は未削除**（GAS 側に削除手段が無い）。監査ログに `driveImages: not_deleted_gas_unsupported` を記録。GAS 削除エンドポイント実装が別途必要
+- 影響範囲: 顧客側 LIFF（アカウント削除）。**不可逆操作のため staging で test 顧客により fitmeal-qa＋社長確認 → main 必須**
+- 関連: 監査 project_security_audit_2026_05_31 P1残
+
+
 - security(#6): `app/api/csp-report/route.ts` 新規（CSP違反の report-uri 受け口・無認証・本文16KB上限・https違反のみ console+Sentry に記録）。`next.config.ts` の CSP（Report-Only 据え置き）に `report-uri /api/csp-report` を追加し、connect-src に GAS(`script.google*`)・Sentry(`*.ingest.sentry.io`) を補強。**enforce 化はこの実違反データで allowlist を完成させてから再挑戦**（凍結継続）
 - security(#8): `lib/sentry.ts` `redactEvent` 強化。①画像 data URI 伏字の JSON 破壊バグ修正（旧実装は unredacted フォールバックしていた）②Bearer トークン/Authorization・Cookie ヘッダ/admin_session を伏字追加。`__tests__/lib/sentry-redact.test.ts`(6ケース) で回帰ロック
 - 影響範囲: CSP は Report-Only のまま顧客 LIFF 影響なし（report-uri 追加のみ）。Sentry/csp-report はバックエンド。本番ビルド・tsc・テスト通過
