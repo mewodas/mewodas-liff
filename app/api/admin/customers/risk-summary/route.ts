@@ -48,6 +48,7 @@ export const GET = withAdminTenant(async (_req: NextRequest) => {
       lineUserId: r.lineUserId,
       noRecord: r.noRecord,
       daysSinceLastRecord: r.daysSinceLastRecord,
+      daysSinceLastWeight: r.daysSinceLastWeight,
       weightStalled: r.weightStalled,
     })),
   });

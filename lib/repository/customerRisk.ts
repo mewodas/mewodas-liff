@@ -17,6 +17,7 @@ export type CustomerRiskRow = {
   storeId: string | null;
   noRecord: boolean;
   daysSinceLastRecord: number | null;
+  daysSinceLastWeight: number | null;
   weightStalled: boolean;
   weeklyAvgs: number[];
   env: string | null;
@@ -31,6 +32,7 @@ type UpsertInput = {
   storeId: string | null;
   noRecord: boolean;
   daysSinceLastRecord: number | null;
+  daysSinceLastWeight: number | null;
   weightStalled: boolean;
   weeklyAvgs: number[];
 };
@@ -43,14 +45,15 @@ export async function upsertCustomerRisk(rows: UpsertInput[]): Promise<void> {
       await sql.query(
         `INSERT INTO customer_risk
            (tenant_id, customer_page_id, line_user_id, name, store_id,
-            no_record, days_since_last_record, weight_stalled, weekly_avgs, env, computed_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now())
+            no_record, days_since_last_record, days_since_last_weight, weight_stalled, weekly_avgs, env, computed_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())
          ON CONFLICT (tenant_id, customer_page_id) DO UPDATE SET
            line_user_id = EXCLUDED.line_user_id,
            name = EXCLUDED.name,
            store_id = EXCLUDED.store_id,
            no_record = EXCLUDED.no_record,
            days_since_last_record = EXCLUDED.days_since_last_record,
+           days_since_last_weight = EXCLUDED.days_since_last_weight,
            weight_stalled = EXCLUDED.weight_stalled,
            weekly_avgs = EXCLUDED.weekly_avgs,
            env = EXCLUDED.env,
@@ -63,6 +66,7 @@ export async function upsertCustomerRisk(rows: UpsertInput[]): Promise<void> {
           r.storeId ?? null,
           r.noRecord,
           r.daysSinceLastRecord ?? null,
+          r.daysSinceLastWeight ?? null,
           r.weightStalled,
           JSON.stringify(r.weeklyAvgs),
           currentEnv,
@@ -83,7 +87,7 @@ export async function listCustomerRiskByTenant(
   try {
     const rows = await sql.query(
       `SELECT tenant_id, customer_page_id, line_user_id, name, store_id,
-              no_record, days_since_last_record, weight_stalled, weekly_avgs, env, computed_at
+              no_record, days_since_last_record, days_since_last_weight, weight_stalled, weekly_avgs, env, computed_at
        FROM customer_risk
        WHERE tenant_id = $1 AND env = $2`,
       [tenantId, env]
@@ -117,6 +121,10 @@ export async function listCustomerRiskByTenant(
         daysSinceLastRecord:
           row.days_since_last_record != null
             ? Number(row.days_since_last_record)
+            : null,
+        daysSinceLastWeight:
+          row.days_since_last_weight != null
+            ? Number(row.days_since_last_weight)
             : null,
         weightStalled: Boolean(row.weight_stalled),
         weeklyAvgs,

@@ -1,6 +1,6 @@
 import { listAllCustomers, getFoodRecordsByDateRange } from '@/lib/notion';
 import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
-import { computeRecordGap, computeWeightStall } from '@/lib/risk';
+import { computeRecordGap, computeWeightRecordGap, computeWeightStall } from '@/lib/risk';
 import { upsertCustomerRisk } from '@/lib/repository/customerRisk';
 import { getCurrentTenant } from '@/lib/tenant';
 
@@ -52,6 +52,12 @@ export async function computeAndStoreTenantRisk(): Promise<void> {
 
       const { noRecord, daysSinceLastRecord } = computeRecordGap(latestRecord, today);
 
+      const latestWeightDate =
+        weightLogs.length > 0
+          ? weightLogs.reduce((a, b) => (a.date >= b.date ? a : b)).date
+          : null;
+      const { daysSinceLastWeight } = computeWeightRecordGap(latestWeightDate, today);
+
       const goalDirection: 'down' | 'up' =
         customer.currentWeight !== null &&
         customer.targetWeight !== null &&
@@ -75,6 +81,7 @@ export async function computeAndStoreTenantRisk(): Promise<void> {
         storeId: customer.storeId || null,
         noRecord,
         daysSinceLastRecord,
+        daysSinceLastWeight,
         weightStalled: stalled,
         weeklyAvgs,
       });

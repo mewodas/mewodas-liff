@@ -12,6 +12,21 @@ export type WeightStallResult = {
   weeklyAvgs: number[];
 };
 
+export type WeightRecordGapResult = {
+  daysSinceLastWeight: number | null;
+};
+
+export function computeWeightRecordGap(
+  latestWeightDate: string | null,
+  today: string
+): WeightRecordGapResult {
+  if (!latestWeightDate) {
+    return { daysSinceLastWeight: null };
+  }
+  const diff = dateDiffDays(latestWeightDate, today);
+  return { daysSinceLastWeight: diff };
+}
+
 function dateDiffDays(a: string, b: string): number {
   return Math.round(
     (new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24)

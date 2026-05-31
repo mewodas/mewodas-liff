@@ -1,16 +1,13 @@
 # CHANGELOG
 
-## 2026-05-30 – change(admin/store): 体組成グラフに BMI・基礎代謝・内臓脂肪レベルも線表示（全項目トグル可）
-- change: `app/admin/analysis/page.tsx` これまで数値カードのみだった BMI・基礎代謝・内臓脂肪レベルもグラフに線で表示。BMI・内臓脂肪レベルは右軸(0〜)に、基礎代謝(kcal)は桁違いのため専用の隠しkcal軸で各自のスケールに合わせて推移を描画。実数値はホバー/凡例で確認
-- change: 数値カードを廃止し全14項目を凡例チェックに統一。既定は体重・筋肉量・体脂肪率の3本、他はチェックでON/OFF（基礎代謝等も同様にクリックで表示切替）
-- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
-
-## 2026-05-30 – change(admin/store): 体組成推移を「2軸統合1グラフ（実数値）」に刷新＋データありで自動展開
-- change: `app/admin/analysis/page.tsx` 体組成推移を1つの統合 LineChart に。**左軸=kg / 右軸=%** の2軸でスケール差を吸収し、%正規化せず実数値のまま表示。既定は体重・筋肉量・体脂肪率の3本、凡例チェックで各項目をグラフに追加/除外
-- change: 凡例に各項目の最新の実数値＋増減バッジ、ホバーで日付＋実数値ツールチップ。スケールが極端に違う基礎代謝(kcal)/BMI/内臓脂肪レベルはグラフに載せず数値カードで表示。折れ線は linear・計測1回は数値のみ
-- change: 体組成セクションを**記録があれば自動展開・0件なら畳む**（顧客切替で再判定、手動開閉後は尊重 `bodyCompUserToggledRef`）
-- fix(レビュー反映): kg系を全て非表示にした際の空軸/`domain`不整合を回避（実描画される軸のみ条件表示）。モバイル幅の軸ラベル重なり回避のため回転ラベルを撤去し凡例注記(左軸=kg/右軸=%)に集約
-- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+## 2026-05-31 – feat(admin): 顧客リスクラベルを段階表示に拡張＋体重記載漏れ新規追加
+- feat: `lib/risk.ts` に `computeWeightRecordGap` 追加（最終体重記録からの日数差計算）
+- feat: `lib/repository/customerRisk.ts` 型・upsert・select に `days_since_last_weight` 追加
+- feat: `lib/customerRiskService.ts` 体重ログ最新日付から `daysSinceLastWeight` 算出して保存
+- feat: `app/api/admin/customers/risk-summary/route.ts` レスポンスに `daysSinceLastWeight` 追加
+- feat: `app/admin/progress/page.tsx` 食事記録漏れを3段階（1日=amber/2日=orange/3日以上orNull=rose）、体重記載漏れを同3段階で新規表示、体重停滞を violet に変更
+- chore: `lib/db/migrations/004_customer_risk_weight_gap.sql` 追加（CTO が手動実行）
+- 影響範囲: 管理画面（/admin・/store 進捗管理のラベル）、API（risk-summary）、DB（customer_risk テーブルにカラム追加要）
 
 ## 2026-05-30 – change(admin/store): 記録漏れアラートのしきい値を3日→2日連続に
 - change: `lib/risk.ts` `NO_RECORD_THRESHOLD_DAYS` を 3→2 に変更。「今日と昨日の2日連続で食事記録なし（最終記録2日以上前）」で記録漏れと判定。社長フィードバック（2日サボった顧客も早めに検知したい）反映
