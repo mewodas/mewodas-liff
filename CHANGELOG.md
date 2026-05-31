@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 – fix(favicon): FitMeal ロゴのタブ表示サイズを他タブと統一（main直反映・社長指示 / commit 3701b2a）
+- fix: 丼ロゴ周囲の透明余白を切り詰め、`app/favicon.ico`・`public/fitmeal-favicon.png` を再生成。タブ内のロゴ充填率を 78%→95% に拡大し、メヲダス等の他タブ favicon と見た目サイズを揃えた（`fitmeal-icon.png` マスターは不変、favicon 派生ファイルのみ再生成）
+- 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）。ブラウザの favicon キャッシュが強いため、反映には強制リロード/キャッシュ削除が必要な場合あり
+- 関連: 直前の favicon 統一 commit 49f6d91 の見た目調整
+
 ## 2026-05-31 – chore: ファビコンを FitMeal ロゴに統一（main直反映・社長指示 / commit 49f6d91）
 - chore: ブラウザタブ/PWA アイコンを旧 `/icon.svg`（緑「メ」）から FitMeal ロゴに変更。`public/fitmeal-favicon.png`（256px）追加、`app/layout.tsx` の `metadata.icons`・`app/manifest.ts`・`app/store/manifest.ts` の icons を差し替え、`app/favicon.ico` を fitmeal-icon.png から再生成
 - 反映方法: staging(4d0fc60)検証済 → 社長OK後、favicon関連の **対象5ファイルのみ** main に取り込み（staging の未承認機能=リスク配信/アカウント削除カスケード等は持ち込まない）
