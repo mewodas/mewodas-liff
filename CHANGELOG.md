@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## 2026-05-31 – test(#10): vitest 導入＋P0トークン混同の回帰テスト（branch: security/regression-tests）
+## 2026-05-31 – security(#6): CSRF（Origin同一オリジン照合）を main 採用
+- security: `proxy.ts` で /admin・/store の状態変更（POST/PUT/PATCH/DELETE）を**同一オリジン必須**化（Origin ヘッダと Host を照合、不一致は 403 `csrf_origin_mismatch`）。Cookie セッション認証の外部サイト起点強制リクエスト（CSRF）を封鎖
+- 影響範囲: /api/admin・/api/store の状態変更のみ。顧客 LIFF は Bearer 認証で非該当、Stripe webhook/cron・GET は対象外。SameSite=lax 維持（CSRF 実装により strict 不要）
+- 補足: CSP enforce 化は LIFF「failed to fetch」で**見送り（Report-Only 据え置き）**。enforce は report-to による実違反収集後に再挑戦予定（[[project_pending_security_2026_05_19]]）
+- 関連: 監査 project_security_audit_2026_05_31 設計#6
+
+
 - test: `vitest`（+ `@vitest/coverage-v8`・`vite-tsconfig-paths`）を devDependency 追加、`vitest.config.ts`・`npm test` スクリプト整備
 - test: `__tests__/lib/auth-token-separation.test.ts` 追加（14 ケース・全パス）。P0 CRITICAL「リセット/招待/legacy/role欠落 トークンの admin_session 流用による master 昇格」が再発しないことを保証（verifySession は typ=session かつ role 有効のみ受理、verifyResetToken は逆方向の混同も拒否）
 - 影響範囲: 開発ツールのみ（本番ランタイム・顧客側に影響なし、`next build` は __tests__ を無視）。本番ビルド・tsc 通過確認済
