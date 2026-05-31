@@ -17,7 +17,8 @@ export const GET = withAdminTenant(async (_req, { params }: { params: Promise<{ 
     }
     return NextResponse.json({ customer });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: msg.startsWith('forbidden:') ? 403 : 500 });
   }
 });
 
@@ -34,7 +35,8 @@ export const DELETE = withAdminTenant(async (req: NextRequest, { params }: { par
     logAuditEvent({ action: 'customer.delete', outcome: 'success', actorType: session?.role === 'master' ? 'master' : 'admin', actorId: session?.email, tenantId: tenant.id, targetType: 'customer', targetId: id });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: msg.startsWith('forbidden:') ? 403 : 500 });
   }
 });
 
@@ -60,6 +62,7 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
     const customer = await getCustomer(id);
     return NextResponse.json({ ok: true, customer });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: msg.startsWith('forbidden:') ? 403 : 500 });
   }
 });

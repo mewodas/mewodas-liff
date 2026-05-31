@@ -9,6 +9,7 @@ import {
   getAllFoodRecordsByDateRange,
   updateFoodRecord,
   deleteFoodRecord,
+  assertFoodRecordOwnership,
   type FoodRecord,
 } from '@/lib/notion';
 
@@ -46,9 +47,13 @@ export async function listRecordsInRange(
 }
 
 export async function patchRecord(pageId: string, patch: RecordPatch): Promise<void> {
+  // クロステナント改竄防止: pageId が現テナントの食事DBに属することを保証（不一致は forbidden: で throw）
+  await assertFoodRecordOwnership(pageId);
   return updateFoodRecord(pageId, patch);
 }
 
 export async function archiveRecord(pageId: string): Promise<void> {
+  // クロステナント削除防止: pageId が現テナントの食事DBに属することを保証
+  await assertFoodRecordOwnership(pageId);
   return deleteFoodRecord(pageId);
 }

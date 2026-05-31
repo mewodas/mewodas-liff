@@ -1,6 +1,17 @@
 # CHANGELOG
 
-## 2026-05-31 – change(admin/store): 体組成グラフの既定表示を全項目に（チェックを外すと非表示）
+## 2026-05-31 – security(P0): テナント分離・トークン混同・管理者IDOR を修正（branch: security/p0-fixes / 未デプロイ）
+- security: **トークン purpose 分離**。`lib/adminAuth.ts` セッションに `typ:'session'` を必須化し、`verifySession` は `typ==='session'` のみ受理＋role欠落時の master 推定を廃止（fail-closed）。これにより、同一 `ADMIN_SESSION_SECRET` で署名されるパスワードリセットトークン（email+exp 保持）を `admin_session` Cookie に入れて master 昇格する **CRITICAL 脆弱性**を封鎖。`lib/passwordReset.ts`／`lib/inviteToken.ts` にも `typ`（reset/invite）判別を追加（既存トークンは後方互換で許容＝非破壊）
+- security: **クロステナント IDOR 修正（設計#2＝リポジトリ層集約）**。`lib/repository/customers.ts`(patch/archive)・`lib/repository/records.ts`(patch/archive) に `assertCustomerOwnership`／`assertFoodRecordOwnership` を内蔵。`lib/notion.ts` `getCustomerByPageId` に親DB照合を追加し、`getCustomer` 経由の全 admin サブルート（records/weight-history/notifications/analysis 等）のクロステナント読取を一括封鎖
+- security: **店舗マスタ**。`lib/stores.ts` `getStore` に tenant_id 自己照合、`updateStore`/`deleteStore` に前段ガード（他テナント店舗の改竄/削除を防止）
+- security: **スタッフ**。`app/api/admin/staff/*` を運営(master)専用に限定（DBがテナント横断・tenant_id列なしのため暫定。将来 tenant_id 列追加で店舗別解放）
+- security: 管理ルートでクロステナント試行時は 403（`forbidden:`）を返却
+- 影響範囲: API（/api/admin/customers・records・stores・staff）／バックエンド lib（認証・リポジトリ・notion・stores）。顧客側UIへの影響なし
+- 副作用: **デプロイ時に既存の管理者セッションが全て無効化 → 一度だけ再ログインが必要**（旧トークンに typ が無いため。意図的）。既発行のパスワードリセットリンクも無効化（1h TTL・再発行で対応）
+- 注意: 設計上の根本原因（全テナント単一 Notion キー共有／テナントがクライアントヘッダ由来）は別途ロードマップ（per-tenant token・identity→tenant 束縛・Postgres+RLS）で対応予定。本コミットはアプリ層の所有権チェックで封鎖
+- 関連: 監査メモ project_security_audit_2026_05_31。顧客側API（LIFFレコード所有者照合・nutrition-label認証・notification read）は staging で別途実装予定
+
+
 - change: `app/admin/analysis/page.tsx` 体組成推移グラフの初期表示を主要3本から**記録のある全項目**に変更。凡例チェックを外すとその項目だけグラフから消える挙動に統一
 - 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
 

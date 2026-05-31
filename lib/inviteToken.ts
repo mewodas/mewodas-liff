@@ -33,6 +33,8 @@ export type InvitePayload = {
   exp: number;      // unix ms
   nonce: string;
   kind: InviteKind;
+  /** トークン種別。セッション/リセット等への流用防止（同一秘密鍵での cross-protocol 対策）。 */
+  typ?: 'invite';
 };
 
 export function generateInviteToken(opts: {
@@ -46,6 +48,7 @@ export function generateInviteToken(opts: {
     exp: Date.now() + days * 24 * 60 * 60 * 1000,
     nonce: randomBytes(8).toString('hex'),
     kind: opts.kind ?? 'individual',
+    typ: 'invite',
   };
   const body = b64urlEncode(JSON.stringify(payload));
   const sig = createHmac('sha256', getSecret()).update(body).digest();
@@ -73,6 +76,8 @@ export function verifyInviteToken(token: string): InvitePayload | null {
   } catch {
     return null;
   }
+  // typ がある場合は 'invite' のみ受理（他用途トークンの流用拒否）。無い場合は後方互換で許容。
+  if (parsed.typ !== undefined && parsed.typ !== 'invite') return null;
   if (typeof parsed.tenantId !== 'string' || !parsed.tenantId) return null;
   if (typeof parsed.exp !== 'number' || Date.now() > parsed.exp) return null;
   return {

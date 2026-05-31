@@ -225,6 +225,14 @@ export async function listAllCustomers(): Promise<Customer[]> {
 export async function getCustomerByPageId(pageId: string): Promise<Customer | null> {
   try {
     const page = await notionRequest('GET', `/pages/${pageId}`);
+    // ★ クロステナント読取防止: 取得ページが現テナントの顧客DBに属さなければ null（=404扱い）。
+    //   全テナントが単一 Notion キーを共有するため、pageId 指定の admin サブルート
+    //   （records/weight-history/notifications/analysis 等）が他テナント顧客を読めてしまうのを集約的に塞ぐ。
+    const expectedDbId = (getTenantNotion().customerDbId || '').replace(/-/g, '');
+    const actualDbId = (page?.parent?.database_id || '').replace(/-/g, '');
+    if (page?.parent?.type !== 'database_id' || !expectedDbId || actualDbId !== expectedDbId) {
+      return null;
+    }
     return parseCustomerPage(page);
   } catch {
     return null;

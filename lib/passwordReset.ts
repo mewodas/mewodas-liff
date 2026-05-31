@@ -34,10 +34,12 @@ type ResetPayload = {
   email: string;
   tenantId: string;
   exp: number;
+  /** トークン種別。セッショントークンとの混同防止（同一秘密鍵での cross-protocol 対策）。 */
+  typ?: 'reset';
 };
 
 export function signResetToken(payload: { email: string; tenantId: string }): string {
-  const full: ResetPayload = { ...payload, exp: Date.now() + RESET_TTL_MS };
+  const full: ResetPayload = { ...payload, exp: Date.now() + RESET_TTL_MS, typ: 'reset' };
   const body = b64urlEncode(JSON.stringify(full));
   const sig = createHmac('sha256', getSecret()).update(body).digest();
   return `${body}.${b64urlEncode(sig)}`;
@@ -55,6 +57,8 @@ export function verifyResetToken(token: string | undefined | null): { email: str
   if (!timingSafeEqual(provided, expected)) return null;
   try {
     const payload = JSON.parse(b64urlDecode(body).toString('utf8')) as Partial<ResetPayload>;
+    // typ がある場合は 'reset' のみ受理（他用途トークンの流用拒否）。無い場合は後方互換で許容。
+    if (payload.typ !== undefined && payload.typ !== 'reset') return null;
     if (typeof payload.exp !== 'number' || Date.now() > payload.exp) return null;
     if (typeof payload.email !== 'string' || typeof payload.tenantId !== 'string') return null;
     return { email: payload.email, tenantId: payload.tenantId };

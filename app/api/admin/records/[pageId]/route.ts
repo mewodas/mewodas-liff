@@ -30,7 +30,8 @@ export const PATCH = withAdminTenant(async (req, { params }: { params: Promise<{
     await patchRecord(pageId, patch);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: msg.startsWith('forbidden:') ? 403 : 500 });
   }
 });
 
@@ -40,6 +41,7 @@ export const DELETE = withAdminTenant(async (_req, { params }: { params: Promise
     await archiveRecord(pageId);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'error' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: msg.startsWith('forbidden:') ? 403 : 500 });
   }
 });

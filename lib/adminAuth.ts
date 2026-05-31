@@ -12,6 +12,8 @@ export type SessionPayload = {
   role: AdminRole;
   /** 現在操作中のテナントID。master の場合は切替可能、tenant_admin の場合は固定 */
   currentTenantId: string;
+  /** トークン種別。セッション専用署名であることを示し、リセット/招待トークン（同一秘密鍵で署名）との混同を防ぐ。 */
+  typ?: 'session';
 };
 
 function getSecret(): string {
@@ -34,7 +36,9 @@ function b64urlDecode(s: string): Buffer {
 }
 
 export function signSession(payload: SessionPayload): string {
-  const body = b64urlEncode(JSON.stringify(payload));
+  // typ='session' を必ず刻む。同じ ADMIN_SESSION_SECRET で署名されるリセット/招待トークンが
+  // セッションとして検証を通過する cross-protocol 混同（→ master 昇格）を防ぐ。
+  const body = b64urlEncode(JSON.stringify({ ...payload, typ: 'session' as const }));
   const sig = createHmac('sha256', getSecret()).update(body).digest();
   return `${body}.${b64urlEncode(sig)}`;
 }
@@ -51,14 +55,21 @@ export function verifySession(token: string | undefined | null): SessionPayload 
   if (!timingSafeEqual(provided, expected)) return null;
   try {
     const payload = JSON.parse(b64urlDecode(body).toString('utf8')) as Partial<SessionPayload>;
+    // ★ purpose 判別: セッション専用トークンのみ受理。
+    //   同一秘密鍵で署名されたパスワードリセットトークン（email+exp を持つ）が
+    //   admin_session Cookie として master 昇格に悪用される脆弱性を塞ぐ。
+    //   typ を持たない旧セッションも無効化（→ 一度だけ再ログインが必要、これは意図的）。
+    if (payload.typ !== 'session') return null;
     if (typeof payload.exp !== 'number' || Date.now() > payload.exp) return null;
     if (typeof payload.email !== 'string') return null;
-    // 後方互換: 旧セッション（role/currentTenantId 無し）は master/mewodas として扱う
+    // ★ role 欠落を master と推定しない（最小権限・fail-closed）。
+    if (payload.role !== 'master' && payload.role !== 'tenant_admin') return null;
+    if (typeof payload.currentTenantId !== 'string' || !payload.currentTenantId) return null;
     return {
       email: payload.email,
       exp: payload.exp,
-      role: payload.role === 'tenant_admin' ? 'tenant_admin' : 'master',
-      currentTenantId: payload.currentTenantId || 'mewodas',
+      role: payload.role,
+      currentTenantId: payload.currentTenantId,
     };
   } catch {
     return null;
