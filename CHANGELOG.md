@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 – change(admin/store): アカウント削除を枠/タイトル/説明なしのボタン単体に簡素化
+- change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）のアカウント削除セクションから、赤カードの枠・見出し「アカウント削除」・説明文を撤去し、「アカウントを削除する」ボタン単体に変更（削除動作・確認ダイアログ `deleteAccount` は不変）
+- 影響範囲: 管理画面（/store・/admin 顧客詳細）。見た目のみ・DB/API/顧客側UI 影響なし
+- 検証: `tsc --noEmit` 0件 / `next build` パス
+
 ## 2026-05-31 – fix(admin/store): 目標カロリー/PFC/％ 連動を改修（脂質連動バグ修正・整数化・100%案内）
 - fix: 目標カロリー変更時に脂質(F)を含む P/F/C すべてを各％から明示再計算するよう変更（従来のグラム比例スケールで脂質が動かないように見える問題を解消）。`app/admin/customers/[id]/page.tsx`
 - change: PFC(g) を整数表示に統一（小数廃止）。読込・自動計算・編集の全経路で `Math.round`、g入力の step を 1 に

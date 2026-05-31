@@ -714,25 +714,15 @@ export default function CustomerDetailPage({
             </button>
           </section>
 
-            {/* アカウント削除（危険操作） */}
-            <section className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
-              <h3 className="text-sm font-bold text-rose-900 mb-1">
-                アカウント削除
-              </h3>
-              <p className="text-[11px] text-rose-800 mb-3 leading-relaxed">
-                顧客レコードを Notion でアーカイブ化します。
-                LIFF からのアクセスができなくなり、利用可能アカウント数のカウントから外れます。
-                食事記録・体重などのデータは Notion に残ります（必要なら別途削除）。
-              </p>
-              <button
-                type="button"
-                onClick={deleteAccount}
-                disabled={deleting}
-                className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl text-sm active:bg-rose-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {deleting ? '削除中…' : 'アカウントを削除する'}
-              </button>
-            </section>
+          {/* アカウント削除（危険操作） */}
+          <button
+            type="button"
+            onClick={deleteAccount}
+            disabled={deleting}
+            className="w-full bg-rose-600 text-white font-bold py-2.5 rounded-xl text-sm active:bg-rose-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            {deleting ? '削除中…' : 'アカウントを削除する'}
+          </button>
         </div>
       )}
     </AdminShell>
