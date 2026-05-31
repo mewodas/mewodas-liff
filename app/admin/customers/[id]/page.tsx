@@ -129,9 +129,9 @@ export default function CustomerDetailPage({
         setCustomer(c);
         setName(c.name);
         setGoalKcal(String(c.goals.kcal));
-        setGoalP(String(c.goals.P));
-        setGoalF(String(c.goals.F));
-        setGoalC(String(c.goals.C));
+        setGoalP(String(Math.round(c.goals.P)));
+        setGoalF(String(Math.round(c.goals.F)));
+        setGoalC(String(Math.round(c.goals.C)));
         setTargetWeight(c.targetWeight !== null ? String(c.targetWeight) : '');
         setTargetDate(c.targetDate || '');
         setFoodStatus(c.foodStatus || '');
@@ -172,17 +172,17 @@ export default function CustomerDetailPage({
   useEffect(() => {
     if (!calc) return;
     setGoalKcal(String(calc.goalKcal));
-    setGoalP(String(calc.goalP));
-    setGoalF(String(calc.goalF));
-    setGoalC(String(calc.goalC));
+    setGoalP(String(Math.round(calc.goalP)));
+    setGoalF(String(Math.round(calc.goalF)));
+    setGoalC(String(Math.round(calc.goalC)));
   }, [calc]);
 
-  // ───────── 目標カロリー / PFC(g) / ％ 相互連動 ─────────
-  // 正本 = goalKcal + grams(goalP/F/C)。％は grams と kcal から導出して表示する。
-  // ・目標カロリー編集 → ％を保持して grams を比例再計算
-  // ・PFC(g) 編集      → kcal = 合計を再計算（％は下の effect が再導出）
-  // ・％編集           → kcal 固定、残り％を他2マクロの現比率で按分し grams 再計算
-  const round1 = (x: number) => Math.round(x * 10) / 10;
+  // ───────── 目標カロリー / PFC(g) / ％ 連動 ─────────
+  // 正本 = goalKcal + grams(goalP/F/C, 整数)。各マクロの g と ％ は kcal を介して連動。
+  // ・目標カロリー編集 → 各マクロの％を保ったまま grams を再計算（全マクロ更新）
+  // ・PFC(g) 編集      → そのマクロの％のみ更新（他マクロは不変・自動調整しない）
+  // ・％編集           → そのマクロの grams のみ更新（他マクロは不変・自動調整しない）
+  // 合計が目標カロリー(=100%)とズレても自動補正せず、下に案内（超過/未達）を表示する。
   const FACTOR: Record<'P' | 'F' | 'C', number> = { P: 4, F: 9, C: 4 };
 
   // grams / kcal の変化に追従して ％表示を再計算（編集中のフィールドは上書きしない）
@@ -195,52 +195,40 @@ export default function CustomerDetailPage({
     if (pctFocus.current !== 'C') setPctC(toPct(parseFloat(goalC) || 0, 4));
   }, [goalKcal, goalP, goalF, goalC]);
 
-  // 目標カロリー編集: ％を保持して grams を比例再計算
+  // 目標カロリー編集: 各マクロの現在％を保ったまま grams（整数）を再計算（P/F/C すべて）
   function handleKcalChange(v: string) {
-    const oldK = parseFloat(goalKcal);
     setGoalKcal(v);
     const nk = parseFloat(v);
-    if (!isFinite(nk) || nk <= 0 || !isFinite(oldK) || oldK <= 0) return;
-    const scale = nk / oldK;
-    setGoalP(String(round1((parseFloat(goalP) || 0) * scale)));
-    setGoalF(String(round1((parseFloat(goalF) || 0) * scale)));
-    setGoalC(String(round1((parseFloat(goalC) || 0) * scale)));
+    if (!isFinite(nk) || nk <= 0) return;
+    const toGram = (pctStr: string, factor: number): string | null => {
+      const pct = parseFloat(pctStr);
+      if (!isFinite(pct)) return null;
+      return String(Math.round((nk * pct) / 100 / factor));
+    };
+    const gp = toGram(pctP, 4); if (gp !== null) setGoalP(gp);
+    const gf = toGram(pctF, 9); if (gf !== null) setGoalF(gf);
+    const gc = toGram(pctC, 4); if (gc !== null) setGoalC(gc);
   }
 
-  // PFC(g) 編集: kcal = 合計を再計算（％は effect が再導出）
+  // PFC(g) 編集: そのマクロのみ更新（kcal・他マクロは不変。％は effect が再導出）
   function handleGramChange(which: 'P' | 'F' | 'C', v: string) {
     if (which === 'P') setGoalP(v);
     else if (which === 'F') setGoalF(v);
     else setGoalC(v);
-    const p = parseFloat(which === 'P' ? v : goalP) || 0;
-    const f = parseFloat(which === 'F' ? v : goalF) || 0;
-    const c = parseFloat(which === 'C' ? v : goalC) || 0;
-    setGoalKcal(String(Math.round(p * 4 + f * 9 + c * 4)));
   }
 
-  // ％編集: kcal 固定、残り％を他2マクロの現比率で按分し grams 再計算
+  // ％編集: そのマクロの grams のみ更新（kcal・他マクロは不変・自動調整しない）
   function handlePctChange(which: 'P' | 'F' | 'C', v: string) {
     if (which === 'P') setPctP(v);
     else if (which === 'F') setPctF(v);
     else setPctC(v);
     const k = parseFloat(goalKcal);
-    let np = parseFloat(v);
-    if (!isFinite(k) || k <= 0 || !isFinite(np)) return; // 空・不正値では grams を触らない
-    np = Math.min(100, Math.max(0, np));
-    const remaining = 100 - np;
-    const cur: Record<'P' | 'F' | 'C', number> = {
-      P: parseFloat(pctP) || 0,
-      F: parseFloat(pctF) || 0,
-      C: parseFloat(pctC) || 0,
-    };
-    const others = (['P', 'F', 'C'] as const).filter((m) => m !== which);
-    const sumOthers = cur[others[0]] + cur[others[1]];
-    const pctFor = (m: 'P' | 'F' | 'C') =>
-      m === which ? np : sumOthers > 0 ? remaining * (cur[m] / sumOthers) : remaining / 2;
-    const gramOf = (m: 'P' | 'F' | 'C') => String(round1((k * pctFor(m)) / 100 / FACTOR[m]));
-    setGoalP(gramOf('P'));
-    setGoalF(gramOf('F'));
-    setGoalC(gramOf('C'));
+    const pct = parseFloat(v);
+    if (!isFinite(k) || k <= 0 || !isFinite(pct)) return; // 空・不正値では grams を触らない
+    const gram = String(Math.round((k * pct) / 100 / FACTOR[which]));
+    if (which === 'P') setGoalP(gram);
+    else if (which === 'F') setGoalF(gram);
+    else setGoalC(gram);
   }
 
   // ％編集終了: グラム由来の丸め済み％へ整える
@@ -254,6 +242,15 @@ export default function CustomerDetailPage({
     else if (which === 'F') setPctF(val);
     else setPctC(val);
   }
+
+  // PFC 合計（目標カロリーに対する％）。100 とのズレを案内に使う
+  const macroTotal = useMemo(() => {
+    const k = parseFloat(goalKcal);
+    if (!isFinite(k) || k <= 0) return null;
+    const sumKcal =
+      (parseFloat(goalP) || 0) * 4 + (parseFloat(goalF) || 0) * 9 + (parseFloat(goalC) || 0) * 4;
+    return { pct: Math.round((sumKcal / k) * 100), diffKcal: Math.round(sumKcal - k) };
+  }, [goalKcal, goalP, goalF, goalC]);
 
   async function save() {
     setSaving(true);
@@ -594,7 +591,7 @@ export default function CustomerDetailPage({
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.1"
+                      step="1"
                       inputMode="decimal"
                       value={goalP}
                       onChange={(e) => handleGramChange('P', e.target.value)}
@@ -626,7 +623,7 @@ export default function CustomerDetailPage({
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.1"
+                      step="1"
                       inputMode="decimal"
                       value={goalF}
                       onChange={(e) => handleGramChange('F', e.target.value)}
@@ -658,7 +655,7 @@ export default function CustomerDetailPage({
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.1"
+                      step="1"
                       inputMode="decimal"
                       value={goalC}
                       onChange={(e) => handleGramChange('C', e.target.value)}
@@ -684,9 +681,26 @@ export default function CustomerDetailPage({
                   </div>
                 </div>
               </div>
-              <p className="mt-2 text-[11px] text-stone-500 leading-snug">
-                ※ 目標カロリー・PFC（g）・％ は連動します。カロリー変更時は比率を保ってグラムを再計算、％変更時はカロリーを固定して残りを他マクロに再配分します。
-              </p>
+              <div className="mt-2 space-y-1.5">
+                {macroTotal && macroTotal.pct > 100 && (
+                  <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5 leading-snug">
+                    ⚠️ PFC合計が <b>{macroTotal.pct}%</b> で目標カロリーを<b>超過</b>しています（+{macroTotal.diffKcal} kcal）。各値を調整してください。
+                  </div>
+                )}
+                {macroTotal && macroTotal.pct < 100 && (
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-snug">
+                    ⚠️ PFC合計が <b>{macroTotal.pct}%</b> で目標カロリーに<b>達していません</b>（残り {100 - macroTotal.pct}% / {Math.abs(macroTotal.diffKcal)} kcal）。
+                  </div>
+                )}
+                {macroTotal && macroTotal.pct === 100 && (
+                  <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 leading-snug">
+                    ✓ PFC合計 100%（目標カロリーと一致）
+                  </div>
+                )}
+                <p className="text-[11px] text-stone-500 leading-snug">
+                  ※ 目標カロリーを変えると PFC(g) が比率を保って再計算されます。PFC(g)・％ は各項目を個別に編集でき、他の値は自動調整されません（合計が100%とズレると上に案内）。
+                </p>
+              </div>
             </div>
 
             <button

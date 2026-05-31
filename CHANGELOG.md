@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-05-31 – fix(admin/store): 目標カロリー/PFC/％ 連動を改修（脂質連動バグ修正・整数化・100%案内）
+- fix: 目標カロリー変更時に脂質(F)を含む P/F/C すべてを各％から明示再計算するよう変更（従来のグラム比例スケールで脂質が動かないように見える問題を解消）。`app/admin/customers/[id]/page.tsx`
+- change: PFC(g) を整数表示に統一（小数廃止）。読込・自動計算・編集の全経路で `Math.round`、g入力の step を 1 に
+- change: 連動モデルを変更。①目標カロリー編集→各％維持で全 grams 再計算 ②PFC(g)編集→そのマクロの％のみ更新 ③％編集→そのマクロの grams のみ更新。**②③は他マクロを自動調整しない**（従来の按分・kcal再計算を廃止）
+- feat: PFC 合計が目標カロリー(=100%)とズレた際に案内バナー表示 — 超過=赤（+kcal）／未達=橙（残り％・kcal）／一致=緑。`macroTotal` を grams+kcal から算出
+- 影響範囲: 管理画面（/store・/admin 顧客詳細の目標カロリー/PFC 設定）。DB・保存ペイロード（goals.kcal/P/F/C）変更なし
+- 検証: `tsc --noEmit` 0件／挙動シミュレーション（kcal変更で F も連動・整数・超過/未達案内）確認済
+- 関連: 社長フィードバック（脂質が連動しない・小数不要・他％は連動せず100%超過/未達を案内）
+
 ## 2026-05-31 – change(admin/store): 顧客詳細から 体重推移/運動記録/送信履歴/レポート送付/ツアーリセット の表示を削除
 - change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）から以下5セクションの表示を削除 — ①体重推移グラフ＋運動記録 ②運動記録（新DB）③送信履歴 ④レポート送付（前日レポート送付）⑤ツアーリセット
 - cleanup: 連動して不要になった state・ハンドラ（`loadWeightHistory`/`loadExerciseLogs`/`sendReport`/`resetOnboarding`）・型（`Notification`/`WeightEntry`/`ExerciseLog`）・通知取得 useEffect・ローカルチャート（`WeightLineChart`/`ExerciseBarChart`）・recharts と未使用 lucide import を撤去。`StatusInfoPopover`（ステータス説明ポップオーバー）は基本情報で継続使用のため維持
