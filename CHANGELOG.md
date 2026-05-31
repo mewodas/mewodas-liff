@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## 2026-05-31 – security(#6): CSRF（Origin同一オリジン照合）を main 採用
+## 2026-05-31 – security(#6/#8): CSP違反収集エンドポイント＋Sentry PIIスクラブ強化
+- security(#6): `app/api/csp-report/route.ts` 新規（CSP違反の report-uri 受け口・無認証・本文16KB上限・https違反のみ console+Sentry に記録）。`next.config.ts` の CSP（Report-Only 据え置き）に `report-uri /api/csp-report` を追加し、connect-src に GAS(`script.google*`)・Sentry(`*.ingest.sentry.io`) を補強。**enforce 化はこの実違反データで allowlist を完成させてから再挑戦**（凍結継続）
+- security(#8): `lib/sentry.ts` `redactEvent` 強化。①画像 data URI 伏字の JSON 破壊バグ修正（旧実装は unredacted フォールバックしていた）②Bearer トークン/Authorization・Cookie ヘッダ/admin_session を伏字追加。`__tests__/lib/sentry-redact.test.ts`(6ケース) で回帰ロック
+- 影響範囲: CSP は Report-Only のまま顧客 LIFF 影響なし（report-uri 追加のみ）。Sentry/csp-report はバックエンド。本番ビルド・tsc・テスト通過
+- 関連: 監査 project_security_audit_2026_05_31 設計#6/#8、[[project_pending_security_2026_05_19]]
+
+
 - security: `proxy.ts` で /admin・/store の状態変更（POST/PUT/PATCH/DELETE）を**同一オリジン必須**化（Origin ヘッダと Host を照合、不一致は 403 `csrf_origin_mismatch`）。Cookie セッション認証の外部サイト起点強制リクエスト（CSRF）を封鎖
 - 影響範囲: /api/admin・/api/store の状態変更のみ。顧客 LIFF は Bearer 認証で非該当、Stripe webhook/cron・GET は対象外。SameSite=lax 維持（CSRF 実装により strict 不要）
 - 補足: CSP enforce 化は LIFF「failed to fetch」で**見送り（Report-Only 据え置き）**。enforce は report-to による実違反収集後に再挑戦予定（[[project_pending_security_2026_05_19]]）
