@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 11:00 claude/sec-fix-5425329
+- fix(security): `lib/notion.ts` `notionFetch` に 502/503/504 向け指数バックオフリトライ（最大3回: 1s→2s→4s）と `AbortSignal.timeout(30_000)` を追加
+- 影響範囲: API（Notion API を呼ぶ全顧客向けエンドポイント約20本）
+- 関連: Slack #security-alerts Sentry週次レポート Notion API 502 新規 issue
+
 ## 2026-05-30 – change(admin/store): 記録漏れアラートのしきい値を3日→2日連続に
 - change: `lib/risk.ts` `NO_RECORD_THRESHOLD_DAYS` を 3→2 に変更。「今日と昨日の2日連続で食事記録なし（最終記録2日以上前）」で記録漏れと判定。社長フィードバック（2日サボった顧客も早めに検知したい）反映
 - 影響範囲: 顧客リスク判定（進捗管理の記録漏れラベル）。本番反映後に cron 再計算で反映
