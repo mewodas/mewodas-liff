@@ -1400,8 +1400,8 @@ function BodyCompSection({
     return { ...m, count: vals.length, latest, deltaVal };
   }).filter((m) => m.count > 0);
 
-  // 既定で線表示する項目（体重・筋肉量・体脂肪率の3本）。凡例チェックで増減可。
-  const [visible, setVisible] = useState<Set<string>>(() => new Set(['weightKg', 'muscleMassKg', 'bodyFatPct']));
+  // 既定は全項目を線表示。凡例チェックを外すと非表示にできる。
+  const [visible, setVisible] = useState<Set<string>>(() => new Set(METRICS.map((m) => m.key as string)));
   const toggleMetric = (k: string) =>
     setVisible((prev) => {
       const next = new Set(prev);
@@ -1517,7 +1517,7 @@ function BodyCompSection({
               {/* 凡例（チェックで線を表示切替）＋最新の実数値・増減 */}
               {lineMetrics.length > 0 && (
                 <div className="space-y-1">
-                  <div className="text-[10px] text-stone-400">チェックでグラフ表示を切替（基礎代謝・BMI・内臓脂肪レベルもスケールに合わせて表示。実数値はホバー/右側の数値で確認）</div>
+                  <div className="text-[10px] text-stone-400">既定は全項目を表示。チェックを外すとグラフから非表示（基礎代謝・BMI・内臓脂肪レベルも各スケールで表示。実数値はホバー/右の数値）</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
                     {lineMetrics.map((m) => {
                       const on = visible.has(m.key as string);

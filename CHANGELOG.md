@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-05-31 – change(admin/store): 体組成グラフの既定表示を全項目に（チェックを外すと非表示）
+- change: `app/admin/analysis/page.tsx` 体組成推移グラフの初期表示を主要3本から**記録のある全項目**に変更。凡例チェックを外すとその項目だけグラフから消える挙動に統一
+- 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
+
 ## 2026-05-31 – feat(admin): 顧客リスクラベルを段階表示に拡張＋体重記載漏れ新規追加
 - feat: `lib/risk.ts` に `computeWeightRecordGap` 追加（最終体重記録からの日数差計算）
 - feat: `lib/repository/customerRisk.ts` 型・upsert・select に `days_since_last_weight` 追加
