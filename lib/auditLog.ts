@@ -54,6 +54,16 @@ function insertAuditRow(e: AuditEvent): Promise<void> {
     });
 }
 
+/** logAuditEvent の await 版。既に waitUntil コンテキスト内にいる呼び出し用（waitUntil の入れ子を避ける）。 */
+export async function logAuditEventAsync(e: AuditEvent): Promise<void> {
+  try {
+    console.log(JSON.stringify({ type: 'audit', ts: new Date().toISOString(), ...e }));
+    if (sql) await insertAuditRow(e);
+  } catch (err) {
+    console.error('[auditLog] async logging failed', err);
+  }
+}
+
 export function logAuditEvent(e: AuditEvent): void {
   try {
     console.log(
