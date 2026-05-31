@@ -4,33 +4,13 @@ import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Target,
-  Scale,
   ClipboardList,
   Save,
   Calculator,
   Hourglass,
-  History,
-  ChevronDown,
-  ChevronUp,
-  TrendingDown,
-  Dumbbell,
   Info,
   Circle,
-  RotateCcw,
-  Send,
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ResponsiveContainer,
-} from 'recharts';
 import AdminShell from '../../AdminShell';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
@@ -55,15 +35,6 @@ type Customer = {
 };
 
 type StoreItem = { pageId: string; storeId: string; name: string };
-type Notification = {
-  id: string;
-  category: string;
-  title: string;
-  body: string;
-  staffName: string;
-  read: boolean;
-  createdAt: string;
-};
 
 const STATUS_OPTIONS = ['進行中', '休止中', '卒業'];
 
@@ -104,9 +75,7 @@ export default function CustomerDetailPage({
   const pathname = usePathname() || '';
   const isFromProgress = pathname.includes('/progress/');
   const toast = useToast();
-  const [resettingOnboard, setResettingOnboard] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [sendingReport, setSendingReport] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,31 +103,6 @@ export default function CustomerDetailPage({
   const [plan, setPlan] = useState('');
   const [storeId, setStoreId] = useState('');
   const [stores, setStores] = useState<StoreItem[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  type WeightEntry = { date: string; weight: number | null; exercised: boolean; exerciseContent: string };
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
-  const [weightTargetWeight, setWeightTargetWeight] = useState<number | null>(null);
-  const [weightLoading, setWeightLoading] = useState(false);
-  const [weightWarning, setWeightWarning] = useState<string | null>(null);
-  const [weightDays, setWeightDays] = useState(30);
-  const [weightOpen, setWeightOpen] = useState(false);
-
-  type ExerciseLog = {
-    id: string;
-    date: string;
-    exercise: string;
-    category: string;
-    durationMin: number;
-    intensity: string;
-    estimatedKcal: number;
-    memo: string;
-  };
-  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
-  const [exerciseLoading, setExerciseLoading] = useState(false);
-  const [exerciseDays, setExerciseDays] = useState(30);
-  const [exerciseOpen, setExerciseOpen] = useState(false);
 
   const today = jstToday();
 
@@ -173,10 +117,6 @@ export default function CustomerDetailPage({
         setStores(j?.stores || []);
       })
       .catch((e) => setError(`店舗取得エラー: ${e.message}`));
-    fetch(`/api/admin/customers/${id}/notifications`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setNotifications(j?.notifications || []))
-      .catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -359,23 +299,6 @@ export default function CustomerDetailPage({
     }
   }
 
-  async function resetOnboarding() {
-    if (!confirm('ホーム＋食事記録ツアーをリセットします。\n顧客は次回 LIFF を開いたときに、再度ツアーが表示されます。')) {
-      return;
-    }
-    setResettingOnboard(true);
-    try {
-      const res = await fetch(`/api/admin/customers/${id}/onboarding`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`リセット失敗（${res.status}）`);
-      toast.success('リセット完了。顧客側で次回起動時から再表示されます');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'リセット失敗');
-      toast.error(e instanceof Error ? e.message : 'リセットに失敗しました');
-    } finally {
-      setResettingOnboard(false);
-    }
-  }
-
   async function deleteAccount() {
     const customerName = customer?.name || 'この顧客';
     if (!confirm(`「${customerName}」のアカウントを削除します。\n\n・LIFF からアクセスできなくなります\n・利用可能アカウント数のカウントから外れます\n・データ（食事記録など）は Notion に残ります\n\n本当に削除しますか？`)) {
@@ -394,110 +317,6 @@ export default function CustomerDetailPage({
       setError(e instanceof Error ? e.message : '削除失敗');
       toast.error(e instanceof Error ? e.message : '削除に失敗しました');
       setDeleting(false);
-    }
-  }
-
-  async function loadWeightHistory(days: number) {
-    setWeightLoading(true);
-    setWeightWarning(null);
-    try {
-      const res = await fetch(`/api/admin/customers/${id}/weight-history?days=${days}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
-      const j = await res.json();
-      setWeightHistory(j.weights || []);
-      setWeightTargetWeight(j.targetWeight ?? null);
-      if (j.warning) setWeightWarning(j.warning);
-    } catch (e) {
-      setWeightWarning(e instanceof Error ? e.message : 'エラー');
-    } finally {
-      setWeightLoading(false);
-    }
-  }
-
-  async function loadExerciseLogs(days: number) {
-    setExerciseLoading(true);
-    try {
-      const res = await fetch(`/api/admin/customers/${id}/exercise-logs?days=${days}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`取得失敗（${res.status}）`);
-      const j = await res.json();
-      setExerciseLogs(j.logs || []);
-    } catch {
-      setExerciseLogs([]);
-    } finally {
-      setExerciseLoading(false);
-    }
-  }
-
-  async function sendReport() {
-    if (!customer) return;
-    setSendingReport(true);
-    try {
-      const today = jstToday();
-      const yesterday = (() => {
-        const [y, m, d] = today.split('-').map(Number);
-        const dt = new Date(y, m - 1, d - 1);
-        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      })();
-
-      const tRes = await fetch('/api/admin/templates', { cache: 'no-store' });
-      const tJ = tRes.ok ? await tRes.json() : null;
-      const templates: Array<{ id: string; name: string; category: string; rangeType?: string }> = tJ?.templates || [];
-      const defaultTemplate = templates.find((t) => t.category === '前日レポート' || t.name.includes('前日')) || templates[0];
-
-      const startDate = defaultTemplate?.rangeType === '昨日' ? yesterday : yesterday;
-      const endDate = yesterday;
-
-      let title = '前日のレポート';
-      let body = '';
-
-      if (defaultTemplate) {
-        const gRes = await fetch('/api/admin/reports/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customerId: id,
-            templateId: defaultTemplate.id,
-            startDate,
-            endDate,
-          }),
-        });
-        if (gRes.ok) {
-          const gJ = await gRes.json();
-          title = gJ.title || title;
-          body = gJ.body || body;
-        }
-      }
-
-      if (!body.trim()) {
-        body = `${yesterday} の食事記録をご確認ください。`;
-      }
-
-      const res = await fetch('/api/admin/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: id,
-          category: defaultTemplate?.category || '前日レポート',
-          title,
-          body,
-          staffName: '',
-          sendLinePush: true,
-        }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || `送信失敗（${res.status}）`);
-      }
-      const j = await res.json();
-      if (j?.push?.pushed) {
-        toast.success('レポートを送信しました');
-      } else {
-        toast.success('レポートを保存しました（LINE未送信）');
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'レポート送信に失敗しました');
-    } finally {
-      setSendingReport(false);
     }
   }
 
@@ -881,335 +700,6 @@ export default function CustomerDetailPage({
             </button>
           </section>
 
-          {/* 体重推移グラフ + 運動記録 */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !weightOpen;
-                setWeightOpen(next);
-                if (next && weightHistory.length === 0) {
-                  loadWeightHistory(weightDays);
-                }
-              }}
-              className="w-full flex items-center justify-between p-3 active:bg-stone-50"
-            >
-              <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                <TrendingDown className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
-                体重推移 / 運動記録
-              </span>
-              {weightOpen ? (
-                <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-              )}
-            </button>
-            {weightOpen && (
-              <div className="px-3 pb-3 space-y-3">
-                <div className="flex gap-2 flex-wrap">
-                  {[14, 30, 60, 90].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => {
-                        setWeightDays(d);
-                        setWeightHistory([]);
-                        loadWeightHistory(d);
-                      }}
-                      className={`px-3 py-1 text-xs rounded-lg font-bold border transition-colors ${
-                        weightDays === d
-                          ? 'bg-sky-500 text-white border-sky-500'
-                          : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
-                      }`}
-                    >
-                      {d}日
-                    </button>
-                  ))}
-                  {weightLoading && <span className="text-xs text-stone-500 py-1">読み込み中…</span>}
-                </div>
-
-                {weightWarning && (
-                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{weightWarning}</div>
-                )}
-
-                {weightHistory.some((w) => w.weight !== null) ? (
-                  <div>
-                    <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
-                      <Scale className="w-3.5 h-3.5 text-sky-600" strokeWidth={2.2} />
-                      体重推移
-                    </div>
-                    <WeightLineChart entries={weightHistory} targetWeight={weightTargetWeight} />
-
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-stone-500 border-b border-stone-100">
-                            <th className="text-left py-1 pr-3 font-bold">日付</th>
-                            <th className="text-right py-1 pr-3 font-bold">体重 (kg)</th>
-                            <th className="text-right py-1 font-bold">前日差</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {weightHistory
-                            .filter((w) => w.weight !== null)
-                            .slice()
-                            .reverse()
-                            .slice(0, 20)
-                            .map((w, idx, arr) => {
-                              const prev = arr[idx + 1];
-                              const diff =
-                                prev?.weight !== null && prev?.weight !== undefined && w.weight !== null
-                                  ? Math.round((w.weight - prev.weight) * 10) / 10
-                                  : null;
-                              const [, m, d] = w.date.split('-').map(Number);
-                              return (
-                                <tr key={w.date} className="border-b border-stone-50">
-                                  <td className="py-1 pr-3 text-stone-700">{m}/{d}</td>
-                                  <td className="py-1 pr-3 text-right font-bold text-stone-900">{w.weight}</td>
-                                  <td className={`py-1 text-right font-bold ${
-                                    diff === null ? 'text-stone-400' :
-                                    diff < 0 ? 'text-sky-600' :
-                                    diff > 0 ? 'text-rose-500' : 'text-stone-600'
-                                  }`}>
-                                    {diff === null ? '—' : diff > 0 ? `+${diff}` : String(diff)}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : !weightLoading ? (
-                  <div className="text-xs text-stone-500 py-2">この期間に体重記録がありません</div>
-                ) : null}
-
-                {weightHistory.some((w) => w.exercised || w.exerciseContent) && (
-                  <div>
-                    <div className="text-xs font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
-                      <Dumbbell className="w-3.5 h-3.5 text-violet-600" strokeWidth={2.2} />
-                      運動記録
-                    </div>
-                    <div className="space-y-1">
-                      {weightHistory
-                        .filter((w) => w.exercised || w.exerciseContent)
-                        .slice()
-                        .reverse()
-                        .slice(0, 15)
-                        .map((w) => {
-                          const [, m, d] = w.date.split('-').map(Number);
-                          return (
-                            <div key={w.date} className="flex gap-2 text-xs py-1 border-b border-stone-50">
-                              <span className="text-stone-500 flex-shrink-0 w-10">{m}/{d}</span>
-                              <span className="text-emerald-700 font-bold flex-shrink-0">✅</span>
-                              <span className="text-stone-800 break-all">{w.exerciseContent || '運動あり'}</span>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* 運動記録（新DB） */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !exerciseOpen;
-                setExerciseOpen(next);
-                if (next && exerciseLogs.length === 0) {
-                  loadExerciseLogs(exerciseDays);
-                }
-              }}
-              className="w-full flex items-center justify-between p-3 active:bg-stone-50"
-            >
-              <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                <Dumbbell className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
-                運動記録
-              </span>
-              {exerciseOpen ? (
-                <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-              )}
-            </button>
-            {exerciseOpen && (
-              <div className="px-3 pb-3 space-y-3">
-                <div className="flex gap-2 flex-wrap">
-                  {[14, 30, 60].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => {
-                        setExerciseDays(d);
-                        setExerciseLogs([]);
-                        loadExerciseLogs(d);
-                      }}
-                      className={`px-3 py-1 text-xs rounded-lg font-bold border transition-colors ${
-                        exerciseDays === d
-                          ? 'bg-violet-500 text-white border-violet-500'
-                          : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
-                      }`}
-                    >
-                      {d}日
-                    </button>
-                  ))}
-                  {exerciseLoading && <span className="text-xs text-stone-500 py-1">読み込み中…</span>}
-                </div>
-
-                {exerciseLogs.length === 0 && !exerciseLoading && (
-                  <div className="text-xs text-stone-500 py-2">この期間に運動記録がありません</div>
-                )}
-
-                {exerciseLogs.length > 0 && (
-                  <>
-                    <ExerciseBarChart logs={exerciseLogs} days={exerciseDays} />
-
-                    <div className="flex gap-3 text-xs">
-                      <div className="bg-violet-50 rounded-lg px-3 py-1.5 text-center">
-                        <div className="font-bold text-violet-700">{exerciseLogs.length}回</div>
-                        <div className="text-stone-500">運動</div>
-                      </div>
-                      <div className="bg-sky-50 rounded-lg px-3 py-1.5 text-center">
-                        <div className="font-bold text-sky-700">{exerciseLogs.reduce((a, l) => a + l.durationMin, 0)}分</div>
-                        <div className="text-stone-500">合計時間</div>
-                      </div>
-                      <div className="bg-amber-50 rounded-lg px-3 py-1.5 text-center">
-                        <div className="font-bold text-amber-600">{exerciseLogs.reduce((a, l) => a + l.estimatedKcal, 0)} kcal</div>
-                        <div className="text-stone-500">消費</div>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-stone-500 border-b border-stone-100">
-                            <th className="text-left py-1 pr-2 font-bold">日付</th>
-                            <th className="text-left py-1 pr-2 font-bold">種目</th>
-                            <th className="text-right py-1 pr-2 font-bold">時間</th>
-                            <th className="text-right py-1 pr-2 font-bold">kcal</th>
-                            <th className="text-left py-1 font-bold">強度</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {exerciseLogs.slice(0, 20).map((log) => {
-                            const [, m, d] = log.date.split('-').map(Number);
-                            return (
-                              <tr key={log.id} className="border-b border-stone-50">
-                                <td className="py-1 pr-2 text-stone-600">{m}/{d}</td>
-                                <td className="py-1 pr-2 text-stone-900 font-bold">{log.exercise}</td>
-                                <td className="py-1 pr-2 text-right text-stone-700">{log.durationMin}分</td>
-                                <td className="py-1 pr-2 text-right font-bold text-amber-600">{log.estimatedKcal}</td>
-                                <td className={`py-1 text-[10px] font-bold ${
-                                  log.intensity === '激しい' ? 'text-rose-600' :
-                                  log.intensity === '中等度' ? 'text-amber-600' : 'text-emerald-600'
-                                }`}>{log.intensity}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* 送信履歴 */}
-          {notifications.length > 0 && (
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setNotifOpen((v) => !v)}
-                className="w-full flex items-center justify-between p-3 active:bg-stone-50"
-              >
-                <span className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
-                  <History className="w-4 h-4 text-sky-600" strokeWidth={2.2} />
-                  送信履歴（{notifications.length}件）
-                </span>
-                {notifOpen ? (
-                  <ChevronUp className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-stone-500" strokeWidth={2.4} />
-                )}
-              </button>
-              {notifOpen && (
-                <ul className="divide-y divide-stone-100">
-                  {notifications.slice(0, 20).map((n) => {
-                    const date = new Date(n.createdAt).toLocaleString('ja-JP', {
-                      timeZone: 'Asia/Tokyo',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    });
-                    return (
-                      <li key={n.id} className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                            {n.category}
-                          </span>
-                          <span className="text-[11px] text-stone-500 flex-shrink-0">{date}</span>
-                          {n.read && (
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex-shrink-0">既読</span>
-                          )}
-                        </div>
-                        <div className="text-sm font-bold text-stone-900 mt-1 truncate">{n.title}</div>
-                        <div className="text-[11px] text-stone-600 mt-0.5 line-clamp-2">{n.body}</div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          )}
-
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
-              <Send className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
-              レポート送付
-            </h3>
-            <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
-              前日レポートを生成してこの顧客に LINE 送信します。テンプレートが設定されている場合は最初のものを使用します。
-            </p>
-            <button
-              type="button"
-              onClick={sendReport}
-              disabled={sendingReport || !customer?.lineUserId}
-              className="w-full bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5" strokeWidth={2.2} />
-              {sendingReport ? '送信中…' : '前日レポートを送付'}
-            </button>
-            {!customer?.lineUserId && (
-              <p className="text-[10px] text-stone-500 mt-1.5">LINE 未連携のため送付できません</p>
-            )}
-          </section>
-
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-              <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
-                <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-                ツアーリセット
-              </h3>
-              <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
-                ホーム初回ガイド・食事記録ガイドを再表示します。顧客が次回 LIFF を開いたときから再表示されます。
-                目標値・体重・性別などの基本情報は保持されます。
-              </p>
-                <button
-                  type="button"
-                  onClick={resetOnboarding}
-                  disabled={resettingOnboard}
-                  className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
-                  {resettingOnboard ? 'リセット中…' : 'ホーム＋食事記録ツアーを再表示'}
-                </button>
-            </section>
-
             {/* アカウント削除（危険操作） */}
             <section className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
               <h3 className="text-sm font-bold text-rose-900 mb-1">
@@ -1277,117 +767,6 @@ function NumberInput({
           <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">{suffix}</span>
         )}
       </div>
-    </div>
-  );
-}
-
-function WeightLineChart({
-  entries,
-  targetWeight,
-}: {
-  entries: Array<{ date: string; weight: number | null }>;
-  targetWeight: number | null;
-}) {
-  const data = entries.map((e) => {
-    const [, m, d] = e.date.split('-').map(Number);
-    return { label: `${m}/${d}`, weight: e.weight };
-  });
-
-  const weights = entries.map((e) => e.weight).filter((w): w is number => w !== null);
-  const minW = weights.length > 0 ? Math.floor(Math.min(...weights, targetWeight ?? Infinity) - 1) : undefined;
-  const maxW = weights.length > 0 ? Math.ceil(Math.max(...weights, targetWeight ?? -Infinity) + 1) : undefined;
-
-  return (
-    <div className="w-full h-48">
-      <ResponsiveContainer>
-        <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-          <XAxis
-            dataKey="label"
-            interval="preserveStartEnd"
-            tick={{ fontSize: 10, fill: '#78716c' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 10, fill: '#78716c' }}
-            axisLine={false}
-            tickLine={false}
-            domain={[minW ?? 'auto', maxW ?? 'auto']}
-            tickFormatter={(v) => `${v}kg`}
-          />
-          <Tooltip
-            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-            formatter={(v) => [`${v} kg`, '体重']}
-          />
-          {targetWeight !== null && (
-            <ReferenceLine
-              y={targetWeight}
-              stroke="#10b981"
-              strokeDasharray="4 4"
-              label={{ value: `目標 ${targetWeight}kg`, fontSize: 9, fill: '#10b981', position: 'insideTopRight' }}
-            />
-          )}
-          <Line
-            type="monotone"
-            dataKey="weight"
-            stroke="#0ea5e9"
-            strokeWidth={2}
-            dot={{ r: 3, fill: '#0ea5e9', strokeWidth: 0 }}
-            connectNulls={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function ExerciseBarChart({
-  logs,
-  days,
-}: {
-  logs: Array<{ date: string; durationMin: number; estimatedKcal: number }>;
-  days: number;
-}) {
-  const byDate: Record<string, number> = {};
-  for (const log of logs) {
-    byDate[log.date] = (byDate[log.date] || 0) + log.durationMin;
-  }
-  const data = Object.entries(byDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-Math.min(days, 30))
-    .map(([date, min]) => {
-      const [, m, d] = date.split('-').map(Number);
-      return { label: `${m}/${d}`, min };
-    });
-
-  if (data.length === 0) return null;
-
-  return (
-    <div className="w-full h-32">
-      <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-          <XAxis
-            dataKey="label"
-            interval="preserveStartEnd"
-            tick={{ fontSize: 9, fill: '#78716c' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 9, fill: '#78716c' }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => `${v}分`}
-          />
-          <Tooltip
-            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e7e5e4' }}
-            formatter={(v) => [`${v}分`, '運動時間']}
-          />
-          <Bar dataKey="min" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   );
 }

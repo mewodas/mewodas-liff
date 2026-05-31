@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-31 – change(admin/store): 顧客詳細から 体重推移/運動記録/送信履歴/レポート送付/ツアーリセット の表示を削除
+- change: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）から以下5セクションの表示を削除 — ①体重推移グラフ＋運動記録 ②運動記録（新DB）③送信履歴 ④レポート送付（前日レポート送付）⑤ツアーリセット
+- cleanup: 連動して不要になった state・ハンドラ（`loadWeightHistory`/`loadExerciseLogs`/`sendReport`/`resetOnboarding`）・型（`Notification`/`WeightEntry`/`ExerciseLog`）・通知取得 useEffect・ローカルチャート（`WeightLineChart`/`ExerciseBarChart`）・recharts と未使用 lucide import を撤去。`StatusInfoPopover`（ステータス説明ポップオーバー）は基本情報で継続使用のため維持
+- 影響範囲: 管理画面（/store・/admin 顧客詳細）。残存セクション = 基本情報／身体情報／目標(PFC)／アカウント削除。DB・API・顧客側 UI への影響なし（表示削除のみ）
+- 検証: `tsc --noEmit` 0件 / `next build` パス
+- 関連: 社長依頼（添付画面の「体重推移〜ツアーリセット」を非表示に）
+
 ## 2026-05-31 – feat(admin/store): 目標カロリー・PFC(g)・％ を相互連動＋％を編集可能化
 - feat: `app/admin/customers/[id]/page.tsx` 顧客詳細の目標設定で、これまで読み取り専用だった PFC ％を編集可能な入力に変更
 - feat: 3者を相互連動。①目標カロリー編集→比率を保持してグラム比例再計算 ②PFC(g)編集→kcal=合計を再計算し％再導出 ③％編集→kcal固定で残り％を他2マクロの現比率に按分しグラム再計算
