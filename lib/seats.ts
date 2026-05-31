@@ -1,5 +1,5 @@
 import { listCustomers } from './repository/customers';
-import { listTenantRows } from './notion';
+import { listTenantRows, type TenantRow } from './notion';
 import { getCurrentTenant } from './tenant';
 import { FITMEAL_TENANTS_DB_ID } from './tenant';
 import { getCached, setCached, invalidate } from './cache';
@@ -24,7 +24,13 @@ export type SeatStatus = {
  */
 const ACTIVE_FOOD_STATUS = '進行中';
 
-export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatStatus> {
+export async function getSeatStatus(opts?: {
+  noCache?: boolean;
+  /** 既に取得済みのテナント行（配列 or Promise）を渡すと、Notion への
+   *  listTenantRows クエリを重複させず使い回す。同一リクエスト内で
+   *  別途 listTenantRows を呼ぶ呼び出し元（billing/info 等）向け。 */
+  tenantRows?: TenantRow[] | Promise<TenantRow[]>;
+}): Promise<SeatStatus> {
   const tenantId = getCurrentTenant().id;
   const key = `${tenantId}:seats:status`;
   if (!opts?.noCache) {
@@ -34,7 +40,7 @@ export async function getSeatStatus(opts?: { noCache?: boolean }): Promise<SeatS
 
   const [customers, rows] = await Promise.all([
     listCustomers({ noCache: opts?.noCache }),
-    listTenantRows(FITMEAL_TENANTS_DB_ID),
+    opts?.tenantRows ?? listTenantRows(FITMEAL_TENANTS_DB_ID),
   ]);
 
   const tenantRow = rows.find((r) => r.tenantId === tenantId);

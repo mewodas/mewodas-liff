@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-05-31 – perf(notion): billing/info の listTenantRows 重複呼び出しを解消（2→1）
+- perf: `lib/seats.ts` `getSeatStatus` に `tenantRows`（取得済みテナント行 or その Promise）オプションを追加。`app/api/admin/billing/info/route.ts` は `listTenantRows` を 1 回だけ呼び、その Promise を `getSeatStatus` にも共有することで、1 リクエストで同一 Notion クエリが 2 本飛んでいた状態を 1 本に削減（Promise 共有のため並列性・レスポンス時間は維持、キャッシュ挙動・他の getSeatStatus 呼び出し元は不変）
+- 影響範囲: API（/api/admin/billing/info）・lib バックエンド。顧客側 UI 影響なし
+- 関連: PR #36 の後続対応（Sentry: Notion API 502 at /api/admin/billing/info の発生確率低減）
+
 ## 2026-05-31 – security(#6/#8): CSP違反収集エンドポイント＋Sentry PIIスクラブ強化
 - security(#6): `app/api/csp-report/route.ts` 新規（CSP違反の report-uri 受け口・無認証・本文16KB上限・https違反のみ console+Sentry に記録）。`next.config.ts` の CSP（Report-Only 据え置き）に `report-uri /api/csp-report` を追加し、connect-src に GAS(`script.google*`)・Sentry(`*.ingest.sentry.io`) を補強。**enforce 化はこの実違反データで allowlist を完成させてから再挑戦**（凍結継続）
 - security(#8): `lib/sentry.ts` `redactEvent` 強化。①画像 data URI 伏字の JSON 破壊バグ修正（旧実装は unredacted フォールバックしていた）②Bearer トークン/Authorization・Cookie ヘッダ/admin_session を伏字追加。`__tests__/lib/sentry-redact.test.ts`(6ケース) で回帰ロック
