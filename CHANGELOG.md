@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセットボタンを復活（staging / 本番にも同時反映）
+## 2026-05-31 – fix(notion): 登録直後の「顧客が見つかりません」（運動/体重保存エラー）を修正
+- fix: `getCustomerByLineId` の「顧客なし(null)」キャッシュ TTL を 30分 → **15秒**に短縮（`CUSTOMER_NOTFOUND_CACHE_TTL_MS`）。登録前に開いた等で stale な null が残り、登録直後に別インスタンスで運動/体重保存が「顧客が見つかりません」(404)になる事象の根本対策
+- fix: `createCustomer`（登録）時に当該 lineUserId の個別キャッシュ `${tenantId}:customer:${lineUserId}` を `invalidate`。登録を処理したインスタンスは即時に新顧客を解決可能に
+- 症状: 食事は通る（別インスタンス）が運動/体重だけ「顧客が見つかりません」になる不整合。両者とも `getCustomerByLineId` 必須だが、null を30分キャッシュしたインスタンスに当たると落ちていた
+- 影響範囲: バックエンド `lib/notion.ts` のみ。顧客側の登録→記録フローのバグ修正。tsc／本番build パス。staging→確認後 本番へ
+- 関連: 社長報告（staging で運動/体重保存エラー）
 - feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` 更新 → 顧客の次回 LIFF 起動でツアー再表示
 - 配置: 目標(PFC)直下・アカウント削除の直上。顧客管理のみ。`0132322` で消えた実装を当時のまま復元（`RotateCcw` import 追加）
 - 影響範囲: 管理画面のみ。顧客側UI・DB変更なし。tsc／本番build パス
