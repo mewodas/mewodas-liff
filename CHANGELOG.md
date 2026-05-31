@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-31 – feat(admin/store): 目標カロリー・PFC(g)・％ を相互連動＋％を編集可能化
+- feat: `app/admin/customers/[id]/page.tsx` 顧客詳細の目標設定で、これまで読み取り専用だった PFC ％を編集可能な入力に変更
+- feat: 3者を相互連動。①目標カロリー編集→比率を保持してグラム比例再計算 ②PFC(g)編集→kcal=合計を再計算し％再導出 ③％編集→kcal固定で残り％を他2マクロの現比率に按分しグラム再計算
+- 実装: 正本は kcal+grams、％は grams/kcal から導出（編集中フィールドは sync effect で上書きしない）。`pRatio/fRatio/cRatio` の useMemo を撤去し `handleKcalChange/handleGramChange/handlePctChange` に置換
+- 影響範囲: 管理画面（/store・/admin 顧客詳細の目標カロリー/PFC 設定）。DB スキーマ・保存ペイロード（goals.kcal/P/F/C）は変更なし
+- 関連: 社長要望（カロリー変更で PFC も連動、％でも変更可能に）
+
 ## 2026-05-31 – security(P0): テナント分離・トークン混同・管理者IDOR を修正（branch: security/p0-fixes / 未デプロイ）
 - security: **トークン purpose 分離**。`lib/adminAuth.ts` セッションに `typ:'session'` を必須化し、`verifySession` は `typ==='session'` のみ受理＋role欠落時の master 推定を廃止（fail-closed）。これにより、同一 `ADMIN_SESSION_SECRET` で署名されるパスワードリセットトークン（email+exp 保持）を `admin_session` Cookie に入れて master 昇格する **CRITICAL 脆弱性**を封鎖。`lib/passwordReset.ts`／`lib/inviteToken.ts` にも `typ`（reset/invite）判別を追加（既存トークンは後方互換で許容＝非破壊）
 - security: **クロステナント IDOR 修正（設計#2＝リポジトリ層集約）**。`lib/repository/customers.ts`(patch/archive)・`lib/repository/records.ts`(patch/archive) に `assertCustomerOwnership`／`assertFoodRecordOwnership` を内蔵。`lib/notion.ts` `getCustomerByPageId` に親DB照合を追加し、`getCustomer` 経由の全 admin サブルート（records/weight-history/notifications/analysis 等）のクロステナント読取を一括封鎖
@@ -11,7 +18,7 @@
 - 注意: 設計上の根本原因（全テナント単一 Notion キー共有／テナントがクライアントヘッダ由来）は別途ロードマップ（per-tenant token・identity→tenant 束縛・Postgres+RLS）で対応予定。本コミットはアプリ層の所有権チェックで封鎖
 - 関連: 監査メモ project_security_audit_2026_05_31。顧客側API（LIFFレコード所有者照合・nutrition-label認証・notification read）は staging で別途実装予定
 
-
+## 2026-05-31 – change(admin/store): 体組成グラフの既定表示を全項目に（チェックを外すと非表示）
 - change: `app/admin/analysis/page.tsx` 体組成推移グラフの初期表示を主要3本から**記録のある全項目**に変更。凡例チェックを外すとその項目だけグラフから消える挙動に統一
 - 影響範囲: 管理画面（/store・/admin 顧客分析の体組成セクション）
 

@@ -117,6 +117,11 @@ export default function CustomerDetailPage({
   const [goalP, setGoalP] = useState('');
   const [goalF, setGoalF] = useState('');
   const [goalC, setGoalC] = useState('');
+  // PFC ％（grams / kcal から導出して表示する編集可能フィールド）
+  const [pctP, setPctP] = useState('');
+  const [pctF, setPctF] = useState('');
+  const [pctC, setPctC] = useState('');
+  const pctFocus = useRef<null | 'P' | 'F' | 'C'>(null);
   const [targetWeight, setTargetWeight] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [foodStatus, setFoodStatus] = useState('');
@@ -232,26 +237,83 @@ export default function CustomerDetailPage({
     setGoalC(String(calc.goalC));
   }, [calc]);
 
-  const pRatio = useMemo(() => {
-    const k = parseFloat(goalKcal);
-    const p = parseFloat(goalP);
-    if (!k || k === 0) return null;
-    return Math.round((p * 4 / k) * 100);
-  }, [goalKcal, goalP]);
+  // ───────── 目標カロリー / PFC(g) / ％ 相互連動 ─────────
+  // 正本 = goalKcal + grams(goalP/F/C)。％は grams と kcal から導出して表示する。
+  // ・目標カロリー編集 → ％を保持して grams を比例再計算
+  // ・PFC(g) 編集      → kcal = 合計を再計算（％は下の effect が再導出）
+  // ・％編集           → kcal 固定、残り％を他2マクロの現比率で按分し grams 再計算
+  const round1 = (x: number) => Math.round(x * 10) / 10;
+  const FACTOR: Record<'P' | 'F' | 'C', number> = { P: 4, F: 9, C: 4 };
 
-  const fRatio = useMemo(() => {
+  // grams / kcal の変化に追従して ％表示を再計算（編集中のフィールドは上書きしない）
+  useEffect(() => {
     const k = parseFloat(goalKcal);
-    const f = parseFloat(goalF);
-    if (!k || k === 0) return null;
-    return Math.round((f * 9 / k) * 100);
-  }, [goalKcal, goalF]);
+    const toPct = (g: number, factor: number) =>
+      !k || k <= 0 ? '' : String(Math.round(((g * factor) / k) * 100));
+    if (pctFocus.current !== 'P') setPctP(toPct(parseFloat(goalP) || 0, 4));
+    if (pctFocus.current !== 'F') setPctF(toPct(parseFloat(goalF) || 0, 9));
+    if (pctFocus.current !== 'C') setPctC(toPct(parseFloat(goalC) || 0, 4));
+  }, [goalKcal, goalP, goalF, goalC]);
 
-  const cRatio = useMemo(() => {
+  // 目標カロリー編集: ％を保持して grams を比例再計算
+  function handleKcalChange(v: string) {
+    const oldK = parseFloat(goalKcal);
+    setGoalKcal(v);
+    const nk = parseFloat(v);
+    if (!isFinite(nk) || nk <= 0 || !isFinite(oldK) || oldK <= 0) return;
+    const scale = nk / oldK;
+    setGoalP(String(round1((parseFloat(goalP) || 0) * scale)));
+    setGoalF(String(round1((parseFloat(goalF) || 0) * scale)));
+    setGoalC(String(round1((parseFloat(goalC) || 0) * scale)));
+  }
+
+  // PFC(g) 編集: kcal = 合計を再計算（％は effect が再導出）
+  function handleGramChange(which: 'P' | 'F' | 'C', v: string) {
+    if (which === 'P') setGoalP(v);
+    else if (which === 'F') setGoalF(v);
+    else setGoalC(v);
+    const p = parseFloat(which === 'P' ? v : goalP) || 0;
+    const f = parseFloat(which === 'F' ? v : goalF) || 0;
+    const c = parseFloat(which === 'C' ? v : goalC) || 0;
+    setGoalKcal(String(Math.round(p * 4 + f * 9 + c * 4)));
+  }
+
+  // ％編集: kcal 固定、残り％を他2マクロの現比率で按分し grams 再計算
+  function handlePctChange(which: 'P' | 'F' | 'C', v: string) {
+    if (which === 'P') setPctP(v);
+    else if (which === 'F') setPctF(v);
+    else setPctC(v);
     const k = parseFloat(goalKcal);
-    const c = parseFloat(goalC);
-    if (!k || k === 0) return null;
-    return Math.round((c * 4 / k) * 100);
-  }, [goalKcal, goalC]);
+    let np = parseFloat(v);
+    if (!isFinite(k) || k <= 0 || !isFinite(np)) return; // 空・不正値では grams を触らない
+    np = Math.min(100, Math.max(0, np));
+    const remaining = 100 - np;
+    const cur: Record<'P' | 'F' | 'C', number> = {
+      P: parseFloat(pctP) || 0,
+      F: parseFloat(pctF) || 0,
+      C: parseFloat(pctC) || 0,
+    };
+    const others = (['P', 'F', 'C'] as const).filter((m) => m !== which);
+    const sumOthers = cur[others[0]] + cur[others[1]];
+    const pctFor = (m: 'P' | 'F' | 'C') =>
+      m === which ? np : sumOthers > 0 ? remaining * (cur[m] / sumOthers) : remaining / 2;
+    const gramOf = (m: 'P' | 'F' | 'C') => String(round1((k * pctFor(m)) / 100 / FACTOR[m]));
+    setGoalP(gramOf('P'));
+    setGoalF(gramOf('F'));
+    setGoalC(gramOf('C'));
+  }
+
+  // ％編集終了: グラム由来の丸め済み％へ整える
+  function handlePctBlur(which: 'P' | 'F' | 'C') {
+    pctFocus.current = null;
+    const k = parseFloat(goalKcal);
+    if (!isFinite(k) || k <= 0) return;
+    const g = parseFloat(which === 'P' ? goalP : which === 'F' ? goalF : goalC) || 0;
+    const val = String(Math.round(((g * FACTOR[which]) / k) * 100));
+    if (which === 'P') setPctP(val);
+    else if (which === 'F') setPctF(val);
+    else setPctC(val);
+  }
 
   async function save() {
     setSaving(true);
@@ -700,7 +762,7 @@ export default function CustomerDetailPage({
                       step="1"
                       inputMode="decimal"
                       value={goalKcal}
-                      onChange={(e) => setGoalKcal(e.target.value)}
+                      onChange={(e) => handleKcalChange(e.target.value)}
                       className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">kcal</span>
@@ -716,7 +778,7 @@ export default function CustomerDetailPage({
                       step="0.1"
                       inputMode="decimal"
                       value={goalP}
-                      onChange={(e) => setGoalP(e.target.value)}
+                      onChange={(e) => handleGramChange('P', e.target.value)}
                       className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
@@ -724,9 +786,18 @@ export default function CustomerDetailPage({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標タンパク質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
-                    {pRatio !== null ? pRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      inputMode="decimal"
+                      value={pctP}
+                      onFocus={() => { pctFocus.current = 'P'; }}
+                      onChange={(e) => handlePctChange('P', e.target.value)}
+                      onBlur={() => handlePctBlur('P')}
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">%</span>
                   </div>
                 </div>
 
@@ -739,7 +810,7 @@ export default function CustomerDetailPage({
                       step="0.1"
                       inputMode="decimal"
                       value={goalF}
-                      onChange={(e) => setGoalF(e.target.value)}
+                      onChange={(e) => handleGramChange('F', e.target.value)}
                       className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
@@ -747,9 +818,18 @@ export default function CustomerDetailPage({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標脂質（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
-                    {fRatio !== null ? fRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      inputMode="decimal"
+                      value={pctF}
+                      onFocus={() => { pctFocus.current = 'F'; }}
+                      onChange={(e) => handlePctChange('F', e.target.value)}
+                      onBlur={() => handlePctBlur('F')}
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">%</span>
                   </div>
                 </div>
 
@@ -762,7 +842,7 @@ export default function CustomerDetailPage({
                       step="0.1"
                       inputMode="decimal"
                       value={goalC}
-                      onChange={(e) => setGoalC(e.target.value)}
+                      onChange={(e) => handleGramChange('C', e.target.value)}
                       className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">g</span>
@@ -770,12 +850,24 @@ export default function CustomerDetailPage({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-700 mb-1 block">目標炭水化物（％）</label>
-                  <div className="relative w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center text-stone-700">
-                    {cRatio !== null ? cRatio : '—'}
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400">%</span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      inputMode="decimal"
+                      value={pctC}
+                      onFocus={() => { pctFocus.current = 'C'; }}
+                      onChange={(e) => handlePctChange('C', e.target.value)}
+                      onBlur={() => handlePctBlur('C')}
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2 pr-12 text-base text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">%</span>
                   </div>
                 </div>
               </div>
+              <p className="mt-2 text-[11px] text-stone-500 leading-snug">
+                ※ 目標カロリー・PFC（g）・％ は連動します。カロリー変更時は比率を保ってグラムを再計算、％変更時はカロリーを固定して残りを他マクロに再配分します。
+              </p>
             </div>
 
             <button
