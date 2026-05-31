@@ -1,11 +1,20 @@
 # CHANGELOG
 
+## 2026-06-01 – perf(onboarding): iPhone でオンボのスポットライトがカクつく問題を修正（branch: staging）
+- perf: `components/OnboardingFlow.tsx`（/home オンボ）と `components/OnboardingTour.tsx`（/record・/weight・/exercise ツアー）のスポットライト位置追跡を最適化。原因は smooth scroll 中に大量発火する `scroll` イベントごとに `getBoundingClientRect()`＋`setState`（全画面 box-shadow 再描画）を非スロットルで実行し、iOS WebView で強制レイアウト＋再描画ストームが発生していたこと
+- 修正内容: ①scroll/resize ハンドラを `requestAnimationFrame` スロットル化＋`{ passive: true }` 化 ②`scrollIntoView` はステップ入場時に1回だけ（旧: ハンドラ内で毎回呼び自己再帰的に揺れていた）③矩形が実質変化しない場合は `setState` をスキップして再レンダー抑止 ④`transition: all`／`transition-all` をスポットライトから除去（毎フレーム更新される top/left を CSS トランジションが追従して遅延していたため）
+- OnboardingFlow: step 2/3/5/6 の3つの重複 useEffect を単一の追跡 effect に統合（クロス effect での null 上書きの脆さも解消）。対象セレクタ・scrollIntoView 対象は従来と同一で挙動維持
+- 影響範囲: 顧客側 LIFF（/home・/record・/weight・/exercise のオンボ/ツアー表示）。機能は不変、描画パフォーマンスのみ改善。`next build` コンパイル成功（型エラーは vitest devDep 未インストールのローカル環境要因のみで本変更とは無関係）
+- 関連: 社長報告（iPhone 録画 ScreenRecording 05-31）。staging 検証 → 社長 iPhone で体感確認 → OK後に main
+
 ## 2026-05-31 – fix(notion): 登録直後の「顧客が見つかりません」（運動/体重保存エラー）を修正
 - fix: `getCustomerByLineId` の「顧客なし(null)」キャッシュ TTL を 30分 → **15秒**に短縮（`CUSTOMER_NOTFOUND_CACHE_TTL_MS`）。登録前に開いた等で stale な null が残り、登録直後に別インスタンスで運動/体重保存が「顧客が見つかりません」(404)になる事象の根本対策
 - fix: `createCustomer`（登録）時に当該 lineUserId の個別キャッシュ `${tenantId}:customer:${lineUserId}` を `invalidate`。登録を処理したインスタンスは即時に新顧客を解決可能に
 - 症状: 食事は通る（別インスタンス）が運動/体重だけ「顧客が見つかりません」になる不整合。両者とも `getCustomerByLineId` 必須だが、null を30分キャッシュしたインスタンスに当たると落ちていた
 - 影響範囲: バックエンド `lib/notion.ts` のみ。顧客側の登録→記録フローのバグ修正。tsc／本番build パス。staging→確認後 本番へ
 - 関連: 社長報告（staging で運動/体重保存エラー）
+
+## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセットボタンを復活（staging / 本番にも同時反映）
 - feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` 更新 → 顧客の次回 LIFF 起動でツアー再表示
 - 配置: 目標(PFC)直下・アカウント削除の直上。顧客管理のみ。`0132322` で消えた実装を当時のまま復元（`RotateCcw` import 追加）
 - 影響範囲: 管理画面のみ。顧客側UI・DB変更なし。tsc／本番build パス

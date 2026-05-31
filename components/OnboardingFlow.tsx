@@ -27,75 +27,57 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   const [completing, setCompleting] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
+  // スポットライト対象の位置を追跡。
+  // 旧実装は smooth scroll 中に大量発火する scroll イベントごとに
+  // getBoundingClientRect + setState（全画面 box-shadow 再描画）を走らせており
+  // iOS でカクついていた。rAF スロットル + passive + 値が変わらなければ再レンダー抑止で解消。
   useEffect(() => {
-    if (step !== 2) {
+    const selector =
+      step === 2
+        ? '[data-tour="footer-record"]'
+        : step === 3
+        ? '[data-onboarding="meal-cards"]'
+        : step === 5 || step === 6
+        ? '[data-tour="today-record-card"]'
+        : null;
+    if (!selector) {
       setSpotlightRect(null);
       return;
     }
-    function updateRect() {
-      const el = document.querySelector('[data-tour="footer-record"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-      } else {
-        setSpotlightRect(null);
-      }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 300);
-    window.addEventListener('resize', updateRect);
-    return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-    };
-  }, [step]);
+    // footer は固定要素なのでスクロール不要。それ以外は対象を画面中央へ（ステップ入場時に一度だけ）
+    const needsScroll = step === 3 || step === 5 || step === 6;
 
-  useEffect(() => {
-    if (step !== 3) {
-      if (step !== 2) setSpotlightRect(null);
-      return;
-    }
-    function updateRect() {
-      const el = document.querySelector('[data-onboarding="meal-cards"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      } else {
+    let raf = 0;
+    let lastKey = '';
+    const measure = () => {
+      raf = 0;
+      const el = document.querySelector(selector);
+      if (!el) {
         setSpotlightRect(null);
+        return;
       }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 400);
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
-    return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
+      const r = el.getBoundingClientRect();
+      const key = `${Math.round(r.top)},${Math.round(r.left)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (key !== lastKey) {
+        lastKey = key;
+        setSpotlightRect(r);
+      }
     };
-  }, [step]);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
 
-  useEffect(() => {
-    if (step !== 5 && step !== 6) {
-      if (step !== 2 && step !== 3) setSpotlightRect(null);
-      return;
-    }
-    function updateRect() {
-      const el = document.querySelector('[data-tour="today-record-card"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      } else {
-        setSpotlightRect(null);
-      }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 400);
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
+    const el = document.querySelector(selector);
+    if (el && needsScroll) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    measure();
+    const id = window.setTimeout(schedule, 400);
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('scroll', schedule, { passive: true, capture: true });
     return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
+      if (raf) cancelAnimationFrame(raf);
+      window.clearTimeout(id);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
     };
   }, [step]);
 
@@ -147,7 +129,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         <>
           <div
             aria-hidden
-            className="absolute rounded-2xl pointer-events-none transition-all duration-300"
+            className="absolute rounded-2xl pointer-events-none"
             style={spotlightStyle}
           />
         </>
