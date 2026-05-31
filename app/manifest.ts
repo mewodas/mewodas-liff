@@ -12,9 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
+        src: '/fitmeal-favicon.png',
+        sizes: '256x256',
+        type: 'image/png',
         purpose: 'any',
       },
     ],
