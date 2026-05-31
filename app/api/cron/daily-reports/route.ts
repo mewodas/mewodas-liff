@@ -20,6 +20,10 @@ import { runInTenantContext } from '@/lib/tenantContext';
 import { buildReportVariables } from '@/lib/reports/variables';
 import { resolveDateRange } from '@/lib/reports/dateRange';
 import { listAllRules, isScheduledReportsConfigured } from '@/lib/scheduledReports';
+import { computeAndStoreTenantRisk } from '@/lib/customerRiskService';
+import { listCustomerRiskByTenant } from '@/lib/repository/customerRisk';
+import { createAnnouncement, listAllAnnouncementsAdmin, isAnnouncementsConfigured } from '@/lib/announcements';
+import type { CustomerRiskRow } from '@/lib/repository/customerRisk';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,6 +41,8 @@ function applyVars(s: string, vars: Record<string, string>): string {
 
 // JST 曜日インデックス 0=日〜6=土 を日本語曜日名に変換
 const JST_WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
+const CURRENT_ENV = process.env.VERCEL_TARGET_ENV || process.env.VERCEL_ENV || 'development';
 
 /**
  * 月末フォールバック: 対象月に dayOfMonth が存在しない場合は末日を返す。
@@ -84,9 +90,39 @@ function tenantToConfig(r: Awaited<ReturnType<typeof listTenantRows>>[number]): 
     lineChannelToken: r.lineChannelToken ?? undefined,
     lineAutoSendEnabled: r.lineAutoSendEnabled,
     autoSendTime: r.autoSendTime ?? undefined,
+    riskAlertEnabled: r.riskAlertEnabled,
     themeColor: '#059669',
     defaultGoals: { kcal: 2000, P: 100, F: 56, C: 275 },
   };
+}
+
+function riskLabel(row: CustomerRiskRow): string {
+  const labels: string[] = [];
+
+  const d = row.daysSinceLastRecord;
+  if (d === null || d >= 1) {
+    if (d === 1) labels.push('記録漏れ');
+    else if (d === 2) labels.push('記録漏れ2日');
+    else labels.push('記録漏れ2日以上');
+  }
+
+  const w = row.daysSinceLastWeight;
+  if (w === null || w >= 1) {
+    if (w === 1) labels.push('体重記載漏れ');
+    else if (w === 2) labels.push('体重記載漏れ2日');
+    else labels.push('体重記載漏れ2日以上');
+  }
+
+  if (row.weightStalled) labels.push('体重停滞');
+
+  return labels.join('、');
+}
+
+function isAtRisk(row: CustomerRiskRow): boolean {
+  if (row.daysSinceLastRecord === null || row.daysSinceLastRecord >= 1) return true;
+  if (row.daysSinceLastWeight === null || row.daysSinceLastWeight >= 1) return true;
+  if (row.weightStalled) return true;
+  return false;
 }
 
 export async function GET(req: NextRequest) {
@@ -95,16 +131,97 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   const now = jstNow();
+  const todayDate = fmtDate(now);
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayDate = fmtDate(yesterday);
+
+  // ---- リスクお知らせ処理（レポート設定と独立して毎日実行）----
+  const riskAlertResults: Array<{
+    tenantId: string;
+    status: 'sent' | 'skipped' | 'disabled' | 'no_at_risk' | 'already_sent' | 'error';
+    atRiskCount?: number;
+    error?: string;
+  }> = [];
+
+  if (isAnnouncementsConfigured()) {
+    try {
+      const allTenantRowsForRisk = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+      // dedupe 用: 今日すでに送信済みのお知らせを全取得
+      const existingAnnouncements = await listAllAnnouncementsAdmin();
+      const sentTodayTenants = new Set<string>(
+        existingAnnouncements
+          .filter((a) => {
+            if (a.audience !== '店舗向け') return false;
+            if (!a.title.startsWith('【本日の要注意顧客')) return false;
+            const createdDate = a.createdAt ? a.createdAt.slice(0, 10) : '';
+            return createdDate === todayDate;
+          })
+          .flatMap((a) => a.targetTenants)
+      );
+
+      for (const tenantRow of allTenantRowsForRisk) {
+        if (!tenantRow.tenantId || tenantRow.status === '解約') continue;
+        if (!tenantRow.riskAlertEnabled) {
+          riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'disabled' });
+          continue;
+        }
+        if (!tenantRow.customerDbId || !tenantRow.foodDbId) {
+          riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'error', error: '顧客DB/食事DBが未設定' });
+          continue;
+        }
+        if (sentTodayTenants.has(tenantRow.tenantId)) {
+          riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'already_sent' });
+          continue;
+        }
+
+        const tenantConfig = tenantToConfig(tenantRow);
+        try {
+          await runInTenantContext(tenantConfig, () => computeAndStoreTenantRisk());
+
+          const risks = await listCustomerRiskByTenant(tenantRow.tenantId, CURRENT_ENV);
+          const atRisk = risks.filter(isAtRisk);
+
+          if (atRisk.length === 0) {
+            riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'no_at_risk', atRiskCount: 0 });
+            continue;
+          }
+
+          const lines = atRisk.map((r) => `・${r.name ?? '(名前なし)'}: ${riskLabel(r)}`).join('\n');
+          const body = `${lines}\n\n進捗管理で詳細を確認できます。`;
+
+          await createAnnouncement({
+            title: `【本日の要注意顧客 ${atRisk.length}名】`,
+            body,
+            audience: '店舗向け',
+            importance: '重要',
+            pinned: false,
+            targetTenants: [tenantRow.tenantId],
+            publishedAt: todayDate,
+          });
+
+          riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'sent', atRiskCount: atRisk.length });
+        } catch (e) {
+          riskAlertResults.push({
+            tenantId: tenantRow.tenantId,
+            status: 'error',
+            error: e instanceof Error ? e.message : 'unknown',
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[cron/daily-reports] riskAlert processing failed', e);
+    }
+  }
+  // ---- リスクお知らせ処理ここまで ----
 
   if (!isScheduledReportsConfigured()) {
     return NextResponse.json({
       ok: false,
       reason: 'SCHEDULED_REPORTS_DB_ID 未設定',
       executedAt: now.toISOString(),
+      riskAlertResults,
     });
   }
 
@@ -119,6 +236,7 @@ export async function GET(req: NextRequest) {
       jstHour: now.getHours(),
       firingRules: 0,
       results: [],
+      riskAlertResults,
     });
   }
 
@@ -339,5 +457,6 @@ export async function GET(req: NextRequest) {
     jstHour: now.getHours(),
     firingRules: firingRules.length,
     results,
+    riskAlertResults,
   });
 }

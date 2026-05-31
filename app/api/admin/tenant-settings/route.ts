@@ -7,44 +7,57 @@ import { FITMEAL_TENANTS_DB_ID, invalidateTenantCache } from '@/lib/tenantResolv
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// 現在テナントの SaaS 運用設定を取得・更新する。
-// 現状は招待モード（individual / approval）のみ。
-// 拡張予定: 自動承認・通知設定など。
-
 export const GET = withAdminTenant(async () => {
   const tenant = getCurrentTenant();
   return NextResponse.json({
     tenantId: tenant.id,
     tenantName: tenant.name,
     inviteMode: tenant.inviteMode ?? 'individual',
+    riskAlertEnabled: tenant.riskAlertEnabled ?? false,
   });
 });
 
 export const PATCH = withAdminTenant(async (req: NextRequest) => {
-  let body: { inviteMode?: 'individual' | 'approval' };
+  let body: { inviteMode?: 'individual' | 'approval'; riskAlertEnabled?: boolean };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-  const inviteMode = body.inviteMode;
-  if (inviteMode !== 'individual' && inviteMode !== 'approval') {
-    return NextResponse.json(
-      { error: 'inviteMode は "individual" または "approval" のみ指定可能です' },
-      { status: 400 }
-    );
+
+  const patch: { inviteMode?: 'individual' | 'approval'; riskAlertEnabled?: boolean } = {};
+
+  if (body.inviteMode !== undefined) {
+    if (body.inviteMode !== 'individual' && body.inviteMode !== 'approval') {
+      return NextResponse.json(
+        { error: 'inviteMode は "individual" または "approval" のみ指定可能です' },
+        { status: 400 }
+      );
+    }
+    patch.inviteMode = body.inviteMode;
+  }
+
+  if (body.riskAlertEnabled !== undefined) {
+    patch.riskAlertEnabled = !!body.riskAlertEnabled;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: '更新するフィールドがありません' }, { status: 400 });
   }
 
   const tenant = getCurrentTenant();
-  // Notion テナント DB を更新するために pageId が必要
   const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
   const row = rows.find((r) => r.tenantId === tenant.id);
   if (!row) {
     return NextResponse.json({ error: 'tenant_not_found_in_notion' }, { status: 404 });
   }
 
-  await updateTenantRow(row.pageId, { inviteMode });
+  await updateTenantRow(row.pageId, patch);
   invalidateTenantCache();
 
-  return NextResponse.json({ ok: true, tenantId: tenant.id, inviteMode });
+  return NextResponse.json({
+    ok: true,
+    tenantId: tenant.id,
+    ...patch,
+  });
 });

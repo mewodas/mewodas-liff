@@ -48,6 +48,7 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
       autoSendTime: r.autoSendTime ?? undefined,
       // 招待モード: Notion 未設定なら 'individual'（既定）にフォールバック
       inviteMode: r.inviteMode ?? 'individual',
+      riskAlertEnabled: r.riskAlertEnabled,
       pfcRecommendedP: r.pfcRecommendedP,
       pfcRecommendedF: r.pfcRecommendedF,
       pfcRecommendedC: r.pfcRecommendedC,

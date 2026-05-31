@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-05-31 – feat: 顧客リスクお知らせ自動配信＋テナント設定 ON/OFF
+- feat: `riskAlertEnabled`（既定 false）をテナント設定に追加（`lib/notion.ts` TenantRow・`updateTenantRow` パッチ・`listTenantRows` パース・`lib/tenant.ts` TenantConfig・`lib/tenantResolver.ts` ロード）。Notion DB カラム名「リスクアラート」(checkbox)
+- feat: `/api/admin/tenant-settings` GET/PATCH に `riskAlertEnabled` を追加。店舗(tenant_admin)が自テナントの設定のみ変更可能
+- feat: `/store/notifications` 新規ページ（トグル UI）。AdminShell の設定ドロップダウンに「通知設定」タブを追加（storeOnly）
+- feat: `app/api/cron/daily-reports/route.ts` にリスクお知らせ処理を追加（レポート配信ループと独立）。`riskAlertEnabled=true` のテナントのみ `computeAndStoreTenantRisk` → `listCustomerRiskByTenant` → `createAnnouncement`（audience='店舗向け'）。dedupe: 当日タイトル「【本日の要注意顧客」+ targetTenants で重複スキップ。該当者0名の日は作成しない
+- 影響範囲: 管理画面・API・Cron。顧客側 LIFF 変更なし
+- マルチテナント: 越境禁止は targetTenants を各テナントID に限定することで担保
+
 ## 2026-05-31 – security(P1残): アカウント削除のPIIカスケード（branch: security/account-delete / staging検証前）
 - security: `DELETE /api/account`（顧客の自己アカウント削除）を、顧客アーカイブのみ → **全健康データの物理削除カスケード**に拡張。`verifiedLineUserId` に厳密スコープして食事記録(Notion)・体重ログ・体組成ログ・運動ログを削除し、Neon `customer_risk` 行も物理削除（`deleteCustomerRiskByLineUser` 追加）。個人情報保護法の「削除権」対応
 - 実装: 顧客アーカイブ＋customer_risk 削除は即時、健康データ一括削除は `waitUntil` で背景実行（maxDuration 60s）。各削除は try/catch で部分失敗でも続行、削除件数を `account.delete` 監査ログに記録
