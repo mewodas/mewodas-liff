@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## 2026-05-31 – security(顧客側): LIFF レコード/通知の所有者照合・nutrition-label 認証（branch: security/customer-liff / staging検証中）
+## 2026-05-31 – test(#10): vitest 導入＋P0トークン混同の回帰テスト（branch: security/regression-tests）
+- test: `vitest`（+ `@vitest/coverage-v8`・`vite-tsconfig-paths`）を devDependency 追加、`vitest.config.ts`・`npm test` スクリプト整備
+- test: `__tests__/lib/auth-token-separation.test.ts` 追加（14 ケース・全パス）。P0 CRITICAL「リセット/招待/legacy/role欠落 トークンの admin_session 流用による master 昇格」が再発しないことを保証（verifySession は typ=session かつ role 有効のみ受理、verifyResetToken は逆方向の混同も拒否）
+- 影響範囲: 開発ツールのみ（本番ランタイム・顧客側に影響なし、`next build` は __tests__ を無視）。本番ビルド・tsc 通過確認済
+- 関連: 監査 project_security_audit_2026_05_31 設計#10（クロステナント pageId→403 の integration テストは Notion モックが要るため後続）
+
+
 - security: **同一テナント内クロス顧客 IDOR 封鎖**。`lib/notion.ts` `assertFoodRecordOwnership(pageId, expectedLineUserId?)` に所有者(LINE_UserID)照合を追加し、`app/api/record/update`・`app/api/delete` から `verifiedLineUserId` を渡す。他顧客の食事記録を pageId 指定で改竄/削除できる脆弱性を封鎖（管理API＝運営/店舗は省略でテナント所属チェックのみ＝全顧客操作可、不変）
 - security: **通知既読の IDOR 封鎖**。`lib/notifications.ts` `markNotificationRead(id, expectedLineUserId?)` に所有者(LINEユーザーID)照合を追加、`app/api/notifications/[id]/read` から `verifiedLineUserId` を渡す（他顧客通知の既読化を防止）。不一致は 403
 - security: **`/api/record/nutrition-label` 認証必須化**。素の POST を `withLiffTenant` で保護（無認証の Gemini コスト濫用を封鎖）。呼び出し元 `app/record/page.tsx` は apiFetch 経由で Bearer 付与済のため正常動作
