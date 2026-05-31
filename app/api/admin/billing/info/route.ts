@@ -13,9 +13,13 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withAdminTenant(async () => {
   const tenant = getCurrentTenant();
+  // テナント行は 1 回だけ取得し、getSeatStatus にも同じ Promise を渡して
+  // Notion への listTenantRows クエリ重複（旧: 1 リクエストで 2 本）を解消。
+  // Promise を共有するため並列性は維持される。
+  const rowsPromise = listTenantRows(FITMEAL_TENANTS_DB_ID);
   const [rows, seatStatus] = await Promise.all([
-    listTenantRows(FITMEAL_TENANTS_DB_ID),
-    getSeatStatus(),
+    rowsPromise,
+    getSeatStatus({ tenantRows: rowsPromise }),
   ]);
   const t = rows.find((r) => r.tenantId === tenant.id);
   if (!t) {
