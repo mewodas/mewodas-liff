@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセット（オンボーディング再表示）ボタンを復活
+- feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` を更新 → 顧客が次回 LIFF 起動時にホーム＋食事記録ツアーを再表示
+- 配置: 目標(PFC)セクションの直下・アカウント削除の直上。顧客管理（顧客詳細）にのみ追加
+- 復元元: 5セクション削除（`0132322`）で消えた `resetOnboarding` ハンドラ＋state＋ボタンUIを当時のまま復元（`RotateCcw` import 追加）。バックエンドAPIは変更なし
+- 影響範囲: 管理画面（/store・/admin 顧客詳細）のみ。顧客側UI・DBスキーマ変更なし。tsc／本番build パス。staging・本番 両方へ反映
+- 関連: 社長依頼
+
 ## 2026-05-31 – fix(favicon): FitMeal ロゴのタブ表示サイズを他タブと統一（main直反映・社長指示 / commit 3701b2a）
 - fix: 丼ロゴ周囲の透明余白を切り詰め、`app/favicon.ico`・`public/fitmeal-favicon.png` を再生成。タブ内のロゴ充填率を 78%→95% に拡大し、メヲダス等の他タブ favicon と見た目サイズを揃えた（`fitmeal-icon.png` マスターは不変、favicon 派生ファイルのみ再生成）
 - 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）。ブラウザの favicon キャッシュが強いため、反映には強制リロード/キャッシュ削除が必要な場合あり
