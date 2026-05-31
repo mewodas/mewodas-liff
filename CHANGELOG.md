@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## 2026-05-31 – feat: 顧客リスクお知らせ自動配信＋テナント設定 ON/OFF
+## 2026-05-31 – chore: ファビコンを FitMeal ロゴに統一（branch: staging / 全画面ブラウザタブ）
+- chore: ブラウザタブ/PWA アイコンを旧 `/icon.svg`（緑「メ」）から FitMeal ロゴに変更。`public/fitmeal-favicon.png`（fitmeal-icon.png を 256px 化）を新規追加し、`app/layout.tsx` の `metadata.icons`（icon/apple）と `app/manifest.ts` の icons を差し替え。`app/favicon.ico`（Next 規約・/favicon.ico 自動配信）も fitmeal-icon.png からマルチサイズ再生成し、ブラウザのデフォルト取得先も FitMeal ロゴに統一
+- 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）。staging 検証 → 社長OK後に main
+- 関連: メヲダス intake 側のファビコン追加は HP リポジトリで別途対応済み（mewodas.com アイコン）
+
+
 - feat: `riskAlertEnabled`（既定 false）をテナント設定に追加（`lib/notion.ts` TenantRow・`updateTenantRow` パッチ・`listTenantRows` パース・`lib/tenant.ts` TenantConfig・`lib/tenantResolver.ts` ロード）。Notion DB カラム名「リスクアラート」(checkbox)
 - feat: `/api/admin/tenant-settings` GET/PATCH に `riskAlertEnabled` を追加。店舗(tenant_admin)が自テナントの設定のみ変更可能
 - feat: `/store/notifications` 新規ページ（トグル UI）。AdminShell の設定ドロップダウンに「通知設定」タブを追加（storeOnly）
