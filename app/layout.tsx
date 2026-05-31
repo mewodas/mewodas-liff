@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     title: "FitMeal",
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/fitmeal-favicon.png",
+    apple: "/fitmeal-favicon.png",
   },
 };
 
