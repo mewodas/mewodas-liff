@@ -21,6 +21,8 @@ export type TenantConfig = {
   id: string;
   /** ジム名（表示用） */
   name: string;
+  /** Notion「FitMeal テナント」DB の当該行ページID。resolver 経由で読み込むと埋まる（設定更新の高速化用） */
+  notionPageId?: string;
   /** Notion API Token */
   notionApiKey: string;
   /** Notion 顧客DB ID */

@@ -12,6 +12,12 @@
 - 影響範囲: 顧客側 LIFF（運動記録の保存）。staging・本番 両方。tsc／本番build パス
 - 関連: 社長報告（運動保存エラー）
 
+## 2026-06-01 – perf(store): 通知設定トグル（リスクお知らせON/OFF）の体感即時化＋保存高速化（branch: staging）
+- fix(UI): `app/store/notifications/page.tsx` のトグルを楽観的更新に変更。クリックで即スイッチを反映し保存はバックグラウンド実行、失敗時のみロールバック（旧実装は Notion 書き込み完了まで〜5秒スイッチが動かず disabled だった）
+- perf(API): `app/api/admin/tenant-settings` PATCH が pageId 取得のためだけに全テナントDBを毎回 Notion クエリしていたのを、解決済みテナントの `notionPageId`（resolver 5分メモリキャッシュ）利用に変更。トグル保存の Notion 往復が 2回→1回（書き込みのみ）に短縮。`lib/tenant.ts` に `notionPageId?` 追加・`lib/tenantResolver.ts` で設定。未設定時は従来の listTenantRows クエリにフォールバック
+- 影響範囲: 店舗(/store 通知設定)・API・lib バックエンド。顧客側UI・DBスキーマ変更なし
+- 関連: 社長フィードバック「ON/OFF 切替が即時でない（〜5秒かかる）」
+
 ## 2026-06-01 – fix(repo): 体重/運動/体組成 保存の間欠エラーを修正（Notionリトライ追加）
 - fix: `lib/repository/weightLogs.ts`・`exerciseLogs.ts`・`bodyComposition.ts` の自前 `notionRequest` に、中央 `lib/notion.ts` と同方式の**リトライ（429/502/503/504・ネットワーク断を指数バックオフ最大3回＋30sタイムアウト）**を追加
 - 経緯: これら3 repo は中央のリトライ処理を使わず単発 fetch だったため、Notion の一時障害で**体重/運動/体組成の記録保存が間欠的に失敗**（「記録が保存できませんでした」）していた。staging で再現報告
