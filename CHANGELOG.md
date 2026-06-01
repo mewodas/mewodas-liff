@@ -4,6 +4,13 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-02 – change(admin/store): サイドバー排他ハイライト ＋ 顧客プルダウン文言統一 ＋ 体組成を進捗管理スタイルのプルダウンに ＋ 大画面の左右余白を解消（branch: staging）
+- change: `app/admin/AdminShell.tsx`（コンテンツ幅）。`main` の `max-w-5xl mx-auto` を撤廃し `w-full`（＋`lg:px-6`）に。大画面で中央寄せにより左右へ大きな余白（隙間）が出ていたのを解消し、PCサイズと同じく幅いっぱいに表示
+- change: `app/admin/AdminShell.tsx`（サイドバー）。サイドバーのハイライトを**単一フォーカス（排他）**に。グループ展開中（矢印クリック）はトップ項目（現在地）の色を消し**展開した親のみ**色。子クリックで**親＋子**に色。グループ展開はアコーディオン化（progress/settings は同時に開かない）。`anyGroupOpen` 導入＋トップ項目の色判定を `active && !anyGroupOpen` に
+- change: 顧客選択プルダウンの文言を全画面「**顧客を選択してください**」に統一。`app/admin/progress/page.tsx`・`app/admin/meals/page.tsx`（「すべての顧客」→。未選択=全件表示の挙動は維持）、`app/admin/reports/page.tsx`（「選択してください」→）。`analysis` は既に同文言
+- change: `app/admin/measurements/page.tsx`（体組成計測記録）。前回の「検索駆動」を取り下げ、**進捗管理と同じ絞り込みUI**（店舗フィルタ＋顧客プルダウン「顧客を選択してください」＋ステータスフィルタ）に変更。プルダウンで顧客選択→登録フォーム・履歴。フィルタ変更時は選択リセット。未使用化した検索/StatusBadge/関連 import を整理
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ2件）。※「大画面でのサイズ統一」は要確認のため別途
 
 ## 2026-06-01 – change(store): 顧客詳細の「ツアーリセット」を運営(/admin)専用に（店舗では非表示）（branch: staging）
 - change: `app/admin/customers/[id]/page.tsx`（顧客詳細・店舗は同ファイルを re-export）。「ツアーリセット」セクション（ホーム＋食事記録の初回ガイド再表示）を `isStore`(`base === '/store'`) 判定で `{!isStore && (...)}` ラップ。運営(/admin)側のみ表示、店舗(/store)側は非表示に。DELETE API (`/api/admin/customers/[id]/onboarding`) は変更なし（運営からのみ実行）
