@@ -125,7 +125,12 @@ export const GET = withAdminTenant(async (req) => {
       if (c.lineUserId) indexByLineId.set(c.lineUserId, i);
     }
 
+    // 食事・体重・運動の3フェーズは互いに独立（progress の別フィールドに書く）なので並列実行。
+    // 直列だと Notion 往復＋リトライが積み上がり遅かった（顧客一覧の表示遅延の主因）。
+    const phases: Promise<void>[] = [];
+
     // 食事記録（今日分を一括取得してクライアントで振り分け）
+    phases.push((async () => {
     if (foodDbId && apiKey) {
       try {
         const results: any[] = [];
@@ -162,8 +167,10 @@ export const GET = withAdminTenant(async (req) => {
         // 食事DB エラーは無視してその他は継続
       }
     }
+    })());
 
     // 体重（今日・昨日を顧客ごとに並列取得）
+    phases.push((async () => {
     if (weightDbId && apiKey) {
       await runWithConcurrency(customers, 5, async (customer) => {
         if (!customer.lineUserId) return;
@@ -197,8 +204,10 @@ export const GET = withAdminTenant(async (req) => {
         }
       });
     }
+    })());
 
     // 運動記録（今日分を一括取得してクライアントで振り分け）
+    phases.push((async () => {
     if (exerciseDbId && apiKey) {
       try {
         const results: any[] = [];
@@ -232,6 +241,9 @@ export const GET = withAdminTenant(async (req) => {
         // 運動DB エラーは無視
       }
     }
+    })());
+
+    await Promise.all(phases);
 
     return NextResponse.json({ progress, today: selectedDate });
   } catch (e) {

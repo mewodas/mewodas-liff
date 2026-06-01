@@ -934,7 +934,7 @@ export default function RecordPage() {
           <HubButton
             data-tour="record-text"
             icon={<FileText className="w-7 h-7 text-emerald-600" strokeWidth={2} />}
-            label="テキストで記録"
+            label="テキスト記録"
             onClick={() => setStage('memo')}
           />
         </div>

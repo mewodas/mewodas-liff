@@ -1,10 +1,18 @@
 # CHANGELOG
 
+## 2026-06-01 – perf(progress)+style(record): 進捗管理の表示高速化 / 「テキスト記録」カードの2行折返し解消（branch: staging）
+- perf: `app/api/admin/progress/route.ts` の食事・体重・運動の3データ取得フェーズを**直列→並列(`Promise.all`)化**。各フェーズは progress の別フィールド（today/weight/exercise）にのみ書くため競合なし。直列だと Notion 往復＋リトライが積み上がり、進捗管理(/store/progress)の顧客表示が ~10秒かかっていたのを短縮（体感の主因に対処）
+- style: `app/record/page.tsx` の食事記録ハブのカード「テキストで記録」(7文字)が iPhone のカード幅で2行に折返していたため、ラベルを「テキスト記録」(6文字・他カードと同じ収まり)に変更。フォントサイズは他カードと統一のまま1行に
+- 影響範囲: 管理画面API(/api/admin/progress＝/store・/admin 進捗管理) / 顧客側 LIFF(/record カード表示)。ロジック・データ内容は不変
+- 関連: 社長報告（進捗管理が10秒/IMG_4755 テキストカード2行）。残: サイドバー選択色・見出しフォント・バッジ/お知らせアイコンのサイズ調整は AdminShell（並行作業中）のため要調整
+
 ## 2026-06-01 – fix(exercise-log): 運動保存を「顧客null でも続行」に変更（体重と同挙動）＋原因ログ
 - fix: `app/api/exercise-log` で `getCustomerByLineId` が null（顧客が見つからない）でも **404 にせず運動記録を保存**（customerName は表示用のみのため `?? ''`）。体重保存(`/api/log/weight`)が既に採用している `.catch(()=>null)`＋null許容 と同方式に統一
 - 経緯: staging で「運動保存に失敗: 顧客が見つかりません」が恒常的に発生（ホームには顧客の体重目標が表示されるのに運動だけ顧客null）。テナント解決の食い違い（`FITMEAL_TENANT_ID_OVERRIDE` 絡み）が疑われるが、まず体重と同じ寛容挙動でブロック解消。`console.error` に tenant/lineUserId を記録し根本原因を追跡可能に
 - 影響範囲: 顧客側 LIFF（運動記録の保存）。staging・本番 両方。tsc／本番build パス
 - 関連: 社長報告（運動保存エラー）
+
+## 2026-06-01 – fix(repo): 体重/運動/体組成 保存の間欠エラーを修正（Notionリトライ追加）
 - fix: `lib/repository/weightLogs.ts`・`exerciseLogs.ts`・`bodyComposition.ts` の自前 `notionRequest` に、中央 `lib/notion.ts` と同方式の**リトライ（429/502/503/504・ネットワーク断を指数バックオフ最大3回＋30sタイムアウト）**を追加
 - 経緯: これら3 repo は中央のリトライ処理を使わず単発 fetch だったため、Notion の一時障害で**体重/運動/体組成の記録保存が間欠的に失敗**（「記録が保存できませんでした」）していた。staging で再現報告
 - 影響範囲: バックエンド（顧客の体重/運動/体組成 記録保存の信頼性向上）。staging・本番 両方に反映。tsc／本番build パス
