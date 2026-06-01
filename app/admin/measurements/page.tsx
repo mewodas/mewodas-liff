@@ -457,50 +457,55 @@ export default function MeasurementsPage() {
                   className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                {STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setStatusFilter(s)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
-                      statusFilter === s
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-white text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-              {stores.length > 0 && (
-                <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setStoreFilter('')}
-                    className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
-                      storeFilter === ''
-                        ? 'bg-violet-500 text-white border-violet-500'
-                        : 'bg-white text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    全店舗
-                  </button>
-                  {stores.map((s) => (
-                    <button
-                      key={s.storeId}
-                      type="button"
-                      onClick={() => setStoreFilter(s.storeId)}
-                      className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
-                        storeFilter === s.storeId
-                          ? 'bg-violet-500 text-white border-violet-500'
-                          : 'bg-white text-stone-700 border-stone-300'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
+              {/* フィルタは検索した時のみ表示（初期は検索バーのみのスッキリ運用） */}
+              {q.trim() && (
+                <>
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {STATUSES.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStatusFilter(s)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
+                          statusFilter === s
+                            ? 'bg-emerald-500 text-white border-emerald-500'
+                            : 'bg-white text-stone-700 border-stone-300'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {stores.length > 0 && (
+                    <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                      <button
+                        type="button"
+                        onClick={() => setStoreFilter('')}
+                        className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                          storeFilter === ''
+                            ? 'bg-violet-500 text-white border-violet-500'
+                            : 'bg-white text-stone-700 border-stone-300'
+                        }`}
+                      >
+                        全店舗
+                      </button>
+                      {stores.map((s) => (
+                        <button
+                          key={s.storeId}
+                          type="button"
+                          onClick={() => setStoreFilter(s.storeId)}
+                          className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                            storeFilter === s.storeId
+                              ? 'bg-violet-500 text-white border-violet-500'
+                              : 'bg-white text-stone-700 border-stone-300'
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -508,7 +513,12 @@ export default function MeasurementsPage() {
               <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
             )}
 
-            {loadingCustomers ? (
+            {!q.trim() ? (
+              <div className="text-center text-stone-500 py-12 bg-white rounded-2xl border border-stone-200 text-sm flex items-center justify-center gap-2">
+                <Search className="w-4 h-4 text-stone-400" strokeWidth={2.2} />
+                氏名で検索すると顧客が表示されます
+              </div>
+            ) : loadingCustomers ? (
               <div className="text-center text-stone-500 py-10">読み込み中…</div>
             ) : filtered.length === 0 ? (
               <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>

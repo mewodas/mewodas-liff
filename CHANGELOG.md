@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – change(admin/store): サイドバー展開時の親ハイライト ＋ タイトル文字サイズ統一 ＋ ロールバッジにアイコン ＋ 体組成を検索駆動に（branch: staging）
+- change: `app/admin/AdminShell.tsx`。(1) 進捗管理／設定グループを**展開した時に親もアクセント色**で点灯（従来は子がアクティブな時のみ。`progressActive`→`progressOpen` / `settingsActive`→`settingsOpen`。左アクセントバーは現在地のみ維持）。(2) トップバーのページタイトルを `text-sm`→`text-base` にしサイドバーメニューと同サイズに。(3) ロールバッジ（店舗/アドミン）に `w-4 h-4` アイコン（店舗=Store / アドミン=ShieldCheck）を追加し、ベルアイコン(`w-4 h-4`)とサイズを統一
+- change: `app/admin/measurements/page.tsx`（体組成計測記録）。顧客選択を**検索駆動**に変更。初期は検索バーのみ表示（一覧・フィルタ非表示）、氏名検索した時のみ候補一覧＋フィルタを表示→クリックで登録画面へ。空検索時は「氏名で検索すると顧客が表示されます」ヒント
+- 影響範囲: 管理画面（/admin・/store）のシェル＋体組成記録のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ2件）
+
 ## 2026-06-01 – change(admin): 顧客リストを縦1列リストへ戻す ＋ 招待URLコピーを検索下へ移動 ＋ 体組成記録の顧客検索を顧客管理と同じUI/UXに（branch: staging）
 - change: `app/admin/customers/page.tsx`。(1) 顧客一覧を `grid md:grid-cols-2 xl:grid-cols-3`（393c714 のレスポンシブグリッド）から元の `divide-y` 縦1列リストへ戻す（社長指示・スクショの縦リストに統一）。(2)「招待URLをコピー」ボタンを検索カード（氏名検索＋ステータス／店舗フィルタ）の上→下へ移動。上限到達時ツールチップ等の挙動は不変
 - change: `app/admin/measurements/page.tsx`（体組成計測記録）。顧客選択を `<select>` ドロップダウンから、顧客管理と同じ「検索バー＋ステータス／店舗フィルタ pill＋クリック可能な縦1列カード一覧（名前・各種バッジ・体重/目標kcal/PFCの2行）」に刷新。選択後は「選択中の顧客＋別の顧客を選ぶ」ヘッダー→既存の記録フォーム・履歴へ。`/api/admin/stores` を追加取得、`StatusBadge` を移植

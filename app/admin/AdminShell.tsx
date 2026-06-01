@@ -283,7 +283,7 @@ export default function AdminShell({
                       onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
                       aria-expanded={progressOpen}
                       className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                        progressActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                        progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                       }`}
                     >
                       <span
@@ -332,7 +332,7 @@ export default function AdminShell({
                 onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
                 aria-expanded={settingsOpen}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  settingsActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                  settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                 }`}
               >
                 <span
@@ -417,7 +417,7 @@ export default function AdminShell({
               <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
             </Link>
           )}
-          <h1 className="flex-1 min-w-0 truncate text-sm font-bold text-stone-900">{title}</h1>
+          <h1 className="flex-1 min-w-0 truncate text-base font-bold text-stone-900">{title}</h1>
           {isStore && (
             <Link
               href="/store/announcements"
@@ -433,12 +433,13 @@ export default function AdminShell({
             </Link>
           )}
           <span
-            className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${
+            className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
               isStore
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                 : 'text-violet-700 bg-violet-50 border-violet-200'
             }`}
           >
+            {isStore ? <Store className="w-4 h-4" strokeWidth={2.2} /> : <ShieldCheck className="w-4 h-4" strokeWidth={2.2} />}
             {isStore ? '店舗' : 'アドミン'}
           </span>
         </header>
