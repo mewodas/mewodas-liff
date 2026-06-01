@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-02 – fix(analysis): 顧客分析の食事一覧 ↔ AIサマリを排他表示（後押し優先で切替）（branch: main・admin直push）
+- fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
+- 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
+- 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+
 ## 2026-06-01 – change(store): 顧客詳細の「ツアーリセット」を運営(/admin)専用に（店舗では非表示）（branch: staging）
 - change: `app/admin/customers/[id]/page.tsx`（顧客詳細・店舗は同ファイルを re-export）。「ツアーリセット」セクション（ホーム＋食事記録の初回ガイド再表示）を `isStore`(`base === '/store'`) 判定で `{!isStore && (...)}` ラップ。運営(/admin)側のみ表示、店舗(/store)側は非表示に。DELETE API (`/api/admin/customers/[id]/onboarding`) は変更なし（運営からのみ実行）
 - 影響範囲: 管理画面（/store の顧客詳細から該当UIが消える・/admin は不変）。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過

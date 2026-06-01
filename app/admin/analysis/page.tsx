@@ -403,6 +403,9 @@ function Inner() {
 
   async function runAi() {
     if (!customerId) return;
+    // 食事一覧と排他表示：後から押した方（AIサマリ）に切り替える
+    setMealList(null);
+    setMealListError(null);
     setAiLoading(true);
     setAiError(null);
     setAiMessage(null);
@@ -429,6 +432,10 @@ function Inner() {
 
   async function fetchMealList() {
     if (!customerId) return;
+    // AIサマリと排他表示：後から押した方（食事一覧）に切り替える
+    setAnalysis(null);
+    setAiError(null);
+    setAiMessage(null);
     setMealListLoading(true);
     setMealListError(null);
     try {
