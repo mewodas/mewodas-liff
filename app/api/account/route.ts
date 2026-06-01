@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { waitUntil } from '@vercel/functions';
 import {
   getCustomerByLineId,
   archiveCustomer,
@@ -58,25 +57,25 @@ export const DELETE = withLiffTenant(async (_req: NextRequest, _ctx: unknown, ve
     console.error('[account.delete] risk', e)
   );
 
-  // 背景: 全健康データ（食事/体重/体組成/運動）を削除し、件数を監査ログに記録。
+  // 全健康データ（食事/体重/体組成/運動）を【同期】で削除し、応答前に完了させる。
+  // background(waitUntil) だとテナント AsyncLocalStorage context の喪失や未完了で削除漏れが起きうるため、
+  // 法的削除（個人情報保護法）の確実性を優先して同期実行する。
   // 注: Drive 上の食事/体組成写真は GAS 側に削除手段が無いため未削除（残課題）。
-  waitUntil(
-    purgeHealthRecords(verifiedLineUserId)
-      .then((counts) =>
-        // waitUntil の入れ子を避けるため await 版で監査ログを記録（削除件数を確実に残す）
-        logAuditEventAsync({
-          action: 'account.delete',
-          outcome: 'success',
-          actorType: 'customer',
-          actorId: verifiedLineUserId,
-          tenantId: tenant.id,
-          targetType: 'customer',
-          targetId: customer.pageId,
-          metadata: { ...counts, driveImages: 'not_deleted_gas_unsupported' },
-        })
-      )
-      .catch((e) => console.error('[account.delete] purge failed', e))
-  );
+  const counts = await purgeHealthRecords(verifiedLineUserId).catch((e) => {
+    console.error('[account.delete] purge failed', e);
+    return null;
+  });
+  await logAuditEventAsync({
+    action: 'account.delete',
+    outcome: counts ? 'success' : 'failure',
+    actorType: 'customer',
+    actorId: verifiedLineUserId,
+    tenantId: tenant.id,
+    targetType: 'customer',
+    targetId: customer.pageId,
+    metadata: { ...(counts ?? {}), driveImages: 'not_deleted_gas_unsupported' },
+  });
 
-  return NextResponse.json({ ok: true });
+  // 削除件数を応答に含める（管理側の検証用）
+  return NextResponse.json({ ok: true, deleted: counts ?? {} });
 });
