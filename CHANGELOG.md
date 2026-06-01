@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-02 – test(security): クロステナント/クロス顧客 IDOR の回帰テスト追加 ＋ 既存署名改ざんテストのフレーキー修正（branch: security/ownership-repo-layer・未マージ）
+- test: `__tests__/lib/cross-tenant-ownership.test.ts`（新規・17ケース）。2026-05-31 監査 設計#10。所有権チェックがリポジトリ/データ層に集約済（設計#2＝既に origin/main 実装済）であることを固定する回帰テスト。`@/lib/tenant` の `getCurrentTenant` と `global.fetch` をモックし、(1) `assertCustomerOwnership`/`getCustomerByPageId`＝他テナント顧客DBの pageId を拒否/null、(2) `assertFoodRecordOwnership`＝他テナント食事DB拒否＋同一テナント内の別顧客(LINE_UserID不一致)を拒否、(3) `repository/customers`・`repository/records`＝patch/archive が他テナント pageId で forbidden 後、更新処理に到達しない（fetch 1回のみ）、(4) `lib/stores` の getStore/updateStore/deleteStore＝他テナント tenant_id を null/forbidden、を検証
+- fix(test): `__tests__/lib/auth-token-separation.test.ts` の「署名改ざんトークンは拒否」を、トークン末尾1文字反転→**署名先頭文字反転**に変更。末尾は base64url パディングで下位bitが捨てられ A↔B 反転してもデコード後バイト列が変わらず改ざん検知をすり抜ける場合があり、`exp=Date.now()+60s` の署名差で実行タイミング次第に false-fail するフレーキーだった。先頭文字は全6bit有効で確実に変わる。全37ケースを3回連続グリーンで安定確認
+- 影響範囲: テストのみ（dev tooling）。ランタイム・顧客側・API・DB 変更なし。`tsc --noEmit` クリーン、`next build` 成功
+- 注: 設計#2（所有権チェックのリポジトリ層集約）は監査メモ(2日前)時点で未了だったが、その後の P0/P1 修正で customers/records/stores すべて実装済みを実コードで確認。本コミットは「実装の固定（回帰防止）」が主目的
+- 関連: [[project_security_audit_2026_05_31]] 設計#2/#10。**本番反映は社長承認後**（rule4 で dev tooling は main 直可だが、まとめて確認いただくため feature ブランチに保留）
+
 ## 2026-06-02 – fix(analysis): 顧客分析の食事一覧 ↔ AIサマリを排他表示（後押し優先で切替）（branch: main・admin直push）
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過

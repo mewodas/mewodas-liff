@@ -80,8 +80,12 @@ describe('verifySession — session 専用トークンのみ受理', () => {
 
   it('署名改ざんトークンは拒否', () => {
     const token = signSession({ email: 'a@b.co', exp: future(), role: 'master', currentTenantId: 'mewodas' });
-    const last = token.slice(-1);
-    const tampered = token.slice(0, -1) + (last === 'A' ? 'B' : 'A');
+    // 署名「先頭」文字を反転する。末尾文字は base64url パディングの都合で下位bitが
+    // 捨てられ、A↔B 反転してもデコード後のバイト列が変わらない場合があり改ざんが
+    // 検知されず false-fail する（フレーキーの温床）。先頭文字は全6bitが有効なので確実に変わる。
+    const dot = token.lastIndexOf('.');
+    const sig = token.slice(dot + 1);
+    const tampered = token.slice(0, dot + 1) + (sig[0] === 'A' ? 'B' : 'A') + sig.slice(1);
     expect(verifySession(tampered)).toBeNull();
   });
 
