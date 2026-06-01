@@ -46,13 +46,18 @@ export const PATCH = withAdminTenant(async (req: NextRequest) => {
   }
 
   const tenant = getCurrentTenant();
-  const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
-  const row = rows.find((r) => r.tenantId === tenant.id);
-  if (!row) {
+  // pageId は解決済みテナント（resolver の5分メモリキャッシュ）から取得し、全テナントDBの
+  // 再クエリ（毎回 Notion 往復）を回避してトグル保存を高速化。未設定時のみ従来クエリにフォールバック。
+  let pageId = tenant.notionPageId;
+  if (!pageId) {
+    const rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+    pageId = rows.find((r) => r.tenantId === tenant.id)?.pageId;
+  }
+  if (!pageId) {
     return NextResponse.json({ error: 'tenant_not_found_in_notion' }, { status: 404 });
   }
 
-  await updateTenantRow(row.pageId, patch);
+  await updateTenantRow(pageId, patch);
   invalidateTenantCache();
 
   return NextResponse.json({

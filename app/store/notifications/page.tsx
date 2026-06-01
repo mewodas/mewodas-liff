@@ -28,6 +28,9 @@ export default function StoreNotificationsPage() {
 
   async function handleToggle() {
     const next = !riskAlertEnabled;
+    // 楽観的更新: 先に UI を切り替えて即時反映し、保存はバックグラウンドで実行。
+    // 失敗時のみ元に戻す（Notion 書き込み完了を待ってからスイッチが動く旧挙動の数秒ラグを解消）
+    setRiskAlertEnabled(next);
     setSaving(true);
     try {
       const res = await fetch('/api/admin/tenant-settings', {
@@ -36,9 +39,9 @@ export default function StoreNotificationsPage() {
         body: JSON.stringify({ riskAlertEnabled: next }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      setRiskAlertEnabled(next);
       toast.success(next ? '顧客リスクお知らせを有効にしました' : '顧客リスクお知らせを無効にしました');
     } catch {
+      setRiskAlertEnabled(!next); // 保存失敗 → ロールバック
       toast.error('保存に失敗しました');
     } finally {
       setSaving(false);

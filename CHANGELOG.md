@@ -1,14 +1,36 @@
 # CHANGELOG
 
+## 2026-06-01 – perf(progress)+style(record): 進捗管理の表示高速化 / 「テキスト記録」カードの2行折返し解消（branch: staging）
+- perf: `app/api/admin/progress/route.ts` の食事・体重・運動の3データ取得フェーズを**直列→並列(`Promise.all`)化**。各フェーズは progress の別フィールド（today/weight/exercise）にのみ書くため競合なし。直列だと Notion 往復＋リトライが積み上がり、進捗管理(/store/progress)の顧客表示が ~10秒かかっていたのを短縮（体感の主因に対処）
+- style: `app/record/page.tsx` の食事記録ハブのカード「テキストで記録」(7文字)が iPhone のカード幅で2行に折返していたため、ラベルを「テキスト記録」(6文字・他カードと同じ収まり)に変更。フォントサイズは他カードと統一のまま1行に
+- 影響範囲: 管理画面API(/api/admin/progress＝/store・/admin 進捗管理) / 顧客側 LIFF(/record カード表示)。ロジック・データ内容は不変
+- 関連: 社長報告（進捗管理が10秒/IMG_4755 テキストカード2行）。残: サイドバー選択色・見出しフォント・バッジ/お知らせアイコンのサイズ調整は AdminShell（並行作業中）のため要調整
+
 ## 2026-06-01 – fix(exercise-log): 運動保存を「顧客null でも続行」に変更（体重と同挙動）＋原因ログ
 - fix: `app/api/exercise-log` で `getCustomerByLineId` が null（顧客が見つからない）でも **404 にせず運動記録を保存**（customerName は表示用のみのため `?? ''`）。体重保存(`/api/log/weight`)が既に採用している `.catch(()=>null)`＋null許容 と同方式に統一
 - 経緯: staging で「運動保存に失敗: 顧客が見つかりません」が恒常的に発生（ホームには顧客の体重目標が表示されるのに運動だけ顧客null）。テナント解決の食い違い（`FITMEAL_TENANT_ID_OVERRIDE` 絡み）が疑われるが、まず体重と同じ寛容挙動でブロック解消。`console.error` に tenant/lineUserId を記録し根本原因を追跡可能に
 - 影響範囲: 顧客側 LIFF（運動記録の保存）。staging・本番 両方。tsc／本番build パス
 - 関連: 社長報告（運動保存エラー）
+
+## 2026-06-01 – perf(store): 通知設定トグル（リスクお知らせON/OFF）の体感即時化＋保存高速化（branch: staging）
+- fix(UI): `app/store/notifications/page.tsx` のトグルを楽観的更新に変更。クリックで即スイッチを反映し保存はバックグラウンド実行、失敗時のみロールバック（旧実装は Notion 書き込み完了まで〜5秒スイッチが動かず disabled だった）
+- perf(API): `app/api/admin/tenant-settings` PATCH が pageId 取得のためだけに全テナントDBを毎回 Notion クエリしていたのを、解決済みテナントの `notionPageId`（resolver 5分メモリキャッシュ）利用に変更。トグル保存の Notion 往復が 2回→1回（書き込みのみ）に短縮。`lib/tenant.ts` に `notionPageId?` 追加・`lib/tenantResolver.ts` で設定。未設定時は従来の listTenantRows クエリにフォールバック
+- 影響範囲: 店舗(/store 通知設定)・API・lib バックエンド。顧客側UI・DBスキーマ変更なし
+- 関連: 社長フィードバック「ON/OFF 切替が即時でない（〜5秒かかる）」
+
+## 2026-06-01 – fix(repo): 体重/運動/体組成 保存の間欠エラーを修正（Notionリトライ追加）
 - fix: `lib/repository/weightLogs.ts`・`exerciseLogs.ts`・`bodyComposition.ts` の自前 `notionRequest` に、中央 `lib/notion.ts` と同方式の**リトライ（429/502/503/504・ネットワーク断を指数バックオフ最大3回＋30sタイムアウト）**を追加
 - 経緯: これら3 repo は中央のリトライ処理を使わず単発 fetch だったため、Notion の一時障害で**体重/運動/体組成の記録保存が間欠的に失敗**（「記録が保存できませんでした」）していた。staging で再現報告
 - 影響範囲: バックエンド（顧客の体重/運動/体組成 記録保存の信頼性向上）。staging・本番 両方に反映。tsc／本番build パス
 - 関連: 社長報告（staging 体重/運動 保存エラーがぶり返す）
+
+## 2026-06-01 – style(store/admin): 顧客一覧をタブレット/PCで複数カラム化（レスポンシブグリッド・第1弾）（branch: staging）
+- style: `app/admin/customers/page.tsx`（/store・/admin 共有の顧客一覧）の一覧を、縦1列の divide-y リストから**レスポンシブなカードグリッド**に変更（`grid md:grid-cols-2 xl:grid-cols-3`）。各顧客を独立カード化（hover で shadow）。モバイルは従来どおり1列、タブレットで2列、大画面で3列
+- 背景: AdminShell は既に max-w-5xl＋レスポンシブサイドバー化済みだが、各ページの中身が単一カラムで広い画面幅を活かせていなかった。その第1弾として着地ページ（顧客一覧）を最適化し、方向性確認後に他の一覧/フォーム系ページへ横展開予定
+- 影響範囲: 管理画面（/store・/admin の顧客一覧）の表示のみ。ロジック・データ取得・遷移は不変（className のみ）
+- 関連: 社長指示「store画面をタブレット最適化」。AdminShell のレスポンシブ化（別作業 1c69ba2 等）に続くページ内部の最適化
+
+## 2026-06-01 – change(admin/store): サイドバーのロゴ/アイコン拡大・ロールバッジをトップバーへ移動・メニュー文言を拡大（branch: staging）
 - change: `app/admin/AdminShell.tsx`。ブランドのアイコン(h-9→h-12)とロゴ(h-5→h-7)を拡大、ブランド行は h-16 据置
 - change: 「店舗/アドミン」ロールバッジをサイドバー上部からトップバー右（お知らせベルの右隣）へ移動。店舗=ベル＋バッジ、運営=バッジのみ
 - change: サイドバーのメニュー文言（項目・グループ見出し・フッターのパスワード変更/ログアウト）を text-sm→text-base に拡大

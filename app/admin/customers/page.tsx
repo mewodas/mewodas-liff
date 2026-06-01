@@ -389,13 +389,13 @@ export default function AdminCustomersPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (
-          <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
+          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((c) => {
               const isPending = c.foodStatus === '承認待ち';
               const isSample = !!c.lineUserId && (c.lineUserId.startsWith('SAMPLE_') || c.lineUserId.startsWith('DEMO_'));
               return (
-                <li key={c.pageId}>
-                  <div className="flex items-center gap-0 px-2 py-1 hover:bg-stone-50">
+                <li key={c.pageId} className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-0 px-2 py-1 rounded-2xl hover:bg-stone-50">
                     <Link
                       href={`${base}/customers/${c.pageId}`}
                       className="flex items-start gap-3 px-2 py-2 flex-1 min-w-0"

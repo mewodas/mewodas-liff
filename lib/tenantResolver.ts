@@ -37,6 +37,7 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
     const cfg: TenantConfig = {
       id: r.tenantId,
       name: r.name,
+      notionPageId: r.pageId,
       notionCustomerDbId: r.customerDbId,
       notionFoodDbId: r.foodDbId,
       notionWeightDbId: r.weightDbId ?? undefined,
