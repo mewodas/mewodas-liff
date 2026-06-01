@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – style(date-nav): 日付選択の左右矢印を絵文字からアイコン(lucide Chevron)に変更（branch: staging）
+- style: 日付ナビの左右矢印を絵文字 `◀`/`▶`（端末依存の青系トライアングル絵文字でレンダリングされていた）から lucide-react の `ChevronLeft`/`ChevronRight` に置換。アプリ内の他アイコンと統一し currentColor で配色も馴染ませた
+- 対象（顧客側）: `app/home/_components/DateStrip.tsx`（ホーム週間日付ストリップ）/ `app/record/page.tsx`（記録の日付セレクタ）/ `app/my-menu/page.tsx`（マイメニューの日付）/ `app/food-search/page.tsx`（食品DB検索の日付）。同種の日付前後ナビ全箇所を一括で統一
+- 影響範囲: 顧客側 LIFF の表示のみ（onClick・aria-label 等の挙動は不変）。`next build` コンパイル成功
+- 関連: 社長 iPhone SE2 実機指摘（IMG_4752 記録 / IMG_4753 ホーム）
+
 ## 2026-06-01 – fix(cron): リスクお知らせ自動配信の dedupe が毎回すり抜ける重複作成バグを修正（branch: staging）
 - fix: `app/api/cron/daily-reports/route.ts` の「【本日の要注意顧客 N名】」お知らせ当日重複判定を、UTC の `createdAt`（Notion `created_time`）比較から、作成時に JST 日付で書き込む `publishedAt`（公開日）比較に変更
 - 原因: cron は `vercel.json` で `0 21 * * *`（21:00 UTC = 6:00 JST）に発火。dedupe の `todayDate` は `jstNow()` ベースの JST 日付だが、`a.createdAt.slice(0,10)` は UTC 日付のため、00–09時JST のあいだ（＝まさに cron 実行時刻）は前日扱いになり、当日作成済みのお知らせを1件も拾えず `already_sent` 判定が常に false → 再実行のたびに重複作成していた

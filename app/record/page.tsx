@@ -26,6 +26,8 @@ import {
   Lightbulb,
   Save,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 type MealType = '朝食' | '昼食' | '間食' | '夕食';
@@ -829,10 +831,10 @@ export default function RecordPage() {
             <button
               type="button"
               onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 flex items-center justify-center active:bg-stone-200 flex-shrink-0"
               aria-label="前日"
             >
-              ◀
+              <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
             </button>
             <button
               type="button"
@@ -861,10 +863,10 @@ export default function RecordPage() {
             <button
               type="button"
               onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
-              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+              className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 flex items-center justify-center active:bg-stone-200 flex-shrink-0"
               aria-label="翌日"
             >
-              ▶
+              <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
             </button>
           </div>
           <input

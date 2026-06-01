@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { Search, CheckCircle2, Home, Calendar as CalendarIcon, UtensilsCrossed, Trash2 } from 'lucide-react';
+import { Search, CheckCircle2, Home, Calendar as CalendarIcon, UtensilsCrossed, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
@@ -303,10 +303,10 @@ function FoodSearchInner() {
           <button
             type="button"
             onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
-            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white text-xs font-bold flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
+            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
             aria-label="前日"
           >
-            ◀
+            <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
           </button>
           <button
             type="button"
@@ -324,10 +324,10 @@ function FoodSearchInner() {
           <button
             type="button"
             onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
-            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white text-xs font-bold flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
+            className="w-8 h-8 rounded-full bg-emerald-700/60 text-white flex items-center justify-center active:bg-emerald-700 flex-shrink-0"
             aria-label="翌日"
           >
-            ▶
+            <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
           </button>
         </div>
         <input

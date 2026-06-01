@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import FooterNav from '@/components/FooterNav';
 import PageHeader from '@/components/PageHeader';
-import { Star, CheckCircle2, Home, Calendar as CalendarIcon, Plus, Search, Pencil } from 'lucide-react';
+import { Star, CheckCircle2, Home, Calendar as CalendarIcon, Plus, Search, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initLiff, getLineProfile } from '@/lib/liff';
 import { apiFetch } from '@/lib/apiFetch';
 import { invalidate } from '@/lib/clientCache';
@@ -361,10 +361,10 @@ function RecordPickerSheet({
               <button
                 type="button"
                 onClick={() => setTargetDate(addDaysStr(targetDate, -1))}
-                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 flex items-center justify-center active:bg-stone-200 flex-shrink-0"
                 aria-label="前日"
               >
-                ◀
+                <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
               </button>
               <button
                 type="button"
@@ -382,10 +382,10 @@ function RecordPickerSheet({
               <button
                 type="button"
                 onClick={() => setTargetDate(addDaysStr(targetDate, 1))}
-                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 text-sm font-bold flex items-center justify-center active:bg-stone-200 flex-shrink-0"
+                className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 text-stone-700 flex items-center justify-center active:bg-stone-200 flex-shrink-0"
                 aria-label="翌日"
               >
-                ▶
+                <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
               </button>
             </div>
             <input

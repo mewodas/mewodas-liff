@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 function addDays(dateString: string, delta: number): string {
   const [y, m, d] = dateString.split('-').map(Number);
@@ -70,10 +71,10 @@ export function DateStrip({
         type="button"
         onClick={() => scrollByAmount(-200)}
         disabled={!canScrollLeft}
-        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 text-xs font-bold active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
+        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
         aria-label="前の日付へ"
       >
-        ◀
+        <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
       </button>
       <div
         ref={scrollRef}
@@ -132,10 +133,10 @@ export function DateStrip({
         type="button"
         onClick={() => scrollByAmount(200)}
         disabled={!canScrollRight}
-        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 text-xs font-bold active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
+        className="w-7 h-7 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center text-stone-700 active:bg-stone-100 disabled:opacity-30 flex-shrink-0"
         aria-label="次の日付へ"
       >
-        ▶
+        <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
       </button>
     </div>
   );
