@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-01 – fix(cron): リスクお知らせ自動配信の dedupe が毎回すり抜ける重複作成バグを修正（branch: staging）
+- fix: `app/api/cron/daily-reports/route.ts` の「【本日の要注意顧客 N名】」お知らせ当日重複判定を、UTC の `createdAt`（Notion `created_time`）比較から、作成時に JST 日付で書き込む `publishedAt`（公開日）比較に変更
+- 原因: cron は `vercel.json` で `0 21 * * *`（21:00 UTC = 6:00 JST）に発火。dedupe の `todayDate` は `jstNow()` ベースの JST 日付だが、`a.createdAt.slice(0,10)` は UTC 日付のため、00–09時JST のあいだ（＝まさに cron 実行時刻）は前日扱いになり、当日作成済みのお知らせを1件も拾えず `already_sent` 判定が常に false → 再実行のたびに重複作成していた
+- 修正により再実行時は `already_sent` で正しくスキップ。`targetTenants` flatten・page_size 100 ページングは問題なし（新しい順で当日分は先頭に来るため取りこぼしなし）
+- 影響範囲: API / cron（バックエンド）のみ。顧客側UI・DB スキーマ変更なし
+- 関連: ハンドオフ #1（最優先）。staging 検証（cron 再実行で already_sent 確認）→ 既存重複お知らせ掃除 → fitmeal-qa → 社長OK後に main
+
 ## 2026-06-01 – perf(onboarding): iPhone でオンボのスポットライトがカクつく問題を修正（branch: staging）
 - perf: `components/OnboardingFlow.tsx`（/home オンボ）と `components/OnboardingTour.tsx`（/record・/weight・/exercise ツアー）のスポットライト位置追跡を最適化。原因は smooth scroll 中に大量発火する `scroll` イベントごとに `getBoundingClientRect()`＋`setState`（全画面 box-shadow 再描画）を非スロットルで実行し、iOS WebView で強制レイアウト＋再描画ストームが発生していたこと
 - 修正内容: ①scroll/resize ハンドラを `requestAnimationFrame` スロットル化＋`{ passive: true }` 化 ②`scrollIntoView` はステップ入場時に1回だけ（旧: ハンドラ内で毎回呼び自己再帰的に揺れていた）③矩形が実質変化しない場合は `setState` をスキップして再レンダー抑止 ④`transition: all`／`transition-all` をスポットライトから除去（毎フレーム更新される top/left を CSS トランジションが追従して遅延していたため）
