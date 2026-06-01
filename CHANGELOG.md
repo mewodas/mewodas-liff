@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-01 – change(store): 顧客詳細の「ツアーリセット」を運営(/admin)専用に（店舗では非表示）（branch: staging）
+- change: `app/admin/customers/[id]/page.tsx`（顧客詳細・店舗は同ファイルを re-export）。「ツアーリセット」セクション（ホーム＋食事記録の初回ガイド再表示）を `isStore`(`base === '/store'`) 判定で `{!isStore && (...)}` ラップ。運営(/admin)側のみ表示、店舗(/store)側は非表示に。DELETE API (`/api/admin/customers/[id]/onboarding`) は変更なし（運営からのみ実行）
+- 影響範囲: 管理画面（/store の顧客詳細から該当UIが消える・/admin は不変）。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
+- 関連: 社長指示「store でオンボーディングリセットは不要、admin 側のみ表示」
+
 ## 2026-06-01 – change(progress): 進捗管理の「食事記録漏れ」「体重記載漏れ」バッジを削除（branch: staging）
 - change: `app/admin/progress/page.tsx`。顧客リスト各行のステータス横に出していた **食事記録漏れ**（`foodGapLabel` / `daysSinceLastRecord`）と **体重記載漏れ**（`weightGapLabel` / `daysSinceLastWeight`）の記録漏れバッジを削除（社長指示「不要」）。未使用になった `RecordGapBadge` / `foodGapLabel` / `weightGapLabel` も除去し、`riskMap` を `{ weightStalled }` のみに簡素化
 - 残置: **体重停滞**バッジ（`weightStalled`）は対象外のため継続表示。リスク取得API（`/api/admin/customers/risk-summary`）と cron 側の記録漏れ計算は変更なし（バッジ表示のみ撤去）
