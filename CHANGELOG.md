@@ -1,10 +1,18 @@
 # CHANGELOG
 
+## 2026-06-01 – fix(repo): 体重/運動/体組成 保存の間欠エラーを修正（Notionリトライ追加）
+- fix: `lib/repository/weightLogs.ts`・`exerciseLogs.ts`・`bodyComposition.ts` の自前 `notionRequest` に、中央 `lib/notion.ts` と同方式の**リトライ（429/502/503/504・ネットワーク断を指数バックオフ最大3回＋30sタイムアウト）**を追加
+- 経緯: これら3 repo は中央のリトライ処理を使わず単発 fetch だったため、Notion の一時障害で**体重/運動/体組成の記録保存が間欠的に失敗**（「記録が保存できませんでした」）していた。staging で再現報告
+- 影響範囲: バックエンド（顧客の体重/運動/体組成 記録保存の信頼性向上）。staging・本番 両方に反映。tsc／本番build パス
+- 関連: 社長報告（staging 体重/運動 保存エラーがぶり返す）
+
 ## 2026-06-01 – style(store/admin): 顧客一覧をタブレット/PCで複数カラム化（レスポンシブグリッド・第1弾）（branch: staging）
 - style: `app/admin/customers/page.tsx`（/store・/admin 共有の顧客一覧）の一覧を、縦1列の divide-y リストから**レスポンシブなカードグリッド**に変更（`grid md:grid-cols-2 xl:grid-cols-3`）。各顧客を独立カード化（hover で shadow）。モバイルは従来どおり1列、タブレットで2列、大画面で3列
 - 背景: AdminShell は既に max-w-5xl＋レスポンシブサイドバー化済みだが、各ページの中身が単一カラムで広い画面幅を活かせていなかった。その第1弾として着地ページ（顧客一覧）を最適化し、方向性確認後に他の一覧/フォーム系ページへ横展開予定
 - 影響範囲: 管理画面（/store・/admin の顧客一覧）の表示のみ。ロジック・データ取得・遷移は不変（className のみ）
 - 関連: 社長指示「store画面をタブレット最適化」。AdminShell のレスポンシブ化（別作業 1c69ba2 等）に続くページ内部の最適化
+
+## 2026-06-01 – change(admin/store): サイドバーのロゴ/アイコン拡大・ロールバッジをトップバーへ移動・メニュー文言を拡大（branch: staging）
 - change: `app/admin/AdminShell.tsx`。ブランドのアイコン(h-9→h-12)とロゴ(h-5→h-7)を拡大、ブランド行は h-16 据置
 - change: 「店舗/アドミン」ロールバッジをサイドバー上部からトップバー右（お知らせベルの右隣）へ移動。店舗=ベル＋バッジ、運営=バッジのみ
 - change: サイドバーのメニュー文言（項目・グループ見出し・フッターのパスワード変更/ログアウト）を text-sm→text-base に拡大
