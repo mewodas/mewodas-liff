@@ -230,15 +230,15 @@ export default function AdminShell({
         ].join(' ')}
       >
         {/* ブランド + ロール */}
-        <div className="flex h-20 items-center border-b border-stone-200 px-4">
+        <div className="flex h-16 items-center border-b border-stone-200 px-4">
           <Link
             href={`${base}/progress`}
             className="mr-auto flex items-center min-w-0"
             aria-label="進捗管理へ"
             onClick={() => setDrawerOpen(false)}
           >
-            <img src="/fitmeal-icon.png" alt="" className="h-14 w-14 object-contain" />
-            <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-8 w-auto" />
+            <img src="/fitmeal-icon.png" alt="" className="h-12 w-12 object-contain" />
+            <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-7 w-auto" />
           </Link>
           {/* モバイル: 閉じる */}
           <button

@@ -1,7 +1,7 @@
 # CHANGELOG
 
 ## 2026-06-01 – change(admin/store): サイドバーのロゴ/アイコン拡大・ロールバッジをトップバーへ移動・メニュー文言を拡大（branch: staging）
-- change: `app/admin/AdminShell.tsx`。ブランドのアイコン(h-9→h-14)とロゴ(h-5→h-8)を拡大、ブランド行高さ h-16→h-20
+- change: `app/admin/AdminShell.tsx`。ブランドのアイコン(h-9→h-12)とロゴ(h-5→h-7)を拡大、ブランド行は h-16 据置
 - change: 「店舗/アドミン」ロールバッジをサイドバー上部からトップバー右（お知らせベルの右隣）へ移動。店舗=ベル＋バッジ、運営=バッジのみ
 - change: サイドバーのメニュー文言（項目・グループ見出し・フッターのパスワード変更/ログアウト）を text-sm→text-base に拡大
 - 影響範囲: 管理画面（/store・/admin）のシェル表示のみ。挙動・ロジック・ロール出し分けは不変。顧客側 LIFF・API・DB 変更なし。tsc/eslint/`next build` 通過
