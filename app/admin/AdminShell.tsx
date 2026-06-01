@@ -449,8 +449,8 @@ export default function AdminShell({
           </span>
         </header>
 
-        {/* コンテンツ */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-3 sm:px-4 py-4">{children}</main>
+        {/* コンテンツ: 大画面でも中央寄せの余白を作らず幅いっぱいに使う（PCサイズと同じ見え方） */}
+        <main className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-4">{children}</main>
       </div>
     </div>
   );
