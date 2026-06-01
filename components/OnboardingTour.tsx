@@ -174,8 +174,15 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
     : 0;
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none">
-      {/* スポットライト（box-shadowで周囲を暗く） */}
+    <div className="fixed inset-0 z-[100]">
+      {/* オンボ中は下の実要素をタップさせない全面ブロッカー（透明な当たり判定）。
+          タップしても何も起きず、ツアーはツールチップのボタンでのみ進む。
+          スポットライトが無い時(rect未取得)はここで暗転も兼ねる */}
+      <div
+        aria-hidden
+        className={`absolute inset-0 pointer-events-auto ${spotlightStyle ? '' : 'bg-black/65'}`}
+      />
+      {/* スポットライト（box-shadowで周囲を暗く・見た目のみ） */}
       {spotlightStyle && (
         <div
           aria-hidden
@@ -185,10 +192,6 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
             boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65)',
           }}
         />
-      )}
-      {/* 全面暗いオーバーレイ（rectがない時用） */}
-      {!spotlightStyle && (
-        <div className="absolute inset-0 bg-black/65 pointer-events-auto" onClick={finish} />
       )}
 
       {/* ツールチップ（ホームのツアーと同じ吹き出し型。黄色い矢印は廃止） */}
