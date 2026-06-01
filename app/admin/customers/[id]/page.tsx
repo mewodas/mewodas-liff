@@ -72,6 +72,7 @@ export default function CustomerDetailPage({
 }) {
   const { id } = use(params);
   const base = useAdminBase();
+  const isStore = base === '/store';
   const router = useRouter();
   const pathname = usePathname() || '';
   const isFromProgress = pathname.includes('/progress/');
@@ -733,26 +734,28 @@ export default function CustomerDetailPage({
             </button>
           </section>
 
-          {/* ツアーリセット */}
-          <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
-              <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-              ツアーリセット
-            </h3>
-            <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
-              ホーム初回ガイド・食事記録ガイドを再表示します。顧客が次回 LIFF を開いたときから再表示されます。
-              目標値・体重・性別などの基本情報は保持されます。
-            </p>
-            <button
-              type="button"
-              onClick={resetOnboarding}
-              disabled={resettingOnboard}
-              className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
-              {resettingOnboard ? 'リセット中…' : 'ホーム＋食事記録ツアーを再表示'}
-            </button>
-          </section>
+          {/* ツアーリセット（運営/admin のみ。店舗側には非表示） */}
+          {!isStore && (
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+              <h3 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
+                ツアーリセット
+              </h3>
+              <p className="text-[11px] text-stone-600 mb-3 leading-relaxed">
+                ホーム初回ガイド・食事記録ガイドを再表示します。顧客が次回 LIFF を開いたときから再表示されます。
+                目標値・体重・性別などの基本情報は保持されます。
+              </p>
+              <button
+                type="button"
+                onClick={resetOnboarding}
+                disabled={resettingOnboard}
+                className="w-full bg-white border border-stone-300 text-stone-700 font-bold py-2.5 rounded-xl text-sm active:bg-stone-50 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.2} />
+                {resettingOnboard ? 'リセット中…' : 'ホーム＋食事記録ツアーを再表示'}
+              </button>
+            </section>
+          )}
 
           {/* アカウント削除（危険操作） */}
           <button
