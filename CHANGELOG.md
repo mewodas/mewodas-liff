@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – style(date-nav): 日付選択の左右矢印を絵文字からアイコン(lucide Chevron)に変更（branch: staging）
+- style: 日付ナビの左右矢印を絵文字 `◀`/`▶`（端末依存の青系トライアングル絵文字でレンダリングされていた）から lucide-react の `ChevronLeft`/`ChevronRight` に置換。アプリ内の他アイコンと統一し currentColor で配色も馴染ませた
+- 対象（顧客側）: `app/home/_components/DateStrip.tsx`（ホーム週間日付ストリップ）/ `app/record/page.tsx`（記録の日付セレクタ）/ `app/my-menu/page.tsx`（マイメニューの日付）/ `app/food-search/page.tsx`（食品DB検索の日付）。同種の日付前後ナビ全箇所を一括で統一
+- 影響範囲: 顧客側 LIFF の表示のみ（onClick・aria-label 等の挙動は不変）。`next build` コンパイル成功
+- 関連: 社長 iPhone SE2 実機指摘（IMG_4752 記録 / IMG_4753 ホーム）
+
 ## 2026-06-01 – fix(notion): 登録直後の「顧客が見つかりません」（運動/体重保存エラー）を本番へ反映
 - fix: `getCustomerByLineId` の「顧客なし(null)」キャッシュ TTL を 30分→**15秒**（`CUSTOMER_NOTFOUND_CACHE_TTL_MS`）＋ `createCustomer` で当該 lineUserId の個別キャッシュを `invalidate`
 - 経緯: staging で効果確認済（運動/体重の記録が「顧客が見つかりません」で落ちる事象の根本対策）→ 本番にも反映。本番でも新規登録顧客が同事象に遭う潜在バグのため
