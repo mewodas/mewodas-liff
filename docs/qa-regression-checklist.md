@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-05-29（Phase 0 監査ログ 2d762a0 追加）
+最終更新: 2026-06-01（AdminShell 左サイドバー刷新 1c69ba2 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -250,6 +250,41 @@
 | AUD27 | 本番 Neon 接続後: password / passwordHash / token が audit_log の metadata カラムに含まれていないこと | 本番 Neon 接続後に実施 | CORE（セキュリティ） |
 | AUD28 | 本番 Neon 接続後: Neon DB 書き込み遅延（waitUntil）で login レスポンスタイムが増加していないこと | 本番 Neon 接続後に実施 | CORE（パフォーマンス） |
 
+### AdminShell 左サイドバー刷新 — 2026-06-01 追加（commit 1c69ba2）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| SB1 | /store/* 未認証 → /store/login?from=... に 307 | [A] 本番確認済み ✅ | CORE |
+| SB2 | /admin/* 未認証 → /admin/login?from=... に 307 | [A] 本番確認済み ✅ | CORE |
+| SB3 | /api/admin/auth/me: Cookie なし → 401 | [A] 本番確認済み ✅ | CORE |
+| SB4 | /api/admin/auth/logout: Cookie なし → 401（CSRF チェックも有効） | [A] 本番確認済み ✅ | CORE |
+| SB5 | store サイドバーアクセントカラーが violet（選択ハイライト・アクセントバー）| [M] | CORE |
+| SB6 | admin サイドバーアクセントカラーが emerald | [M] | CORE |
+| SB7 | store バッジ「店舗」の文字色・背景色が emerald（アクセントと逆＝既知 nit） | [M] 確認のみ | nit |
+| SB8 | admin バッジ「アドミン」の文字色・背景色が violet（アクセントと逆＝既知 nit） | [M] 確認のみ | nit |
+| SB9 | md 以上(768px+)でサイドバーが常時固定表示される（ハンバーガーボタン非表示） | [M] | CORE |
+| SB10 | md 未満(<768px)でハンバーガーボタンが表示され、タップでドロワー開閉できる | [M] | CORE |
+| SB11 | ドロワー背面オーバーレイをタップするとドロワーが閉じる | [M] | CORE |
+| SB12 | ドロワー内のナビリンクをタップすると遷移 + ドロワーが閉じる | [M] | CORE |
+| SB13 | md 以上で本文がサイドバーと重ならない（md:pl-60 / lg:pl-64 で右オフセット） | [M] | CORE |
+| SB14 | 「進捗管理」グループヘッダーをタップで展開/折畳み（active でない場合） | [M] | CORE |
+| SB15 | 「設定」グループヘッダーをタップで展開/折畳み（active でない場合） | [M] | CORE |
+| SB16 | 進捗管理グループ内ページ（/progress・/meals・/measurements）が現在地のとき、グループが自動展開される | [M] | CORE |
+| SB17 | 設定グループ内ページ（/onboarding 等）が現在地のとき、グループが自動展開される | [M] | CORE |
+| SB18 | active なグループは畳めない（仕様。active ページ離脱後は折畳み可能） | [M] 仕様確認のみ | minor |
+| SB19 | 現在地の項目が背景ハイライト＋左アクセントバー＋右端ドット で強調表示 | [M] | CORE |
+| SB20 | store フッター: tenant_admin ロールでパスワード変更リンクが表示される | [M] | CORE |
+| SB21 | admin フッター: master ロールでパスワード変更リンクが非表示 | [M] | CORE |
+| SB22 | ログアウトボタン押下 → /store/login または /admin/login にリダイレクト | [M] | CORE |
+| SB23 | store トップバーのお知らせベル（Bell アイコン）が表示される | [M] | CORE |
+| SB24 | admin トップバーにお知らせベルが表示されない（storeOnly） | [M] | CORE |
+| SB25 | back prop 渡し時: トップバーに戻るボタン（ChevronLeft）が表示される | [M] | CORE |
+| SB26 | ロゴクリック → /store/progress または /admin/progress に遷移 | [M] | CORE |
+| SB27 | store ナビ: 顧客管理 / 進捗管理G(進捗管理・食事一覧・体組成) / 顧客分析 / レポート送付 / 設定G(LINE連携・契約管理・通知設定・テンプレ・店舗一覧) | [M] | CORE |
+| SB28 | admin ナビ(tenant_admin): 顧客管理 / 進捗管理G / 顧客分析 / レポート送付 / 設定G(テンプレ) ※テナント/プラン/監査なし | [M] | CORE |
+| SB29 | admin ナビ(master): テナント・プラン管理・監査ログが設定グループ内に追加表示される | [M] | CORE |
+| SB30 | me 取得前後でちらつきが発生しない（module キャッシュで初回レンダリングが安定） | [M] | CORE |
+
 ### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
 
 | # | 確認項目 | 方法 | 優先度 |
@@ -290,6 +325,7 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-06-01 | AdminShell 左サイドバー刷新（モバイル/タブレット/PC 3ブレークポイント対応・グループ展開・ハイライト） | 1c69ba2/53c58d5 | 条件付き GO（API スモーク全通過・コード精査済み・バッジカラー逆転 nit あり・社長手動確認カード発行済み SB5〜SB30） |
 | 2026-05-29 | Phase 1 監査ログ Neon 永続化（@neondatabase/serverless 追加・waitUntil flush・ip/userAgent 収集） | 4acc80b | GO（TSコンパイル通過・graceful 設計コード確認済み・staging API 実機確認 HTTP 400/401 正常・顧客LIFF無変更・社長手動確認不要） |
 | 2026-05-29 | Phase 0 監査ログ（5エンドポイントに fire-and-forget ログ追加） | 2d762a0 | GO（TSコンパイル通過・機密非漏洩確認済み・顧客LIFF無変更・社長手動確認不要） |
 | 2026-05-24 | 承認制モード Phase 2（招待方式切替UI・承認制公開URL・承認操作・LiffGate承認待ち画面） | d04d705/34c3050 | 条件付き GO（自動検証全通過・APV1〜APV4/APV15 コード確認済み。社長手動確認カード発行済み） |
@@ -330,6 +366,8 @@
 - **createTenantCustomerDb に '承認待ち' option なし**: 新テナントの顧客 DB 作成時に「承認待ち」select option はスキーマに含まれていないが、Notion API は存在しない option への書き込みで自動作成するため実害はない。ただし新テナントでは option の並び順が後ろに追加される（既存テナントとは見た目が異なる場合がある）
 - **テナントキャッシュ 5分 TTL**: inviteMode を PATCH 後 `invalidateTenantCache()` で即時クリアされるが、エラー時には PATCH が失敗する（楽観的更新は rollback される）。正常系では即時反映
 - 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
+- **AdminShell バッジカラーとアクセントカラーは意図的に逆配置（nit 確認済み）**: isStore=true のアクセントカラーは violet だが、ロールバッジは emerald。isStore=false（admin）はアクセントが emerald でバッジが violet。旧コードからの逆転で、視覚的に「対になる色」でバッジを目立たせる意図の可能性がある。機能上の問題はなし。修正要否は社長に確認すること
+- **AdminShell active グループは畳めない仕様**: 進捗管理/設定グループ内のページにいるとき、グループヘッダーのトグルを押しても `progressOpen = openGroups.progress || progressActive` の評価で progressActive=true が常に残るため折り畳まれない。設計上の許容挙動（仕様書に記載あり）
 - **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる
 - **billingMode バリデーション**: 許可値は「無制限」「手動」「Stripe連動」の3種のみ。その他の値は Notion の select に新規オプションが作られるのを防ぐため API が 400 を返す
 - **手動モードで seatLimit 未設定（null）**: Admin UI で手動モードを選択すると席数入力フィールドが表示される。未入力で保存した場合、seatLimit=null → getSeatStatus では `seatLimit !== null ? ... : false` なので isOverLimit=false（上限なし扱い）になる。設計書のエッジケースに記載あり
