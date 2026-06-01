@@ -759,6 +759,8 @@ export type TenantRow = {
   inviteMode: 'individual' | 'approval' | null;
   /** 体組成計測記録 DB ID */
   bodyCompDbId: string | null;
+  /** 顧客リスクお知らせ自動配信 ON/OFF（既定 false=opt-in） */
+  riskAlertEnabled: boolean;
 };
 
 export async function updateTenantRow(
@@ -795,6 +797,7 @@ export async function updateTenantRow(
     richMenuId?: string | null;
     ownerLineUserId?: string | null;
     inviteMode?: 'individual' | 'approval' | null;
+    riskAlertEnabled?: boolean;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -908,6 +911,9 @@ export async function updateTenantRow(
       ? { rich_text: [{ type: 'text', text: { content: patch.ownerLineUserId } }] }
       : { rich_text: [] };
   }
+  if (patch.riskAlertEnabled !== undefined) {
+    properties['リスクアラート'] = { checkbox: patch.riskAlertEnabled };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -964,6 +970,7 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
         return null;
       })(),
       bodyCompDbId: p['Notion 体組成DB ID']?.rich_text?.[0]?.plain_text || null,
+      riskAlertEnabled: !!p['リスクアラート']?.checkbox,
     };
   });
 }

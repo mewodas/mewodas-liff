@@ -78,6 +78,20 @@ export async function upsertCustomerRisk(rows: UpsertInput[]): Promise<void> {
   }
 }
 
+/** アカウント削除時に該当顧客の risk 行を Postgres から物理削除（tenant+lineUserId+env スコープ）。 */
+export async function deleteCustomerRiskByLineUser(tenantId: string, lineUserId: string): Promise<void> {
+  if (!dbUrl || !tenantId || !lineUserId) return;
+  const sql = neon(dbUrl);
+  try {
+    await sql.query(
+      `DELETE FROM customer_risk WHERE tenant_id = $1 AND line_user_id = $2 AND env = $3`,
+      [tenantId, lineUserId, currentEnv]
+    );
+  } catch (err) {
+    console.error('[customerRisk] delete failed', err);
+  }
+}
+
 export async function listCustomerRiskByTenant(
   tenantId: string,
   env: string

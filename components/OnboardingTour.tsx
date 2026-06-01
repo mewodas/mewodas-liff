@@ -56,30 +56,46 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
     }
   }, [storageKey, force, tourResetAt]);
 
-  // ターゲット要素の位置を取得
+  // ターゲット要素の位置を取得。
+  // scrollIntoView はステップ入場時に一度だけ。位置追跡は rAF スロットル + passive で、
+  // 値が変わらなければ再レンダーしない（smooth scroll 中の再描画ストーム=カクつきを防止）。
   useEffect(() => {
     if (!active) return;
     const step = steps[stepIdx];
     if (!step) return;
-    const update = () => {
-      const el = document.querySelector(`[data-tour="${step.target}"]`);
-      if (el) {
-        setRect(el.getBoundingClientRect());
-        // 表示位置までスクロール
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      } else {
+    const selector = `[data-tour="${step.target}"]`;
+
+    let raf = 0;
+    let lastKey = '';
+    const measure = () => {
+      raf = 0;
+      const el = document.querySelector(selector);
+      if (!el) {
         setRect(null);
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      const key = `${Math.round(r.top)},${Math.round(r.left)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (key !== lastKey) {
+        lastKey = key;
+        setRect(r);
       }
     };
-    update();
-    // スクロール後の位置再取得
-    const id = setTimeout(update, 350);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+
+    const el = document.querySelector(selector);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    measure();
+    const id = window.setTimeout(schedule, 350);
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('scroll', schedule, { passive: true, capture: true });
     return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
+      if (raf) cancelAnimationFrame(raf);
+      window.clearTimeout(id);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
     };
   }, [active, stepIdx, steps]);
 
@@ -158,8 +174,15 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
     : 0;
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none">
-      {/* スポットライト（box-shadowで周囲を暗く） */}
+    <div className="fixed inset-0 z-[100]">
+      {/* オンボ中は下の実要素をタップさせない全面ブロッカー（透明な当たり判定）。
+          タップしても何も起きず、ツアーはツールチップのボタンでのみ進む。
+          スポットライトが無い時(rect未取得)はここで暗転も兼ねる */}
+      <div
+        aria-hidden
+        className={`absolute inset-0 pointer-events-auto ${spotlightStyle ? '' : 'bg-black/65'}`}
+      />
+      {/* スポットライト（box-shadowで周囲を暗く・見た目のみ） */}
       {spotlightStyle && (
         <div
           aria-hidden
@@ -167,13 +190,8 @@ export default function OnboardingTour({ storageKey, steps, force, onComplete, t
           style={{
             ...spotlightStyle,
             boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65)',
-            transition: 'all 0.25s ease-out',
           }}
         />
-      )}
-      {/* 全面暗いオーバーレイ（rectがない時用） */}
-      {!spotlightStyle && (
-        <div className="absolute inset-0 bg-black/65 pointer-events-auto" onClick={finish} />
       )}
 
       {/* ツールチップ（ホームのツアーと同じ吹き出し型。黄色い矢印は廃止） */}

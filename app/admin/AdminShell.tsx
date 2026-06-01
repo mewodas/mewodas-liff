@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, ShieldCheck, Settings, ChevronDown, Scale, UtensilsCrossed, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, BellRing, ShieldCheck, Settings, ChevronDown, Scale, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -65,6 +65,14 @@ const TABS: Tab[] = [
     label: '契約管理',
     Icon: CreditCard,
     match: (p, base) => p.startsWith(`${base}/billing`),
+    storeOnly: true,
+    settings: true,
+  },
+  {
+    suffix: '/notifications',
+    label: '通知設定',
+    Icon: BellRing,
+    match: (p, base) => p.startsWith(`${base}/notifications`),
     storeOnly: true,
     settings: true,
   },

@@ -33,6 +33,65 @@
 - 影響範囲: API（/api/admin/billing/info）・lib バックエンド。顧客側 UI 影響なし
 - 関連: PR #36 の後続対応（Sentry: Notion API 502 at /api/admin/billing/info の発生確率低減）
 
+## 2026-06-01 – fix(cron): リスクお知らせ自動配信の dedupe が毎回すり抜ける重複作成バグを修正（branch: staging）
+- fix: `app/api/cron/daily-reports/route.ts` の「【本日の要注意顧客 N名】」お知らせ当日重複判定を、UTC の `createdAt`（Notion `created_time`）比較から、作成時に JST 日付で書き込む `publishedAt`（公開日）比較に変更
+- 原因: cron は `vercel.json` で `0 21 * * *`（21:00 UTC = 6:00 JST）に発火。dedupe の `todayDate` は `jstNow()` ベースの JST 日付だが、`a.createdAt.slice(0,10)` は UTC 日付のため、00–09時JST のあいだ（＝まさに cron 実行時刻）は前日扱いになり、当日作成済みのお知らせを1件も拾えず `already_sent` 判定が常に false → 再実行のたびに重複作成していた
+- 修正により再実行時は `already_sent` で正しくスキップ。`targetTenants` flatten・page_size 100 ページングは問題なし（新しい順で当日分は先頭に来るため取りこぼしなし）
+- 影響範囲: API / cron（バックエンド）のみ。顧客側UI・DB スキーマ変更なし
+- 関連: ハンドオフ #1（最優先）。staging 検証（cron 再実行で already_sent 確認）→ 既存重複お知らせ掃除 → fitmeal-qa → 社長OK後に main
+
+## 2026-06-01 – fix(onboarding): iPhone SE2 で吹き出しが枠外に切れる/ツアー中に下要素がタップ反応する問題を修正（branch: staging）
+- fix(枠外): `components/OnboardingFlow.tsx` のスポットライト吹き出しを常に対象の上に固定していた実装を、`SpotlightCallout` に統合。吹き出しの高さを実測し「上 or 下の収まる方」へ自動配置、どちらにも入りきらない縦長対象（食事カード群など）や画面端では viewport 内にクランプ。SE2(667px) でタイトル＋本文先頭が LIFF ヘッダー裏に切れる事象を解消。対象は StepMealCards / StepWeightIntro / StepExerciseIntro（StepFooterRecord は元々下端配置で問題なく据え置き）
+- fix(タップ透過): `components/OnboardingTour.tsx`（/record・/weight・/exercise ツアー）のルートが `pointer-events-none` で全面ブロッカーが無く、ツアー中に下の実要素（「朝食は食べなかった」等）がタップに反応して別ページ遷移/確認ダイアログが出ていた。透明な全面ブロッカー（pointer-events-auto）を追加し、タップを吸収。ツアーはツールチップのボタンでのみ進む。スポットライト未取得時はブロッカーが暗転も兼任。※ホーム(OnboardingFlow)はルートが pointer-events 有効で元々ブロック済み
+- 影響範囲: 顧客側 LIFF のオンボ/ツアー表示のみ。`next build` コンパイル成功
+- 関連: 社長 iPhone SE2 実機確認（IMG_4750 枠外 / IMG_4751 タップ反応）。カクつき修正(5b1be08)の実機フォロー
+- fix: `app/api/cron/daily-reports/route.ts` の「【本日の要注意顧客 N名】」お知らせ当日重複判定を、UTC の `createdAt`（Notion `created_time`）比較から、作成時に JST 日付で書き込む `publishedAt`（公開日）比較に変更
+- 原因: cron は `vercel.json` で `0 21 * * *`（21:00 UTC = 6:00 JST）に発火。dedupe の `todayDate` は `jstNow()` ベースの JST 日付だが、`a.createdAt.slice(0,10)` は UTC 日付のため、00–09時JST のあいだ（＝まさに cron 実行時刻）は前日扱いになり、当日作成済みのお知らせを1件も拾えず `already_sent` 判定が常に false → 再実行のたびに重複作成していた
+- 修正により再実行時は `already_sent` で正しくスキップ。`targetTenants` flatten・page_size 100 ページングは問題なし（新しい順で当日分は先頭に来るため取りこぼしなし）
+- 影響範囲: API / cron（バックエンド）のみ。顧客側UI・DB スキーマ変更なし
+- 関連: ハンドオフ #1（最優先）。staging 検証（cron 再実行で already_sent 確認）→ 既存重複お知らせ掃除 → fitmeal-qa → 社長OK後に main
+
+## 2026-06-01 – perf(onboarding): iPhone でオンボのスポットライトがカクつく問題を修正（branch: staging）
+- perf: `components/OnboardingFlow.tsx`（/home オンボ）と `components/OnboardingTour.tsx`（/record・/weight・/exercise ツアー）のスポットライト位置追跡を最適化。原因は smooth scroll 中に大量発火する `scroll` イベントごとに `getBoundingClientRect()`＋`setState`（全画面 box-shadow 再描画）を非スロットルで実行し、iOS WebView で強制レイアウト＋再描画ストームが発生していたこと
+- 修正内容: ①scroll/resize ハンドラを `requestAnimationFrame` スロットル化＋`{ passive: true }` 化 ②`scrollIntoView` はステップ入場時に1回だけ（旧: ハンドラ内で毎回呼び自己再帰的に揺れていた）③矩形が実質変化しない場合は `setState` をスキップして再レンダー抑止 ④`transition: all`／`transition-all` をスポットライトから除去（毎フレーム更新される top/left を CSS トランジションが追従して遅延していたため）
+- OnboardingFlow: step 2/3/5/6 の3つの重複 useEffect を単一の追跡 effect に統合（クロス effect での null 上書きの脆さも解消）。対象セレクタ・scrollIntoView 対象は従来と同一で挙動維持
+- 影響範囲: 顧客側 LIFF（/home・/record・/weight・/exercise のオンボ/ツアー表示）。機能は不変、描画パフォーマンスのみ改善。`next build` コンパイル成功（型エラーは vitest devDep 未インストールのローカル環境要因のみで本変更とは無関係）
+- 関連: 社長報告（iPhone 録画 ScreenRecording 05-31）。staging 検証 → 社長 iPhone で体感確認 → OK後に main
+
+## 2026-05-31 – fix(notion): 登録直後の「顧客が見つかりません」（運動/体重保存エラー）を修正
+- fix: `getCustomerByLineId` の「顧客なし(null)」キャッシュ TTL を 30分 → **15秒**に短縮（`CUSTOMER_NOTFOUND_CACHE_TTL_MS`）。登録前に開いた等で stale な null が残り、登録直後に別インスタンスで運動/体重保存が「顧客が見つかりません」(404)になる事象の根本対策
+- fix: `createCustomer`（登録）時に当該 lineUserId の個別キャッシュ `${tenantId}:customer:${lineUserId}` を `invalidate`。登録を処理したインスタンスは即時に新顧客を解決可能に
+- 症状: 食事は通る（別インスタンス）が運動/体重だけ「顧客が見つかりません」になる不整合。両者とも `getCustomerByLineId` 必須だが、null を30分キャッシュしたインスタンスに当たると落ちていた
+- 影響範囲: バックエンド `lib/notion.ts` のみ。顧客側の登録→記録フローのバグ修正。tsc／本番build パス。staging→確認後 本番へ
+- 関連: 社長報告（staging で運動/体重保存エラー）
+
+## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセットボタンを復活（staging / 本番にも同時反映）
+- feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` 更新 → 顧客の次回 LIFF 起動でツアー再表示
+- 配置: 目標(PFC)直下・アカウント削除の直上。顧客管理のみ。`0132322` で消えた実装を当時のまま復元（`RotateCcw` import 追加）
+- 影響範囲: 管理画面のみ。顧客側UI・DB変更なし。tsc／本番build パス
+- 関連: 社長依頼。本番 main にも反映済（commit f977e75）
+
+## 2026-05-31 – chore: ファビコンを FitMeal ロゴに統一（branch: staging / 全画面ブラウザタブ）
+- chore: ブラウザタブ/PWA アイコンを旧 `/icon.svg`（緑「メ」）から FitMeal ロゴに変更。`public/fitmeal-favicon.png`（fitmeal-icon.png を 256px 化）を新規追加し、`app/layout.tsx` の `metadata.icons`（icon/apple）と `app/manifest.ts` の icons を差し替え。`app/favicon.ico`（Next 規約・/favicon.ico 自動配信）も fitmeal-icon.png からマルチサイズ再生成し、ブラウザのデフォルト取得先も FitMeal ロゴに統一
+- 影響範囲: 顧客側 LIFF 含む全画面のタブアイコン（表示のみ・機能影響なし）。staging 検証 → 社長OK後に main
+- 関連: メヲダス intake 側のファビコン追加は HP リポジトリで別途対応済み（mewodas.com アイコン）
+
+
+- feat: `riskAlertEnabled`（既定 false）をテナント設定に追加（`lib/notion.ts` TenantRow・`updateTenantRow` パッチ・`listTenantRows` パース・`lib/tenant.ts` TenantConfig・`lib/tenantResolver.ts` ロード）。Notion DB カラム名「リスクアラート」(checkbox)
+- feat: `/api/admin/tenant-settings` GET/PATCH に `riskAlertEnabled` を追加。店舗(tenant_admin)が自テナントの設定のみ変更可能
+- feat: `/store/notifications` 新規ページ（トグル UI）。AdminShell の設定ドロップダウンに「通知設定」タブを追加（storeOnly）
+- feat: `app/api/cron/daily-reports/route.ts` にリスクお知らせ処理を追加（レポート配信ループと独立）。`riskAlertEnabled=true` のテナントのみ `computeAndStoreTenantRisk` → `listCustomerRiskByTenant` → `createAnnouncement`（audience='店舗向け'）。dedupe: 当日タイトル「【本日の要注意顧客」+ targetTenants で重複スキップ。該当者0名の日は作成しない
+- 影響範囲: 管理画面・API・Cron。顧客側 LIFF 変更なし
+- マルチテナント: 越境禁止は targetTenants を各テナントID に限定することで担保
+
+## 2026-05-31 – security(P1残): アカウント削除のPIIカスケード（branch: security/account-delete / staging検証前）
+- security: `DELETE /api/account`（顧客の自己アカウント削除）を、顧客アーカイブのみ → **全健康データの物理削除カスケード**に拡張。`verifiedLineUserId` に厳密スコープして食事記録(Notion)・体重ログ・体組成ログ・運動ログを削除し、Neon `customer_risk` 行も物理削除（`deleteCustomerRiskByLineUser` 追加）。個人情報保護法の「削除権」対応
+- 実装: 顧客アーカイブ＋customer_risk 削除は即時、健康データ一括削除は `waitUntil` で背景実行（maxDuration 60s）。各削除は try/catch で部分失敗でも続行、削除件数を `account.delete` 監査ログに記録
+- ⚠️ 既知の残課題: Drive 上の食事/体組成**写真は未削除**（GAS 側に削除手段が無い）。監査ログに `driveImages: not_deleted_gas_unsupported` を記録。GAS 削除エンドポイント実装が別途必要
+- 影響範囲: 顧客側 LIFF（アカウント削除）。**不可逆操作のため staging で test 顧客により fitmeal-qa＋社長確認 → main 必須**
+- 関連: 監査 project_security_audit_2026_05_31 P1残
+
+
 ## 2026-05-31 – security(#6/#8): CSP違反収集エンドポイント＋Sentry PIIスクラブ強化
 - security(#6): `app/api/csp-report/route.ts` 新規（CSP違反の report-uri 受け口・無認証・本文16KB上限・https違反のみ console+Sentry に記録）。`next.config.ts` の CSP（Report-Only 据え置き）に `report-uri /api/csp-report` を追加し、connect-src に GAS(`script.google*`)・Sentry(`*.ingest.sentry.io`) を補強。**enforce 化はこの実違反データで allowlist を完成させてから再挑戦**（凍結継続）
 - security(#8): `lib/sentry.ts` `redactEvent` 強化。①画像 data URI 伏字の JSON 破壊バグ修正（旧実装は unredacted フォールバックしていた）②Bearer トークン/Authorization・Cookie ヘッダ/admin_session を伏字追加。`__tests__/lib/sentry-redact.test.ts`(6ケース) で回帰ロック

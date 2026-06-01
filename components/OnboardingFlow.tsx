@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronRight,
@@ -27,75 +27,57 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
   const [completing, setCompleting] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
+  // スポットライト対象の位置を追跡。
+  // 旧実装は smooth scroll 中に大量発火する scroll イベントごとに
+  // getBoundingClientRect + setState（全画面 box-shadow 再描画）を走らせており
+  // iOS でカクついていた。rAF スロットル + passive + 値が変わらなければ再レンダー抑止で解消。
   useEffect(() => {
-    if (step !== 2) {
+    const selector =
+      step === 2
+        ? '[data-tour="footer-record"]'
+        : step === 3
+        ? '[data-onboarding="meal-cards"]'
+        : step === 5 || step === 6
+        ? '[data-tour="today-record-card"]'
+        : null;
+    if (!selector) {
       setSpotlightRect(null);
       return;
     }
-    function updateRect() {
-      const el = document.querySelector('[data-tour="footer-record"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-      } else {
-        setSpotlightRect(null);
-      }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 300);
-    window.addEventListener('resize', updateRect);
-    return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-    };
-  }, [step]);
+    // footer は固定要素なのでスクロール不要。それ以外は対象を画面中央へ（ステップ入場時に一度だけ）
+    const needsScroll = step === 3 || step === 5 || step === 6;
 
-  useEffect(() => {
-    if (step !== 3) {
-      if (step !== 2) setSpotlightRect(null);
-      return;
-    }
-    function updateRect() {
-      const el = document.querySelector('[data-onboarding="meal-cards"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      } else {
+    let raf = 0;
+    let lastKey = '';
+    const measure = () => {
+      raf = 0;
+      const el = document.querySelector(selector);
+      if (!el) {
         setSpotlightRect(null);
+        return;
       }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 400);
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
-    return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
+      const r = el.getBoundingClientRect();
+      const key = `${Math.round(r.top)},${Math.round(r.left)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (key !== lastKey) {
+        lastKey = key;
+        setSpotlightRect(r);
+      }
     };
-  }, [step]);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
 
-  useEffect(() => {
-    if (step !== 5 && step !== 6) {
-      if (step !== 2 && step !== 3) setSpotlightRect(null);
-      return;
-    }
-    function updateRect() {
-      const el = document.querySelector('[data-tour="today-record-card"]');
-      if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      } else {
-        setSpotlightRect(null);
-      }
-    }
-    updateRect();
-    const id = setTimeout(updateRect, 400);
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
+    const el = document.querySelector(selector);
+    if (el && needsScroll) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    measure();
+    const id = window.setTimeout(schedule, 400);
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('scroll', schedule, { passive: true, capture: true });
     return () => {
-      clearTimeout(id);
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
+      if (raf) cancelAnimationFrame(raf);
+      window.clearTimeout(id);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
     };
   }, [step]);
 
@@ -147,7 +129,7 @@ export default function OnboardingFlow({ customerName, lineUserId }: Props) {
         <>
           <div
             aria-hidden
-            className="absolute rounded-2xl pointer-events-none transition-all duration-300"
+            className="absolute rounded-2xl pointer-events-none"
             style={spotlightStyle}
           />
         </>
@@ -218,6 +200,75 @@ function StepWelcome({ name, onNext, onSkip }: { name: string; onNext: () => voi
         <button type="button" onClick={onSkip} className="text-xs text-stone-400 underline">
           スキップ
         </button>
+      </div>
+    </div>
+  );
+}
+
+// スポットライト用の吹き出し。対象の上 or 下で「収まる方」に自動配置し、
+// どちらにも入りきらない縦長の対象や画面端では viewport 内にクランプして、
+// 文言が枠外（特に画面上端の LIFF ヘッダー裏）に切れるのを防ぐ。
+function SpotlightCallout({
+  spotlightRect,
+  children,
+}: {
+  spotlightRect: DOMRect | null;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+
+  // 吹き出しの高さを実測（マウント時＋リサイズ時）。位置計算は実測高さから行う
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const measure = () => setHeight(node.offsetHeight);
+    measure();
+    window.addEventListener('resize', measure, { passive: true });
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  const SAFE = 12;
+  const GAP = 14;
+  let style: React.CSSProperties;
+  let placement: 'top' | 'bottom' | null = null;
+  let showTail = false;
+
+  if (!spotlightRect) {
+    style = { position: 'fixed', top: '18%', left: '50%', transform: 'translateX(-50%)' };
+  } else if (height === 0) {
+    // 高さ計測前は位置が確定できないので不可視で仮置き（次フレームで確定）
+    style = { position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', visibility: 'hidden' };
+  } else {
+    const vh = window.innerHeight;
+    const roomAbove = spotlightRect.top - SAFE;
+    const roomBelow = vh - spotlightRect.bottom - SAFE;
+    let top: number;
+    if (height + GAP <= roomAbove) {
+      placement = 'top';
+      showTail = true;
+      top = spotlightRect.top - GAP - height;
+    } else if (height + GAP <= roomBelow) {
+      placement = 'bottom';
+      showTail = true;
+      top = spotlightRect.bottom + GAP;
+    } else {
+      // 上下どちらにも収まらない縦長の対象 → viewport 内にクランプ（尾は出さない）
+      top = Math.max(SAFE, Math.min(spotlightRect.top - GAP - height, vh - SAFE - height));
+    }
+    style = { position: 'fixed', top, left: '50%', transform: 'translateX(-50%)' };
+  }
+
+  return (
+    <div ref={ref} style={style} className="w-[88%] max-w-xs z-10">
+      <div className="relative bg-white rounded-2xl shadow-2xl px-5 py-4">
+        {showTail && placement === 'top' && (
+          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
+        )}
+        {showTail && placement === 'bottom' && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-[12px] border-l-transparent border-r-transparent border-b-white drop-shadow-sm" />
+        )}
+        {children}
       </div>
     </div>
   );
@@ -295,46 +346,32 @@ function StepMealCards({
   onNext: () => void;
   onSkip: () => void;
 }) {
-  const calloutStyle: React.CSSProperties = spotlightRect
-    ? {
-        position: 'fixed',
-        top: spotlightRect.top - 16,
-        left: '50%',
-        transform: 'translate(-50%, -100%)',
-      }
-    : { position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)' };
-
   return (
-    <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
-      <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
-        {spotlightRect && (
-          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
-        )}
-        <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
-          <Camera className="w-4 h-4 text-emerald-600 flex-shrink-0" strokeWidth={2.2} />
-          食事区分ごとに記録できます
-        </div>
-        <p className="text-xs text-stone-600 leading-relaxed mb-4">
-          朝食・昼食・夕食・間食のカードをタップして、写真またはテキストで記録しましょう。
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onNext}
-            className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
-          >
-            次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </button>
-          <button
-            type="button"
-            onClick={onSkip}
-            className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
-          >
-            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
-          </button>
-        </div>
+    <SpotlightCallout spotlightRect={spotlightRect}>
+      <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
+        <Camera className="w-4 h-4 text-emerald-600 flex-shrink-0" strokeWidth={2.2} />
+        食事区分ごとに記録できます
       </div>
-    </div>
+      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+        朝食・昼食・夕食・間食のカードをタップして、写真またはテキストで記録しましょう。
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
+        >
+          次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
+        >
+          <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </button>
+      </div>
+    </SpotlightCallout>
   );
 }
 
@@ -347,46 +384,32 @@ function StepWeightIntro({
   onNext: () => void;
   onSkip: () => void;
 }) {
-  const calloutStyle: React.CSSProperties = spotlightRect
-    ? {
-        position: 'fixed',
-        top: spotlightRect.top - 16,
-        left: '50%',
-        transform: 'translate(-50%, -100%)',
-      }
-    : { position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)' };
-
   return (
-    <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
-      <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
-        {spotlightRect && (
-          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
-        )}
-        <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
-          <Scale className="w-4 h-4 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
-          体重も記録できます
-        </div>
-        <p className="text-xs text-stone-600 leading-relaxed mb-4">
-          毎日の体重も記録すると、食事と一緒にグラフで推移が見えます。こちらのカードから手軽に入力できます。
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onNext}
-            className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
-          >
-            次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </button>
-          <button
-            type="button"
-            onClick={onSkip}
-            className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
-          >
-            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
-          </button>
-        </div>
+    <SpotlightCallout spotlightRect={spotlightRect}>
+      <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
+        <Scale className="w-4 h-4 text-sky-600 flex-shrink-0" strokeWidth={2.2} />
+        体重も記録できます
       </div>
-    </div>
+      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+        毎日の体重も記録すると、食事と一緒にグラフで推移が見えます。こちらのカードから手軽に入力できます。
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
+        >
+          次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
+        >
+          <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </button>
+      </div>
+    </SpotlightCallout>
   );
 }
 
@@ -399,46 +422,32 @@ function StepExerciseIntro({
   onNext: () => void;
   onSkip: () => void;
 }) {
-  const calloutStyle: React.CSSProperties = spotlightRect
-    ? {
-        position: 'fixed',
-        top: spotlightRect.top - 16,
-        left: '50%',
-        transform: 'translate(-50%, -100%)',
-      }
-    : { position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)' };
-
   return (
-    <div style={calloutStyle} className="w-[88%] max-w-xs z-10">
-      <div className="bg-white rounded-2xl shadow-2xl px-5 py-4">
-        {spotlightRect && (
-          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-[12px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm" />
-        )}
-        <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
-          <Footprints className="w-4 h-4 text-amber-600 flex-shrink-0" strokeWidth={2.2} />
-          運動も記録できます
-        </div>
-        <p className="text-xs text-stone-600 leading-relaxed mb-4">
-          ジムでのトレーニングや有酸素運動も記録して、消費カロリーを合わせて把握できます。同じカードから入力できます。
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onNext}
-            className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
-          >
-            次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </button>
-          <button
-            type="button"
-            onClick={onSkip}
-            className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
-          >
-            <X className="w-3.5 h-3.5" strokeWidth={2.2} />
-          </button>
-        </div>
+    <SpotlightCallout spotlightRect={spotlightRect}>
+      <div className="text-sm font-bold text-stone-900 mb-1.5 flex items-center gap-2">
+        <Footprints className="w-4 h-4 text-amber-600 flex-shrink-0" strokeWidth={2.2} />
+        運動も記録できます
       </div>
-    </div>
+      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+        ジムでのトレーニングや有酸素運動も記録して、消費カロリーを合わせて把握できます。同じカードから入力できます。
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm active:bg-emerald-700 flex items-center justify-center gap-1"
+        >
+          次へ <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 active:bg-stone-200"
+        >
+          <X className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </button>
+      </div>
+    </SpotlightCallout>
   );
 }
 

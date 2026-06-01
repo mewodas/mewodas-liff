@@ -45,6 +45,8 @@ export type TenantConfig = {
   lineChannelToken?: string;
   /** 招待モード: 'individual'=個別招待（既定・トレーナーが1件ずつURL発行）、'approval'=承認制（公開URL+ジムが承認）*/
   inviteMode?: 'individual' | 'approval';
+  /** 顧客リスクお知らせ自動配信 ON/OFF（既定 false=opt-in） */
+  riskAlertEnabled?: boolean;
   /** LINE自動送付ON/OFF */
   lineAutoSendEnabled?: boolean;
   /** 自動送付時刻 "HH:MM" JST */
