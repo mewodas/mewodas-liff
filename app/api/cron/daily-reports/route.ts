@@ -155,8 +155,11 @@ export async function GET(req: NextRequest) {
           .filter((a) => {
             if (a.audience !== '店舗向け') return false;
             if (!a.title.startsWith('【本日の要注意顧客')) return false;
-            const createdDate = a.createdAt ? a.createdAt.slice(0, 10) : '';
-            return createdDate === todayDate;
+            // createdAt は Notion created_time = UTC。JST 日付の todayDate と直接
+            // 比較すると 0–9時JST のあいだ前日扱いになり（cron は 21:00UTC=6:00JST）
+            // 当日分を取りこぼして毎回重複作成してしまう。作成時に JST 日付で書き込む
+            // publishedAt（公開日）で当日判定する（タイムゾーン変換不要・完全一致）。
+            return a.publishedAt === todayDate;
           })
           .flatMap((a) => a.targetTenants)
       );

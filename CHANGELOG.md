@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-01 – fix(cron): リスクお知らせ自動配信の dedupe が毎回すり抜ける重複作成バグを修正（branch: staging）
+- fix: `app/api/cron/daily-reports/route.ts` の「【本日の要注意顧客 N名】」お知らせ当日重複判定を、UTC の `createdAt`（Notion `created_time`）比較から、作成時に JST 日付で書き込む `publishedAt`（公開日）比較に変更
+- 原因: cron は `vercel.json` で `0 21 * * *`（21:00 UTC = 6:00 JST）に発火。dedupe の `todayDate` は `jstNow()` ベースの JST 日付だが、`a.createdAt.slice(0,10)` は UTC 日付のため、00–09時JST のあいだ（＝まさに cron 実行時刻）は前日扱いになり、当日作成済みのお知らせを1件も拾えず `already_sent` 判定が常に false → 再実行のたびに重複作成していた
+- 修正により再実行時は `already_sent` で正しくスキップ。`targetTenants` flatten・page_size 100 ページングは問題なし（新しい順で当日分は先頭に来るため取りこぼしなし）
+- 影響範囲: API / cron（バックエンド）のみ。顧客側UI・DB スキーマ変更なし
+- 関連: ハンドオフ #1（最優先）。staging 検証（cron 再実行で already_sent 確認）→ 既存重複お知らせ掃除 → fitmeal-qa → 社長OK後に main
+
 ## 2026-06-01 – fix(onboarding): iPhone SE2 で吹き出しが枠外に切れる/ツアー中に下要素がタップ反応する問題を修正（branch: staging）
 - fix(枠外): `components/OnboardingFlow.tsx` のスポットライト吹き出しを常に対象の上に固定していた実装を、`SpotlightCallout` に統合。吹き出しの高さを実測し「上 or 下の収まる方」へ自動配置、どちらにも入りきらない縦長対象（食事カード群など）や画面端では viewport 内にクランプ。SE2(667px) でタイトル＋本文先頭が LIFF ヘッダー裏に切れる事象を解消。対象は StepMealCards / StepWeightIntro / StepExerciseIntro（StepFooterRecord は元々下端配置で問題なく据え置き）
 - fix(タップ透過): `components/OnboardingTour.tsx`（/record・/weight・/exercise ツアー）のルートが `pointer-events-none` で全面ブロッカーが無く、ツアー中に下の実要素（「朝食は食べなかった」等）がタップに反応して別ページ遷移/確認ダイアログが出ていた。透明な全面ブロッカー（pointer-events-auto）を追加し、タップを吸収。ツアーはツールチップのボタンでのみ進む。スポットライト未取得時はブロッカーが暗転も兼任。※ホーム(OnboardingFlow)はルートが pointer-events 有効で元々ブロック済み
