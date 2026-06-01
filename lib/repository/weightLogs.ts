@@ -2,6 +2,10 @@ import { getCurrentTenant } from '@/lib/tenant';
 
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
+// Notion 一時障害（429/502/503/504）・ネットワーク断は指数バックオフで最大3回リトライ。
+// （中央 lib/notion.ts と同方式。この repo は自前 notionRequest のためリトライが無く、
+//   体重記録の保存が一時エラーで間欠的に失敗していた）
+const NOTION_RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
 
 export type WeightLog = {
   id: string;
@@ -25,20 +29,33 @@ function getApiKey(): string {
 async function notionRequest(method: string, path: string, payload?: object): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('NOTION_API_KEY 未設定');
-  const res = await fetch(`${NOTION_BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Notion-Version': NOTION_API_VERSION,
-    },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-  if (!res.ok) {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+    let res: Response;
+    try {
+      res = await fetch(`${NOTION_BASE}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': NOTION_API_VERSION,
+        },
+        body: payload ? JSON.stringify(payload) : undefined,
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (e) {
+      // タイムアウト/ネットワーク断も一時障害として次の試行へ
+      lastError = e instanceof Error ? e : new Error(String(e));
+      continue;
+    }
+    if (res.ok) return res.json();
     const text = await res.text();
-    throw new Error(`Notion API ${res.status}: ${text.slice(0, 300)}`);
+    const err = new Error(`Notion API ${res.status}: ${text.slice(0, 300)}`);
+    if (!NOTION_RETRYABLE_STATUS.has(res.status)) throw err;
+    lastError = err;
   }
-  return res.json();
+  throw lastError ?? new Error('Notion request failed');
 }
 
 function pageToLog(page: { id: string; created_time: string; properties: Record<string, any> }): WeightLog {
