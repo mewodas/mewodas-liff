@@ -68,9 +68,7 @@ export default function ProgressPage() {
   const [customerId, setCustomerId] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('進行中');
   const [storeFilter, setStoreFilter] = useState<string>('');
-  const [riskMap, setRiskMap] = useState<
-    Map<string, { noRecord: boolean; daysSinceLastRecord: number | null; daysSinceLastWeight: number | null; weightStalled: boolean }>
-  >(new Map());
+  const [riskMap, setRiskMap] = useState<Map<string, { weightStalled: boolean }>>(new Map());
 
   const load = useCallback(async (date: string) => {
     setLoading(true);
@@ -86,17 +84,12 @@ export default function ProgressPage() {
       const sJ = sRes.ok ? await sRes.json() : { stores: [] };
       setProgress(pJ.progress || []);
       setStores(sJ.stores || []);
-      // リスク（記録漏れ/体重停滞）をステータス横ラベル用に取得。失敗しても本体表示は壊さない
+      // リスク（体重停滞）をステータス横ラベル用に取得。失敗しても本体表示は壊さない
       if (rRes && rRes.ok) {
         const rJ = await rRes.json().catch(() => null);
-        const m = new Map<string, { noRecord: boolean; daysSinceLastRecord: number | null; daysSinceLastWeight: number | null; weightStalled: boolean }>();
+        const m = new Map<string, { weightStalled: boolean }>();
         for (const r of rJ?.rows || []) {
-          m.set(r.customerPageId, {
-            noRecord: !!r.noRecord,
-            daysSinceLastRecord: r.daysSinceLastRecord ?? null,
-            daysSinceLastWeight: r.daysSinceLastWeight ?? null,
-            weightStalled: !!r.weightStalled,
-          });
+          m.set(r.customerPageId, { weightStalled: !!r.weightStalled });
         }
         setRiskMap(m);
       }
@@ -266,8 +259,6 @@ export default function ProgressPage() {
                         <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
                       )}
                       <StatusBadge status={item.foodStatus} />
-                      {foodGapLabel(risk?.daysSinceLastRecord)}
-                      {weightGapLabel(risk?.daysSinceLastWeight)}
                       {risk?.weightStalled && (
                         <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
                           <AlertTriangle className="w-2.5 h-2.5" strokeWidth={2.4} />
@@ -430,37 +421,6 @@ function WeightDelta({ delta }: { delta: number | null }) {
       変化なし
     </div>
   );
-}
-
-function RecordGapBadge({ label, cls }: { label: string; cls: string }) {
-  return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${cls}`}>
-      <AlertTriangle className="w-2.5 h-2.5" strokeWidth={2.4} />
-      {label}
-    </span>
-  );
-}
-
-function foodGapLabel(days: number | null | undefined): React.ReactNode {
-  if (days === undefined) return null;
-  if (days === null) {
-    return <RecordGapBadge label="食事記録漏れ2日以上" cls="bg-rose-50 text-rose-700 border-rose-200" />;
-  }
-  if (days <= 0) return null;
-  if (days === 1) return <RecordGapBadge label="食事記録漏れ" cls="bg-amber-50 text-amber-700 border-amber-200" />;
-  if (days === 2) return <RecordGapBadge label="食事記録漏れ2日" cls="bg-orange-50 text-orange-700 border-orange-200" />;
-  return <RecordGapBadge label="食事記録漏れ2日以上" cls="bg-rose-50 text-rose-700 border-rose-200" />;
-}
-
-function weightGapLabel(days: number | null | undefined): React.ReactNode {
-  if (days === undefined) return null;
-  if (days === null) {
-    return <RecordGapBadge label="体重記載漏れ2日以上" cls="bg-rose-50 text-rose-700 border-rose-200" />;
-  }
-  if (days <= 0) return null;
-  if (days === 1) return <RecordGapBadge label="体重記載漏れ" cls="bg-amber-50 text-amber-700 border-amber-200" />;
-  if (days === 2) return <RecordGapBadge label="体重記載漏れ2日" cls="bg-orange-50 text-orange-700 border-orange-200" />;
-  return <RecordGapBadge label="体重記載漏れ2日以上" cls="bg-rose-50 text-rose-700 border-rose-200" />;
 }
 
 function StatusBadge({ status }: { status: string | null }) {

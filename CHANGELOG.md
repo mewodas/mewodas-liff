@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – change(progress): 進捗管理の「食事記録漏れ」「体重記載漏れ」バッジを削除（branch: staging）
+- change: `app/admin/progress/page.tsx`。顧客リスト各行のステータス横に出していた **食事記録漏れ**（`foodGapLabel` / `daysSinceLastRecord`）と **体重記載漏れ**（`weightGapLabel` / `daysSinceLastWeight`）の記録漏れバッジを削除（社長指示「不要」）。未使用になった `RecordGapBadge` / `foodGapLabel` / `weightGapLabel` も除去し、`riskMap` を `{ weightStalled }` のみに簡素化
+- 残置: **体重停滞**バッジ（`weightStalled`）は対象外のため継続表示。リスク取得API（`/api/admin/customers/risk-summary`）と cron 側の記録漏れ計算は変更なし（バッジ表示のみ撤去）
+- 影響範囲: 管理画面（/admin・/store 進捗管理）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過（既存の vitest 未解決エラーのみ）
+- 関連: 社長指示「体重記録漏れと食事記録のバッジ不要だから削除して」
+
 ## 2026-06-01 – change(admin/store): サイドバー展開時の親ハイライト ＋ タイトル文字サイズ統一 ＋ ロールバッジにアイコン ＋ 体組成を検索駆動に（branch: staging）
 - change: `app/admin/AdminShell.tsx`。(1) 進捗管理／設定グループを**展開した時に親もアクセント色**で点灯（従来は子がアクティブな時のみ。`progressActive`→`progressOpen` / `settingsActive`→`settingsOpen`。左アクセントバーは現在地のみ維持）。(2) トップバーのページタイトルを `text-sm`→`text-base` にしサイドバーメニューと同サイズに。(3) ロールバッジ（店舗/アドミン）に `w-4 h-4` アイコン（店舗=Store / アドミン=ShieldCheck）を追加し、ベルアイコン(`w-4 h-4`)とサイズを統一
 - change: `app/admin/measurements/page.tsx`（体組成計測記録）。顧客選択を**検索駆動**に変更。初期は検索バーのみ表示（一覧・フィルタ非表示）、氏名検索した時のみ候補一覧＋フィルタを表示→クリックで登録画面へ。空検索時は「氏名で検索すると顧客が表示されます」ヒント
