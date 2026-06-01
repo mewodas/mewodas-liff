@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – change(admin): 顧客リストを縦1列リストへ戻す ＋ 招待URLコピーを検索下へ移動 ＋ 体組成記録の顧客検索を顧客管理と同じUI/UXに（branch: staging）
+- change: `app/admin/customers/page.tsx`。(1) 顧客一覧を `grid md:grid-cols-2 xl:grid-cols-3`（393c714 のレスポンシブグリッド）から元の `divide-y` 縦1列リストへ戻す（社長指示・スクショの縦リストに統一）。(2)「招待URLをコピー」ボタンを検索カード（氏名検索＋ステータス／店舗フィルタ）の上→下へ移動。上限到達時ツールチップ等の挙動は不変
+- change: `app/admin/measurements/page.tsx`（体組成計測記録）。顧客選択を `<select>` ドロップダウンから、顧客管理と同じ「検索バー＋ステータス／店舗フィルタ pill＋クリック可能な縦1列カード一覧（名前・各種バッジ・体重/目標kcal/PFCの2行）」に刷新。選択後は「選択中の顧客＋別の顧客を選ぶ」ヘッダー→既存の記録フォーム・履歴へ。`/api/admin/stores` を追加取得、`StatusBadge` を移植
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ3件）。393c714 のタブレット向けグリッド最適化を顧客管理では取り下げ（要なら別途タブレット対応を再設計）
+
 ## 2026-06-01 – perf(progress)+style(record): 進捗管理の表示高速化 / 「テキスト記録」カードの2行折返し解消（branch: staging）
 - perf: `app/api/admin/progress/route.ts` の食事・体重・運動の3データ取得フェーズを**直列→並列(`Promise.all`)化**。各フェーズは progress の別フィールド（today/weight/exercise）にのみ書くため競合なし。直列だと Notion 往復＋リトライが積み上がり、進捗管理(/store/progress)の顧客表示が ~10秒かかっていたのを短縮（体感の主因に対処）
 - style: `app/record/page.tsx` の食事記録ハブのカード「テキストで記録」(7文字)が iPhone のカード幅で2行に折返していたため、ラベルを「テキスト記録」(6文字・他カードと同じ収まり)に変更。フォントサイズは他カードと統一のまま1行に

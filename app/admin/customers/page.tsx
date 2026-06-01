@@ -285,43 +285,6 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        <div className="relative group w-full">
-          {/* 上限到達時のみ: 招待ボタンにホバーで増枠案内ツールチップ（ボタン下に表示。pt-2 でボタンと接して hover が途切れない） */}
-          {seatInfo?.isOverLimit && (
-            <div className="absolute top-full left-0 right-0 pt-2 hidden group-hover:block z-20">
-              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex gap-2 items-start shadow-lg">
-                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
-                <div className="flex-1">
-                  <div className="font-bold">
-                    利用可能アカウント数 {seatInfo.seatLimit}名 / 使用 {seatInfo.currentSeats}名 — 上限到達
-                  </div>
-                  <div>
-                    新規招待には増枠が必要です。
-                    <Link href={`${base}/billing`} className="text-rose-700 font-bold underline ml-1">
-                      プランを変更する →
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={copyApplyLink}
-            disabled={loading || !!seatInfo?.isOverLimit}
-            className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
-              loading || seatInfo?.isOverLimit
-                ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
-                : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
-            }`}
-          >
-            <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
-            {loading ? '読み込み中…' : '招待URLをコピー'}
-          </button>
-        </div>
-
-
-
         <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />
@@ -380,6 +343,41 @@ export default function AdminCustomersPage() {
           )}
         </div>
 
+        <div className="relative group w-full">
+          {/* 上限到達時のみ: 招待ボタンにホバーで増枠案内ツールチップ（ボタン下に表示。pt-2 でボタンと接して hover が途切れない） */}
+          {seatInfo?.isOverLimit && (
+            <div className="absolute top-full left-0 right-0 pt-2 hidden group-hover:block z-20">
+              <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex gap-2 items-start shadow-lg">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-500" strokeWidth={2.2} />
+                <div className="flex-1">
+                  <div className="font-bold">
+                    利用可能アカウント数 {seatInfo.seatLimit}名 / 使用 {seatInfo.currentSeats}名 — 上限到達
+                  </div>
+                  <div>
+                    新規招待には増枠が必要です。
+                    <Link href={`${base}/billing`} className="text-rose-700 font-bold underline ml-1">
+                      プランを変更する →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={copyApplyLink}
+            disabled={loading || !!seatInfo?.isOverLimit}
+            className={`flex w-full font-bold py-3 rounded-xl items-center justify-center gap-2 text-sm border ${
+              loading || seatInfo?.isOverLimit
+                ? 'bg-stone-100 text-stone-400 border-stone-300 opacity-60 cursor-not-allowed'
+                : 'bg-sky-100 text-sky-700 border-sky-300 active:bg-sky-200'
+            }`}
+          >
+            <ClipboardCopy className="w-4 h-4" strokeWidth={2.4} />
+            {loading ? '読み込み中…' : '招待URLをコピー'}
+          </button>
+        </div>
+
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
         )}
@@ -389,13 +387,13 @@ export default function AdminCustomersPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
             {filtered.map((c) => {
               const isPending = c.foodStatus === '承認待ち';
               const isSample = !!c.lineUserId && (c.lineUserId.startsWith('SAMPLE_') || c.lineUserId.startsWith('DEMO_'));
               return (
-                <li key={c.pageId} className="bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-0 px-2 py-1 rounded-2xl hover:bg-stone-50">
+                <li key={c.pageId}>
+                  <div className="flex items-center gap-0 px-2 py-1 hover:bg-stone-50">
                     <Link
                       href={`${base}/customers/${c.pageId}`}
                       className="flex items-start gap-3 px-2 py-2 flex-1 min-w-0"
