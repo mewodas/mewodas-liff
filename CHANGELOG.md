@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-01 – feat(admin/store): 管理画面ナビを常時表示の左サイドバーに刷新（モバイル/タブレット/PC対応）（branch: staging）
+- feat: `app/admin/AdminShell.tsx`（/store・/admin 共通シェル）のナビを、上部の横タブ＋ドロップダウンから「左サイドバー（アプリシェル）」レイアウトに刷新。md 以上（タブレット・PC）ではサイドバーを常時固定表示して画面全体を使い、モバイル（< md）ではハンバーガーで開くドロワー＋背面オーバーレイに切替
+- feat: 選択中の項目を背景・左アクセントバー・リング＋グロー（影）でハイライト（「クリックで階層が光る」）。進捗管理／設定はサイドバー内の開閉グループにし、現在地のグループは自動展開
+- 仕様維持: TABS 構成・ロール別表示（master/tenant_admin・storeOnly/masterOnly）・me 取得＋キャッシュ・ログアウト・店舗お知らせ未読バッジ・戻るボタン・アクセント配色（store=violet/admin=emerald）は従来どおり
+- cleanup: 誤って追加していた到達不能の `app/store/(protected)/store/layout.tsx`（dead route layout）を削除
+- 影響範囲: 管理画面（/store・/admin）のレイアウトのみ。顧客側 LIFF・API・DB 変更なし。tsc／eslint／`next build` 通過。staging 検証 → 社長確認 → main
+- 関連: Square 管理画面を参照したフルスクリーン・サイドナビ化の要望
+
 ## 2026-06-01 – style(date-nav): 日付選択の左右矢印を絵文字からアイコン(lucide Chevron)に変更（branch: staging）
 - style: 日付ナビの左右矢印を絵文字 `◀`/`▶`（端末依存の青系トライアングル絵文字でレンダリングされていた）から lucide-react の `ChevronLeft`/`ChevronRight` に置換。アプリ内の他アイコンと統一し currentColor で配色も馴染ませた
 - 対象（顧客側）: `app/home/_components/DateStrip.tsx`（ホーム週間日付ストリップ）/ `app/record/page.tsx`（記録の日付セレクタ）/ `app/my-menu/page.tsx`（マイメニューの日付）/ `app/food-search/page.tsx`（食品DB検索の日付）。同種の日付前後ナビ全箇所を一括で統一

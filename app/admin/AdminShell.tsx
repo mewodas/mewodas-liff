@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, FileText, Menu, X, CreditCard, ListChecks, Rocket, TrendingUp, Bell, BellRing, ShieldCheck, Settings, ChevronDown, Scale, UtensilsCrossed, type LucideIcon } from 'lucide-react';
@@ -49,7 +49,7 @@ const TABS: Tab[] = [
     Icon: Send,
     match: (p, base) => p.startsWith(`${base}/reports`),
   },
-  // --- 以下は「設定」ドロップダウン配下に表示 ---
+  // --- 以下は「設定」グループ配下に表示 ---
   // store 表示順: LINE連携設定 → 契約 → テンプレ管理 → 店舗
   // admin 表示順: テンプレ管理 → テナント → プラン管理 → 監査ログ
   {
@@ -146,11 +146,12 @@ export default function AdminShell({
   const base = useAdminBase();
   const isStore = base === '/store';
   const [me, setMe] = useState<Me | null>(cachedMe);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [openMenu, setOpenMenu] = useState<'progress' | 'settings' | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
+  // モバイル(< md)用ドロワーの開閉。md 以上ではサイドバー常時表示のため未使用。
+  // ナビ各リンクの onClick で閉じるため、遷移時クローズの effect は不要。
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // サイドバー内グループ(進捗管理 / 設定)の手動展開トグル。実際の表示は
+  // 「手動で開いた || 現在地がそのグループ」で算出する（下記 progressOpen / settingsOpen）。
+  const [openGroups, setOpenGroups] = useState<{ progress: boolean; settings: boolean }>({ progress: false, settings: false });
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -164,35 +165,6 @@ export default function AdminShell({
       })
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-    setOpenMenu(null);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!openMenu) return;
-    function handleClick(e: MouseEvent) {
-      const insideProgress = progressRef.current && progressRef.current.contains(e.target as Node);
-      const insideSettings = settingsRef.current && settingsRef.current.contains(e.target as Node);
-      if (!insideProgress && !insideSettings) {
-        setOpenMenu(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [openMenu]);
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
@@ -210,238 +182,132 @@ export default function AdminShell({
   const progressTabs = visibleTabs.filter((t) => t.progress);
   const settingsTabs = visibleTabs.filter((t) => t.settings);
 
-  const activeTab = visibleTabs.find((t) => t.match(pathname, base));
   const progressActive = progressTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
-  const accentBorder = isStore ? 'border-violet-600' : 'border-emerald-600';
+
+  // グループの展開状態 = 手動で開いた || 現在地がそのグループ。
+  // アクティブなグループは常に開き、それ以外はユーザーのトグルに従う（離れると自動で畳む）。
+  const progressOpen = openGroups.progress || progressActive;
+  const settingsOpen = openGroups.settings || settingsActive;
+
+  // アクセントカラー（store=violet / admin=emerald）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
   const accentBg = isStore ? 'bg-violet-50' : 'bg-emerald-50';
   const accentDot = isStore ? 'bg-violet-600' : 'bg-emerald-600';
+  const accentRing = isStore ? 'ring-violet-200' : 'ring-emerald-200';
+  const accentGlow = isStore
+    ? 'shadow-[0_1px_10px_-3px_rgba(124,58,237,0.55)]'
+    : 'shadow-[0_1px_10px_-3px_rgba(5,150,105,0.55)]';
+
+  // リンク項目の共通クラス。active のとき背景＋リング＋グローで強調。
+  const leafClass = (active: boolean, indented: boolean) =>
+    [
+      'group relative flex items-center gap-3 rounded-xl py-2.5 text-sm font-bold transition-all',
+      indented ? 'pl-10 pr-3' : 'px-3',
+      active
+        ? `${accentBg} ${accentText} ring-1 ${accentRing} ${accentGlow}`
+        : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
+    ].join(' ');
 
   return (
     <div className="min-h-screen bg-stone-100">
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-30" ref={menuRef}>
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {back && (
-              <Link
-                href={back.href}
-                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
-                aria-label="戻る"
-              >
-                <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
-              </Link>
-            )}
-            {/* FitMeal ロゴ（HPと同じ）。クリックで進捗管理へ */}
-            <Link
-              href={`${base}/progress`}
-              className="flex items-center flex-shrink-0"
-              aria-label="進捗管理へ"
-            >
-              <img src="/fitmeal-icon.png" alt="" className="h-10 w-10 object-contain" />
-              <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-2 h-6 w-auto" />
-            </Link>
-            <span className="h-5 w-px bg-stone-200 flex-shrink-0" aria-hidden />
-            <h1 className="text-sm font-bold text-stone-900 truncate">{title}</h1>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {!isStore && (
-              <span className="hidden sm:inline text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                アドミン
-              </span>
-            )}
-            {isStore && (
-              <span className="hidden sm:inline text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                店舗
-              </span>
-            )}
-            {isStore && (
-              <Link
-                href="/store/announcements"
-                className="relative flex w-8 h-8 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
-                aria-label={`お知らせ（未読${storeUnread}件）`}
-              >
-                <Bell className="w-4 h-4" strokeWidth={2.2} />
-                {storeUnread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                    {storeUnread > 9 ? '9+' : storeUnread}
-                  </span>
-                )}
-              </Link>
-            )}
-            {me?.role === 'tenant_admin' && (
-              <Link
-                href={`${base}/account/password`}
-                className="hidden sm:inline-flex text-xs font-bold text-stone-600 hover:text-stone-900 items-center gap-1 p-2 rounded-full hover:bg-stone-100"
-                title="パスワード変更"
-              >
-                <Key className="w-3.5 h-3.5" strokeWidth={2.2} />
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={logout}
-              className="hidden sm:flex text-xs font-bold text-stone-600 hover:text-stone-900 items-center gap-1 px-2 py-1.5 rounded-full hover:bg-stone-100"
-            >
-              <LogOut className="w-3.5 h-3.5" strokeWidth={2.2} />
-              ログアウト
-            </button>
-            {/* ハンバーガーボタン (sm 以下のみ表示) */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              className="sm:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-700"
-              aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'}
-            >
-              {menuOpen ? <X className="w-5 h-5" strokeWidth={2.2} /> : <Menu className="w-5 h-5" strokeWidth={2.2} />}
-            </button>
-          </div>
+      {/* モバイル用ドロワー背面オーバーレイ */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-stone-900/40 md:hidden"
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* サイドバー: モバイルはドロワー / md 以上は常時固定表示 */}
+      <aside
+        className={[
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-stone-200 bg-white',
+          'transition-transform duration-200 ease-out md:w-60 lg:w-64',
+          drawerOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+          'md:translate-x-0 md:shadow-none',
+        ].join(' ')}
+      >
+        {/* ブランド + ロール */}
+        <div className="flex h-16 items-center border-b border-stone-200 px-4">
+          <Link
+            href={`${base}/progress`}
+            className="mr-auto flex items-center min-w-0"
+            aria-label="進捗管理へ"
+            onClick={() => setDrawerOpen(false)}
+          >
+            <img src="/fitmeal-icon.png" alt="" className="h-9 w-9 object-contain" />
+            <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-5 w-auto" />
+          </Link>
+          <span
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              isStore
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : 'text-violet-700 bg-violet-50 border-violet-200'
+            }`}
+          >
+            {isStore ? '店舗' : 'アドミン'}
+          </span>
+          {/* モバイル: 閉じる */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            className="md:hidden ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+            aria-label="メニューを閉じる"
+          >
+            <X className="w-5 h-5" strokeWidth={2.2} />
+          </button>
         </div>
 
-        {/* デスクトップ用タブナビ */}
-        <nav className="hidden sm:block max-w-5xl mx-auto px-4 overflow-visible">
-          <div className="flex gap-1 -mb-px min-w-max">
-            {topTabs.map((t) => {
-              const href = `${base}${t.suffix}`;
-              const active = t.match(pathname, base);
-              return (
-                <Fragment key={href}>
-                  <Link
-                    href={href}
-                    className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                      active
-                        ? `${accentBorder} ${accentText}`
-                        : 'border-transparent text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    <t.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
-                    {t.label}
-                  </Link>
-
-                  {/* 進捗管理ドロップダウン（顧客管理の直後に配置） */}
-                  {t.suffix === '/customers' && progressTabs.length > 0 && (
-                    <div className="relative" ref={progressRef}>
-                      <button
-                        type="button"
-                        onClick={() => setOpenMenu((v) => (v === 'progress' ? null : 'progress'))}
-                        aria-expanded={openMenu === 'progress'}
-                        aria-haspopup="true"
-                        className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                          progressActive || openMenu === 'progress'
-                            ? `${accentBorder} ${accentText}`
-                            : 'border-transparent text-stone-600 hover:text-stone-900'
-                        }`}
-                      >
-                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
-                        進捗管理
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform ${openMenu === 'progress' ? 'rotate-180' : ''}`}
-                          strokeWidth={2.2}
-                        />
-                      </button>
-                      {openMenu === 'progress' && (
-                        <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
-                          {progressTabs.map((pt) => {
-                            const phref = `${base}${pt.suffix}`;
-                            const pactive = pt.match(pathname, base);
-                            return (
-                              <Link
-                                key={phref}
-                                href={phref}
-                                className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
-                                  pactive ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
-                                }`}
-                              >
-                                <pt.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                                {pt.label}
-                                {pactive && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </Fragment>
-              );
-            })}
-
-            {/* 設定ドロップダウン */}
-            {settingsTabs.length > 0 && (
-              <div className="relative" ref={settingsRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpenMenu((v) => (v === 'settings' ? null : 'settings'))}
-                  aria-expanded={openMenu === 'settings'}
-                  aria-haspopup="true"
-                  className={`inline-flex items-center gap-1 px-2.5 py-2 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap ${
-                    settingsActive || openMenu === 'settings'
-                      ? `${accentBorder} ${accentText}`
-                      : 'border-transparent text-stone-600 hover:text-stone-900'
-                  }`}
+        {/* ナビゲーション */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+          {topTabs.map((t) => {
+            const href = `${base}${t.suffix}`;
+            const active = t.match(pathname, base);
+            return (
+              <Fragment key={href}>
+                <Link
+                  href={href}
+                  onClick={() => setDrawerOpen(false)}
+                  aria-current={active ? 'page' : undefined}
+                  className={leafClass(active, false)}
                 >
-                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.2} />
-                  設定
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform ${openMenu === 'settings' ? 'rotate-180' : ''}`}
-                    strokeWidth={2.2}
+                  <span
+                    className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full transition-all ${
+                      active ? `${accentDot} opacity-100` : 'opacity-0 group-hover:opacity-40 group-hover:bg-stone-400'
+                    }`}
+                    aria-hidden
                   />
-                </button>
-                {openMenu === 'settings' && (
-                  <div className="absolute left-0 top-full mt-1 z-40 min-w-[12rem] rounded-xl border border-stone-200 bg-white shadow-lg py-1.5">
-                    {settingsTabs.map((t) => {
-                      const href = `${base}${t.suffix}`;
-                      const active = t.match(pathname, base);
-                      return (
-                        <Link
-                          key={href}
-                          href={href}
-                          className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold ${
-                            active ? `${accentBg} ${accentText}` : 'text-stone-700 hover:bg-stone-50'
-                          }`}
-                        >
-                          <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                          {t.label}
-                          {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </nav>
+                  <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                  <span className="truncate">{t.label}</span>
+                  {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
+                </Link>
 
-        {/* モバイル用ドロップダウンメニュー */}
-        {menuOpen && (
-          <div className="sm:hidden border-t border-stone-100 bg-white shadow-lg">
-            <nav className="px-3 py-2 space-y-0.5">
-              {topTabs.map((t) => {
-                const href = `${base}${t.suffix}`;
-                const active = t.match(pathname, base);
-                return (
-                  <Fragment key={href}>
-                    <Link
-                      href={href}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
-                        active
-                          ? `${accentBg} ${accentText}`
-                          : 'text-stone-700 hover:bg-stone-50'
+                {/* 進捗管理グループ（顧客管理の直後に配置） */}
+                {t.suffix === '/customers' && progressTabs.length > 0 && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
+                      aria-expanded={progressOpen}
+                      className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                        progressActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                       }`}
                     >
-                      <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                      {t.label}
-                      {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
-                    </Link>
-
-                    {/* 進捗管理セクション（顧客管理の直後に配置） */}
-                    {t.suffix === '/customers' && progressTabs.length > 0 && (
-                      <div className="pt-2">
-                        <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
-                          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
-                          進捗管理
-                        </div>
+                      <span
+                        className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${progressActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
+                        aria-hidden
+                      />
+                      <TrendingUp className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                      <span className="flex-1 text-left">進捗管理</span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${progressOpen ? 'rotate-180' : ''}`}
+                        strokeWidth={2.2}
+                      />
+                    </button>
+                    {progressOpen && (
+                      <div className="mt-0.5 space-y-0.5">
                         {progressTabs.map((pt) => {
                           const phref = `${base}${pt.suffix}`;
                           const pactive = pt.match(pathname, base);
@@ -449,31 +315,48 @@ export default function AdminShell({
                             <Link
                               key={phref}
                               href={phref}
-                              className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
-                                pactive
-                                  ? `${accentBg} ${accentText}`
-                                  : 'text-stone-700 hover:bg-stone-50'
-                              }`}
+                              onClick={() => setDrawerOpen(false)}
+                              aria-current={pactive ? 'page' : undefined}
+                              className={leafClass(pactive, true)}
                             >
                               <pt.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                              {pt.label}
-                              {pactive && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                              <span className="truncate">{pt.label}</span>
+                              {pactive && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
                             </Link>
                           );
                         })}
                       </div>
                     )}
-                  </Fragment>
-                );
-              })}
-
-              {/* 設定セクション */}
-              {settingsTabs.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center gap-2 px-3 pb-1 text-[11px] font-bold text-stone-400 uppercase tracking-wide">
-                    <Settings className="w-3.5 h-3.5" strokeWidth={2.2} />
-                    設定
                   </div>
+                )}
+              </Fragment>
+            );
+          })}
+
+          {/* 設定グループ */}
+          {settingsTabs.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
+                aria-expanded={settingsOpen}
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                  settingsActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                }`}
+              >
+                <span
+                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${settingsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
+                  aria-hidden
+                />
+                <Settings className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                <span className="flex-1 text-left">設定</span>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+                  strokeWidth={2.2}
+                />
+              </button>
+              {settingsOpen && (
+                <div className="mt-0.5 space-y-0.5">
                   {settingsTabs.map((t) => {
                     const href = `${base}${t.suffix}`;
                     const active = t.match(pathname, base);
@@ -481,65 +364,88 @@ export default function AdminShell({
                       <Link
                         key={href}
                         href={href}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-sm ${
-                          active
-                            ? `${accentBg} ${accentText}`
-                            : 'text-stone-700 hover:bg-stone-50'
-                        }`}
+                        onClick={() => setDrawerOpen(false)}
+                        aria-current={active ? 'page' : undefined}
+                        className={leafClass(active, true)}
                       >
                         <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
-                        {t.label}
-                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} />}
+                        <span className="truncate">{t.label}</span>
+                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
                       </Link>
                     );
                   })}
                 </div>
               )}
-            </nav>
-            <div className="border-t border-stone-100 px-3 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {!isStore && (
-                  <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                    アドミン
-                  </span>
-                )}
-                {isStore && (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    店舗
-                  </span>
-                )}
-                {me?.role === 'tenant_admin' && (
-                  <Link
-                    href={`${base}/account/password`}
-                    className="text-xs font-bold text-stone-600 inline-flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-stone-100"
-                    title="パスワード変更"
-                  >
-                    <Key className="w-3.5 h-3.5" strokeWidth={2.2} />
-                    パスワード変更
-                  </Link>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={logout}
-                className="text-xs font-bold text-stone-600 flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-stone-100"
-              >
-                <LogOut className="w-3.5 h-3.5" strokeWidth={2.2} />
-                ログアウト
-              </button>
             </div>
-          </div>
-        )}
+          )}
+        </nav>
 
-        {/* モバイル用アクティブタブ表示バー */}
-        {!menuOpen && activeTab && (
-          <div className={`sm:hidden border-t border-stone-100 px-3 py-1.5 flex items-center gap-2 ${accentText}`}>
-            <activeTab.Icon className="w-3.5 h-3.5" strokeWidth={2.2} />
-            <span className="text-xs font-bold">{activeTab.label}</span>
-          </div>
-        )}
-      </header>
-      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4">{children}</main>
+        {/* フッター: アカウント / ログアウト */}
+        <div className="border-t border-stone-200 p-3 space-y-1">
+          {me?.role === 'tenant_admin' && (
+            <Link
+              href={`${base}/account/password`}
+              onClick={() => setDrawerOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+            >
+              <Key className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+              パスワード変更
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+            ログアウト
+          </button>
+          {me?.email && <p className="px-3 pt-1 text-[11px] text-stone-400 truncate">{me.email}</p>}
+        </div>
+      </aside>
+
+      {/* メインカラム: md 以上はサイドバー幅ぶん左に寄せ、画面全体を使う */}
+      <div className="flex min-h-screen flex-col md:pl-60 lg:pl-64">
+        {/* トップバー */}
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-stone-200 bg-white/90 px-3 backdrop-blur sm:px-4">
+          {/* モバイル: ハンバーガー */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="md:hidden -ml-1 w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-700"
+            aria-label="メニューを開く"
+          >
+            <Menu className="w-5 h-5" strokeWidth={2.2} />
+          </button>
+          {back && (
+            <Link
+              href={back.href}
+              className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 flex-shrink-0"
+              aria-label="戻る"
+            >
+              <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+            </Link>
+          )}
+          <h1 className="flex-1 min-w-0 truncate text-sm font-bold text-stone-900">{title}</h1>
+          {isStore && (
+            <Link
+              href="/store/announcements"
+              className="relative flex w-9 h-9 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+              aria-label={`お知らせ（未読${storeUnread}件）`}
+            >
+              <Bell className="w-4 h-4" strokeWidth={2.2} />
+              {storeUnread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                  {storeUnread > 9 ? '9+' : storeUnread}
+                </span>
+              )}
+            </Link>
+          )}
+        </header>
+
+        {/* コンテンツ */}
+        <main className="flex-1 w-full max-w-5xl mx-auto px-3 sm:px-4 py-4">{children}</main>
+      </div>
     </div>
   );
 }
