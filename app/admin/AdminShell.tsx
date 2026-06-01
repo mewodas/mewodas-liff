@@ -202,7 +202,7 @@ export default function AdminShell({
   // リンク項目の共通クラス。active のとき背景＋リング＋グローで強調。
   const leafClass = (active: boolean, indented: boolean) =>
     [
-      'group relative flex items-center gap-3 rounded-xl py-2.5 text-sm font-bold transition-all',
+      'group relative flex items-center gap-3 rounded-xl py-2.5 text-base font-bold transition-all',
       indented ? 'pl-10 pr-3' : 'px-3',
       active
         ? `${accentBg} ${accentText} ring-1 ${accentRing} ${accentGlow}`
@@ -230,25 +230,16 @@ export default function AdminShell({
         ].join(' ')}
       >
         {/* ブランド + ロール */}
-        <div className="flex h-16 items-center border-b border-stone-200 px-4">
+        <div className="flex h-20 items-center border-b border-stone-200 px-4">
           <Link
             href={`${base}/progress`}
             className="mr-auto flex items-center min-w-0"
             aria-label="進捗管理へ"
             onClick={() => setDrawerOpen(false)}
           >
-            <img src="/fitmeal-icon.png" alt="" className="h-9 w-9 object-contain" />
-            <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-5 w-auto" />
+            <img src="/fitmeal-icon.png" alt="" className="h-14 w-14 object-contain" />
+            <img src="/fitmeal-wordmark.png" alt="fitmeal" className="-ml-1.5 h-8 w-auto" />
           </Link>
-          <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-              isStore
-                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                : 'text-violet-700 bg-violet-50 border-violet-200'
-            }`}
-          >
-            {isStore ? '店舗' : 'アドミン'}
-          </span>
           {/* モバイル: 閉じる */}
           <button
             type="button"
@@ -291,7 +282,7 @@ export default function AdminShell({
                       type="button"
                       onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
                       aria-expanded={progressOpen}
-                      className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                      className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                         progressActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                       }`}
                     >
@@ -340,7 +331,7 @@ export default function AdminShell({
                 type="button"
                 onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
                 aria-expanded={settingsOpen}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   settingsActive ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
                 }`}
               >
@@ -386,7 +377,7 @@ export default function AdminShell({
             <Link
               href={`${base}/account/password`}
               onClick={() => setDrawerOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
             >
               <Key className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
               パスワード変更
@@ -395,7 +386,7 @@ export default function AdminShell({
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold text-stone-600 hover:bg-stone-100 hover:text-stone-900"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
             ログアウト
@@ -441,6 +432,15 @@ export default function AdminShell({
               )}
             </Link>
           )}
+          <span
+            className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${
+              isStore
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : 'text-violet-700 bg-violet-50 border-violet-200'
+            }`}
+          >
+            {isStore ? '店舗' : 'アドミン'}
+          </span>
         </header>
 
         {/* コンテンツ */}
