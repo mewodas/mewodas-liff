@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Scale,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Trash2,
   X,
   Plus,
@@ -12,13 +13,29 @@ import {
   Database,
   Camera,
   Sparkles,
+  Search,
+  Circle,
+  Check,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
 import { compressImage } from '@/lib/imageCompress';
 
-type Customer = { pageId: string; name: string; lineUserId: string; foodStatus: string | null; storeId: string | null };
+type Customer = {
+  pageId: string;
+  name: string;
+  lineUserId: string;
+  foodStatus: string | null;
+  storeId: string | null;
+  goals?: { kcal: number; P: number; F: number; C: number };
+  currentWeight?: number | null;
+  targetWeight?: number | null;
+};
+
+type Store = { pageId: string; storeId: string; name: string };
+
+const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
 
 type BodyCompLog = {
   id: string;
@@ -131,6 +148,10 @@ export default function MeasurementsPage() {
 
   const [me, setMe] = useState<Me | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('すべて');
+  const [storeFilter, setStoreFilter] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [logs, setLogs] = useState<BodyCompLog[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
@@ -164,10 +185,15 @@ export default function MeasurementsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/admin/customers', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`顧客取得失敗（${res.status}）`);
-        const j = await res.json();
-        setCustomers(j.customers || []);
+        const [cRes, sRes] = await Promise.all([
+          fetch('/api/admin/customers', { cache: 'no-store' }),
+          fetch('/api/admin/stores', { cache: 'no-store' }),
+        ]);
+        if (!cRes.ok) throw new Error(`顧客取得失敗（${cRes.status}）`);
+        const cJ = await cRes.json();
+        const sJ = sRes.ok ? await sRes.json() : { stores: [] };
+        setCustomers(cJ.customers || []);
+        setStores(sJ.stores || []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'エラー');
       } finally {
@@ -175,6 +201,22 @@ export default function MeasurementsPage() {
       }
     })();
   }, []);
+
+  const filtered = useMemo(() => {
+    const qn = q.trim();
+    return customers.filter((c) => {
+      if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
+      if (storeFilter && c.storeId !== storeFilter) return false;
+      if (qn && !c.name.includes(qn)) return false;
+      return true;
+    });
+  }, [customers, q, statusFilter, storeFilter]);
+
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of stores) m.set(s.storeId, s.name);
+    return m;
+  }, [stores]);
 
   useEffect(() => {
     if (!selectedCustomer) {
@@ -401,34 +443,153 @@ export default function MeasurementsPage() {
   return (
     <AdminShell title="体組成計測記録">
       <div className="space-y-3">
-        {/* 顧客選択 */}
-        <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-          <div className="text-xs font-bold text-stone-700">顧客を選択</div>
-          {loadingCustomers ? (
-            <div className="text-sm text-stone-500">顧客読み込み中…</div>
-          ) : (
-            <select
-              value={selectedCustomer?.pageId || ''}
-              onChange={(e) => {
-                const c = customers.find((c) => c.pageId === e.target.value) || null;
-                setSelectedCustomer(c);
-                setShowForm(false);
-                setDetailLog(null);
-              }}
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">顧客を選択してください</option>
-              {customers.map((c) => (
-                <option key={c.pageId} value={c.pageId}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </section>
+        {/* 顧客選択 — 顧客管理と同じ検索 UI/UX */}
+        {!selectedCustomer ? (
+          <>
+            <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={2.2} />
+                <input
+                  type="text"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="氏名で検索"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                {STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
+                      statusFilter === s
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {stores.length > 0 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setStoreFilter('')}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                      storeFilter === ''
+                        ? 'bg-violet-500 text-white border-violet-500'
+                        : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    全店舗
+                  </button>
+                  {stores.map((s) => (
+                    <button
+                      key={s.storeId}
+                      type="button"
+                      onClick={() => setStoreFilter(s.storeId)}
+                      className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
+                        storeFilter === s.storeId
+                          ? 'bg-violet-500 text-white border-violet-500'
+                          : 'bg-white text-stone-700 border-stone-300'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        {error && (
-          <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
+            {error && (
+              <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
+            )}
+
+            {loadingCustomers ? (
+              <div className="text-center text-stone-500 py-10">読み込み中…</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center text-stone-500 py-10 bg-white rounded-2xl border border-stone-200">該当する顧客がいません</div>
+            ) : (
+              <ul className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-stone-100">
+                {filtered.map((c) => {
+                  const isSample = !!c.lineUserId && (c.lineUserId.startsWith('SAMPLE_') || c.lineUserId.startsWith('DEMO_'));
+                  return (
+                    <li key={c.pageId}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCustomer(c);
+                          setShowForm(false);
+                          setDetailLog(null);
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-stone-50 active:bg-stone-100 text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="text-sm font-bold text-stone-900 truncate">{c.name}</div>
+                            {isSample && (
+                              <span className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 px-1.5 py-0.5 rounded-full">デモ</span>
+                            )}
+                            <StatusBadge status={c.foodStatus} />
+                            {c.lineUserId ? (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5" strokeWidth={2.4} />
+                                LINE 連携済み
+                              </span>
+                            ) : null}
+                            {c.storeId && storeNameById.get(c.storeId) && stores.length > 1 && (
+                              <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                                {storeNameById.get(c.storeId)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-stone-600 mt-0.5">
+                            {c.currentWeight != null ? `開始 ${c.currentWeight}kg` : '体重未登録'}
+                            {c.targetWeight != null ? ` → 目標 ${c.targetWeight}kg` : ''}
+                            {c.goals && c.goals.kcal > 0 ? ` ・ 目標 ${c.goals.kcal}kcal/日` : ''}
+                            {c.goals && c.goals.kcal > 0 ? ` ・ 目標PFC P${c.goals.P}・F${c.goals.F}・C${c.goals.C}g` : ''}
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 flex-shrink-0 ml-1" strokeWidth={2.2} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        ) : (
+          <>
+            {/* 選択中の顧客 */}
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-stone-500">選択中の顧客</div>
+                <div className="text-sm font-bold text-stone-900 truncate flex items-center gap-2 mt-0.5">
+                  {selectedCustomer.name}
+                  <StatusBadge status={selectedCustomer.foodStatus} />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCustomer(null);
+                  setShowForm(false);
+                  setDetailLog(null);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-stone-100 border border-stone-300 px-3 py-2 rounded-xl active:bg-stone-200 flex-shrink-0"
+              >
+                <Search className="w-3.5 h-3.5" strokeWidth={2.2} />
+                別の顧客を選ぶ
+              </button>
+            </section>
+
+            {error && (
+              <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-3 rounded-xl">{error}</div>
+            )}
+          </>
         )}
 
         {/* 体組成DB未設定 */}
@@ -926,5 +1087,31 @@ function KeyMetric({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] font-bold text-emerald-700">{label}</div>
       <div className="text-base font-bold text-emerald-900 mt-0.5">{value}</div>
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  if (!status) {
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-stone-100 text-stone-600 border-stone-300">
+        未設定
+      </span>
+    );
+  }
+  const cls =
+    status === '承認待ち'
+      ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      : status === '進行中'
+      ? 'bg-orange-100 text-orange-700 border-orange-300'
+      : status === '休止中'
+      ? 'bg-sky-100 text-sky-700 border-sky-300'
+      : status === '卒業'
+      ? 'bg-stone-100 text-stone-600 border-stone-300'
+      : 'bg-stone-100 text-stone-700 border-stone-300';
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${cls}`}>
+      <Circle className="w-2 h-2 fill-current" strokeWidth={0} />
+      {status}
+    </span>
   );
 }
