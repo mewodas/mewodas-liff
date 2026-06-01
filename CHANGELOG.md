@@ -5,6 +5,12 @@
 - style: `app/record/page.tsx` の食事記録ハブのカード「テキストで記録」(7文字)が iPhone のカード幅で2行に折返していたため、ラベルを「テキスト記録」(6文字・他カードと同じ収まり)に変更。フォントサイズは他カードと統一のまま1行に
 - 影響範囲: 管理画面API(/api/admin/progress＝/store・/admin 進捗管理) / 顧客側 LIFF(/record カード表示)。ロジック・データ内容は不変
 - 関連: 社長報告（進捗管理が10秒/IMG_4755 テキストカード2行）。残: サイドバー選択色・見出しフォント・バッジ/お知らせアイコンのサイズ調整は AdminShell（並行作業中）のため要調整
+## 2026-06-01 – fix(account.delete): 健康データ削除を同期化（削除漏れ修正・件数を応答に）
+- fix: `DELETE /api/account` のカスケード削除（食事/体重/体組成/運動）を **background(waitUntil) から同期 await に変更**。応答前に削除を完了。background だとテナント AsyncLocalStorage context 喪失/未完了で**健康データが消えず PII 残存**する事象を staging 検証で確認（顧客アーカイブ済だが食事4/体重2 残存）→ 法的削除の確実性を優先
+- fix: 削除件数を応答に含める（`{ ok, deleted: {...} }`）＋監査 outcome を purge 成否で出し分け
+- 影響範囲: 顧客側 LIFF（アカウント削除）。staging・本番 両方。tsc／本番build パス
+- 既知: 同一 lineUserId が複数テナントに重複登録なら削除はリクエスト側テナントのみ（テナント別＝別アカウント）。Drive 写真は未削除（GAS残課題）
+- 関連: 社長の削除テスト検証（削除が顧客アーカイブのみで健康データ残存）
 
 ## 2026-06-01 – fix(exercise-log): 運動保存を「顧客null でも続行」に変更（体重と同挙動）＋原因ログ
 - fix: `app/api/exercise-log` で `getCustomerByLineId` が null（顧客が見つからない）でも **404 にせず運動記録を保存**（customerName は表示用のみのため `?? ''`）。体重保存(`/api/log/weight`)が既に採用している `.catch(()=>null)`＋null許容 と同方式に統一
