@@ -189,6 +189,9 @@ export default function AdminShell({
   // アクティブなグループは常に開き、それ以外はユーザーのトグルに従う（離れると自動で畳む）。
   const progressOpen = openGroups.progress || progressActive;
   const settingsOpen = openGroups.settings || settingsActive;
+  // 排他ハイライト: いずれかのグループが開いている間はトップ項目（顧客管理等）の色を消し、
+  // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
+  const anyGroupOpen = progressOpen || settingsOpen;
 
   // アクセントカラー（store=violet / admin=emerald）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
@@ -256,23 +259,25 @@ export default function AdminShell({
           {topTabs.map((t) => {
             const href = `${base}${t.suffix}`;
             const active = t.match(pathname, base);
+            // 排他ハイライト: グループ展開中はトップ項目の色を消す（現在地の色は消える仕様）
+            const highlighted = active && !anyGroupOpen;
             return (
               <Fragment key={href}>
                 <Link
                   href={href}
                   onClick={() => setDrawerOpen(false)}
                   aria-current={active ? 'page' : undefined}
-                  className={leafClass(active, false)}
+                  className={leafClass(highlighted, false)}
                 >
                   <span
                     className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full transition-all ${
-                      active ? `${accentDot} opacity-100` : 'opacity-0 group-hover:opacity-40 group-hover:bg-stone-400'
+                      highlighted ? `${accentDot} opacity-100` : 'opacity-0 group-hover:opacity-40 group-hover:bg-stone-400'
                     }`}
                     aria-hidden
                   />
                   <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                   <span className="truncate">{t.label}</span>
-                  {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
+                  {highlighted && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
                 </Link>
 
                 {/* 進捗管理グループ（顧客管理の直後に配置） */}
@@ -280,7 +285,7 @@ export default function AdminShell({
                   <div>
                     <button
                       type="button"
-                      onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
+                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, settings: false }))}
                       aria-expanded={progressOpen}
                       className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                         progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -329,7 +334,7 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
+                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: false }))}
                 aria-expanded={settingsOpen}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'

@@ -269,7 +269,7 @@ export default function AdminMealsPage() {
             onChange={(e) => setCustomerId(e.target.value)}
             className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            <option value="">すべての顧客</option>
+            <option value="">顧客を選択してください</option>
             {customers
               .filter((c) => !storeFilter || c.storeId === storeFilter)
               .map((c) => {

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-02 – change(admin/store): サイドバー排他ハイライト ＋ 顧客プルダウン文言統一 ＋ 体組成を進捗管理スタイルのプルダウンに（branch: staging）
+- change: `app/admin/AdminShell.tsx`。サイドバーのハイライトを**単一フォーカス（排他）**に。グループ展開中（矢印クリック）はトップ項目（現在地）の色を消し**展開した親のみ**色。子クリックで**親＋子**に色。グループ展開はアコーディオン化（progress/settings は同時に開かない）。`anyGroupOpen` 導入＋トップ項目の色判定を `active && !anyGroupOpen` に
+- change: 顧客選択プルダウンの文言を全画面「**顧客を選択してください**」に統一。`app/admin/progress/page.tsx`・`app/admin/meals/page.tsx`（「すべての顧客」→。未選択=全件表示の挙動は維持）、`app/admin/reports/page.tsx`（「選択してください」→）。`analysis` は既に同文言
+- change: `app/admin/measurements/page.tsx`（体組成計測記録）。前回の「検索駆動」を取り下げ、**進捗管理と同じ絞り込みUI**（店舗フィルタ＋顧客プルダウン「顧客を選択してください」＋ステータスフィルタ）に変更。プルダウンで顧客選択→登録フォーム・履歴。フィルタ変更時は選択リセット。未使用化した検索/StatusBadge/関連 import を整理
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ2件）。※「大画面でのサイズ統一」は要確認のため別途
+
 ## 2026-06-01 – change(store): 顧客詳細の「ツアーリセット」を運営(/admin)専用に（店舗では非表示）（branch: staging）
 - change: `app/admin/customers/[id]/page.tsx`（顧客詳細・店舗は同ファイルを re-export）。「ツアーリセット」セクション（ホーム＋食事記録の初回ガイド再表示）を `isStore`(`base === '/store'`) 判定で `{!isStore && (...)}` ラップ。運営(/admin)側のみ表示、店舗(/store)側は非表示に。DELETE API (`/api/admin/customers/[id]/onboarding`) は変更なし（運営からのみ実行）
 - 影響範囲: 管理画面（/store の顧客詳細から該当UIが消える・/admin は不変）。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
