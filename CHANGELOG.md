@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-01 – fix(notion): 登録直後の「顧客が見つかりません」（運動/体重保存エラー）を本番へ反映
+- fix: `getCustomerByLineId` の「顧客なし(null)」キャッシュ TTL を 30分→**15秒**（`CUSTOMER_NOTFOUND_CACHE_TTL_MS`）＋ `createCustomer` で当該 lineUserId の個別キャッシュを `invalidate`
+- 経緯: staging で効果確認済（運動/体重の記録が「顧客が見つかりません」で落ちる事象の根本対策）→ 本番にも反映。本番でも新規登録顧客が同事象に遭う潜在バグのため
+- 影響範囲: バックエンド `lib/notion.ts` のみ。本番のリトライ処理は維持（キャッシュ箇所のみ手術的に適用）。tsc／本番build パス
+- 関連: 社長報告（staging で運動/体重保存エラー）
+
 ## 2026-05-31 – feat(admin/store): 顧客詳細にツアーリセット（オンボーディング再表示）ボタンを復活
 - feat: `app/admin/customers/[id]/page.tsx`（/store・/admin 顧客詳細）に「ツアーリセット」セクションを復活。`DELETE /api/admin/customers/[id]/onboarding`（既存・健在）を呼び `onboardingCompletedAt=null`＋`tourResetAt` を更新 → 顧客が次回 LIFF 起動時にホーム＋食事記録ツアーを再表示
 - 配置: 目標(PFC)セクションの直下・アカウント削除の直上。顧客管理（顧客詳細）にのみ追加

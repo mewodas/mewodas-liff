@@ -135,6 +135,9 @@ async function notionRequest(
 }
 
 const CUSTOMER_CACHE_TTL_MS = 30 * 60 * 1000;
+// 「顧客なし(null)」は短命キャッシュにする。登録直後に別インスタンスへ stale な null が残ると
+// 運動/体重保存が「顧客が見つかりません」で落ちるため（30分は長すぎた）。
+const CUSTOMER_NOTFOUND_CACHE_TTL_MS = 15 * 1000;
 const FOOD_RECORDS_CACHE_TTL_MS = 2 * 60 * 1000;
 
 function parseCustomerFromPage(
@@ -201,7 +204,7 @@ export async function getCustomerByLineId(
     }
   );
   if (!res.results || res.results.length === 0) {
-    setCached(cacheKey, null, CUSTOMER_CACHE_TTL_MS);
+    setCached(cacheKey, null, CUSTOMER_NOTFOUND_CACHE_TTL_MS);
     return null;
   }
   const customer = parseCustomerFromPage(res.results[0], lineUserId, t.defaultGoals);
@@ -330,6 +333,11 @@ export async function createCustomer(input: {
     parent: { database_id: tenant.customerDbId },
     properties,
   });
+  // 登録直後に getCustomerByLineId が stale な「顧客なし(null)」を返さないよう、
+  // 当該 lineUserId の個別キャッシュを無効化（運動/体重保存の「顧客が見つかりません」対策）。
+  if (input.lineUserId) {
+    invalidate(`${getCurrentTenant().id}:customer:${input.lineUserId}`);
+  }
   return parseCustomerPage(res);
 }
 
