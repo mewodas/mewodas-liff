@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withLiffTenant } from '@/lib/withTenant';
 import { getCustomerByLineId } from '@/lib/notion';
+import { getCurrentTenant } from '@/lib/tenant';
 import { createExerciseLog, listExerciseLogsByLineUser } from '@/lib/repository/exerciseLogs';
 
 export const runtime = 'nodejs';
@@ -27,14 +28,19 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     return NextResponse.json({ error: `intensity は ${VALID_INTENSITIES.join('/')} のいずれか` }, { status: 400 });
   }
 
-  const customer = await getCustomerByLineId(verifiedLineUserId);
+  // 顧客 lookup が null でも運動記録は保存する（customerName は表示用のみ・体重保存と同挙動）。
+  const customer = await getCustomerByLineId(verifiedLineUserId).catch(() => null);
   if (!customer) {
-    return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
+    // 原因究明ログ: どのテナント context で顧客が見つからないか（staging の override 絡みの調査用）
+    console.error('[exercise-log] customer not found — saving anyway', {
+      tenant: getCurrentTenant().id,
+      lineUserId: verifiedLineUserId,
+    });
   }
 
   const log = await createExerciseLog({
     lineUserId: verifiedLineUserId,
-    customerName: customer.name,
+    customerName: customer?.name ?? '',
     date,
     exercise: String(exercise),
     category: String(category),
