@@ -8,6 +8,7 @@ import { generateCoachingAnalysis, generateReportComments } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
 import { buildReportVariables } from '@/lib/reports/variables';
 import { resolveDateRange } from '@/lib/reports/dateRange';
+import { getLastWeightInRange } from '@/lib/notion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,12 @@ export const POST = withAdminTenant(async (req) => {
     // 期間内の食事記録を先に取得（変数置換でも使うため、static body 分岐の前に実行）
     const records = await listRecordsInRange(customer.lineUserId, startDate, endDate);
 
+    // 期間内の「最終日の体重」を取得（個人シートから）。なければ開始体重にフォールバック。
+    const lastWeight = customer.foodSheetPageId
+      ? await getLastWeightInRange(customer.foodSheetPageId, startDate, endDate).catch(() => null)
+      : null;
+    const effectiveWeight = lastWeight ?? customer.currentWeight;
+
     // 日別集計（AI レポート用サマリ生成に使用）
     const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
     for (const r of records) {
@@ -92,7 +99,7 @@ export const POST = withAdminTenant(async (req) => {
 
     // 全変数を構築（食事区分別を含む）
     const vars: Record<string, string> = {
-      ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }),
+      ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }, lastWeight),
       staff: staff?.name || '',
       shop: staff?.shop || '',
       rangeLabel: resolvedRangeLabel,
@@ -121,7 +128,7 @@ export const POST = withAdminTenant(async (req) => {
             date: endDate,
             sum: { kcal: showKcal, P: showP, F: showF, C: showC },
             goals: customer.goals,
-            currentWeight: customer.currentWeight,
+            currentWeight: effectiveWeight,
             targetWeight: customer.targetWeight,
             requiredKeys: Array.from(aiVars),
             mealItems,
@@ -182,7 +189,7 @@ export const POST = withAdminTenant(async (req) => {
     const analysis = await generateCoachingAnalysis({
       customerName: customer.name,
       goals: customer.goals,
-      currentWeight: customer.currentWeight,
+      currentWeight: effectiveWeight,
       targetWeight: customer.targetWeight,
       targetDate: customer.targetDate,
       recordsSummary: augmentedSummary,
