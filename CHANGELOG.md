@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-02 – change(admin/store): レポート送付の顧客選択を顧客分析と同じ絞り込みUIに（店舗チップ追加）（branch: staging）
+- change: `app/admin/reports/page.tsx`。レポートモードの「① 顧客」を、顧客分析と同じ「店舗チップ→顧客プルダウン」構成に。`selectedStore`＋`storeOptions`/`filteredCustomers` を追加し、店舗で顧客候補を絞り込み（店舗が2件以上の時のみチップ表示・選択中顧客が候補外になればリセット）。プルダウン文言は「顧客を選択してください」
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ1件）。色テーマ（store=緑/admin=紫）は別途確認中
+
 ## 2026-06-02 18:44 – fix(reports): 月次/週次レポートの食事を「1日平均」に修正 ＋ 体重を「最終日の体重」に（branch: staging）
 - fix: `lib/reports/variables.ts`。朝食/昼食/夕食/間食の `{breakfast_kcal}` 等が期間**合計**を返していた（テンプレ表記「平均/日」と不一致）バグを修正。記録日数 `totalDays` で割った**1日あたり平均**を返すように。これで「朝＋昼＋夕＋間 の平均/日」の合計が全体の1日平均 `{kcal}` と一致する。単日(前日)レポートは `totalDays=1` のため当日合計と一致＝従来挙動を維持
 - fix: `{weight}` が `customer.currentWeight`（＝Notion `開始体重(kg)` の固定値）を出していたのを、**期間内の最終日の実測体重**に変更。無ければ開始体重にフォールバック。月次/週次/前日すべてに適用

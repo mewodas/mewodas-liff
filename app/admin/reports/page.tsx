@@ -137,6 +137,7 @@ function Inner() {
   const today = jstToday();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStore, setSelectedStore] = useState('');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [templateError, setTemplateError] = useState<string | null>(null);
@@ -253,6 +254,28 @@ function Inner() {
     if (!selectedCustomer?.storeId) return null;
     return stores.find((s) => s.storeId === selectedCustomer.storeId) || null;
   }, [selectedCustomer, stores]);
+
+  // 店舗フィルタ（顧客分析と同じ: 店舗チップで顧客プルダウンを絞り込む）
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of stores) m.set(s.storeId, s.name);
+    return m;
+  }, [stores]);
+  const storeOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'すべての店舗' }];
+    for (const c of customers) {
+      const key = c.storeId ?? '';
+      if (key === '' || seen.has(key)) continue;
+      seen.add(key);
+      opts.push({ value: key, label: storeNameById.get(key) || key });
+    }
+    return opts;
+  }, [customers, storeNameById]);
+  const filteredCustomers = useMemo(() => {
+    if (selectedStore === '') return customers;
+    return customers.filter((c) => (c.storeId ?? '') === selectedStore);
+  }, [customers, selectedStore]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
 
   const isMaster = me?.role === 'master';
@@ -456,16 +479,42 @@ function Inner() {
         {/* ===== レポートモード ===== */}
         {mode === 'report' && (
           <>
-            {/* ① 顧客 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-              <label className="text-xs font-bold text-stone-700 mb-1 block">① 顧客</label>
+            {/* ① 顧客（顧客分析と同じ: 店舗チップで絞り込み → 顧客プルダウン） */}
+            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
+              <label className="text-xs font-bold text-stone-700 block">① 顧客</label>
+              {storeOptions.length > 1 && (
+                <div className="flex gap-1 flex-wrap">
+                  {storeOptions.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStore(o.value);
+                        const newFiltered = customers.filter((c) =>
+                          o.value === '' ? true : (c.storeId ?? '') === o.value
+                        );
+                        if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
+                          setCustomerId('');
+                        }
+                      }}
+                      className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                        selectedStore === o.value
+                          ? 'bg-violet-500 text-white border-violet-500'
+                          : 'bg-white text-stone-700 border-stone-300'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">顧客を選択してください</option>
-                {customers.map((c) => (
+                {filteredCustomers.map((c) => (
                   <option key={c.pageId} value={c.pageId}>{c.name}</option>
                 ))}
               </select>
