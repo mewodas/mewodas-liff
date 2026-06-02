@@ -11,6 +11,16 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-02 18:44 – fix(reports): 月次/週次レポートの食事を「1日平均」に修正 ＋ 体重を「最終日の体重」に（branch: staging）
+- fix: `lib/reports/variables.ts`。朝食/昼食/夕食/間食の `{breakfast_kcal}` 等が期間**合計**を返していた（テンプレ表記「平均/日」と不一致）バグを修正。記録日数 `totalDays` で割った**1日あたり平均**を返すように。これで「朝＋昼＋夕＋間 の平均/日」の合計が全体の1日平均 `{kcal}` と一致する。単日(前日)レポートは `totalDays=1` のため当日合計と一致＝従来挙動を維持
+- fix: `{weight}` が `customer.currentWeight`（＝Notion `開始体重(kg)` の固定値）を出していたのを、**期間内の最終日の実測体重**に変更。無ければ開始体重にフォールバック。月次/週次/前日すべてに適用
+- add: `lib/notion.ts` に `getLastWeightInRange(sheetPageId, start, end)` を追加（個人シートの記録テーブルから期間内で最も新しい有効体重を取得）。`buildReportVariables` に `lastWeight` 引数を追加
+- add: テンプレ用変数 `{days}`（記録日数）/ `{total_kcal}` `{total_P}` `{total_F}` `{total_C}`（期間の真の合計）を追加。「月間合計」を**真の合計**で出したい場合に利用可（現状テンプレの月間合計は `{kcal}`＝1日平均を参照している点は別途要判断）
+- chore: `app/api/admin/reports/generate/route.ts` ＋ `app/api/cron/daily-reports/route.ts` で `getLastWeightInRange` を呼び出し、`buildReportVariables` と AI生成(`generateReportComments`/`generateCoachingAnalysis`)に最終日体重を渡すように
+- test: `__tests__/lib/report-variables.test.ts` 追加（1日平均・最終日体重・開始体重フォールバック・単日維持）。tsx で実関数を直接検証し全項目 PASS（vitest はこの環境に未インストール）
+- 影響範囲: レポート送付（/admin・/store のレポート生成）＋ 定期配信 cron の**送信本文**。顧客が受け取るレポートに反映。LIFF UI・DB スキーマ変更なし。tsc 通過（既存 vitest 未解決エラーのみ）
+- 関連: 社長指摘「朝食〜夕食が1日当たりの平均値ではない／月次・週次の体重は最終日の体重を記載して」
+
 ## 2026-06-02 – change(admin/store): サイドバー排他ハイライト ＋ 顧客プルダウン文言統一 ＋ 体組成を進捗管理スタイルのプルダウンに ＋ 大画面の左右余白を解消（branch: staging）
 - change: `app/admin/AdminShell.tsx`（コンテンツ幅）。`main` の `max-w-5xl mx-auto` を撤廃し `w-full`（＋`lg:px-6`）に。大画面で中央寄せにより左右へ大きな余白（隙間）が出ていたのを解消し、PCサイズと同じく幅いっぱいに表示
 - change: `app/admin/AdminShell.tsx`（サイドバー）。サイドバーのハイライトを**単一フォーカス（排他）**に。グループ展開中（矢印クリック）はトップ項目（現在地）の色を消し**展開した親のみ**色。子クリックで**親＋子**に色。グループ展開はアコーディオン化（progress/settings は同時に開かない）。`anyGroupOpen` 導入＋トップ項目の色判定を `active && !anyGroupOpen` に
