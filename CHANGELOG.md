@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): 食事バランスの文字を顧客分析の他項目に合わせ text-[11px] に統一＋凡例の隙間を詰める（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスのフォントを少し小さくし顧客分析の他セクションと同じ `text-[11px]` に統一（見出し・凡例・小見出し）。中央kcalは text-base、ドーナツは 128→112px に微縮小。凡例は `flex-1` の間延びをやめ固定幅に詰め、P/F/C と g・% の隙間を縮小（`tabular-nums` で桁揃え維持）
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（少し小さく・他項目と同フォント・PFCとgの隙間を詰める）
+
 ## 2026-06-03 – change(admin/store): サイドバー再編（レポート管理グループ化・進捗一覧へ改称・設定並び替え）＋store設定ページの緑化＋トップバー拡大（branch: staging）
 - fix(store色): `app/store/onboarding/page.tsx`（LINE連携設定）＋`app/store/notifications/page.tsx`（通知設定）の violet(紫)を emerald(緑)へ一括置換。store専用ページなので role配色（店舗=緑）に統一（紫の取りこぼし解消）
 - change(menu): `app/admin/AdminShell.tsx`。① 進捗グループ配下の子「進捗管理」→**「進捗一覧」**に改称（親グループ見出しは「進捗管理」のまま）。② 「レポート送付」を**「レポート管理」グループ**（開閉ドロップダウン）に変更し、配下に**「レポート作成」**（旧レポート送付 /reports）＋**「テンプレ管理」**（/templates を設定から移動）を表示。③ 設定グループの並びを **契約管理→通知設定→店舗一覧→LINE連携設定**（store）に変更（テンプレ管理は設定から除外＝レポート管理へ）。`reports` グループ用 state/トグル（3グループ排他）と描画を追加

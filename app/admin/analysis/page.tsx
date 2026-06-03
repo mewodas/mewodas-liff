@@ -605,7 +605,7 @@ function Inner() {
               <TargetIcon className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
               食事バランス
             </h3>
-            <div className="text-xs font-bold text-stone-500 mb-3">1日あたり ／ カロリー配分と各食事の PFC バランス</div>
+            <div className="text-[11px] font-bold text-stone-500 mb-3">1日あたり ／ カロリー配分と各食事の PFC バランス</div>
             {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
               <MealBalanceCharts
                 mealTypeKcal={mealTypeKcal}
@@ -1219,11 +1219,11 @@ function MiniDonut({
 }) {
   const data = segments.filter((s) => s.value > 0);
   return (
-    <div className="relative w-[128px] h-[128px]">
+    <div className="relative w-[112px] h-[112px]">
       {data.length > 0 ? (
         <ResponsiveContainer>
           <PieChart>
-            <Pie data={data} dataKey="value" innerRadius={40} outerRadius={60} stroke="none" startAngle={90} endAngle={-270}>
+            <Pie data={data} dataKey="value" innerRadius={35} outerRadius={53} stroke="none" startAngle={90} endAngle={-270}>
               {data.map((d, i) => (
                 <Cell key={i} fill={d.color} />
               ))}
@@ -1234,8 +1234,8 @@ function MiniDonut({
         <div className="w-full h-full rounded-full border-4 border-stone-100" />
       )}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-xl font-bold text-stone-900 leading-none tabular-nums">{centerMain}</span>
-        {centerSub && <span className="text-[11px] text-stone-400 leading-none mt-1">{centerSub}</span>}
+        <span className="text-base font-bold text-stone-900 leading-none tabular-nums">{centerMain}</span>
+        {centerSub && <span className="text-[10px] text-stone-400 leading-none mt-0.5">{centerSub}</span>}
       </div>
     </div>
   );
@@ -1274,25 +1274,25 @@ function MealBalanceCharts({
   const totalKcal = meals.reduce((a, b) => a + b.kcal, 0);
   const dayPct = (k: number) => (totalKcal > 0 ? Math.round((k / totalKcal) * 100) : 0);
 
-  const legendRow = 'flex items-center gap-2 w-full max-w-[180px] text-sm leading-snug tabular-nums';
+  const legendRow = 'flex items-center gap-1.5 text-[11px] leading-snug tabular-nums';
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-7">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-6">
       {/* カロリー配分 */}
       <div className="flex flex-col items-center lg:border-r lg:border-stone-200 lg:pr-3">
-        <div className="text-sm font-bold text-stone-700 mb-2">カロリー配分</div>
+        <div className="text-[11px] font-bold text-stone-700 mb-2">カロリー配分</div>
         <MiniDonut
           segments={meals.map((x) => ({ value: x.kcal, color: MEAL_TYPE_COLORS[x.m] || '#a8a29e' }))}
           centerMain={`${totalKcal}`}
           centerSub="kcal/日"
         />
-        <div className="mt-3 w-full flex flex-col items-center gap-1">
+        <div className="mt-2.5 w-full flex flex-col items-center gap-1">
           {meals.map((x) => (
             <div key={x.m} className={legendRow}>
-              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: MEAL_TYPE_COLORS[x.m] || '#a8a29e' }} />
-              <span className="font-bold text-stone-700 w-4">{x.m.slice(0, 1)}</span>
-              <span className="text-stone-700 flex-1 text-right">{x.kcal}</span>
-              <span className="font-bold text-stone-800 w-10 text-right">{dayPct(x.kcal)}%</span>
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: MEAL_TYPE_COLORS[x.m] || '#a8a29e' }} />
+              <span className="font-bold text-stone-700 w-3.5">{x.m.slice(0, 1)}</span>
+              <span className="text-stone-700 w-9 text-right">{x.kcal}</span>
+              <span className="font-bold text-stone-800 w-8 text-right">{dayPct(x.kcal)}%</span>
             </div>
           ))}
         </div>
@@ -1304,10 +1304,10 @@ function MealBalanceCharts({
         const color = ANALYSIS_MEAL_COLOR[x.m] || 'text-stone-500';
         return (
           <div key={x.m} className="flex flex-col items-center">
-            <div className="text-sm font-bold text-stone-800 mb-2 inline-flex items-center gap-1.5">
-              {Icon && <Icon className={`w-4 h-4 ${color}`} strokeWidth={2.2} />}
+            <div className="text-[11px] font-bold text-stone-800 mb-2 inline-flex items-center gap-1">
+              {Icon && <Icon className={`w-3.5 h-3.5 ${color}`} strokeWidth={2.2} />}
               <span>{x.m}</span>
-              <span className="text-xs text-stone-400 font-bold">{dayPct(x.kcal)}%</span>
+              <span className="text-[10px] text-stone-400 font-bold">{dayPct(x.kcal)}%</span>
             </div>
             <MiniDonut
               segments={[
@@ -1318,21 +1318,21 @@ function MealBalanceCharts({
               centerMain={`${x.kcal}`}
               centerSub="kcal"
             />
-            <div className="mt-3 w-full flex flex-col items-center gap-1">
+            <div className="mt-2.5 w-full flex flex-col items-center gap-1">
               <div className={legendRow}>
-                <span className="font-bold text-rose-500 w-4">P</span>
-                <span className="text-stone-700 flex-1 text-right">{x.P}g</span>
-                <span className="text-stone-500 w-10 text-right">{x.pP}%</span>
+                <span className="font-bold text-rose-500 w-3">P</span>
+                <span className="text-stone-700 w-9 text-right">{x.P}g</span>
+                <span className="text-stone-500 w-8 text-right">{x.pP}%</span>
               </div>
               <div className={legendRow}>
-                <span className="font-bold text-amber-500 w-4">F</span>
-                <span className="text-stone-700 flex-1 text-right">{x.F}g</span>
-                <span className="text-stone-500 w-10 text-right">{x.pF}%</span>
+                <span className="font-bold text-amber-500 w-3">F</span>
+                <span className="text-stone-700 w-9 text-right">{x.F}g</span>
+                <span className="text-stone-500 w-8 text-right">{x.pF}%</span>
               </div>
               <div className={legendRow}>
-                <span className="font-bold text-violet-500 w-4">C</span>
-                <span className="text-stone-700 flex-1 text-right">{x.C}g</span>
-                <span className="text-stone-500 w-10 text-right">{x.pC}%</span>
+                <span className="font-bold text-violet-500 w-3">C</span>
+                <span className="text-stone-700 w-9 text-right">{x.C}g</span>
+                <span className="text-stone-500 w-8 text-right">{x.pC}%</span>
               </div>
             </div>
           </div>
