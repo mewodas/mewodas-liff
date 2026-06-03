@@ -17,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import DateRangePicker from '../DateRangePicker';
 import { useToast } from '@/components/Toast';
 
@@ -125,6 +126,7 @@ function Inner() {
   const sp = useSearchParams();
   const pathname = usePathname() || '';
   const isStore = pathname.startsWith('/store');
+  const ac = adminAccent(isStore);
   const modeParam = sp.get('mode');
   // お知らせ送信は運営(/admin)専用。店舗(/store)は常にレポートモードのみ。
   const [mode, setMode] = useState<'report' | 'announcement'>(
@@ -499,7 +501,7 @@ function Inner() {
                       }}
                       className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                         selectedStore === o.value
-                          ? 'bg-violet-500 text-white border-violet-500'
+                          ? ac.pillActive
                           : 'bg-white text-stone-700 border-stone-300'
                       }`}
                     >
@@ -594,9 +596,10 @@ function Inner() {
                         useAi={t.useAi}
                         active={templateId === t.id}
                         onClick={() => setTemplateId(t.id)}
+                        accentActive={ac.pillActive}
                       />
                     ))}
-                  <TemplateChip label="テンプレなし" active={templateId === ''} onClick={() => setTemplateId('')} />
+                  <TemplateChip label="テンプレなし" active={templateId === ''} onClick={() => setTemplateId('')} accentActive={ac.pillActive} />
                 </div>
               )}
 
@@ -715,7 +718,7 @@ function Inner() {
                         onClick={() => setAudience(a)}
                         className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
                           audience === a
-                            ? 'bg-emerald-500 text-white border-emerald-500'
+                            ? ac.pillActive
                             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                         }`}
                       >
@@ -737,7 +740,7 @@ function Inner() {
                         onClick={() => setScope(s)}
                         className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
                           scope === s
-                            ? 'bg-emerald-500 text-white border-emerald-500'
+                            ? ac.pillActive
                             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                         }`}
                       >
@@ -801,7 +804,7 @@ function Inner() {
                           importance === imp
                             ? imp === '重要'
                               ? 'bg-red-500 text-white border-red-500'
-                              : 'bg-emerald-500 text-white border-emerald-500'
+                              : ac.pillActive
                             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                         }`}
                       >
@@ -880,11 +883,13 @@ function TemplateChip({
   useAi = false,
   active,
   onClick,
+  accentActive,
 }: {
   label: string;
   useAi?: boolean;
   active: boolean;
   onClick: () => void;
+  accentActive: string;
 }) {
   return (
     <button
@@ -892,7 +897,7 @@ function TemplateChip({
       onClick={onClick}
       className={`text-[11px] font-bold px-3 py-1.5 rounded-full border inline-flex items-center gap-1 ${
         active
-          ? 'bg-emerald-500 text-white border-emerald-500'
+          ? accentActive
           : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
       }`}
     >

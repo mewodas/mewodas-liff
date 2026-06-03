@@ -15,6 +15,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { useAdminBase } from '@/lib/useAdminBase';
+import { adminAccent } from '@/lib/adminAccent';
 import DateRangePicker from '../DateRangePicker';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
 import { useToast } from '@/components/Toast';
@@ -99,6 +101,8 @@ function extractFoodLine(m: { title: string; memo: string }): string {
 }
 
 export default function AdminMealsPage() {
+  const base = useAdminBase();
+  const ac = adminAccent(base === '/store');
   const today = jstTodayString();
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(today);
@@ -242,7 +246,7 @@ export default function AdminMealsPage() {
                 onClick={() => setStoreFilter('')}
                 className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                   storeFilter === ''
-                    ? 'bg-violet-500 text-white border-violet-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -255,7 +259,7 @@ export default function AdminMealsPage() {
                   onClick={() => setStoreFilter(s.storeId)}
                   className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                     storeFilter === s.storeId
-                      ? 'bg-violet-500 text-white border-violet-500'
+                      ? ac.pillActive
                       : 'bg-white text-stone-700 border-stone-300'
                   }`}
                 >
@@ -287,7 +291,7 @@ export default function AdminMealsPage() {
               onClick={() => setMealTypeFilter('')}
               className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${
                 mealTypeFilter === ''
-                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  ? ac.pillActive
                   : 'bg-white text-stone-700 border-stone-300'
               }`}
             >
@@ -304,7 +308,7 @@ export default function AdminMealsPage() {
                   onClick={() => setMealTypeFilter(mt)}
                   className={`text-[11px] font-bold px-3 py-1.5 rounded-full border inline-flex items-center gap-1 ${
                     active
-                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      ? ac.pillActive
                       : 'bg-white text-stone-700 border-stone-300'
                   }`}
                 >

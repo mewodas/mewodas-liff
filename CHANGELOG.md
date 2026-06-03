@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): ブランドアクセントを role 配色に（店舗=緑 / 運営=紫）第1弾: サイドバー＋フィルタチップ（branch: staging）
+- feat: `lib/adminAccent.ts` 追加。`adminAccent(isStore)` が role 別アクセントのクラス群（pillActive/btn/ring/text/bgSoft/border/dot）を返す。store=emerald(緑)/admin=violet(紫)。意味色（成功・ステータス・エラー・デモ等）には使わない
+- change: `app/admin/AdminShell.tsx`。サイドバーのアクセントを store=violet/admin=emerald → **store=emerald(緑)/admin=violet(紫)** にスワップ（accentText/Bg/Dot/Ring/Glow）。トップバーのロールバッジは元から store=緑/admin=紫で整合
+- change: 主要6ページ（customers/progress/meals/measurements/analysis/reports）のフィルタチップ（ステータス＝旧emerald・店舗＝旧violet）の選択中スタイルを `ac.pillActive` に統一。これで store では全て緑、admin では全て紫に。reports の TemplateChip は `accentActive` prop 経由
+- 注: 「承認」緑ボタン・デモ紫バッジ・LINE連携済み緑 等の意味色は据え置き（Option A）。主要アクションボタン（保存/追加/送信）の role 配色化は第2弾で対応予定
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（store=緑/admin=紫）
+
 ## 2026-06-02 – change(admin/store): レポート送付の顧客選択を顧客分析と同じ絞り込みUIに（店舗チップ追加）（branch: staging）
 - change: `app/admin/reports/page.tsx`。レポートモードの「① 顧客」を、顧客分析と同じ「店舗チップ→顧客プルダウン」構成に。`selectedStore`＋`storeOptions`/`filteredCustomers` を追加し、店舗で顧客候補を絞り込み（店舗が2件以上の時のみチップ表示・選択中顧客が候補外になればリセット）。プルダウン文言は「顧客を選択してください」
 - 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
