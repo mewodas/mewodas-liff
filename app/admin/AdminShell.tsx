@@ -195,9 +195,6 @@ export default function AdminShell({
   const progressOpen = openGroups.progress ?? progressActive;
   const reportsOpen = openGroups.reports ?? reportsActive;
   const settingsOpen = openGroups.settings ?? settingsActive;
-  // 排他ハイライト: いずれかのグループが開いている間はトップ項目（顧客管理等）の色を消し、
-  // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
-  const anyGroupOpen = progressOpen || reportsOpen || settingsOpen;
 
   // アクセントカラー（store=emerald緑 / admin=violet紫）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-emerald-700' : 'text-violet-700';
@@ -265,8 +262,8 @@ export default function AdminShell({
           {topTabs.map((t) => {
             const href = `${base}${t.suffix}`;
             const active = t.match(pathname, base);
-            // 排他ハイライト: グループ展開中はトップ項目の色を消す（現在地の色は消える仕様）
-            const highlighted = active && !anyGroupOpen;
+            // スクエア方式: アクティブな現在地のみ色＋〇。親（グループ）には色を付けない。
+            const highlighted = active;
             return (
               <Fragment key={href}>
                 <Link
@@ -293,14 +290,8 @@ export default function AdminShell({
                       type="button"
                       onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: null, settings: null }))}
                       aria-expanded={progressOpen}
-                      className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                        progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                      }`}
+                      className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                     >
-                      <span
-                        className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${progressActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                        aria-hidden
-                      />
                       <TrendingUp className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                       <span className="flex-1 text-left">進捗管理</span>
                       <ChevronDown
@@ -342,14 +333,8 @@ export default function AdminShell({
                 type="button"
                 onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: null, settings: null }))}
                 aria-expanded={reportsOpen}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  reportsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                }`}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
-                <span
-                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${reportsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                  aria-hidden
-                />
                 <Send className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                 <span className="flex-1 text-left">レポート管理</span>
                 <ChevronDown
@@ -388,14 +373,8 @@ export default function AdminShell({
                 type="button"
                 onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: null, reports: null }))}
                 aria-expanded={settingsOpen}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                }`}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
-                <span
-                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${settingsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                  aria-hidden
-                />
                 <Settings className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                 <span className="flex-1 text-left">設定</span>
                 <ChevronDown
