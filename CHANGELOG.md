@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): レポート送付の顧客選択を進捗管理スタイルに（①②番号を廃止）（branch: staging）
+- change: `app/admin/reports/page.tsx`。レポートモードの「① 顧客 / ② 期間 / ③ 送信元店舗 / ④ テンプレ」の番号付きステップ表示を廃止。顧客選択を「店舗チップ→顧客プルダウン→ステータスチップ」のクリーンな絞り込み（進捗管理/顧客分析と同じ・スクショ234829）に。`statusFilter`＋`STATUSES` 追加で候補を店舗×ステータスで絞り込み（選択中顧客が候補外になればリセット）。ラベルからも丸数字を除去
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ1件）
+
 ## 2026-06-03 – change(admin/store): ブランドアクセントを role 配色に（店舗=緑 / 運営=紫）第1弾: サイドバー＋フィルタチップ（branch: staging）
 - feat: `lib/adminAccent.ts` 追加。`adminAccent(isStore)` が role 別アクセントのクラス群（pillActive/btn/ring/text/bgSoft/border/dot）を返す。store=emerald(緑)/admin=violet(紫)。意味色（成功・ステータス・エラー・デモ等）には使わない
 - change: `app/admin/AdminShell.tsx`。サイドバーのアクセントを store=violet/admin=emerald → **store=emerald(緑)/admin=violet(紫)** にスワップ（accentText/Bg/Dot/Ring/Glow）。トップバーのロールバッジは元から store=緑/admin=紫で整合

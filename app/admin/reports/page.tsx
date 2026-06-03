@@ -25,6 +25,8 @@ type Customer = { pageId: string; name: string; foodStatus: string | null; store
 type Store = { pageId: string; storeId: string; name: string; signature: string };
 type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType?: string; sortOrder?: number };
 
+const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
+
 type AnnouncementAudience = '顧客向け' | '店舗向け';
 type AnnouncementImportance = '通常' | '重要';
 type AnnouncementScope = 'all' | 'tenant';
@@ -140,6 +142,7 @@ function Inner() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState('');
+  const [statusFilter, setStatusFilter] = useState('すべて');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [templateError, setTemplateError] = useState<string | null>(null);
@@ -275,9 +278,12 @@ function Inner() {
     return opts;
   }, [customers, storeNameById]);
   const filteredCustomers = useMemo(() => {
-    if (selectedStore === '') return customers;
-    return customers.filter((c) => (c.storeId ?? '') === selectedStore);
-  }, [customers, selectedStore]);
+    return customers.filter((c) => {
+      if (selectedStore !== '' && (c.storeId ?? '') !== selectedStore) return false;
+      if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
+      return true;
+    });
+  }, [customers, selectedStore, statusFilter]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
 
   const isMaster = me?.role === 'master';
@@ -481,9 +487,8 @@ function Inner() {
         {/* ===== レポートモード ===== */}
         {mode === 'report' && (
           <>
-            {/* ① 顧客（顧客分析と同じ: 店舗チップで絞り込み → 顧客プルダウン） */}
+            {/* 顧客（進捗管理/顧客分析と同じ絞り込み: 店舗チップ → 顧客プルダウン → ステータスチップ） */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-              <label className="text-xs font-bold text-stone-700 block">① 顧客</label>
               {storeOptions.length > 1 && (
                 <div className="flex gap-1 flex-wrap">
                   {storeOptions.map((o) => (
@@ -492,12 +497,12 @@ function Inner() {
                       type="button"
                       onClick={() => {
                         setSelectedStore(o.value);
-                        const newFiltered = customers.filter((c) =>
-                          o.value === '' ? true : (c.storeId ?? '') === o.value
+                        const nf = customers.filter(
+                          (c) =>
+                            (o.value === '' || (c.storeId ?? '') === o.value) &&
+                            (statusFilter === 'すべて' || c.foodStatus === statusFilter)
                         );
-                        if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
-                          setCustomerId('');
-                        }
+                        if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
                       }}
                       className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                         selectedStore === o.value
@@ -520,11 +525,33 @@ function Inner() {
                   <option key={c.pageId} value={c.pageId}>{c.name}</option>
                 ))}
               </select>
+              <div className="flex gap-1 flex-wrap">
+                {STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(s);
+                      const nf = customers.filter(
+                        (c) =>
+                          (selectedStore === '' || (c.storeId ?? '') === selectedStore) &&
+                          (s === 'すべて' || c.foodStatus === s)
+                      );
+                      if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
+                    }}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                      statusFilter === s ? ac.pillActive : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </section>
 
-            {/* ② 期間 */}
+            {/* 期間 */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-              <div className="text-xs font-bold text-stone-700 mb-2">② 期間</div>
+              <div className="text-xs font-bold text-stone-700 mb-2">期間</div>
               <DateRangePicker
                 from={from}
                 to={to}
@@ -536,10 +563,10 @@ function Inner() {
               />
             </section>
 
-            {/* ③ 所属店舗 */}
+            {/* 送信元店舗 */}
             {customerStore && (
               <section className="bg-violet-50 border border-violet-200 rounded-2xl p-3">
-                <div className="text-[11px] font-bold text-violet-800 mb-0.5">③ 送信元店舗（顧客の所属から自動）</div>
+                <div className="text-[11px] font-bold text-violet-800 mb-0.5">送信元店舗（顧客の所属から自動）</div>
                 <div className="text-sm font-bold text-violet-900">{customerStore.name}</div>
                 {customerStore.signature && (
                   <div className="text-[10px] text-violet-700 mt-1 italic">本文末尾に「— {customerStore.signature}」を自動付与</div>
@@ -553,11 +580,11 @@ function Inner() {
               </section>
             )}
 
-            {/* ④ テンプレ */}
+            {/* テンプレ */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
-                  ④ レポートテンプレート
+                  レポートテンプレート
                   <Link
                     href={isStore ? '/store/templates' : '/admin/templates'}
                     className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
