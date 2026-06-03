@@ -51,6 +51,11 @@ export default function StoreNotificationsPage() {
   return (
     <AdminShell title="通知設定">
       <div className="space-y-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800 leading-relaxed">
+          お知らせは毎日の定期配信と同時に送られます。<br />
+          受信したお知らせは画面右上のベルマーク 🔔 から確認できます。
+        </div>
+
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5">
@@ -82,11 +87,6 @@ export default function StoreNotificationsPage() {
               </button>
             )}
           </div>
-        </div>
-
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800 leading-relaxed">
-          お知らせは毎日の定期配信と同時に送られます。<br />
-          受信したお知らせは「お知らせ」画面の受信トレイで確認できます。
         </div>
       </div>
     </AdminShell>
