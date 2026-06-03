@@ -6,6 +6,10 @@
 - change(topbar): トップバーのベル（`w-9→w-11`/アイコン`w-4→w-6`）と店舗/アドミンバッジ（`text-xs→text-sm`/アイコン`w-4→w-5`/余白拡大）を一回り大きく
 - 影響範囲: 管理画面（/admin・/store）のサイドバー＋store設定2ページ＋トップバー表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過。※menu再編は/admin・/store共通（admin もレポート管理グループに テンプレ管理 が入る）
 - 関連: 社長指示（スクショ1件）。並行セッションが同ファイル群を編集中のため最新 origin/staging 上に適用
+## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をリデザイン（文字拡大・グレー枠撤去）（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスの5ドーナツを見やすく刷新: ①各セルのグレー枠(bg-stone-50 border)を撤去しフラットに ②ドーナツ拡大(88→128px) ③中央kcalを text-xl、凡例を text-sm、見出しを text-sm に拡大 ④数値は tabular-nums で桁揃え ⑤カロリー配分セルに lg で右ボーダーを付け各食事PFC群と視覚的に区切り ⑥余白(行間)を拡大
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（文字を大きく・グレー枠不要・見やすくリデザイン）
 
 ## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をドーナツ5枚横並びに刷新（カロリー1＋各食事PFC4）（branch: staging）
 - change: `app/admin/analysis/page.tsx`。食事バランスを「カロリードーナツ＋PFCテキストリスト（左右に間延び）」から、**カロリー配分ドーナツ1つ＋朝/昼/夕/間それぞれのPFCドーナツ4つを横並びグリッド**（`lg:grid-cols-5`、タブレット3列/モバイル2列）に刷新。各セルに中央kcal表示の小ドーナツ＋凡例（カロリーは食事別kcal/%、PFCはP/F/Cのg/%）。余白を詰めて一目で比較可能に
