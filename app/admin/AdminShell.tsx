@@ -152,9 +152,9 @@ export default function AdminShell({
   // ナビ各リンクの onClick で閉じるため、遷移時クローズの effect は不要。
   const [drawerOpen, setDrawerOpen] = useState(false);
   // サイドバー内グループ(進捗管理 / レポート管理 / 設定)の手動展開トグル。
-  // 値は tri-state: null = 「現在地に従う（そのグループのページなら開く）」、true/false = ユーザーが明示的に開閉。
-  // これにより、グループ内ページにいても矢印で確実に畳める（明示 false が active より優先）。
-  const [openGroups, setOpenGroups] = useState<{ progress: boolean | null; reports: boolean | null; settings: boolean | null }>({ progress: null, reports: null, settings: null });
+  // 各グループの開閉は独立した真偽値（複数同時に開ける・スクエア方式）。
+  // 現在地のグループは下の useEffect で「加算的に」開く（他は閉じない）。矢印で個別に開閉可能。
+  const [openGroups, setOpenGroups] = useState<{ progress: boolean; reports: boolean; settings: boolean }>({ progress: false, reports: false, settings: false });
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -190,11 +190,22 @@ export default function AdminShell({
   const reportsActive = reportsTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
 
-  // グループの展開状態 = 明示トグルがあればそれ、無ければ(null)現在地に従う。
-  // 明示的に閉じた(false)場合はグループ内ページにいても畳んだままにできる（矢印で確実に開閉）。
-  const progressOpen = openGroups.progress ?? progressActive;
-  const reportsOpen = openGroups.reports ?? reportsActive;
-  const settingsOpen = openGroups.settings ?? settingsActive;
+  // 現在地のグループを「加算的に」開く（他は閉じない）。これで別グループのページに遷移しても、
+  // 既に開いているグループは畳まれない（スクエア方式）。一度開いたら明示的に矢印で閉じるまで開いたまま。
+  useEffect(() => {
+    setOpenGroups((g) => {
+      const next = {
+        progress: g.progress || progressActive,
+        reports: g.reports || reportsActive,
+        settings: g.settings || settingsActive,
+      };
+      return next.progress === g.progress && next.reports === g.reports && next.settings === g.settings ? g : next;
+    });
+  }, [progressActive, reportsActive, settingsActive]);
+
+  const progressOpen = openGroups.progress;
+  const reportsOpen = openGroups.reports;
+  const settingsOpen = openGroups.settings;
 
   // アクセントカラー（store=emerald緑 / admin=violet紫）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-emerald-700' : 'text-violet-700';

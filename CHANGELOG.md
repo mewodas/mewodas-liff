@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-04 – fix(admin/store): サイドバーのグループが遷移で畳まれる問題を修正（sticky open）（branch: staging）
+- fix: `app/admin/AdminShell.tsx`。openGroups を tri-state(null/true/false の `?? active` 既定)から**独立した真偽値**に変更し、現在地のグループを useEffect で**加算的に開く**方式に。これまでは現在地で自動展開していたグループ（明示トグルなし）が、別グループのページへ遷移して active 解除されると畳まれていた（例: /store/progress で開いていた進捗管理が、契約管理クリックで畳まれる）。修正後は一度開いたグループは矢印で明示的に閉じるまで開いたまま＝複数同時に開いたまま遷移できる（スクエア方式）
+- 影響範囲: 管理画面（/admin・/store）のサイドバー挙動のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（契約管理クリックで進捗/レポートのアコーディオンが閉じる）
+
 ## 2026-06-04 – change(admin/store): サイドバーのグループを複数同時に開けるよう独立トグル化（branch: staging）
 - change: `app/admin/AdminShell.tsx`。グループ展開をアコーディオン（1つ開くと他を閉じる）から**独立トグル**に変更（`setOpenGroups(() => ({X:..., 他:null}))` → `setOpenGroups((g) => ({...g, X:...}))`）。複数グループを同時に開いたままにでき、別ページへ遷移しても開いているグループは畳まれない（スクエアと同じ）。`?? Xactive` 既定により未操作グループは現在地に応じて自動開閉
 - 影響範囲: 管理画面（/admin・/store）のサイドバー挙動のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
