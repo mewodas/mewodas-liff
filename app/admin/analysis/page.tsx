@@ -201,7 +201,9 @@ function Inner() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<Daily[]>([]);
   const [mealTypeKcal, setMealTypeKcal] = useState<Record<string, number> | null>(null);
-  const [mealTypeCount, setMealTypeCount] = useState<Record<string, number> | null>(null);
+  const [mealTypeP, setMealTypeP] = useState<Record<string, number> | null>(null);
+  const [mealTypeF, setMealTypeF] = useState<Record<string, number> | null>(null);
+  const [mealTypeC, setMealTypeC] = useState<Record<string, number> | null>(null);
   const [goals, setGoals] = useState<Goals | null>(null);
   const [target, setTarget] = useState<TargetInfo | null>(null);
   const [rangeLabel, setRangeLabel] = useState<string>('');
@@ -260,7 +262,9 @@ function Inner() {
       setStats(j.stats);
       setDaily(j.daily || []);
       setMealTypeKcal(j.mealTypeKcal || null);
-      setMealTypeCount(j.mealTypeCount || null);
+      setMealTypeP(j.mealTypeP || null);
+      setMealTypeF(j.mealTypeF || null);
+      setMealTypeC(j.mealTypeC || null);
       setGoals(j.goals || null);
       setTarget(j.target || null);
       setWeightLogs(j.weightLogs || []);
@@ -334,7 +338,9 @@ function Inner() {
     setStats(null);
     setDaily([]);
     setMealTypeKcal(null);
-    setMealTypeCount(null);
+    setMealTypeP(null);
+    setMealTypeF(null);
+    setMealTypeC(null);
     setGoals(null);
     setTarget(null);
     setWeightLogs([]);
@@ -609,14 +615,20 @@ function Inner() {
             <div className="flex flex-col sm:flex-row gap-4">
               {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
                 <div className="flex-1">
-                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別カロリー</div>
-                  <MealTypePie mealTypeKcal={mealTypeKcal} mealTypeCount={mealTypeCount ?? {}} />
+                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別カロリー（1日あたり）</div>
+                  <MealTypePie mealTypeKcal={mealTypeKcal} totalDays={stats?.totalDays ?? 0} />
                 </div>
               )}
-              {stats && (stats.avg.P > 0 || stats.avg.F > 0 || stats.avg.C > 0) && (
+              {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
                 <div className="flex-1">
-                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">PFC バランス</div>
-                  <PfcPie avg={stats.avg} target={goals} />
+                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別 PFC（1日あたり）</div>
+                  <MealPfcList
+                    mealTypeKcal={mealTypeKcal}
+                    mealTypeP={mealTypeP ?? {}}
+                    mealTypeF={mealTypeF ?? {}}
+                    mealTypeC={mealTypeC ?? {}}
+                    totalDays={stats?.totalDays ?? 0}
+                  />
                 </div>
               )}
             </div>
@@ -1212,61 +1224,57 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
   );
 }
 
-function PfcPie({
-  avg,
-  target,
+// 食事区分別 PFC（1日あたり）。レポートと統一し各値は その食事のPFC合計 ÷ 全記録日数。
+// %は「その食事の中でのP/F/Cカロリー比率」（合計100%）。
+function MealPfcList({
+  mealTypeKcal,
+  mealTypeP,
+  mealTypeF,
+  mealTypeC,
+  totalDays,
 }: {
-  avg: { P: number; F: number; C: number };
-  target: Goals | null;
+  mealTypeKcal: Record<string, number>;
+  mealTypeP: Record<string, number>;
+  mealTypeF: Record<string, number>;
+  mealTypeC: Record<string, number>;
+  totalDays: number;
 }) {
-  const pK = avg.P * 4;
-  const fK = avg.F * 9;
-  const cK = avg.C * 4;
-  const totalK = pK + fK + cK;
-  const data = totalK > 0 ? [
-    { name: 'P', value: Math.round((pK / totalK) * 100), color: '#f43f5e' },
-    { name: 'F', value: Math.round((fK / totalK) * 100), color: '#f59e0b' },
-    { name: 'C', value: Math.round((cK / totalK) * 100), color: '#8b5cf6' },
-  ] : [];
+  const order = ['朝食', '昼食', '夕食', '間食'];
+  const perDay = (n: number) => (totalDays > 0 ? n / totalDays : 0);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const rows = order
+    .filter((m) => (mealTypeKcal[m] ?? 0) > 0)
+    .map((m) => {
+      const kcal = Math.round(perDay(mealTypeKcal[m] ?? 0));
+      const P = r1(perDay(mealTypeP[m] ?? 0));
+      const F = r1(perDay(mealTypeF[m] ?? 0));
+      const C = r1(perDay(mealTypeC[m] ?? 0));
+      const pK = P * 4, fK = F * 9, cK = C * 4;
+      const tot = pK + fK + cK;
+      const pct = (k: number) => (tot > 0 ? Math.round((k / tot) * 100) : 0);
+      return { m, kcal, P, F, C, pP: pct(pK), pF: pct(fK), pC: pct(cK) };
+    });
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-32 h-32 flex-shrink-0">
-        <ResponsiveContainer>
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              innerRadius={32}
-              outerRadius={56}
-              stroke="none"
-              startAngle={90}
-              endAngle={-270}
-            >
-              {data.map((d, i) => (
-                <Cell key={i} fill={d.color} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="flex-1 space-y-1.5">
-        {data.map((d) => {
-          const macroAvg = d.name === 'P' ? avg.P : d.name === 'F' ? avg.F : avg.C;
-          const macroTarget = target ? (d.name === 'P' ? target.P : d.name === 'F' ? target.F : target.C) : 0;
-          return (
-            <div key={d.name} className="flex items-center gap-2 text-xs">
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
-              <span className="font-bold text-stone-900 w-3">{d.name}</span>
-              <span className="text-stone-600 flex-1">
-                {macroAvg}g
-                {macroTarget > 0 && <span className="text-stone-400 ml-1">/ {macroTarget}g</span>}
-              </span>
-              <span className="font-bold text-stone-900 text-[11px] w-9 text-right">{d.value}%</span>
+    <div className="space-y-2">
+      {rows.map((row) => {
+        const Icon = ANALYSIS_MEAL_ICON[row.m];
+        const color = ANALYSIS_MEAL_COLOR[row.m] || 'text-stone-500';
+        return (
+          <div key={row.m} className="text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-stone-900">
+              {Icon && <Icon className={`w-3.5 h-3.5 ${color}`} strokeWidth={2.2} />}
+              <span>{row.m}</span>
+              <span className="text-stone-500 font-normal">{row.kcal} kcal</span>
             </div>
-          );
-        })}
-      </div>
+            <div className="pl-5 mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-stone-600">
+              <span><span className="font-bold text-rose-500">P</span> {row.P}g <span className="text-stone-400">({row.pP}%)</span></span>
+              <span><span className="font-bold text-amber-500">F</span> {row.F}g <span className="text-stone-400">({row.pF}%)</span></span>
+              <span><span className="font-bold text-violet-500">C</span> {row.C}g <span className="text-stone-400">({row.pC}%)</span></span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1280,15 +1288,16 @@ const MEAL_TYPE_COLORS: Record<string, string> = {
 
 function MealTypePie({
   mealTypeKcal,
-  mealTypeCount,
+  totalDays,
 }: {
   mealTypeKcal: Record<string, number>;
-  mealTypeCount: Record<string, number>;
+  totalDays: number;
 }) {
+  // レポートと統一: 各食事 = その食事のkcal合計 ÷ 全記録日数（＝1日あたり平均）。
+  // これで朝+昼+夕+間 を足すと上部の「平均カロリー」と一致する。
   const avgKcal = Object.fromEntries(
     Object.entries(mealTypeKcal).map(([name, total]) => {
-      const cnt = mealTypeCount[name] ?? 0;
-      return [name, cnt > 0 ? Math.round(total / cnt) : 0];
+      return [name, totalDays > 0 ? Math.round(total / totalDays) : 0];
     })
   );
   const totalAvg = Object.values(avgKcal).reduce((a, b) => a + b, 0);
@@ -1329,7 +1338,7 @@ function MealTypePie({
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
             <span className="font-bold text-stone-900 w-6">{d.name.slice(0, 2)}</span>
             <span className="text-stone-600 flex-1">
-              {avgKcal[d.name]} kcal/回
+              {avgKcal[d.name]} kcal
             </span>
             <span className="font-bold text-stone-900 text-[11px] w-9 text-right">{d.value}%</span>
           </div>

@@ -25,6 +25,13 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-03 – fix(analysis): 顧客分析の食事区分別をレポートと統一（1日あたり）＋食事区分別PFC（g+食事内%）表示（branch: staging）
+- fix: `lib/analysisAggregate.ts` ＋ `app/admin/analysis/page.tsx`（`MealTypePie`）。顧客分析「食事区分別カロリー」が **その食事を記録した日数で割る（kcal/回）** ためレポート（÷全記録日数=1日あたり）と数値がズレていた（特に間食が過大・合計が上部平均と不一致）。**÷全記録日数(totalDays)に統一**し、朝+昼+夕+間 が上部「平均カロリー」と一致するように
+- add: `lib/analysisAggregate.ts` に食事区分別 PFC 合計（`mealTypeP/F/C`）を追加し API (`/api/admin/customers/[id]/analysis/data`) で返却。「PFC バランス」を **食事区分別 PFC（1日あたり・g＋その食事内のPFC比率%）** 表示に変更（`PfcPie`→`MealPfcList`）。社長指定レイアウト（朝昼夕間ごとに P/F/C の g と %）
+- chore: 画面で未使用化した `mealTypeCount` の state を除去（API は参考値として引き続き返却）
+- 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過。集計は tsx で実関数検証（食事合計＝1日平均で一致を確認）
+- 関連: 社長指摘「顧客分析とレポートで朝昼夕間の数字がズレる→統一／分析のPFCも朝昼夕間ごとにg＋%で（レポートと同じイメージ）」。※同ファイル(analysis/page.tsx)を並行編集した role配色コミット(f67c252)の上に rebase 済み
+
 ## 2026-06-03 – change(admin/store): 色テーマ第2弾 主要アクションボタンを role 配色に（店舗=緑 / 運営=紫）（branch: staging）
 - change: 保存／追加／送信などの主要アクションボタン（塗りつぶし emerald）を role 配色に。共有ページ（measurements/meals/reports/analysis/customers[id]/templates/scheduled-reports）は `ac.btn`（店舗=緑/運営=紫）に統一。運営専用ページ（tenants/tenants[id]/tenants/new/plans/audit/staff）は常に紫に固定。scheduled-reports の選択チップも `ac.pillActive` に
 - 据え置き: 「承認」緑ボタン（意味色）・LINE連携済み等の成功緑・ステータス色は不変。storeOnly ページ（billing/stores/SeatChangeModal）は店舗文脈のため緑のまま（＝店舗=緑で正しい）

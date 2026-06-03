@@ -46,6 +46,9 @@ export type AggregateResult = {
   sum: { kcal: number; P: number; F: number; C: number };
   daily: DailyEntry[];
   mealTypeKcal: Record<string, number>;
+  mealTypeP: Record<string, number>;
+  mealTypeF: Record<string, number>;
+  mealTypeC: Record<string, number>;
   mealTypeCount: Record<string, number>;
   recordsSummary: string;
   top20Foods: string;
@@ -57,8 +60,15 @@ export function aggregateRecords(
   to: string
 ): AggregateResult {
   const mealTypeKcal: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
-  // 食事区分ごとに「記録した日」を集合で保持。1食あたり平均の分母は食事日数とする
-  // （1食を複数品目に分けて記録するとレコード数では過大になり1品目あたりになってしまうため）
+  // 食事区分別の PFC 合計（レポートと統一した「1日あたり平均」算出に使う。
+  // 画面側で各 mealType の合計 ÷ totalDays として1日平均を出す）
+  const mealTypeP: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+  const mealTypeF: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+  const mealTypeC: Record<string, number> = { 朝食: 0, 昼食: 0, 夕食: 0, 間食: 0 };
+  // 食事区分ごとに「記録した日」を集合で保持。
+  // ※従来は「1食あたり平均（÷食事区分ごとの記録日数）」の分母に使っていたが、
+  //   レポート（÷全記録日数 totalDays）と数値がズレるため画面側の平均算出は totalDays に統一。
+  //   mealTypeCount は参考情報として引き続き返す。
   const mealTypeDates: Record<string, Set<string>> = {
     朝食: new Set(), 昼食: new Set(), 夕食: new Set(), 間食: new Set(),
   };
@@ -82,6 +92,9 @@ export function aggregateRecords(
 
     if (r.mealType in mealTypeKcal) {
       mealTypeKcal[r.mealType] += r.kcal;
+      mealTypeP[r.mealType] += r.P;
+      mealTypeF[r.mealType] += r.F;
+      mealTypeC[r.mealType] += r.C;
       mealTypeDates[r.mealType].add(dateKey);
     }
     const rawItem = (r.memo || r.title || '').split(/\s*\/\s*AI識別[:：]/)[0]?.trim();
@@ -164,5 +177,5 @@ export function aggregateRecords(
     間食: mealTypeDates.間食.size,
   };
 
-  return { totalDays, avg, sum, daily, mealTypeKcal, mealTypeCount, recordsSummary, top20Foods };
+  return { totalDays, avg, sum, daily, mealTypeKcal, mealTypeP, mealTypeF, mealTypeC, mealTypeCount, recordsSummary, top20Foods };
 }
