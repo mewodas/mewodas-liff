@@ -761,6 +761,12 @@ export type TenantRow = {
   bodyCompDbId: string | null;
   /** 顧客リスクお知らせ自動配信 ON/OFF（既定 false=opt-in） */
   riskAlertEnabled: boolean;
+  /** リスクお知らせ: 食事記録の途絶え */
+  riskMeal: boolean;
+  /** リスクお知らせ: 体重記録の途絶え */
+  riskWeight: boolean;
+  /** リスクお知らせ: 体重停滞（目標への進捗なし） */
+  riskWeightGoal: boolean;
 };
 
 export async function updateTenantRow(
@@ -798,6 +804,9 @@ export async function updateTenantRow(
     ownerLineUserId?: string | null;
     inviteMode?: 'individual' | 'approval' | null;
     riskAlertEnabled?: boolean;
+    riskMeal?: boolean;
+    riskWeight?: boolean;
+    riskWeightGoal?: boolean;
   }
 ): Promise<void> {
   const properties: Record<string, unknown> = {};
@@ -914,6 +923,15 @@ export async function updateTenantRow(
   if (patch.riskAlertEnabled !== undefined) {
     properties['リスクアラート'] = { checkbox: patch.riskAlertEnabled };
   }
+  if (patch.riskMeal !== undefined) {
+    properties['リスク食事記録'] = { checkbox: patch.riskMeal };
+  }
+  if (patch.riskWeight !== undefined) {
+    properties['リスク体重記録'] = { checkbox: patch.riskWeight };
+  }
+  if (patch.riskWeightGoal !== undefined) {
+    properties['リスク体重目標'] = { checkbox: patch.riskWeightGoal };
+  }
   if (Object.keys(properties).length === 0) return;
   await notionRequest('PATCH', `/pages/${pageId}`, { properties });
 }
@@ -971,6 +989,9 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       })(),
       bodyCompDbId: p['Notion 体組成DB ID']?.rich_text?.[0]?.plain_text || null,
       riskAlertEnabled: !!p['リスクアラート']?.checkbox,
+      riskMeal: !!p['リスク食事記録']?.checkbox,
+      riskWeight: !!p['リスク体重記録']?.checkbox,
+      riskWeightGoal: !!p['リスク体重目標']?.checkbox,
     };
   });
 }

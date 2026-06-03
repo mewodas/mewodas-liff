@@ -5,11 +5,35 @@ import { BellRing, Loader2 } from 'lucide-react';
 import AdminShell from '@/app/admin/AdminShell';
 import { useToast } from '@/components/Toast';
 
+type RiskKey = 'riskMeal' | 'riskWeight' | 'riskWeightGoal';
+
+const RISK_ITEMS: { key: RiskKey; label: string; description: string }[] = [
+  {
+    key: 'riskMeal',
+    label: '食事記録の途絶え',
+    description: '食事記録が途絶えている顧客',
+  },
+  {
+    key: 'riskWeight',
+    label: '体重記録の途絶え',
+    description: '体重記録が途絶えている顧客',
+  },
+  {
+    key: 'riskWeightGoal',
+    label: '体重目標の停滞',
+    description: '体重が停滞し目標に近づいていない顧客',
+  },
+];
+
 export default function StoreNotificationsPage() {
   const toast = useToast();
-  const [riskAlertEnabled, setRiskAlertEnabled] = useState(false);
+  const [flags, setFlags] = useState<Record<RiskKey, boolean>>({
+    riskMeal: false,
+    riskWeight: false,
+    riskWeightGoal: false,
+  });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<RiskKey | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -17,7 +41,11 @@ export default function StoreNotificationsPage() {
         const res = await fetch('/api/admin/tenant-settings', { cache: 'no-store' });
         if (!res.ok) return;
         const j = await res.json();
-        setRiskAlertEnabled(!!j.riskAlertEnabled);
+        setFlags({
+          riskMeal: !!j.riskMeal,
+          riskWeight: !!j.riskWeight,
+          riskWeightGoal: !!j.riskWeightGoal,
+        });
       } catch {
         // ignore
       } finally {
@@ -26,25 +54,23 @@ export default function StoreNotificationsPage() {
     })();
   }, []);
 
-  async function handleToggle() {
-    const next = !riskAlertEnabled;
-    // 楽観的更新: 先に UI を切り替えて即時反映し、保存はバックグラウンドで実行。
-    // 失敗時のみ元に戻す（Notion 書き込み完了を待ってからスイッチが動く旧挙動の数秒ラグを解消）
-    setRiskAlertEnabled(next);
-    setSaving(true);
+  async function handleToggle(key: RiskKey) {
+    const next = !flags[key];
+    setFlags((prev) => ({ ...prev, [key]: next }));
+    setSaving(key);
     try {
       const res = await fetch('/api/admin/tenant-settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ riskAlertEnabled: next }),
+        body: JSON.stringify({ [key]: next }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      toast.success(next ? '顧客リスクお知らせを有効にしました' : '顧客リスクお知らせを無効にしました');
+      toast.success(next ? 'お知らせをONにしました' : 'お知らせをOFFにしました');
     } catch {
-      setRiskAlertEnabled(!next); // 保存失敗 → ロールバック
+      setFlags((prev) => ({ ...prev, [key]: !next }));
       toast.error('保存に失敗しました');
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   }
 
@@ -56,37 +82,47 @@ export default function StoreNotificationsPage() {
           受信したお知らせは画面右上のベルマーク 🔔 から確認できます。
         </div>
 
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5">
-              <BellRing className="w-5 h-5 text-emerald-500" strokeWidth={2.2} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm text-stone-900 mb-1">顧客リスクお知らせを受け取る</div>
-              <div className="text-xs text-stone-500 leading-relaxed">
-                ONにすると、食事記録や体重記録が途絶えている顧客・体重が停滞している顧客の一覧が、毎日の受信お知らせに届きます（該当者なしの日はお知らせは届きません）。
-              </div>
-            </div>
-            {loading ? (
-              <Loader2 className="w-5 h-5 text-stone-400 animate-spin flex-shrink-0 mt-0.5" strokeWidth={2.2} />
-            ) : (
-              <button
-                type="button"
-                onClick={handleToggle}
-                disabled={saving}
-                aria-label={riskAlertEnabled ? '顧客リスクお知らせをOFFにする' : '顧客リスクお知らせをONにする'}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none ${
-                  riskAlertEnabled ? 'bg-emerald-600 border-emerald-600' : 'bg-stone-200 border-stone-200'
-                } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                    riskAlertEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                  } mt-0.5`}
-                />
-              </button>
-            )}
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <BellRing className="w-5 h-5 text-emerald-500" strokeWidth={2.2} />
+            <span className="font-bold text-sm text-stone-900">顧客リスクお知らせを受け取る</span>
           </div>
+
+          {loading ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-5 h-5 text-stone-400 animate-spin" strokeWidth={2.2} />
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {RISK_ITEMS.map((item) => {
+                const isOn = flags[item.key];
+                const isSaving = saving === item.key;
+                return (
+                  <div key={item.key} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-stone-800">{item.label}</div>
+                      <div className="text-xs text-stone-500 mt-0.5">{item.description}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggle(item.key)}
+                      disabled={isSaving}
+                      aria-label={isOn ? `${item.label}をOFFにする` : `${item.label}をONにする`}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isOn ? 'bg-emerald-600 border-emerald-600' : 'bg-stone-200 border-stone-200'
+                      } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                          isOn ? 'translate-x-5' : 'translate-x-0.5'
+                        } mt-0.5`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </AdminShell>

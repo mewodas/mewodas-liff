@@ -49,6 +49,12 @@ export type TenantConfig = {
   inviteMode?: 'individual' | 'approval';
   /** 顧客リスクお知らせ自動配信 ON/OFF（既定 false=opt-in） */
   riskAlertEnabled?: boolean;
+  /** リスクお知らせ: 食事記録の途絶え */
+  riskMeal?: boolean;
+  /** リスクお知らせ: 体重記録の途絶え */
+  riskWeight?: boolean;
+  /** リスクお知らせ: 体重停滞（目標への進捗なし） */
+  riskWeightGoal?: boolean;
   /** LINE自動送付ON/OFF */
   lineAutoSendEnabled?: boolean;
   /** 自動送付時刻 "HH:MM" JST */

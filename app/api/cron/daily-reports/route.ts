@@ -91,37 +91,46 @@ function tenantToConfig(r: Awaited<ReturnType<typeof listTenantRows>>[number]): 
     lineAutoSendEnabled: r.lineAutoSendEnabled,
     autoSendTime: r.autoSendTime ?? undefined,
     riskAlertEnabled: r.riskAlertEnabled,
+    riskMeal: r.riskMeal,
+    riskWeight: r.riskWeight,
+    riskWeightGoal: r.riskWeightGoal,
     themeColor: '#059669',
     defaultGoals: { kcal: 2000, P: 100, F: 56, C: 275 },
   };
 }
 
-function riskLabel(row: CustomerRiskRow): string {
+type RiskFlags = { meal: boolean; weight: boolean; weightGoal: boolean };
+
+function riskLabel(row: CustomerRiskRow, flags: RiskFlags): string {
   const labels: string[] = [];
 
-  const d = row.daysSinceLastRecord;
-  if (d === null || d >= 1) {
-    if (d === 1) labels.push('記録漏れ');
-    else if (d === 2) labels.push('記録漏れ2日');
-    else labels.push('記録漏れ2日以上');
+  if (flags.meal) {
+    const d = row.daysSinceLastRecord;
+    if (d === null || d >= 1) {
+      if (d === 1) labels.push('記録漏れ');
+      else if (d === 2) labels.push('記録漏れ2日');
+      else labels.push('記録漏れ2日以上');
+    }
   }
 
-  const w = row.daysSinceLastWeight;
-  if (w === null || w >= 1) {
-    if (w === 1) labels.push('体重記載漏れ');
-    else if (w === 2) labels.push('体重記載漏れ2日');
-    else labels.push('体重記載漏れ2日以上');
+  if (flags.weight) {
+    const w = row.daysSinceLastWeight;
+    if (w === null || w >= 1) {
+      if (w === 1) labels.push('体重記載漏れ');
+      else if (w === 2) labels.push('体重記載漏れ2日');
+      else labels.push('体重記載漏れ2日以上');
+    }
   }
 
-  if (row.weightStalled) labels.push('体重停滞');
+  if (flags.weightGoal && row.weightStalled) labels.push('体重停滞');
 
   return labels.join('、');
 }
 
-function isAtRisk(row: CustomerRiskRow): boolean {
-  if (row.daysSinceLastRecord === null || row.daysSinceLastRecord >= 1) return true;
-  if (row.daysSinceLastWeight === null || row.daysSinceLastWeight >= 1) return true;
-  if (row.weightStalled) return true;
+function isAtRisk(row: CustomerRiskRow, flags: RiskFlags): boolean {
+  if (flags.meal && (row.daysSinceLastRecord === null || row.daysSinceLastRecord >= 1)) return true;
+  if (flags.weight && (row.daysSinceLastWeight === null || row.daysSinceLastWeight >= 1)) return true;
+  if (flags.weightGoal && row.weightStalled) return true;
   return false;
 }
 
@@ -166,7 +175,12 @@ export async function GET(req: NextRequest) {
 
       for (const tenantRow of allTenantRowsForRisk) {
         if (!tenantRow.tenantId || tenantRow.status === '解約') continue;
-        if (!tenantRow.riskAlertEnabled) {
+        const riskFlags: RiskFlags = {
+          meal: !!tenantRow.riskMeal,
+          weight: !!tenantRow.riskWeight,
+          weightGoal: !!tenantRow.riskWeightGoal,
+        };
+        if (!riskFlags.meal && !riskFlags.weight && !riskFlags.weightGoal) {
           riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'disabled' });
           continue;
         }
@@ -184,14 +198,14 @@ export async function GET(req: NextRequest) {
           await runInTenantContext(tenantConfig, () => computeAndStoreTenantRisk());
 
           const risks = await listCustomerRiskByTenant(tenantRow.tenantId, CURRENT_ENV);
-          const atRisk = risks.filter(isAtRisk);
+          const atRisk = risks.filter((r) => isAtRisk(r, riskFlags));
 
           if (atRisk.length === 0) {
             riskAlertResults.push({ tenantId: tenantRow.tenantId, status: 'no_at_risk', atRiskCount: 0 });
             continue;
           }
 
-          const lines = atRisk.map((r) => `・${r.name ?? '(名前なし)'}: ${riskLabel(r)}`).join('\n');
+          const lines = atRisk.map((r) => `・${r.name ?? '(名前なし)'}: ${riskLabel(r, riskFlags)}`).join('\n');
           const body = `${lines}\n\n進捗管理で詳細を確認できます。`;
 
           await createAnnouncement({
