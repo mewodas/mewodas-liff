@@ -18,12 +18,14 @@ const securityHeaders = [
       "default-src 'self'",
       // LIFF SDK: static.line-scdn.net + liffsdk.line-scdn.net 等のサブドメイン許容のため wildcards
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.line-scdn.net https://va.vercel-scripts.com",
+      // Chrome etc. treat script-src-elem as a separate directive; must be declared explicitly
+      "script-src-elem 'self' 'unsafe-inline' https://*.line-scdn.net https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       // LIFF SDK は api.line.me 以外に access.line.me / liff-subwindow.line.me / uts-front.line-apps.com も叩く。
       // GAS(script.google*)=食事写真アップロード, *.ingest.sentry.io=Sentry リージョン別DSN。
       "connect-src 'self' https://*.line.me https://*.line-apps.com https://*.line-scdn.net https://api.notion.com https://generativelanguage.googleapis.com https://*.ingest.sentry.io https://va.vercel-scripts.com https://script.google.com https://script.googleusercontent.com",
-      "frame-src 'self' https://*.line.me",
+      "frame-src 'self' https://*.line.me https://*.line-scdn.net",
       "font-src 'self' data:",
       "report-uri /api/csp-report",
     ].join('; '),

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-06-03 10:00 a0621ed
+- fix(security): CSP に `script-src-elem` ディレクティブ追加 + `frame-src` に `https://*.line-scdn.net` 追加
+- 影響範囲: API / インフラ（CSP ヘッダー変更）。顧客側は Report-Only のため現時点で動作変化なし
+- 関連: Slack #security-alerts アラート ts=1780391970.925839（script-src-elem・frame-src 違反報告）
 ## 2026-06-03 – fix(security): CSP connect-src に https://*.line-scdn.net を追加（branch: claude/sec-fix-0670559）
 - fix: `next.config.ts:25` の `connect-src` に `https://*.line-scdn.net` を追記（1行追加）
 - 影響範囲: セキュリティヘッダーのみ。現在 Report-Only のため顧客への即時影響なし。enforce 昇格時に LIFF SDK 通信が遮断されないよう修正
