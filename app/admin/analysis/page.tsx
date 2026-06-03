@@ -46,6 +46,7 @@ import {
   Line,
 } from 'recharts';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { toDriveThumbnailUrl } from '@/lib/imageUrl';
@@ -180,6 +181,7 @@ export default function AdminAnalysisPage() {
 function Inner() {
   const sp = useSearchParams();
   const base = useAdminBase();
+  const ac = adminAccent(base === '/store');
   const initialCustomerId = sp.get('customer') || sp.get('customerId') || '';
   const today = jstToday();
   const initialDate = (() => {
@@ -488,7 +490,7 @@ function Inner() {
                 }}
                 className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                   selectedStore === o.value
-                    ? 'bg-violet-500 text-white border-violet-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >

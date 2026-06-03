@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Circle, ChevronRight, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import DateRangePicker from '../DateRangePicker';
 import { useAdminBase } from '@/lib/useAdminBase';
 
@@ -58,6 +59,7 @@ function addDays(dateStr: string, n: number): string {
 
 export default function ProgressPage() {
   const base = useAdminBase();
+  const ac = adminAccent(base === '/store');
   const router = useRouter();
   const todayStr = jstToday();
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -174,7 +176,7 @@ export default function ProgressPage() {
                 onClick={() => { setStoreFilter(''); setCustomerId(''); }}
                 className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                   storeFilter === ''
-                    ? 'bg-violet-500 text-white border-violet-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -187,7 +189,7 @@ export default function ProgressPage() {
                   onClick={() => { setStoreFilter(s.storeId); setCustomerId(''); }}
                   className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
                     storeFilter === s.storeId
-                      ? 'bg-violet-500 text-white border-violet-500'
+                      ? ac.pillActive
                       : 'bg-white text-stone-700 border-stone-300'
                   }`}
                 >
@@ -219,7 +221,7 @@ export default function ProgressPage() {
                 onClick={() => setStatusFilter(s)}
                 className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${
                   statusFilter === s
-                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >

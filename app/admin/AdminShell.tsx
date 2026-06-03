@@ -193,14 +193,14 @@ export default function AdminShell({
   // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
   const anyGroupOpen = progressOpen || settingsOpen;
 
-  // アクセントカラー（store=violet / admin=emerald）。選択中の「光る」表現に使用。
-  const accentText = isStore ? 'text-violet-700' : 'text-emerald-700';
-  const accentBg = isStore ? 'bg-violet-50' : 'bg-emerald-50';
-  const accentDot = isStore ? 'bg-violet-600' : 'bg-emerald-600';
-  const accentRing = isStore ? 'ring-violet-200' : 'ring-emerald-200';
+  // アクセントカラー（store=emerald緑 / admin=violet紫）。選択中の「光る」表現に使用。
+  const accentText = isStore ? 'text-emerald-700' : 'text-violet-700';
+  const accentBg = isStore ? 'bg-emerald-50' : 'bg-violet-50';
+  const accentDot = isStore ? 'bg-emerald-600' : 'bg-violet-600';
+  const accentRing = isStore ? 'ring-emerald-200' : 'ring-violet-200';
   const accentGlow = isStore
-    ? 'shadow-[0_1px_10px_-3px_rgba(124,58,237,0.55)]'
-    : 'shadow-[0_1px_10px_-3px_rgba(5,150,105,0.55)]';
+    ? 'shadow-[0_1px_10px_-3px_rgba(5,150,105,0.55)]'
+    : 'shadow-[0_1px_10px_-3px_rgba(124,58,237,0.55)]';
 
   // リンク項目の共通クラス。active のとき背景＋リング＋グローで強調。
   const leafClass = (active: boolean, indented: boolean) =>

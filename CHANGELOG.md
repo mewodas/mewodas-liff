@@ -11,6 +11,19 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-03 – change(admin/store): ブランドアクセントを role 配色に（店舗=緑 / 運営=紫）第1弾: サイドバー＋フィルタチップ（branch: staging）
+- feat: `lib/adminAccent.ts` 追加。`adminAccent(isStore)` が role 別アクセントのクラス群（pillActive/btn/ring/text/bgSoft/border/dot）を返す。store=emerald(緑)/admin=violet(紫)。意味色（成功・ステータス・エラー・デモ等）には使わない
+- change: `app/admin/AdminShell.tsx`。サイドバーのアクセントを store=violet/admin=emerald → **store=emerald(緑)/admin=violet(紫)** にスワップ（accentText/Bg/Dot/Ring/Glow）。トップバーのロールバッジは元から store=緑/admin=紫で整合
+- change: 主要6ページ（customers/progress/meals/measurements/analysis/reports）のフィルタチップ（ステータス＝旧emerald・店舗＝旧violet）の選択中スタイルを `ac.pillActive` に統一。これで store では全て緑、admin では全て紫に。reports の TemplateChip は `accentActive` prop 経由
+- 注: 「承認」緑ボタン・デモ紫バッジ・LINE連携済み緑 等の意味色は据え置き（Option A）。主要アクションボタン（保存/追加/送信）の role 配色化は第2弾で対応予定
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（store=緑/admin=紫）
+
+## 2026-06-02 – change(admin/store): レポート送付の顧客選択を顧客分析と同じ絞り込みUIに（店舗チップ追加）（branch: staging）
+- change: `app/admin/reports/page.tsx`。レポートモードの「① 顧客」を、顧客分析と同じ「店舗チップ→顧客プルダウン」構成に。`selectedStore`＋`storeOptions`/`filteredCustomers` を追加し、店舗で顧客候補を絞り込み（店舗が2件以上の時のみチップ表示・選択中顧客が候補外になればリセット）。プルダウン文言は「顧客を選択してください」
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ1件）。色テーマ（store=緑/admin=紫）は別途確認中
+
 ## 2026-06-02 18:44 – fix(reports): 月次/週次レポートの食事を「1日平均」に修正 ＋ 体重を「最終日の体重」に（branch: staging）
 - fix: `lib/reports/variables.ts`。朝食/昼食/夕食/間食の `{breakfast_kcal}` 等が期間**合計**を返していた（テンプレ表記「平均/日」と不一致）バグを修正。記録日数 `totalDays` で割った**1日あたり平均**を返すように。これで「朝＋昼＋夕＋間 の平均/日」の合計が全体の1日平均 `{kcal}` と一致する。単日(前日)レポートは `totalDays=1` のため当日合計と一致＝従来挙動を維持
 - fix: `{weight}` が `customer.currentWeight`（＝Notion `開始体重(kg)` の固定値）を出していたのを、**期間内の最終日の実測体重**に変更。無ければ開始体重にフォールバック。月次/週次/前日すべてに適用
