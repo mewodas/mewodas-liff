@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 – fix(security): CSP connect-src に https://*.line-scdn.net を追加（branch: claude/sec-fix-0670559）
+- fix: `next.config.ts:25` の `connect-src` に `https://*.line-scdn.net` を追記（1行追加）
+- 影響範囲: セキュリティヘッダーのみ。現在 Report-Only のため顧客への即時影響なし。enforce 昇格時に LIFF SDK 通信が遮断されないよう修正
+- 関連: Slack #security-alerts alert_ts 1780391960.670559（CSP violation report: liffsdk.line-scdn.net が connect-src 違反）
+
 ## 2026-06-02 – test(security): クロステナント/クロス顧客 IDOR の回帰テスト追加 ＋ 既存署名改ざんテストのフレーキー修正（branch: security/ownership-repo-layer・未マージ）
 - test: `__tests__/lib/cross-tenant-ownership.test.ts`（新規・17ケース）。2026-05-31 監査 設計#10。所有権チェックがリポジトリ/データ層に集約済（設計#2＝既に origin/main 実装済）であることを固定する回帰テスト。`@/lib/tenant` の `getCurrentTenant` と `global.fetch` をモックし、(1) `assertCustomerOwnership`/`getCustomerByPageId`＝他テナント顧客DBの pageId を拒否/null、(2) `assertFoodRecordOwnership`＝他テナント食事DB拒否＋同一テナント内の別顧客(LINE_UserID不一致)を拒否、(3) `repository/customers`・`repository/records`＝patch/archive が他テナント pageId で forbidden 後、更新処理に到達しない（fetch 1回のみ）、(4) `lib/stores` の getStore/updateStore/deleteStore＝他テナント tenant_id を null/forbidden、を検証
 - fix(test): `__tests__/lib/auth-token-separation.test.ts` の「署名改ざんトークンは拒否」を、トークン末尾1文字反転→**署名先頭文字反転**に変更。末尾は base64url パディングで下位bitが捨てられ A↔B 反転してもデコード後バイト列が変わらず改ざん検知をすり抜ける場合があり、`exp=Date.now()+60s` の署名差で実行タイミング次第に false-fail するフレーキーだった。先頭文字は全6bit有効で確実に変わる。全37ケースを3回連続グリーンで安定確認
