@@ -605,26 +605,16 @@ function Inner() {
               <TargetIcon className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
               食事バランス
             </h3>
-            <div className="flex flex-col sm:flex-row gap-4">
-              {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
-                <div className="flex-1">
-                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別カロリー（1日あたり）</div>
-                  <MealTypePie mealTypeKcal={mealTypeKcal} totalDays={stats?.totalDays ?? 0} />
-                </div>
-              )}
-              {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
-                <div className="flex-1">
-                  <div className="text-[10px] font-bold text-stone-500 mb-1 text-center">食事区分別 PFC（1日あたり）</div>
-                  <MealPfcList
-                    mealTypeKcal={mealTypeKcal}
-                    mealTypeP={mealTypeP ?? {}}
-                    mealTypeF={mealTypeF ?? {}}
-                    mealTypeC={mealTypeC ?? {}}
-                    totalDays={stats?.totalDays ?? 0}
-                  />
-                </div>
-              )}
-            </div>
+            <div className="text-[10px] font-bold text-stone-500 mb-2">1日あたり ／ カロリー配分と各食事の PFC バランス</div>
+            {mealTypeKcal && Object.values(mealTypeKcal).some((v) => v > 0) && (
+              <MealBalanceCharts
+                mealTypeKcal={mealTypeKcal}
+                mealTypeP={mealTypeP ?? {}}
+                mealTypeF={mealTypeF ?? {}}
+                mealTypeC={mealTypeC ?? {}}
+                totalDays={stats?.totalDays ?? 0}
+              />
+            )}
           </section>
         ) : null}
 
@@ -1217,9 +1207,43 @@ function DailyKcalChart({ daily, targetKcal }: { daily: Daily[]; targetKcal: num
   );
 }
 
-// 食事区分別 PFC（1日あたり）。レポートと統一し各値は その食事のPFC合計 ÷ 全記録日数。
-// %は「その食事の中でのP/F/Cカロリー比率」（合計100%）。
-function MealPfcList({
+// 小さなドーナツ（中央にラベル）。recharts の Pie を使用。
+function MiniDonut({
+  segments,
+  centerMain,
+  centerSub,
+}: {
+  segments: { value: number; color: string }[];
+  centerMain: string;
+  centerSub?: string;
+}) {
+  const data = segments.filter((s) => s.value > 0);
+  return (
+    <div className="relative w-[88px] h-[88px]">
+      {data.length > 0 ? (
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie data={data} dataKey="value" innerRadius={26} outerRadius={42} stroke="none" startAngle={90} endAngle={-270}>
+              {data.map((d, i) => (
+                <Cell key={i} fill={d.color} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="w-full h-full rounded-full border-4 border-stone-100" />
+      )}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-[11px] font-bold text-stone-900 leading-none">{centerMain}</span>
+        {centerSub && <span className="text-[8px] text-stone-400 leading-none mt-0.5">{centerSub}</span>}
+      </div>
+    </div>
+  );
+}
+
+// 食事バランス: カロリー配分ドーナツ1つ ＋ 各食事(朝/昼/夕/間)の PFC ドーナツ4つを横並び。
+// 各値は その食事のPFC・kcal合計 ÷ 全記録日数（1日あたり平均、レポートと統一）。
+function MealBalanceCharts({
   mealTypeKcal,
   mealTypeP,
   mealTypeF,
@@ -1235,7 +1259,7 @@ function MealPfcList({
   const order = ['朝食', '昼食', '夕食', '間食'];
   const perDay = (n: number) => (totalDays > 0 ? n / totalDays : 0);
   const r1 = (n: number) => Math.round(n * 10) / 10;
-  const rows = order
+  const meals = order
     .filter((m) => (mealTypeKcal[m] ?? 0) > 0)
     .map((m) => {
       const kcal = Math.round(perDay(mealTypeKcal[m] ?? 0));
@@ -1247,23 +1271,70 @@ function MealPfcList({
       const pct = (k: number) => (tot > 0 ? Math.round((k / tot) * 100) : 0);
       return { m, kcal, P, F, C, pP: pct(pK), pF: pct(fK), pC: pct(cK) };
     });
+  const totalKcal = meals.reduce((a, b) => a + b.kcal, 0);
+  const dayPct = (k: number) => (totalKcal > 0 ? Math.round((k / totalKcal) * 100) : 0);
+
+  const cell = 'flex flex-col items-center bg-stone-50 border border-stone-200 rounded-xl p-2';
+  const legendRow = 'flex items-center gap-1 w-full text-[10px] leading-tight';
 
   return (
-    <div className="space-y-2">
-      {rows.map((row) => {
-        const Icon = ANALYSIS_MEAL_ICON[row.m];
-        const color = ANALYSIS_MEAL_COLOR[row.m] || 'text-stone-500';
-        return (
-          <div key={row.m} className="text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-stone-900">
-              {Icon && <Icon className={`w-3.5 h-3.5 ${color}`} strokeWidth={2.2} />}
-              <span>{row.m}</span>
-              <span className="text-stone-500 font-normal">{row.kcal} kcal</span>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      {/* カロリー配分 */}
+      <div className={cell}>
+        <div className="text-[10px] font-bold text-stone-600 mb-1">カロリー配分</div>
+        <MiniDonut
+          segments={meals.map((x) => ({ value: x.kcal, color: MEAL_TYPE_COLORS[x.m] || '#a8a29e' }))}
+          centerMain={`${totalKcal}`}
+          centerSub="kcal/日"
+        />
+        <div className="mt-1.5 w-full space-y-0.5">
+          {meals.map((x) => (
+            <div key={x.m} className={legendRow}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: MEAL_TYPE_COLORS[x.m] || '#a8a29e' }} />
+              <span className="font-bold text-stone-700">{x.m.slice(0, 1)}</span>
+              <span className="text-stone-500 flex-1 text-right">{x.kcal}</span>
+              <span className="font-bold text-stone-700 w-8 text-right">{dayPct(x.kcal)}%</span>
             </div>
-            <div className="pl-5 mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-stone-600">
-              <span><span className="font-bold text-rose-500">P</span> {row.P}g <span className="text-stone-400">({row.pP}%)</span></span>
-              <span><span className="font-bold text-amber-500">F</span> {row.F}g <span className="text-stone-400">({row.pF}%)</span></span>
-              <span><span className="font-bold text-violet-500">C</span> {row.C}g <span className="text-stone-400">({row.pC}%)</span></span>
+          ))}
+        </div>
+      </div>
+
+      {/* 各食事の PFC */}
+      {meals.map((x) => {
+        const Icon = ANALYSIS_MEAL_ICON[x.m];
+        const color = ANALYSIS_MEAL_COLOR[x.m] || 'text-stone-500';
+        return (
+          <div key={x.m} className={cell}>
+            <div className="text-[10px] font-bold text-stone-700 mb-1 inline-flex items-center gap-1">
+              {Icon && <Icon className={`w-3 h-3 ${color}`} strokeWidth={2.2} />}
+              <span>{x.m}</span>
+              <span className="text-stone-400 font-normal">{dayPct(x.kcal)}%</span>
+            </div>
+            <MiniDonut
+              segments={[
+                { value: x.pP, color: '#f43f5e' },
+                { value: x.pF, color: '#f59e0b' },
+                { value: x.pC, color: '#8b5cf6' },
+              ]}
+              centerMain={`${x.kcal}`}
+              centerSub="kcal"
+            />
+            <div className="mt-1.5 w-full space-y-0.5">
+              <div className={legendRow}>
+                <span className="font-bold text-rose-500 w-3">P</span>
+                <span className="text-stone-500 flex-1 text-right">{x.P}g</span>
+                <span className="text-stone-400 w-8 text-right">{x.pP}%</span>
+              </div>
+              <div className={legendRow}>
+                <span className="font-bold text-amber-500 w-3">F</span>
+                <span className="text-stone-500 flex-1 text-right">{x.F}g</span>
+                <span className="text-stone-400 w-8 text-right">{x.pF}%</span>
+              </div>
+              <div className={legendRow}>
+                <span className="font-bold text-violet-500 w-3">C</span>
+                <span className="text-stone-500 flex-1 text-right">{x.C}g</span>
+                <span className="text-stone-400 w-8 text-right">{x.pC}%</span>
+              </div>
             </div>
           </div>
         );
@@ -1279,67 +1350,6 @@ const MEAL_TYPE_COLORS: Record<string, string> = {
   間食: '#ec4899',
 };
 
-function MealTypePie({
-  mealTypeKcal,
-  totalDays,
-}: {
-  mealTypeKcal: Record<string, number>;
-  totalDays: number;
-}) {
-  // レポートと統一: 各食事 = その食事のkcal合計 ÷ 全記録日数（＝1日あたり平均）。
-  // これで朝+昼+夕+間 を足すと上部の「平均カロリー」と一致する。
-  const avgKcal = Object.fromEntries(
-    Object.entries(mealTypeKcal).map(([name, total]) => {
-      return [name, totalDays > 0 ? Math.round(total / totalDays) : 0];
-    })
-  );
-  const totalAvg = Object.values(avgKcal).reduce((a, b) => a + b, 0);
-  const data = totalAvg > 0
-    ? Object.entries(avgKcal)
-        .filter(([, v]) => v > 0)
-        .map(([name, value]) => ({
-          name,
-          value: Math.round((value / totalAvg) * 100),
-          color: MEAL_TYPE_COLORS[name] || '#a8a29e',
-        }))
-    : [];
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-32 h-32 flex-shrink-0">
-        <ResponsiveContainer>
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              innerRadius={32}
-              outerRadius={56}
-              stroke="none"
-              startAngle={90}
-              endAngle={-270}
-            >
-              {data.map((d, i) => (
-                <Cell key={i} fill={d.color} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="flex-1 space-y-1.5">
-        {data.map((d) => (
-          <div key={d.name} className="flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
-            <span className="font-bold text-stone-900 w-6">{d.name.slice(0, 2)}</span>
-            <span className="text-stone-600 flex-1">
-              {avgKcal[d.name]} kcal
-            </span>
-            <span className="font-bold text-stone-900 text-[11px] w-9 text-right">{d.value}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Sub({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をドーナツ5枚横並びに刷新（カロリー1＋各食事PFC4）（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスを「カロリードーナツ＋PFCテキストリスト（左右に間延び）」から、**カロリー配分ドーナツ1つ＋朝/昼/夕/間それぞれのPFCドーナツ4つを横並びグリッド**（`lg:grid-cols-5`、タブレット3列/モバイル2列）に刷新。各セルに中央kcal表示の小ドーナツ＋凡例（カロリーは食事別kcal/%、PFCはP/F/Cのg/%）。余白を詰めて一目で比較可能に
+- 旧 `MealTypePie`/`MealPfcList` を撤去し `MiniDonut`/`MealBalanceCharts` に置換。値は従来どおり1日あたり平均（レポートと統一）。recharts 使用
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ・食事バランス枠にカロリー1＋PFC4を並べる）
+
 ## 2026-06-03 – change(admin/store): レポート送付の「送信元店舗」表示セクションを削除（branch: staging）
 - change: `app/admin/reports/page.tsx`。顧客選択後に出ていた紫の「送信元店舗（顧客の所属から自動）」表示ボックスを削除（社長指示・不要）。署名の自動付与ロジック（customerStore）は維持。店舗未設定時の amber 警告（署名が付かない旨）は残置
 - 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
