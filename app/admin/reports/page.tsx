@@ -481,50 +481,8 @@ function Inner() {
         {/* ===== レポートモード ===== */}
         {mode === 'report' && (
           <>
-            {/* ① 顧客（顧客分析と同じ: 店舗チップで絞り込み → 顧客プルダウン） */}
+            {/* フィルタバー（顧客分析と同じ構成: 期間 → 店舗チップ → 顧客プルダウン） */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-              <label className="text-xs font-bold text-stone-700 block">① 顧客</label>
-              {storeOptions.length > 1 && (
-                <div className="flex gap-1 flex-wrap">
-                  {storeOptions.map((o) => (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => {
-                        setSelectedStore(o.value);
-                        const newFiltered = customers.filter((c) =>
-                          o.value === '' ? true : (c.storeId ?? '') === o.value
-                        );
-                        if (customerId && !newFiltered.find((c) => c.pageId === customerId)) {
-                          setCustomerId('');
-                        }
-                      }}
-                      className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                        selectedStore === o.value
-                          ? ac.pillActive
-                          : 'bg-white text-stone-700 border-stone-300'
-                      }`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <select
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">顧客を選択してください</option>
-                {filteredCustomers.map((c) => (
-                  <option key={c.pageId} value={c.pageId}>{c.name}</option>
-                ))}
-              </select>
-            </section>
-
-            {/* ② 期間 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-              <div className="text-xs font-bold text-stone-700 mb-2">② 期間</div>
               <DateRangePicker
                 from={from}
                 to={to}
@@ -534,12 +492,46 @@ function Inner() {
                 onShift={shiftRange}
                 isSingleDay={isSingleDay}
               />
+
+              {/* 店舗チップ */}
+              <div className="flex gap-1 flex-wrap">
+                {storeOptions.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStore(o.value);
+                      const nf = customers.filter((c) => o.value === '' || (c.storeId ?? '') === o.value);
+                      if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
+                    }}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                      selectedStore === o.value
+                        ? ac.pillActive
+                        : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 顧客 select */}
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">顧客を選択してください</option>
+                {filteredCustomers.map((c) => (
+                  <option key={c.pageId} value={c.pageId}>{c.name}</option>
+                ))}
+              </select>
             </section>
 
-            {/* ③ 所属店舗 */}
+            {/* 送信元店舗 */}
             {customerStore && (
               <section className="bg-violet-50 border border-violet-200 rounded-2xl p-3">
-                <div className="text-[11px] font-bold text-violet-800 mb-0.5">③ 送信元店舗（顧客の所属から自動）</div>
+                <div className="text-[11px] font-bold text-violet-800 mb-0.5">送信元店舗（顧客の所属から自動）</div>
                 <div className="text-sm font-bold text-violet-900">{customerStore.name}</div>
                 {customerStore.signature && (
                   <div className="text-[10px] text-violet-700 mt-1 italic">本文末尾に「— {customerStore.signature}」を自動付与</div>
@@ -553,11 +545,11 @@ function Inner() {
               </section>
             )}
 
-            {/* ④ テンプレ */}
+            {/* テンプレ */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold text-stone-700 inline-flex items-center gap-2">
-                  ④ レポートテンプレート
+                  レポートテンプレート
                   <Link
                     href={isStore ? '/store/templates' : '/admin/templates'}
                     className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100"
