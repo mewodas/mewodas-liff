@@ -54,7 +54,7 @@ function StepIndicator({ current }: { current: number }) {
               i < current
                 ? 'bg-emerald-500 text-white'
                 : i === current
-                ? 'bg-violet-600 text-white'
+                ? 'bg-emerald-600 text-white'
                 : 'bg-stone-200 text-stone-500'
             }`}
           >
@@ -62,7 +62,7 @@ function StepIndicator({ current }: { current: number }) {
           </div>
           <span
             className={`text-[10px] font-bold hidden sm:inline whitespace-nowrap ${
-              i === current ? 'text-violet-700' : i < current ? 'text-emerald-700' : 'text-stone-400'
+              i === current ? 'text-emerald-700' : i < current ? 'text-emerald-700' : 'text-stone-400'
             }`}
           >
             {s.label}
@@ -86,7 +86,7 @@ function CopyButton({ value }: { value: string }) {
   return (
     <button
       onClick={copy}
-      className="inline-flex items-center gap-1 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-2 py-1 rounded-lg hover:bg-violet-100 active:bg-violet-200 shrink-0"
+      className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg hover:bg-emerald-100 active:bg-emerald-200 shrink-0"
     >
       <Copy className="w-3 h-3" strokeWidth={2.2} />
       {copied ? 'コピー済み' : 'コピー'}
@@ -295,7 +295,7 @@ export default function OnboardingPage() {
     return (
       <AdminShell title="初期セットアップ">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-violet-500 animate-spin" strokeWidth={2} />
+          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" strokeWidth={2} />
         </div>
       </AdminShell>
     );
@@ -332,7 +332,7 @@ export default function OnboardingPage() {
                 <input
                   value={openLabel}
                   onChange={(e) => setOpenLabel(e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </div>
               <div>
@@ -340,7 +340,7 @@ export default function OnboardingPage() {
                 <input
                   value={registerLabel}
                   onChange={(e) => setRegisterLabel(e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function OnboardingPage() {
             <button
               onClick={buildRichMenu}
               disabled={buildingMenu}
-              className="w-full bg-violet-600 text-white font-bold py-2.5 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
             >
               <RefreshCw className={`w-4 h-4 ${buildingMenu ? 'animate-spin' : ''}`} strokeWidth={2.2} />
               {buildingMenu ? '構築中…' : 'リッチメニューを再構築'}
@@ -397,7 +397,7 @@ export default function OnboardingPage() {
             </div>
             <button
               onClick={goNext}
-              className="w-full bg-violet-600 text-white font-bold py-3 rounded-xl active:bg-violet-800 inline-flex items-center justify-center gap-2"
+              className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-800 inline-flex items-center justify-center gap-2"
             >
               はじめる
               <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
@@ -432,7 +432,7 @@ export default function OnboardingPage() {
                 LIFF アプリの作成手順を見る
               </summary>
               <div className="px-3 pb-3 text-xs text-stone-700 space-y-1.5 border-t border-stone-100 pt-2">
-                <p>1. <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer" className="text-violet-700 underline inline-flex items-center gap-0.5">LINE Developers Console <ExternalLink className="w-3 h-3" /></a> を開く</p>
+                <p>1. <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline inline-flex items-center gap-0.5">LINE Developers Console <ExternalLink className="w-3 h-3" /></a> を開く</p>
                 <p>2. 公式アカウントと同じプロバイダーのチャンネルを選択（なければ「LINE Login チャンネル」を新規作成）</p>
                 <p>3.「LIFF」タブ →「Add」</p>
                 <p>4. 設定:</p>
@@ -455,12 +455,12 @@ export default function OnboardingPage() {
                   value={liffIdInput}
                   onChange={(e) => setLiffIdInput(e.target.value)}
                   placeholder="1234567890-AbCdEfGh"
-                  className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 <button
                   onClick={verifyLiff}
                   disabled={verifyingLiff || !liffIdInput.trim()}
-                  className="bg-violet-100 text-violet-800 font-bold px-3 py-2 rounded-xl text-xs active:bg-violet-200 disabled:opacity-50 shrink-0"
+                  className="bg-emerald-100 text-emerald-800 font-bold px-3 py-2 rounded-xl text-xs active:bg-emerald-200 disabled:opacity-50 shrink-0"
                 >
                   {verifyingLiff ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} /> : '保存'}
                 </button>
@@ -494,12 +494,12 @@ export default function OnboardingPage() {
                 onChange={(e) => setChannelTokenInput(e.target.value)}
                 placeholder="チャネルアクセストークンを貼り付け"
                 rows={3}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
+                className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
               />
               <button
                 onClick={verifyToken}
                 disabled={verifyingToken || !channelTokenInput.trim()}
-                className="w-full bg-violet-600 text-white font-bold py-2.5 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
               >
                 {verifyingToken ? (
                   <><Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />接続確認中…</>
@@ -535,7 +535,7 @@ export default function OnboardingPage() {
               <button
                 onClick={goNext}
                 disabled={!liffVerified || !state?.channelTokenVerified}
-                className="flex-1 bg-violet-600 text-white font-bold py-2.5 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-1 text-sm"
+                className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-1 text-sm"
               >
                 次へ
                 <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
@@ -566,7 +566,7 @@ export default function OnboardingPage() {
                 <input
                   value={openLabel}
                   onChange={(e) => setOpenLabel(e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </div>
               <div>
@@ -574,7 +574,7 @@ export default function OnboardingPage() {
                 <input
                   value={registerLabel}
                   onChange={(e) => setRegisterLabel(e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </div>
             </div>
@@ -589,7 +589,7 @@ export default function OnboardingPage() {
             <button
               onClick={buildRichMenu}
               disabled={buildingMenu}
-              className="w-full bg-violet-600 text-white font-bold py-3 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${buildingMenu ? 'animate-spin' : ''}`} strokeWidth={2.2} />
               {buildingMenu ? '構築中…' : state?.richMenuId ? 'リッチメニューを再構築' : 'リッチメニューを構築'}
@@ -606,7 +606,7 @@ export default function OnboardingPage() {
               <button
                 onClick={goNext}
                 disabled={!state?.richMenuId}
-                className="flex-1 bg-violet-600 text-white font-bold py-2.5 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-1 text-sm"
+                className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-1 text-sm"
               >
                 次へ
                 <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
@@ -656,7 +656,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={goNext}
-                className="flex-1 bg-violet-600 text-white font-bold py-2.5 rounded-xl active:bg-violet-800 inline-flex items-center justify-center gap-1 text-sm"
+                className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl active:bg-emerald-800 inline-flex items-center justify-center gap-1 text-sm"
               >
                 次へ
                 <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
@@ -683,7 +683,7 @@ export default function OnboardingPage() {
               <button
                 onClick={issueTestToken}
                 disabled={issuingToken}
-                className="w-full border border-violet-300 text-violet-700 font-bold py-2.5 rounded-xl active:bg-violet-50 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                className="w-full border border-emerald-300 text-emerald-700 font-bold py-2.5 rounded-xl active:bg-emerald-50 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
               >
                 <QrCode className={`w-4 h-4 ${issuingToken ? 'animate-pulse' : ''}`} strokeWidth={2.2} />
                 {issuingToken ? '発行中…' : 'テストリンクを発行'}
@@ -699,7 +699,7 @@ export default function OnboardingPage() {
                       href={testUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-2 py-1 rounded-lg hover:bg-violet-100"
+                      className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg hover:bg-emerald-100"
                     >
                       <ExternalLink className="w-3 h-3" strokeWidth={2.2} />
                       開く
@@ -733,7 +733,7 @@ export default function OnboardingPage() {
               <button
                 onClick={sendTestPush}
                 disabled={pushSending || !state?.ownerLineUserId}
-                className="w-full bg-violet-600 text-white font-bold py-3 rounded-xl active:bg-violet-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl active:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
                 <Send className={`w-4 h-4 ${pushSending ? 'animate-pulse' : ''}`} strokeWidth={2.2} />
                 {pushSending ? '送信中…' : 'テストメッセージを送信'}

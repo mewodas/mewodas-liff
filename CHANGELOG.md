@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): サイドバー再編（レポート管理グループ化・進捗一覧へ改称・設定並び替え）＋store設定ページの緑化＋トップバー拡大（branch: staging）
+- fix(store色): `app/store/onboarding/page.tsx`（LINE連携設定）＋`app/store/notifications/page.tsx`（通知設定）の violet(紫)を emerald(緑)へ一括置換。store専用ページなので role配色（店舗=緑）に統一（紫の取りこぼし解消）
+- change(menu): `app/admin/AdminShell.tsx`。① 進捗グループ配下の子「進捗管理」→**「進捗一覧」**に改称（親グループ見出しは「進捗管理」のまま）。② 「レポート送付」を**「レポート管理」グループ**（開閉ドロップダウン）に変更し、配下に**「レポート作成」**（旧レポート送付 /reports）＋**「テンプレ管理」**（/templates を設定から移動）を表示。③ 設定グループの並びを **契約管理→通知設定→店舗一覧→LINE連携設定**（store）に変更（テンプレ管理は設定から除外＝レポート管理へ）。`reports` グループ用 state/トグル（3グループ排他）と描画を追加
+- change(topbar): トップバーのベル（`w-9→w-11`/アイコン`w-4→w-6`）と店舗/アドミンバッジ（`text-xs→text-sm`/アイコン`w-4→w-5`/余白拡大）を一回り大きく
+- 影響範囲: 管理画面（/admin・/store）のサイドバー＋store設定2ページ＋トップバー表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過。※menu再編は/admin・/store共通（admin もレポート管理グループに テンプレ管理 が入る）
+- 関連: 社長指示（スクショ1件）。並行セッションが同ファイル群を編集中のため最新 origin/staging 上に適用
+
 ## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をドーナツ5枚横並びに刷新（カロリー1＋各食事PFC4）（branch: staging）
 - change: `app/admin/analysis/page.tsx`。食事バランスを「カロリードーナツ＋PFCテキストリスト（左右に間延び）」から、**カロリー配分ドーナツ1つ＋朝/昼/夕/間それぞれのPFCドーナツ4つを横並びグリッド**（`lg:grid-cols-5`、タブレット3列/モバイル2列）に刷新。各セルに中央kcal表示の小ドーナツ＋凡例（カロリーは食事別kcal/%、PFCはP/F/Cのg/%）。余白を詰めて一目で比較可能に
 - 旧 `MealTypePie`/`MealPfcList` を撤去し `MiniDonut`/`MealBalanceCharts` に置換。値は従来どおり1日あたり平均（レポートと統一）。recharts 使用

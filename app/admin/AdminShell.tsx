@@ -7,7 +7,7 @@ import { LogOut, Users, Send, Sparkles, Building2, Store, ChevronLeft, Key, File
 import { useStoreAnnouncementUnread } from '@/lib/useStoreAnnouncementUnread';
 import { useAdminBase } from '@/lib/useAdminBase';
 
-type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean; settings?: boolean; progress?: boolean };
+type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string, base: string) => boolean; masterOnly?: boolean; storeHidden?: boolean; storeOnly?: boolean; settings?: boolean; progress?: boolean; reports?: boolean };
 
 const TABS: Tab[] = [
   {
@@ -18,7 +18,7 @@ const TABS: Tab[] = [
   },
   {
     suffix: '/progress',
-    label: '進捗管理',
+    label: '進捗一覧',
     Icon: TrendingUp,
     match: (p, base) => p.startsWith(`${base}/progress`),
     progress: true,
@@ -43,23 +43,24 @@ const TABS: Tab[] = [
     Icon: Sparkles,
     match: (p, base) => p.startsWith(`${base}/analysis`),
   },
+  // --- レポート管理グループ（レポート作成 + テンプレ管理）---
   {
     suffix: '/reports',
-    label: 'レポート送付',
+    label: 'レポート作成',
     Icon: Send,
     match: (p, base) => p.startsWith(`${base}/reports`),
+    reports: true,
+  },
+  {
+    suffix: '/templates',
+    label: 'テンプレ管理',
+    Icon: FileText,
+    match: (p, base) => p.startsWith(`${base}/templates`),
+    reports: true,
   },
   // --- 以下は「設定」グループ配下に表示 ---
-  // store 表示順: LINE連携設定 → 契約 → テンプレ管理 → 店舗
-  // admin 表示順: テンプレ管理 → テナント → プラン管理 → 監査ログ
-  {
-    suffix: '/onboarding',
-    label: 'LINE連携設定',
-    Icon: Rocket,
-    match: (p, base) => p.startsWith(`${base}/onboarding`),
-    storeOnly: true,
-    settings: true,
-  },
+  // store 表示順: 契約管理 → 通知設定 → 店舗一覧 → LINE連携設定
+  // admin 表示順: テナント → プラン管理 → 監査ログ
   {
     suffix: '/billing',
     label: '契約管理',
@@ -77,17 +78,18 @@ const TABS: Tab[] = [
     settings: true,
   },
   {
-    suffix: '/templates',
-    label: 'テンプレ管理',
-    Icon: FileText,
-    match: (p, base) => p.startsWith(`${base}/templates`),
-    settings: true,
-  },
-  {
     suffix: '/stores',
     label: '店舗一覧',
     Icon: Store,
     match: (p, base) => p.startsWith(`${base}/stores`),
+    storeOnly: true,
+    settings: true,
+  },
+  {
+    suffix: '/onboarding',
+    label: 'LINE連携設定',
+    Icon: Rocket,
+    match: (p, base) => p.startsWith(`${base}/onboarding`),
     storeOnly: true,
     settings: true,
   },
@@ -151,7 +153,7 @@ export default function AdminShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   // サイドバー内グループ(進捗管理 / 設定)の手動展開トグル。実際の表示は
   // 「手動で開いた || 現在地がそのグループ」で算出する（下記 progressOpen / settingsOpen）。
-  const [openGroups, setOpenGroups] = useState<{ progress: boolean; settings: boolean }>({ progress: false, settings: false });
+  const [openGroups, setOpenGroups] = useState<{ progress: boolean; reports: boolean; settings: boolean }>({ progress: false, reports: false, settings: false });
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -178,20 +180,23 @@ export default function AdminShell({
     return true;
   });
 
-  const topTabs = visibleTabs.filter((t) => !t.settings && !t.progress);
+  const topTabs = visibleTabs.filter((t) => !t.settings && !t.progress && !t.reports);
   const progressTabs = visibleTabs.filter((t) => t.progress);
+  const reportsTabs = visibleTabs.filter((t) => t.reports);
   const settingsTabs = visibleTabs.filter((t) => t.settings);
 
   const progressActive = progressTabs.some((t) => t.match(pathname, base));
+  const reportsActive = reportsTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
 
   // グループの展開状態 = 手動で開いた || 現在地がそのグループ。
   // アクティブなグループは常に開き、それ以外はユーザーのトグルに従う（離れると自動で畳む）。
   const progressOpen = openGroups.progress || progressActive;
+  const reportsOpen = openGroups.reports || reportsActive;
   const settingsOpen = openGroups.settings || settingsActive;
   // 排他ハイライト: いずれかのグループが開いている間はトップ項目（顧客管理等）の色を消し、
   // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
-  const anyGroupOpen = progressOpen || settingsOpen;
+  const anyGroupOpen = progressOpen || reportsOpen || settingsOpen;
 
   // アクセントカラー（store=emerald緑 / admin=violet紫）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-emerald-700' : 'text-violet-700';
@@ -285,7 +290,7 @@ export default function AdminShell({
                   <div>
                     <button
                       type="button"
-                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, settings: false }))}
+                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: false, settings: false }))}
                       aria-expanded={progressOpen}
                       className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                         progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -329,12 +334,58 @@ export default function AdminShell({
             );
           })}
 
+          {/* レポート管理グループ */}
+          {reportsTabs.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: false, settings: false }))}
+                aria-expanded={reportsOpen}
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
+                  reportsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                }`}
+              >
+                <span
+                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${reportsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
+                  aria-hidden
+                />
+                <Send className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                <span className="flex-1 text-left">レポート管理</span>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${reportsOpen ? 'rotate-180' : ''}`}
+                  strokeWidth={2.2}
+                />
+              </button>
+              {reportsOpen && (
+                <div className="mt-0.5 space-y-0.5">
+                  {reportsTabs.map((t) => {
+                    const href = `${base}${t.suffix}`;
+                    const active = t.match(pathname, base);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setDrawerOpen(false)}
+                        aria-current={active ? 'page' : undefined}
+                        className={leafClass(active, true)}
+                      >
+                        <t.Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+                        <span className="truncate">{t.label}</span>
+                        {active && <span className={`ml-auto w-1.5 h-1.5 rounded-full ${accentDot}`} aria-hidden />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 設定グループ */}
           {settingsTabs.length > 0 && (
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: false }))}
+                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: false, reports: false }))}
                 aria-expanded={settingsOpen}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -426,25 +477,25 @@ export default function AdminShell({
           {isStore && (
             <Link
               href="/store/announcements"
-              className="relative flex w-9 h-9 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+              className="relative flex w-11 h-11 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
               aria-label={`お知らせ（未読${storeUnread}件）`}
             >
-              <Bell className="w-4 h-4" strokeWidth={2.2} />
+              <Bell className="w-6 h-6" strokeWidth={2.2} />
               {storeUnread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                <span className="absolute top-0 right-0 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
                   {storeUnread > 9 ? '9+' : storeUnread}
                 </span>
               )}
             </Link>
           )}
           <span
-            className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
+            className={`flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-bold px-3.5 py-1.5 rounded-full border ${
               isStore
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                 : 'text-violet-700 bg-violet-50 border-violet-200'
             }`}
           >
-            {isStore ? <Store className="w-4 h-4" strokeWidth={2.2} /> : <ShieldCheck className="w-4 h-4" strokeWidth={2.2} />}
+            {isStore ? <Store className="w-5 h-5" strokeWidth={2.2} /> : <ShieldCheck className="w-5 h-5" strokeWidth={2.2} />}
             {isStore ? '店舗' : 'アドミン'}
           </span>
         </header>
