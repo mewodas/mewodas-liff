@@ -25,6 +25,26 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-04 – fix(admin/store): サイドバーのグループが遷移で畳まれる問題を修正（sticky open）（branch: staging）
+- fix: `app/admin/AdminShell.tsx`。openGroups を tri-state(null/true/false の `?? active` 既定)から**独立した真偽値**に変更し、現在地のグループを useEffect で**加算的に開く**方式に。これまでは現在地で自動展開していたグループ（明示トグルなし）が、別グループのページへ遷移して active 解除されると畳まれていた（例: /store/progress で開いていた進捗管理が、契約管理クリックで畳まれる）。修正後は一度開いたグループは矢印で明示的に閉じるまで開いたまま＝複数同時に開いたまま遷移できる（スクエア方式）
+- 影響範囲: 管理画面（/admin・/store）のサイドバー挙動のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（契約管理クリックで進捗/レポートのアコーディオンが閉じる）
+
+## 2026-06-04 – change(admin/store): サイドバーのグループを複数同時に開けるよう独立トグル化（branch: staging）
+- change: `app/admin/AdminShell.tsx`。グループ展開をアコーディオン（1つ開くと他を閉じる）から**独立トグル**に変更（`setOpenGroups(() => ({X:..., 他:null}))` → `setOpenGroups((g) => ({...g, X:...}))`）。複数グループを同時に開いたままにでき、別ページへ遷移しても開いているグループは畳まれない（スクエアと同じ）。`?? Xactive` 既定により未操作グループは現在地に応じて自動開閉
+- 影響範囲: 管理画面（/admin・/store）のサイドバー挙動のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（複数開いた子ページが無関係な遷移で畳まれる→開いたまま・スクエア方式）
+
+## 2026-06-04 – change(admin/store): サイドバーをスクエア方式に（アクティブな現在地のみ色＋〇／親は無色）（branch: staging）
+- change: `app/admin/AdminShell.tsx`。ハイライトを Square 風に変更: **現在地（アクティブな子/トップ項目）だけ**にアクセント色＋右端の〇を付け、**親（進捗管理/レポート管理/設定の各グループ見出し）には色を付けない**（展開状態でも無色、シェブロン回転のみ）。トップ項目の色抑制(`anyGroupOpen`)を撤去し、現在地は常に色が付くように。親の左アクセントバーも撤去
+- 影響範囲: 管理画面（/admin・/store）のサイドバー表示のみ。挙動・ロール出し分けは不変。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクエアと同じ・クリックしてるページだけ色と〇・親には色なし）
+
+## 2026-06-03 – change(store): 「LINE 連携セットアップ未完了」バナーを店舗カラー(緑)に（branch: staging）
+- change: `app/admin/customers/page.tsx`。店舗(/store)限定で出る「LINE 連携のセットアップが未完了です」バナー＋「セットアップを始める」ボタンを violet→emerald(緑)に。店舗=緑のテーマに統一（isStore 限定表示のため緑固定）
+- 影響範囲: 管理画面（/store 顧客管理）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（LINEのセットアップを store は緑に）
+
 ## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
 - fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）
 - change(topbar): ベル（`w-11→w-10`/アイコン`w-6→w-5`/バッジ`w-4→w-3.5`・位置を-top/-right-0.5に）と店舗/アドミンバッジ（`px-3.5→px-3`/`py-1.5→py-1`/アイコン`w-5→w-4`/gap詰め）を一回り縮小（前回拡大しすぎたぶんの調整）

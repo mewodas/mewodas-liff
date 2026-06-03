@@ -152,9 +152,9 @@ export default function AdminShell({
   // ナビ各リンクの onClick で閉じるため、遷移時クローズの effect は不要。
   const [drawerOpen, setDrawerOpen] = useState(false);
   // サイドバー内グループ(進捗管理 / レポート管理 / 設定)の手動展開トグル。
-  // 値は tri-state: null = 「現在地に従う（そのグループのページなら開く）」、true/false = ユーザーが明示的に開閉。
-  // これにより、グループ内ページにいても矢印で確実に畳める（明示 false が active より優先）。
-  const [openGroups, setOpenGroups] = useState<{ progress: boolean | null; reports: boolean | null; settings: boolean | null }>({ progress: null, reports: null, settings: null });
+  // 各グループの開閉は独立した真偽値（複数同時に開ける・スクエア方式）。
+  // 現在地のグループは下の useEffect で「加算的に」開く（他は閉じない）。矢印で個別に開閉可能。
+  const [openGroups, setOpenGroups] = useState<{ progress: boolean; reports: boolean; settings: boolean }>({ progress: false, reports: false, settings: false });
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -190,14 +190,22 @@ export default function AdminShell({
   const reportsActive = reportsTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
 
-  // グループの展開状態 = 明示トグルがあればそれ、無ければ(null)現在地に従う。
-  // 明示的に閉じた(false)場合はグループ内ページにいても畳んだままにできる（矢印で確実に開閉）。
-  const progressOpen = openGroups.progress ?? progressActive;
-  const reportsOpen = openGroups.reports ?? reportsActive;
-  const settingsOpen = openGroups.settings ?? settingsActive;
-  // 排他ハイライト: いずれかのグループが開いている間はトップ項目（顧客管理等）の色を消し、
-  // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
-  const anyGroupOpen = progressOpen || reportsOpen || settingsOpen;
+  // 現在地のグループを「加算的に」開く（他は閉じない）。これで別グループのページに遷移しても、
+  // 既に開いているグループは畳まれない（スクエア方式）。一度開いたら明示的に矢印で閉じるまで開いたまま。
+  useEffect(() => {
+    setOpenGroups((g) => {
+      const next = {
+        progress: g.progress || progressActive,
+        reports: g.reports || reportsActive,
+        settings: g.settings || settingsActive,
+      };
+      return next.progress === g.progress && next.reports === g.reports && next.settings === g.settings ? g : next;
+    });
+  }, [progressActive, reportsActive, settingsActive]);
+
+  const progressOpen = openGroups.progress;
+  const reportsOpen = openGroups.reports;
+  const settingsOpen = openGroups.settings;
 
   // アクセントカラー（store=emerald緑 / admin=violet紫）。選択中の「光る」表現に使用。
   const accentText = isStore ? 'text-emerald-700' : 'text-violet-700';
@@ -265,8 +273,8 @@ export default function AdminShell({
           {topTabs.map((t) => {
             const href = `${base}${t.suffix}`;
             const active = t.match(pathname, base);
-            // 排他ハイライト: グループ展開中はトップ項目の色を消す（現在地の色は消える仕様）
-            const highlighted = active && !anyGroupOpen;
+            // スクエア方式: アクティブな現在地のみ色＋〇。親（グループ）には色を付けない。
+            const highlighted = active;
             return (
               <Fragment key={href}>
                 <Link
@@ -291,16 +299,10 @@ export default function AdminShell({
                   <div>
                     <button
                       type="button"
-                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: null, settings: null }))}
+                      onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
                       aria-expanded={progressOpen}
-                      className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                        progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                      }`}
+                      className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                     >
-                      <span
-                        className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${progressActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                        aria-hidden
-                      />
                       <TrendingUp className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                       <span className="flex-1 text-left">進捗管理</span>
                       <ChevronDown
@@ -340,16 +342,10 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: null, settings: null }))}
+                onClick={() => setOpenGroups((g) => ({ ...g, reports: !reportsOpen }))}
                 aria-expanded={reportsOpen}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  reportsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                }`}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
-                <span
-                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${reportsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                  aria-hidden
-                />
                 <Send className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                 <span className="flex-1 text-left">レポート管理</span>
                 <ChevronDown
@@ -386,16 +382,10 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: null, reports: null }))}
+                onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
                 aria-expanded={settingsOpen}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                }`}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
-                <span
-                  className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${settingsActive ? `${accentDot} opacity-100` : 'opacity-0'}`}
-                  aria-hidden
-                />
                 <Settings className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
                 <span className="flex-1 text-left">設定</span>
                 <ChevronDown
