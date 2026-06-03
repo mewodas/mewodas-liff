@@ -16,6 +16,16 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-03 – change(admin/store): レポート送付のフィルタを顧客分析と完全一致に（期間＋店舗チップ＋顧客プルダウンの1カード）（branch: staging）
+- change: `app/admin/reports/page.tsx`。前回追加したステータスチップを撤去し、「期間(DateRangePicker)」と「顧客選択」を**1つのカードに統合**。顧客分析のフィルタバーと同一構成（DateRangePicker → 店舗チップ → 顧客プルダウン、ラベルなし・ステータスなし・店舗チップは常時表示）に。未使用化した statusFilter/STATUSES を削除
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ192510「これと全く同じに」）
+
+## 2026-06-03 – change(admin/store): レポート送付の顧客選択を進捗管理スタイルに（①②番号を廃止）（branch: staging）
+- change: `app/admin/reports/page.tsx`。レポートモードの「① 顧客 / ② 期間 / ③ 送信元店舗 / ④ テンプレ」の番号付きステップ表示を廃止。顧客選択を「店舗チップ→顧客プルダウン→ステータスチップ」のクリーンな絞り込み（進捗管理/顧客分析と同じ・スクショ234829）に。`statusFilter`＋`STATUSES` 追加で候補を店舗×ステータスで絞り込み（選択中顧客が候補外になればリセット）。ラベルからも丸数字を除去
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ1件）
+
 ## 2026-06-03 – change(admin/store): ブランドアクセントを role 配色に（店舗=緑 / 運営=紫）第1弾: サイドバー＋フィルタチップ（branch: staging）
 - feat: `lib/adminAccent.ts` 追加。`adminAccent(isStore)` が role 別アクセントのクラス群（pillActive/btn/ring/text/bgSoft/border/dot）を返す。store=emerald(緑)/admin=violet(紫)。意味色（成功・ステータス・エラー・デモ等）には使わない
 - change: `app/admin/AdminShell.tsx`。サイドバーのアクセントを store=violet/admin=emerald → **store=emerald(緑)/admin=violet(紫)** にスワップ（accentText/Bg/Dot/Ring/Glow）。トップバーのロールバッジは元から store=緑/admin=紫で整合
