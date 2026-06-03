@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 – fix(security): frame-src に `https://*.line-apps.com` を追補
+- fix: `next.config.ts` の `frame-src` に `https://*.line-apps.com` を追加（#41 の追補）。調査で frame-src 違反元として高確度で想定されていた LIFF ログインサブウィンドウ iframe ドメインをカバー
+- 背景: #41 は frame-src に `*.line-scdn.net` を追加したが、実ブロックURI（Sentry `csp_blocked_host`）未確認のため line-apps.com 経由の違反が残る懸念があった。両ドメインをカバーして確実化
+- 影響範囲: CSP ヘッダーのみ・Report-Only のため顧客への動作変化なし。line-apps.com は既に connect-src で許可済みの LINE 公式ドメイン
+
 ## 2026-06-03 10:00 a0621ed
 - fix(security): CSP に `script-src-elem` ディレクティブ追加 + `frame-src` に `https://*.line-scdn.net` 追加
 - 影響範囲: API / インフラ（CSP ヘッダー変更）。顧客側は Report-Only のため現時点で動作変化なし
