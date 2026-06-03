@@ -25,8 +25,6 @@ type Customer = { pageId: string; name: string; foodStatus: string | null; store
 type Store = { pageId: string; storeId: string; name: string; signature: string };
 type Template = { id: string; name: string; category: string; titleTemplate: string; bodyTemplate: string; useAi: boolean; aiPrompt: string; rangeType?: string; sortOrder?: number };
 
-const STATUSES = ['すべて', '進行中', '休止中', '卒業'];
-
 type AnnouncementAudience = '顧客向け' | '店舗向け';
 type AnnouncementImportance = '通常' | '重要';
 type AnnouncementScope = 'all' | 'tenant';
@@ -142,7 +140,6 @@ function Inner() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState('');
-  const [statusFilter, setStatusFilter] = useState('すべて');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [templateError, setTemplateError] = useState<string | null>(null);
@@ -278,12 +275,9 @@ function Inner() {
     return opts;
   }, [customers, storeNameById]);
   const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
-      if (selectedStore !== '' && (c.storeId ?? '') !== selectedStore) return false;
-      if (statusFilter !== 'すべて' && c.foodStatus !== statusFilter) return false;
-      return true;
-    });
-  }, [customers, selectedStore, statusFilter]);
+    if (selectedStore === '') return customers;
+    return customers.filter((c) => (c.storeId ?? '') === selectedStore);
+  }, [customers, selectedStore]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
 
   const isMaster = me?.role === 'master';
@@ -487,71 +481,8 @@ function Inner() {
         {/* ===== レポートモード ===== */}
         {mode === 'report' && (
           <>
-            {/* 顧客（進捗管理/顧客分析と同じ絞り込み: 店舗チップ → 顧客プルダウン → ステータスチップ） */}
+            {/* フィルタバー（顧客分析と同じ構成: 期間 → 店舗チップ → 顧客プルダウン） */}
             <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3 space-y-2">
-              {storeOptions.length > 1 && (
-                <div className="flex gap-1 flex-wrap">
-                  {storeOptions.map((o) => (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => {
-                        setSelectedStore(o.value);
-                        const nf = customers.filter(
-                          (c) =>
-                            (o.value === '' || (c.storeId ?? '') === o.value) &&
-                            (statusFilter === 'すべて' || c.foodStatus === statusFilter)
-                        );
-                        if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
-                      }}
-                      className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                        selectedStore === o.value
-                          ? ac.pillActive
-                          : 'bg-white text-stone-700 border-stone-300'
-                      }`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <select
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">顧客を選択してください</option>
-                {filteredCustomers.map((c) => (
-                  <option key={c.pageId} value={c.pageId}>{c.name}</option>
-                ))}
-              </select>
-              <div className="flex gap-1 flex-wrap">
-                {STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(s);
-                      const nf = customers.filter(
-                        (c) =>
-                          (selectedStore === '' || (c.storeId ?? '') === selectedStore) &&
-                          (s === 'すべて' || c.foodStatus === s)
-                      );
-                      if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
-                    }}
-                    className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
-                      statusFilter === s ? ac.pillActive : 'bg-white text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* 期間 */}
-            <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-3">
-              <div className="text-xs font-bold text-stone-700 mb-2">期間</div>
               <DateRangePicker
                 from={from}
                 to={to}
@@ -561,6 +492,40 @@ function Inner() {
                 onShift={shiftRange}
                 isSingleDay={isSingleDay}
               />
+
+              {/* 店舗チップ */}
+              <div className="flex gap-1 flex-wrap">
+                {storeOptions.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStore(o.value);
+                      const nf = customers.filter((c) => o.value === '' || (c.storeId ?? '') === o.value);
+                      if (customerId && !nf.find((c) => c.pageId === customerId)) setCustomerId('');
+                    }}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                      selectedStore === o.value
+                        ? ac.pillActive
+                        : 'bg-white text-stone-700 border-stone-300'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 顧客 select */}
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">顧客を選択してください</option>
+                {filteredCustomers.map((c) => (
+                  <option key={c.pageId} value={c.pageId}>{c.name}</option>
+                ))}
+              </select>
             </section>
 
             {/* 送信元店舗 */}
