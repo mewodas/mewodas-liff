@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): レポート送付の「送信元店舗」表示セクションを削除（branch: staging）
+- change: `app/admin/reports/page.tsx`。顧客選択後に出ていた紫の「送信元店舗（顧客の所属から自動）」表示ボックスを削除（社長指示・不要）。署名の自動付与ロジック（customerStore）は維持。店舗未設定時の amber 警告（署名が付かない旨）は残置
+- 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+
 ## 2026-06-03 – fix(analysis): 顧客分析の食事区分別をレポートと統一（1日あたり）＋食事区分別PFC（g+食事内%）表示（branch: staging）
 - fix: `lib/analysisAggregate.ts` ＋ `app/admin/analysis/page.tsx`（`MealTypePie`）。顧客分析「食事区分別カロリー」が **その食事を記録した日数で割る（kcal/回）** ためレポート（÷全記録日数=1日あたり）と数値がズレていた（特に間食が過大・合計が上部平均と不一致）。**÷全記録日数(totalDays)に統一**し、朝+昼+夕+間 が上部「平均カロリー」と一致するように
 - add: `lib/analysisAggregate.ts` に食事区分別 PFC 合計（`mealTypeP/F/C`）を追加し API (`/api/admin/customers/[id]/analysis/data`) で返却。「PFC バランス」を **食事区分別 PFC（1日あたり・g＋その食事内のPFC比率%）** 表示に変更（`PfcPie`→`MealPfcList`）。社長指定レイアウト（朝昼夕間ごとに P/F/C の g と %）
