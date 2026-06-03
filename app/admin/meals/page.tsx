@@ -467,6 +467,7 @@ function MealDetailModal({
   onDeleted: (pageId: string) => void;
 }) {
   const toast = useToast();
+  const ac = adminAccent(useAdminBase() === '/store');
   const Icon = MEAL_ICON[meal.mealType] || UtensilsCrossed;
   const color = MEAL_COLOR[meal.mealType] || 'text-stone-500';
   const [editing, setEditing] = useState(false);
@@ -610,7 +611,7 @@ function MealDetailModal({
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="flex-1 bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
+                  className={`flex-1 ${ac.btn} text-white font-bold text-xs py-2 rounded-xl disabled:opacity-50`}
                 >
                   {saving ? '保存中…' : '保存する'}
                 </button>

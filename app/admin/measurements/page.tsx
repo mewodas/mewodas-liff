@@ -562,7 +562,7 @@ export default function MeasurementsPage() {
                 <button
                   type="button"
                   onClick={openNewForm}
-                  className="inline-flex items-center gap-1.5 bg-emerald-600 text-white font-bold text-sm px-4 py-2 rounded-xl active:bg-emerald-700"
+                  className={`inline-flex items-center gap-1.5 ${ac.btn} text-white font-bold text-sm px-4 py-2 rounded-xl`}
                 >
                   <Plus className="w-4 h-4" strokeWidth={2.4} />
                   計測記録を追加
@@ -754,7 +754,7 @@ export default function MeasurementsPage() {
                     type="button"
                     onClick={saveForm}
                     disabled={saving}
-                    className="flex-1 bg-emerald-600 text-white font-bold text-sm py-2.5 rounded-xl disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                    className={`flex-1 ${ac.btn} text-white font-bold text-sm py-2.5 rounded-xl disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
                   >
                     {saving ? (
                       <>

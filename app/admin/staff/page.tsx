@@ -62,7 +62,7 @@ export default function AdminStaffPage() {
             type="button"
             onClick={() => setAddOpen(true)}
             disabled={!configured}
-            className="inline-flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full active:bg-emerald-700 disabled:bg-stone-300"
+            className="inline-flex items-center gap-1 bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-full active:bg-violet-700 disabled:bg-stone-300"
           >
             <UserPlus className="w-3.5 h-3.5" strokeWidth={2.4} />
             新規追加
@@ -229,7 +229,7 @@ function StaffEditor({
           type="button"
           onClick={save}
           disabled={saving}
-          className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-1 bg-violet-500 text-white text-xs font-bold py-2 rounded-xl active:bg-violet-700 disabled:opacity-50"
         >
           <Check className="w-3.5 h-3.5" strokeWidth={2.4} />
           {saving ? '保存中…' : initial ? '更新' : '追加'}

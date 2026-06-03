@@ -624,7 +624,7 @@ function Inner() {
                 type="button"
                 onClick={generate}
                 disabled={generating || !customerId}
-                className="w-full bg-emerald-500 text-white text-sm font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                className={`w-full ${ac.btn} text-white text-sm font-bold py-3 rounded-xl disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
               >
                 {generating ? (
                   <>
@@ -676,7 +676,7 @@ function Inner() {
                 type="button"
                 onClick={send}
                 disabled={sending || !customerId || !title.trim() || !body.trim() || (!saveInApp && !sendLinePush)}
-                className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+                className={`w-full ${ac.btn} text-white font-bold py-3 rounded-xl disabled:bg-stone-300 inline-flex items-center justify-center gap-2`}
               >
                 <Send className="w-4 h-4" strokeWidth={2.2} />
                 {sending ? '送信中…' : `${selectedCustomer?.name || '顧客'} 様に送信`}
@@ -828,7 +828,7 @@ function Inner() {
                 type="button"
                 onClick={submitAnnouncement}
                 disabled={annSending || !annTitle.trim() || !annBody.trim()}
-                className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2 text-sm"
+                className={`w-full ${ac.btn} text-white font-bold py-3 rounded-xl disabled:bg-stone-300 inline-flex items-center justify-center gap-2 text-sm`}
               >
                 <Send className="w-4 h-4" strokeWidth={2.2} />
                 {annSending ? '送信中…' : 'お知らせを送信'}

@@ -130,7 +130,7 @@ export default function NewTenantPage() {
               type="button"
               onClick={submit}
               disabled={submitting || !name || !plan || !ownerEmail}
-              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+              className="w-full bg-violet-500 text-white font-bold py-3 rounded-xl active:bg-violet-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <>
@@ -210,7 +210,7 @@ export default function NewTenantPage() {
             <div className="flex gap-2">
               <Link
                 href="/admin/tenants"
-                className="flex-1 text-center bg-emerald-500 text-white font-bold py-2.5 rounded-xl active:bg-emerald-700 text-sm"
+                className="flex-1 text-center bg-violet-500 text-white font-bold py-2.5 rounded-xl active:bg-violet-700 text-sm"
               >
                 テナント一覧へ
               </Link>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { CalendarClock, Plus, Edit, Trash2, ToggleLeft, ToggleRight, X, Check } from 'lucide-react';
 import AdminShell from '@/app/admin/AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import { useToast } from '@/components/Toast';
 
 type Frequency = '毎日' | '毎週' | '毎月';
@@ -69,6 +70,7 @@ export default function ScheduledReportsPage() {
   const toast = useToast();
   const pathname = usePathname() || '';
   const isStore = pathname.startsWith('/store');
+  const ac = adminAccent(isStore);
 
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,7 +276,7 @@ export default function ScheduledReportsPage() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500 text-white px-3 py-2 rounded-xl hover:bg-emerald-600 active:bg-emerald-700"
+                className={`flex items-center gap-1.5 text-xs font-bold ${ac.btn} text-white px-3 py-2 rounded-xl hover:${ac.btn}`}
               >
                 <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
                 新規作成
@@ -442,7 +444,7 @@ export default function ScheduledReportsPage() {
                         onClick={() => setForm((p) => ({ ...p, audience: a }))}
                         className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
                           form.audience === a
-                            ? 'bg-emerald-500 text-white border-emerald-500'
+                            ? ac.pillActive
                             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                         }`}
                       >
@@ -488,7 +490,7 @@ export default function ScheduledReportsPage() {
                         onClick={() => setForm((p) => ({ ...p, frequency: f }))}
                         className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
                           form.frequency === f
-                            ? 'bg-emerald-500 text-white border-emerald-500'
+                            ? ac.pillActive
                             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                         }`}
                       >
@@ -505,7 +507,7 @@ export default function ScheduledReportsPage() {
                           onClick={() => toggleWeekday(day)}
                           className={`w-8 h-8 text-xs font-bold rounded-full border ${
                             form.weekdays.includes(day)
-                              ? 'bg-emerald-500 text-white border-emerald-500'
+                              ? ac.pillActive
                               : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
                           }`}
                         >
@@ -599,7 +601,7 @@ export default function ScheduledReportsPage() {
                   type="button"
                   onClick={submitForm}
                   disabled={saving}
-                  className="flex-1 bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl hover:bg-emerald-600 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                  className={`flex-1 ${ac.btn} text-white text-sm font-bold py-2.5 rounded-xl hover:${ac.btn} disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
                 >
                   {saving ? (
                     <>保存中…</>

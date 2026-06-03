@@ -346,7 +346,7 @@ function PlanForm({
           type="button"
           onClick={onSubmit}
           disabled={saving}
-          className="flex-1 bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+          className="flex-1 bg-violet-600 text-white font-bold text-xs py-2 rounded-xl active:bg-violet-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
         >
           <Save className="w-3.5 h-3.5" strokeWidth={2.4} />
           {saving ? '保存中…' : isEdit ? '更新' : '作成'}
