@@ -54,7 +54,7 @@ export default function StoreNotificationsPage() {
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5">
-              <BellRing className="w-5 h-5 text-violet-500" strokeWidth={2.2} />
+              <BellRing className="w-5 h-5 text-emerald-500" strokeWidth={2.2} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm text-stone-900 mb-1">顧客リスクお知らせを受け取る</div>
@@ -71,7 +71,7 @@ export default function StoreNotificationsPage() {
                 disabled={saving}
                 aria-label={riskAlertEnabled ? '顧客リスクお知らせをOFFにする' : '顧客リスクお知らせをONにする'}
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none ${
-                  riskAlertEnabled ? 'bg-violet-600 border-violet-600' : 'bg-stone-200 border-stone-200'
+                  riskAlertEnabled ? 'bg-emerald-600 border-emerald-600' : 'bg-stone-200 border-stone-200'
                 } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <span

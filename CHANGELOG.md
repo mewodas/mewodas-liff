@@ -25,6 +25,34 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
+- fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）
+- change(topbar): ベル（`w-11→w-10`/アイコン`w-6→w-5`/バッジ`w-4→w-3.5`・位置を-top/-right-0.5に）と店舗/アドミンバッジ（`px-3.5→px-3`/`py-1.5→py-1`/アイコン`w-5→w-4`/gap詰め）を一回り縮小（前回拡大しすぎたぶんの調整）
+- 影響範囲: 管理画面（/admin・/store）サイドバー＋トップバー表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過
+- 関連: 社長指示「レポート管理を開いた後 上矢印で畳めない／ベル・店舗バッジをもう少し小さく」
+
+## 2026-06-03 – change(admin/store): 食事バランスの文字を顧客分析の他項目に合わせ text-[11px] に統一＋凡例の隙間を詰める（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスのフォントを少し小さくし顧客分析の他セクションと同じ `text-[11px]` に統一（見出し・凡例・小見出し）。中央kcalは text-base、ドーナツは 128→112px に微縮小。凡例は `flex-1` の間延びをやめ固定幅に詰め、P/F/C と g・% の隙間を縮小（`tabular-nums` で桁揃え維持）
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（少し小さく・他項目と同フォント・PFCとgの隙間を詰める）
+
+## 2026-06-03 – change(admin/store): サイドバー再編（レポート管理グループ化・進捗一覧へ改称・設定並び替え）＋store設定ページの緑化＋トップバー拡大（branch: staging）
+- fix(store色): `app/store/onboarding/page.tsx`（LINE連携設定）＋`app/store/notifications/page.tsx`（通知設定）の violet(紫)を emerald(緑)へ一括置換。store専用ページなので role配色（店舗=緑）に統一（紫の取りこぼし解消）
+- change(menu): `app/admin/AdminShell.tsx`。① 進捗グループ配下の子「進捗管理」→**「進捗一覧」**に改称（親グループ見出しは「進捗管理」のまま）。② 「レポート送付」を**「レポート管理」グループ**（開閉ドロップダウン）に変更し、配下に**「レポート作成」**（旧レポート送付 /reports）＋**「テンプレ管理」**（/templates を設定から移動）を表示。③ 設定グループの並びを **契約管理→通知設定→店舗一覧→LINE連携設定**（store）に変更（テンプレ管理は設定から除外＝レポート管理へ）。`reports` グループ用 state/トグル（3グループ排他）と描画を追加
+- change(topbar): トップバーのベル（`w-9→w-11`/アイコン`w-4→w-6`）と店舗/アドミンバッジ（`text-xs→text-sm`/アイコン`w-4→w-5`/余白拡大）を一回り大きく
+- 影響範囲: 管理画面（/admin・/store）のサイドバー＋store設定2ページ＋トップバー表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過。※menu再編は/admin・/store共通（admin もレポート管理グループに テンプレ管理 が入る）
+- 関連: 社長指示（スクショ1件）。並行セッションが同ファイル群を編集中のため最新 origin/staging 上に適用
+## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をリデザイン（文字拡大・グレー枠撤去）（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスの5ドーナツを見やすく刷新: ①各セルのグレー枠(bg-stone-50 border)を撤去しフラットに ②ドーナツ拡大(88→128px) ③中央kcalを text-xl、凡例を text-sm、見出しを text-sm に拡大 ④数値は tabular-nums で桁揃え ⑤カロリー配分セルに lg で右ボーダーを付け各食事PFC群と視覚的に区切り ⑥余白(行間)を拡大
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（文字を大きく・グレー枠不要・見やすくリデザイン）
+
+## 2026-06-03 – change(admin/store): 顧客分析「食事バランス」をドーナツ5枚横並びに刷新（カロリー1＋各食事PFC4）（branch: staging）
+- change: `app/admin/analysis/page.tsx`。食事バランスを「カロリードーナツ＋PFCテキストリスト（左右に間延び）」から、**カロリー配分ドーナツ1つ＋朝/昼/夕/間それぞれのPFCドーナツ4つを横並びグリッド**（`lg:grid-cols-5`、タブレット3列/モバイル2列）に刷新。各セルに中央kcal表示の小ドーナツ＋凡例（カロリーは食事別kcal/%、PFCはP/F/Cのg/%）。余白を詰めて一目で比較可能に
+- 旧 `MealTypePie`/`MealPfcList` を撤去し `MiniDonut`/`MealBalanceCharts` に置換。値は従来どおり1日あたり平均（レポートと統一）。recharts 使用
+- 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（スクショ・食事バランス枠にカロリー1＋PFC4を並べる）
+
 ## 2026-06-03 – change(admin/store): レポート送付の「送信元店舗」表示セクションを削除（branch: staging）
 - change: `app/admin/reports/page.tsx`。顧客選択後に出ていた紫の「送信元店舗（顧客の所属から自動）」表示ボックスを削除（社長指示・不要）。署名の自動付与ロジック（customerStore）は維持。店舗未設定時の amber 警告（署名が付かない旨）は残置
 - 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
