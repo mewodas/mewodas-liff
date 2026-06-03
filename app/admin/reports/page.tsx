@@ -528,16 +528,7 @@ function Inner() {
               </select>
             </section>
 
-            {/* 送信元店舗 */}
-            {customerStore && (
-              <section className="bg-violet-50 border border-violet-200 rounded-2xl p-3">
-                <div className="text-[11px] font-bold text-violet-800 mb-0.5">送信元店舗（顧客の所属から自動）</div>
-                <div className="text-sm font-bold text-violet-900">{customerStore.name}</div>
-                {customerStore.signature && (
-                  <div className="text-[10px] text-violet-700 mt-1 italic">本文末尾に「— {customerStore.signature}」を自動付与</div>
-                )}
-              </section>
-            )}
+            {/* 送信元店舗（自動付与）の表示セクションは社長指示で削除。署名は customerStore から自動付与のまま */}
             {selectedCustomer && !customerStore && (
               <section className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
                 <div className="text-[11px] font-bold text-amber-800">⚠ 顧客に所属店舗が設定されていません</div>
