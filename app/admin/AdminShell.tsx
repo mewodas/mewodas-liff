@@ -151,9 +151,10 @@ export default function AdminShell({
   // モバイル(< md)用ドロワーの開閉。md 以上ではサイドバー常時表示のため未使用。
   // ナビ各リンクの onClick で閉じるため、遷移時クローズの effect は不要。
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // サイドバー内グループ(進捗管理 / 設定)の手動展開トグル。実際の表示は
-  // 「手動で開いた || 現在地がそのグループ」で算出する（下記 progressOpen / settingsOpen）。
-  const [openGroups, setOpenGroups] = useState<{ progress: boolean; reports: boolean; settings: boolean }>({ progress: false, reports: false, settings: false });
+  // サイドバー内グループ(進捗管理 / レポート管理 / 設定)の手動展開トグル。
+  // 値は tri-state: null = 「現在地に従う（そのグループのページなら開く）」、true/false = ユーザーが明示的に開閉。
+  // これにより、グループ内ページにいても矢印で確実に畳める（明示 false が active より優先）。
+  const [openGroups, setOpenGroups] = useState<{ progress: boolean | null; reports: boolean | null; settings: boolean | null }>({ progress: null, reports: null, settings: null });
   const storeUnread = useStoreAnnouncementUnread();
 
   useEffect(() => {
@@ -189,11 +190,11 @@ export default function AdminShell({
   const reportsActive = reportsTabs.some((t) => t.match(pathname, base));
   const settingsActive = settingsTabs.some((t) => t.match(pathname, base));
 
-  // グループの展開状態 = 手動で開いた || 現在地がそのグループ。
-  // アクティブなグループは常に開き、それ以外はユーザーのトグルに従う（離れると自動で畳む）。
-  const progressOpen = openGroups.progress || progressActive;
-  const reportsOpen = openGroups.reports || reportsActive;
-  const settingsOpen = openGroups.settings || settingsActive;
+  // グループの展開状態 = 明示トグルがあればそれ、無ければ(null)現在地に従う。
+  // 明示的に閉じた(false)場合はグループ内ページにいても畳んだままにできる（矢印で確実に開閉）。
+  const progressOpen = openGroups.progress ?? progressActive;
+  const reportsOpen = openGroups.reports ?? reportsActive;
+  const settingsOpen = openGroups.settings ?? settingsActive;
   // 排他ハイライト: いずれかのグループが開いている間はトップ項目（顧客管理等）の色を消し、
   // 「展開した親のみ色／子クリックで親＋子」の単一フォーカス表示にする。
   const anyGroupOpen = progressOpen || reportsOpen || settingsOpen;
@@ -290,7 +291,7 @@ export default function AdminShell({
                   <div>
                     <button
                       type="button"
-                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: false, settings: false }))}
+                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: null, settings: null }))}
                       aria-expanded={progressOpen}
                       className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                         progressOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -339,7 +340,7 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: false, settings: false }))}
+                onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: null, settings: null }))}
                 aria-expanded={reportsOpen}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   reportsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -385,7 +386,7 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: false, reports: false }))}
+                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: null, reports: null }))}
                 aria-expanded={settingsOpen}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   settingsOpen ? `${accentBg} ${accentText}` : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
@@ -477,25 +478,25 @@ export default function AdminShell({
           {isStore && (
             <Link
               href="/store/announcements"
-              className="relative flex w-11 h-11 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
+              className="relative flex w-10 h-10 items-center justify-center rounded-full hover:bg-stone-100 text-stone-600"
               aria-label={`お知らせ（未読${storeUnread}件）`}
             >
-              <Bell className="w-6 h-6" strokeWidth={2.2} />
+              <Bell className="w-5 h-5" strokeWidth={2.2} />
               {storeUnread > 0 && (
-                <span className="absolute top-0 right-0 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
                   {storeUnread > 9 ? '9+' : storeUnread}
                 </span>
               )}
             </Link>
           )}
           <span
-            className={`flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-bold px-3.5 py-1.5 rounded-full border ${
+            className={`flex-shrink-0 inline-flex items-center gap-1 text-sm font-bold px-3 py-1 rounded-full border ${
               isStore
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                 : 'text-violet-700 bg-violet-50 border-violet-200'
             }`}
           >
-            {isStore ? <Store className="w-5 h-5" strokeWidth={2.2} /> : <ShieldCheck className="w-5 h-5" strokeWidth={2.2} />}
+            {isStore ? <Store className="w-4 h-4" strokeWidth={2.2} /> : <ShieldCheck className="w-4 h-4" strokeWidth={2.2} />}
             {isStore ? '店舗' : 'アドミン'}
           </span>
         </header>

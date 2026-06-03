@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
+- fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）
+- change(topbar): ベル（`w-11→w-10`/アイコン`w-6→w-5`/バッジ`w-4→w-3.5`・位置を-top/-right-0.5に）と店舗/アドミンバッジ（`px-3.5→px-3`/`py-1.5→py-1`/アイコン`w-5→w-4`/gap詰め）を一回り縮小（前回拡大しすぎたぶんの調整）
+- 影響範囲: 管理画面（/admin・/store）サイドバー＋トップバー表示のみ。顧客側 LIFF・DB 変更なし。tsc 通過
+- 関連: 社長指示「レポート管理を開いた後 上矢印で畳めない／ベル・店舗バッジをもう少し小さく」
+
 ## 2026-06-03 – change(admin/store): 食事バランスの文字を顧客分析の他項目に合わせ text-[11px] に統一＋凡例の隙間を詰める（branch: staging）
 - change: `app/admin/analysis/page.tsx`。食事バランスのフォントを少し小さくし顧客分析の他セクションと同じ `text-[11px]` に統一（見出し・凡例・小見出し）。中央kcalは text-base、ドーナツは 128→112px に微縮小。凡例は `flex-1` の間延びをやめ固定幅に詰め、P/F/C と g・% の隙間を縮小（`tabular-nums` で桁揃え維持）
 - 影響範囲: 管理画面（/admin・/store の顧客分析）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
