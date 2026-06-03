@@ -288,7 +288,7 @@ export default function AdminShell({
                   <div>
                     <button
                       type="button"
-                      onClick={() => setOpenGroups(() => ({ progress: !progressOpen, reports: null, settings: null }))}
+                      onClick={() => setOpenGroups((g) => ({ ...g, progress: !progressOpen }))}
                       aria-expanded={progressOpen}
                       className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                     >
@@ -331,7 +331,7 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ reports: !reportsOpen, progress: null, settings: null }))}
+                onClick={() => setOpenGroups((g) => ({ ...g, reports: !reportsOpen }))}
                 aria-expanded={reportsOpen}
                 className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
@@ -371,7 +371,7 @@ export default function AdminShell({
             <div>
               <button
                 type="button"
-                onClick={() => setOpenGroups(() => ({ settings: !settingsOpen, progress: null, reports: null }))}
+                onClick={() => setOpenGroups((g) => ({ ...g, settings: !settingsOpen }))}
                 aria-expanded={settingsOpen}
                 className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               >
