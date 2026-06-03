@@ -1234,6 +1234,40 @@ export async function getRangeExtras(
   }
 }
 
+// 期間内（startDate..endDate, いずれも YYYY-MM-DD）の食事記録テーブルから
+// 「最終日の体重」を取得する。体重が記入された日のうち最も新しい日の値を数値で返す。
+// 記入が一度も無ければ null（呼び出し側で開始体重などにフォールバック）。
+export async function getLastWeightInRange(
+  sheetPageId: string,
+  startDate: string,
+  endDate: string
+): Promise<number | null> {
+  // 期間の日付ラベル（"M月D日"・テーブル1列目と同形式）を古い順に生成
+  const labels: string[] = [];
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  if ([sy, sm, sd, ey, em, ed].some((n) => Number.isNaN(n))) return null;
+  const cur = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  let guard = 0;
+  while (cur <= end && guard < 400) {
+    labels.push(`${cur.getMonth() + 1}月${cur.getDate()}日`);
+    cur.setDate(cur.getDate() + 1);
+    guard++;
+  }
+  if (labels.length === 0) return null;
+
+  const extras = await getRangeExtras(sheetPageId, labels);
+  // 新しい日から遡り、最初に見つかった有効な体重を返す
+  for (let i = labels.length - 1; i >= 0; i--) {
+    const raw = extras[labels[i]]?.weight;
+    if (!raw) continue;
+    const n = parseFloat(raw);
+    if (!Number.isNaN(n)) return n;
+  }
+  return null;
+}
+
 // 個人シートの食事記録テーブルから当日の体重・運動・運動内容を取得
 export async function getDailyExtras(
   sheetPageId: string,

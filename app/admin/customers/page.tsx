@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, Circle, ChevronRight, ClipboardCopy, Check, AlertTriangle, UserCheck, Monitor, X } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
 
@@ -37,6 +38,7 @@ export default function AdminCustomersPage() {
   const base = useAdminBase();
   const toast = useToast();
   const isStore = base === '/store';
+  const ac = adminAccent(isStore);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -304,7 +306,7 @@ export default function AdminCustomersPage() {
                 onClick={() => setStatusFilter(s)}
                 className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
                   statusFilter === s
-                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -319,7 +321,7 @@ export default function AdminCustomersPage() {
                 onClick={() => setStoreFilter('')}
                 className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
                   storeFilter === ''
-                    ? 'bg-violet-500 text-white border-violet-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -332,7 +334,7 @@ export default function AdminCustomersPage() {
                   onClick={() => setStoreFilter(s.storeId)}
                   className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
                     storeFilter === s.storeId
-                      ? 'bg-violet-500 text-white border-violet-500'
+                      ? ac.pillActive
                       : 'bg-white text-stone-700 border-stone-300'
                   }`}
                 >
