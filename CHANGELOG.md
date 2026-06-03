@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 09:45 claude/sec-fix-8922679
+- fix(security): CSP `connect-src` に `https://*.line-scdn.net` を追加（LIFF SDK の XHR 通信が将来 enforce 時にブロックされる問題を修正）
+- 影響範囲: `next.config.ts` のみ（1行追加）。顧客側 LIFF 設定変更のため staging ブランチ経由で PR 作成
+- 関連: Slack #security-alerts Sentry JAVASCRIPT-NEXTJS-7 CSP violation（2026-05-31 09:13）
+
 ## 2026-06-02 – test(security): クロステナント/クロス顧客 IDOR の回帰テスト追加 ＋ 既存署名改ざんテストのフレーキー修正（branch: security/ownership-repo-layer・未マージ）
 - test: `__tests__/lib/cross-tenant-ownership.test.ts`（新規・17ケース）。2026-05-31 監査 設計#10。所有権チェックがリポジトリ/データ層に集約済（設計#2＝既に origin/main 実装済）であることを固定する回帰テスト。`@/lib/tenant` の `getCurrentTenant` と `global.fetch` をモックし、(1) `assertCustomerOwnership`/`getCustomerByPageId`＝他テナント顧客DBの pageId を拒否/null、(2) `assertFoodRecordOwnership`＝他テナント食事DB拒否＋同一テナント内の別顧客(LINE_UserID不一致)を拒否、(3) `repository/customers`・`repository/records`＝patch/archive が他テナント pageId で forbidden 後、更新処理に到達しない（fetch 1回のみ）、(4) `lib/stores` の getStore/updateStore/deleteStore＝他テナント tenant_id を null/forbidden、を検証
 - fix(test): `__tests__/lib/auth-token-separation.test.ts` の「署名改ざんトークンは拒否」を、トークン末尾1文字反転→**署名先頭文字反転**に変更。末尾は base64url パディングで下位bitが捨てられ A↔B 反転してもデコード後バイト列が変わらず改ざん検知をすり抜ける場合があり、`exp=Date.now()+60s` の署名差で実行タイミング次第に false-fail するフレーキーだった。先頭文字は全6bit有効で確実に変わる。全37ケースを3回連続グリーンで安定確認
