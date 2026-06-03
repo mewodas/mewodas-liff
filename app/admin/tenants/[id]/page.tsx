@@ -564,7 +564,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             type="button"
             onClick={save}
             disabled={saving}
-            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            className="w-full bg-violet-500 text-white font-bold py-3 rounded-xl active:bg-violet-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
           >
             <Save className="w-4 h-4" strokeWidth={2.2} />
             {saving ? '保存中…' : '変更を保存'}
@@ -681,7 +681,7 @@ function StoreForm({
           type="button"
           onClick={save}
           disabled={saving}
-          className="flex-1 bg-emerald-600 text-white font-bold text-xs py-1.5 rounded-lg active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+          className="flex-1 bg-violet-600 text-white font-bold text-xs py-1.5 rounded-lg active:bg-violet-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
         >
           <Save className="w-3 h-3" strokeWidth={2.4} />
           {saving ? '保存中…' : '保存'}
@@ -865,7 +865,7 @@ function PasswordSection({
               <button
                 type="button"
                 onClick={copyAll}
-                className="w-full bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-1"
+                className="w-full bg-violet-600 text-white font-bold text-xs py-2 rounded-xl active:bg-violet-700 inline-flex items-center justify-center gap-1"
               >
                 {copied ? <><Check className="w-3.5 h-3.5" strokeWidth={2.4} /> コピーしました</> : <><Copy className="w-3.5 h-3.5" strokeWidth={2.4} /> 全部コピー</>}
               </button>

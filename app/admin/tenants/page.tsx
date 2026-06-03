@@ -43,7 +43,7 @@ export default function AdminTenantsPage() {
       <div className="space-y-3">
         <Link
           href="/admin/tenants/new"
-          className="block w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
+          className="block w-full bg-violet-500 text-white font-bold py-3 rounded-xl active:bg-violet-700 inline-flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" strokeWidth={2.4} />
           新規テナント作成

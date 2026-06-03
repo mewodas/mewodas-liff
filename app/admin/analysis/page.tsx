@@ -664,7 +664,7 @@ function Inner() {
               type="button"
               onClick={runAi}
               disabled={aiLoading || !customerId}
-              className="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:bg-stone-300 inline-flex items-center justify-center gap-2"
+              className={`flex-1 ${ac.btn} text-white font-bold py-3 rounded-xl disabled:bg-stone-300 inline-flex items-center justify-center gap-2`}
             >
               {aiLoading ? (
                 <>
@@ -771,7 +771,7 @@ function Inner() {
               <div className="mt-3 flex gap-2 flex-wrap">
                 <Link
                   href={`${base}/reports?customerId=${customerId}&draft=${encodeURIComponent(analysis.reportDraft)}`}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-500 text-white text-sm font-bold px-3 py-2 rounded-xl active:bg-emerald-700"
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 ${ac.btn} text-white text-sm font-bold px-3 py-2 rounded-xl`}
                 >
                   <Send className="w-4 h-4" strokeWidth={2.2} />
                   レポート送付ページへ

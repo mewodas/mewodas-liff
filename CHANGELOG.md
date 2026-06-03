@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-03 – change(admin/store): 色テーマ第2弾 主要アクションボタンを role 配色に（店舗=緑 / 運営=紫）（branch: staging）
+- change: 保存／追加／送信などの主要アクションボタン（塗りつぶし emerald）を role 配色に。共有ページ（measurements/meals/reports/analysis/customers[id]/templates/scheduled-reports）は `ac.btn`（店舗=緑/運営=紫）に統一。運営専用ページ（tenants/tenants[id]/tenants/new/plans/audit/staff）は常に紫に固定。scheduled-reports の選択チップも `ac.pillActive` に
+- 据え置き: 「承認」緑ボタン（意味色）・LINE連携済み等の成功緑・ステータス色は不変。storeOnly ページ（billing/stores/SeatChangeModal）は店舗文脈のため緑のまま（＝店舗=緑で正しい）
+- 影響範囲: 管理画面（/admin・/store）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック「ボタンも」
+
 ## 2026-06-03 – change(admin/store): レポート送付のフィルタを顧客分析と完全一致に（期間＋店舗チップ＋顧客プルダウンの1カード）（branch: staging）
 - change: `app/admin/reports/page.tsx`。前回追加したステータスチップを撤去し、「期間(DateRangePicker)」と「顧客選択」を**1つのカードに統合**。顧客分析のフィルタバーと同一構成（DateRangePicker → 店舗チップ → 顧客プルダウン、ラベルなし・ステータスなし・店舗チップは常時表示）に。未使用化した statusFilter/STATUSES を削除
 - 影響範囲: 管理画面（/admin・/store のレポート送付）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過

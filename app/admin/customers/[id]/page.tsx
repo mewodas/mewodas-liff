@@ -13,6 +13,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import AdminShell from '../../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import { ACTIVITY_LEVELS, calcGoals, daysUntil } from '@/lib/goalCalc';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
@@ -73,6 +74,7 @@ export default function CustomerDetailPage({
   const { id } = use(params);
   const base = useAdminBase();
   const isStore = base === '/store';
+  const ac = adminAccent(isStore);
   const router = useRouter();
   const pathname = usePathname() || '';
   const isFromProgress = pathname.includes('/progress/');
@@ -727,7 +729,7 @@ export default function CustomerDetailPage({
               type="button"
               onClick={save}
               disabled={saving}
-              className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className={`w-full ${ac.btn} text-white font-bold py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2`}
             >
               <Save className="w-4 h-4" strokeWidth={2.2} />
               {saving ? '保存中…' : '変更を保存'}

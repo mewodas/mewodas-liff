@@ -104,7 +104,7 @@ export default function AuditPage() {
           <button
             type="button"
             onClick={load}
-            className="bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-emerald-600 active:bg-emerald-700"
+            className="bg-violet-500 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-violet-600 active:bg-violet-700"
           >
             絞り込む
           </button>

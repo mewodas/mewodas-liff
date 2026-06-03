@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileText, Plus, Edit, Trash2, Check, X, AlertTriangle, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
 
@@ -112,6 +113,7 @@ const VARIABLE_GROUPS = [
 
 export default function AdminTemplatesPage() {
   const base = useAdminBase();
+  const ac = adminAccent(base === '/store');
   const toast = useToast();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,7 +228,7 @@ export default function AdminTemplatesPage() {
           <button
             type="button"
             onClick={() => setAddOpen(true)}
-            className="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl active:bg-emerald-700 inline-flex items-center justify-center gap-2"
+            className={`w-full ${ac.btn} text-white font-bold py-3 rounded-xl inline-flex items-center justify-center gap-2`}
           >
             <Plus className="w-4 h-4" strokeWidth={2.4} />
             新規レポートテンプレート追加
@@ -378,6 +380,7 @@ function TemplateEditor({
   onDeleted?: () => void;
 }) {
   const toast = useToast();
+  const ac = adminAccent(useAdminBase() === '/store');
   const [name, setName] = useState(initial?.name || '');
   const [titleTemplate, setTitleTemplate] = useState(initial?.titleTemplate || '');
   const [bodyTemplate, setBodyTemplate] = useState(initial?.bodyTemplate || '');
@@ -551,7 +554,7 @@ function TemplateEditor({
           type="button"
           onClick={save}
           disabled={saving || !name.trim()}
-          className="flex-1 bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl active:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+          className={`flex-1 ${ac.btn} text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50 inline-flex items-center justify-center gap-1`}
         >
           <Check className="w-4 h-4" strokeWidth={2.4} />
           {saving ? '保存中…' : initial ? '更新' : '追加'}
