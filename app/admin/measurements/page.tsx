@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import AdminShell from '../AdminShell';
+import { adminAccent } from '@/lib/adminAccent';
 import { useAdminBase } from '@/lib/useAdminBase';
 import { useToast } from '@/components/Toast';
 import { compressImage } from '@/lib/imageCompress';
@@ -140,6 +141,7 @@ function logToForm(log: BodyCompLog): FormState {
 
 export default function MeasurementsPage() {
   const base = useAdminBase();
+  const ac = adminAccent(base === '/store');
   const toast = useToast();
 
   const [me, setMe] = useState<Me | null>(null);
@@ -447,7 +449,7 @@ export default function MeasurementsPage() {
                 onClick={() => { setStoreFilter(''); clearSelection(); }}
                 className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
                   storeFilter === ''
-                    ? 'bg-violet-500 text-white border-violet-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >
@@ -460,7 +462,7 @@ export default function MeasurementsPage() {
                   onClick={() => { setStoreFilter(s.storeId); clearSelection(); }}
                   className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap border ${
                     storeFilter === s.storeId
-                      ? 'bg-violet-500 text-white border-violet-500'
+                      ? ac.pillActive
                       : 'bg-white text-stone-700 border-stone-300'
                   }`}
                 >
@@ -497,7 +499,7 @@ export default function MeasurementsPage() {
                 onClick={() => { setStatusFilter(s); clearSelection(); }}
                 className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap border ${
                   statusFilter === s
-                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    ? ac.pillActive
                     : 'bg-white text-stone-700 border-stone-300'
                 }`}
               >

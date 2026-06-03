@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkCronAuth } from '@/lib/cronAuth';
-import { listTenantRows, listAllCustomers } from '@/lib/notion';
+import { listTenantRows, listAllCustomers, getLastWeightInRange } from '@/lib/notion';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { listTemplates } from '@/lib/templates';
 import { getStoreByStoreId } from '@/lib/stores';
@@ -354,12 +354,18 @@ export async function GET(req: NextRequest) {
             ? await getStoreByStoreId(customer.storeId).catch(() => null)
             : null;
 
+          // 期間内の「最終日の体重」（無ければ開始体重にフォールバック）
+          const lastWeight = customer.foodSheetPageId
+            ? await getLastWeightInRange(customer.foodSheetPageId, reportStart, reportEnd).catch(() => null)
+            : null;
+          const effectiveWeight = lastWeight ?? customer.currentWeight;
+
           const isSingleDay = reportStart === reportEnd;
           const vars = buildReportVariables(records, customer, store, {
             startDate: reportStart,
             endDate: reportEnd,
             isSingleDay,
-          });
+          }, lastWeight);
           const sum = {
             kcal: Number(vars.kcal),
             P: Number(vars.P),
@@ -390,7 +396,7 @@ export async function GET(req: NextRequest) {
                   C: Math.round(sum.C * 10) / 10,
                 },
                 goals: customer.goals,
-                currentWeight: customer.currentWeight,
+                currentWeight: effectiveWeight,
                 targetWeight: customer.targetWeight,
                 requiredKeys: aiVars,
                 mealItems,
