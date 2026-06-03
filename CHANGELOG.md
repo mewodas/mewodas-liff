@@ -51,6 +51,16 @@
 - change: `app/admin/customers/page.tsx`。店舗(/store)限定で出る「LINE 連携のセットアップが未完了です」バナー＋「セットアップを始める」ボタンを violet→emerald(緑)に。店舗=緑のテーマに統一（isStore 限定表示のため緑固定）
 - 影響範囲: 管理画面（/store 顧客管理）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
 - 関連: 社長フィードバック（LINEのセットアップを store は緑に）
+## 2026-06-04 – feat(store): スタートガイド（アクティベーション導線）＋お客様招待リンク/QR を新設（branch: staging/store-activation-guide）
+- feat(store): `app/store/start/page.tsx` 新規。店舗の初回立ち上げを貫く **アクティベーション・ハブ**。①LINE連携 →②お客様を招待して登録 →③初記録 のチェックリスト（進捗バー付き）＋ **お客様招待セクション**（友だち追加リンクのコピー＋店頭ポスター用QRコード＋共有のしかた案内）。既存の招待トークン基盤(`lib/inviteToken.ts`)はあったが店舗UIが無く、連携後に「お客様をどう入れるか」の導線が欠落していた穴を埋める
+- feat(api): `app/api/store/activation/route.ts` 新規。連携状態(onboardingCompletedAt/liffId+token)・友だち追加URL(officialLineUrl)・顧客数(listCustomers)・初記録有無 を集約して返す（60秒キャッシュ・withAdminTenant 保護）
+- feat(api): `app/api/store/invite/qr/route.ts` 新規。友だち追加URLの **QRコードを SVG でサーバー生成**（外部サービス非依存・印刷可）。`qrcode` 依存を追加
+- feat(lib): `lib/notion.ts` に `hasAnyFoodRecordSince(date)` 追加（page_size:1 の安価な存在判定。全件スキャンを避ける）
+- change(nav): `app/admin/AdminShell.tsx`。店舗サイドバー先頭に「スタートガイド」(ListChecks・storeOnly) を追加（master/admin には非表示）
+- change(store): `app/store/onboarding/page.tsx` 完了画面に「次は、お客様を招待しましょう」CTA（→ /store/start）を追加
+- 影響範囲: 店舗側(/store)・API のみ。**顧客側 LIFF・DB スキーマ変更なし**。tsc 通過・`next build` 成功（/store/start 含む全ルートコンパイルOK）
+- 検証残: staging push → fitmeal-qa → 社長の店舗UI確認。push は origin/staging が並行作業で先行(b97c047)のため統合(fetch+rebase)後に実施
+- 関連: 社長指示「店舗側オンボーディング機能の実装＋申込→招待→有償化導線の改善」（2026-06-04 夜間自走）
 
 ## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
 - fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）

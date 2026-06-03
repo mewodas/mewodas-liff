@@ -1503,6 +1503,20 @@ export async function getAllFoodRecordsByDateRange(
   return results;
 }
 
+/**
+ * 現テナントの食事DBに、指定日以降の記録が「1件でも」存在するかを安価に判定する。
+ * アクティベーション・チェックリスト（/store/start）の「初記録」判定用。
+ * page_size:1 の単発クエリで、全件スキャン（getAllFoodRecordsByDateRange）を避ける。
+ */
+export async function hasAnyFoodRecordSince(startDate: string): Promise<boolean> {
+  const tenant = getTenantNotion();
+  const res = await notionRequest('POST', `/databases/${tenant.foodDbId}/query`, {
+    filter: { property: '日付', date: { on_or_after: startDate } },
+    page_size: 1,
+  });
+  return Array.isArray(res.results) && res.results.length > 0;
+}
+
 // AI補正データ分析用：日付範囲内の全顧客の食事記録から AI推定値 vs 現在値の差分を計算
 export type CorrectionRecord = {
   pageId: string;
