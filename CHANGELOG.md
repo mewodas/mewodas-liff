@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-03 – change(store): 「LINE 連携セットアップ未完了」バナーを店舗カラー(緑)に（branch: staging）
+- change: `app/admin/customers/page.tsx`。店舗(/store)限定で出る「LINE 連携のセットアップが未完了です」バナー＋「セットアップを始める」ボタンを violet→emerald(緑)に。店舗=緑のテーマに統一（isStore 限定表示のため緑固定）
+- 影響範囲: 管理画面（/store 顧客管理）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（LINEのセットアップを store は緑に）
+
 ## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
 - fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）
 - change(topbar): ベル（`w-11→w-10`/アイコン`w-6→w-5`/バッジ`w-4→w-3.5`・位置を-top/-right-0.5に）と店舗/アドミンバッジ（`px-3.5→px-3`/`py-1.5→py-1`/アイコン`w-5→w-4`/gap詰め）を一回り縮小（前回拡大しすぎたぶんの調整）

@@ -259,14 +259,14 @@ export default function AdminCustomersPage() {
 
         {/* オンボーディング未完了バナー（store のみ） */}
         {isStore && onboardingIncomplete && (
-          <div className="bg-violet-50 border-2 border-violet-400 text-violet-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-500" strokeWidth={2.2} />
+          <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-900 text-xs p-3 rounded-xl flex gap-2 items-start w-full">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500" strokeWidth={2.2} />
             <div className="flex-1">
               <div className="font-bold text-sm mb-0.5">LINE 連携のセットアップが未完了です</div>
               <div className="mb-2">リッチメニュー・LINE 連携を設定するとお客様がアプリをすぐに使えるようになります。</div>
               <Link
                 href="/store/onboarding"
-                className="inline-flex items-center gap-1 bg-violet-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs"
+                className="inline-flex items-center gap-1 bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs"
               >
                 セットアップを始める →
               </Link>
