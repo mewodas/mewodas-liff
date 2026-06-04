@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
         existingAnnouncements
           .filter((a) => {
             if (a.audience !== '店舗向け') return false;
-            if (!a.title.startsWith('【本日の要注意顧客')) return false;
+            if (!a.title.startsWith('【フォロー対象')) return false;
             // createdAt は Notion created_time = UTC。JST 日付の todayDate と直接
             // 比較すると 0–9時JST のあいだ前日扱いになり（cron は 21:00UTC=6:00JST）
             // 当日分を取りこぼして毎回重複作成してしまう。作成時に JST 日付で書き込む
@@ -209,7 +209,7 @@ export async function GET(req: NextRequest) {
           const body = `${lines}\n\n進捗管理で詳細を確認できます。`;
 
           await createAnnouncement({
-            title: `【本日の要注意顧客 ${atRisk.length}名】`,
+            title: `【フォロー対象 ${atRisk.length}名】`,
             body,
             audience: '店舗向け',
             importance: '重要',
