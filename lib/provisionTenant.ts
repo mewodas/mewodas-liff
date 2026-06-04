@@ -24,6 +24,7 @@ import { createStore } from '@/lib/stores';
 import { hashPassword } from '@/lib/adminAuth';
 import { generatePassword } from '@/lib/passwordGen';
 import { sendEmail, loginInfoEmail, welcomeEmail } from '@/lib/email';
+import { notifySlack } from '@/lib/slack';
 
 const NOTION_API_VERSION = '2022-06-28';
 const NOTION_BASE = 'https://api.notion.com/v1';
@@ -494,6 +495,15 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
     }
   } catch (e) {
     mail = { sent: false, reason: 'error', error: e instanceof Error ? e.message : 'unknown' };
+  }
+
+  // ウェルカム/ログイン情報メールが送れなかった場合、運営に通知。
+  // オーナーは初期パスワードを受け取れていないので、/admin/tenants から再発行して
+  // 手動で渡す必要がある（フォールバック導線・導線監査 Rank4）。
+  if (!mail.sent) {
+    await notifySlack(
+      `⚠️ FitMeal 新規テナント「${input.name}」(${tenantId}) の${input.selfServe ? 'ウェルカム' : 'ログイン情報'}メール送信に失敗しました（${mail.reason ?? 'error'}${mail.error ? ': ' + mail.error : ''}）。/admin/tenants から初期パスワードを再発行し、オーナー（${input.ownerEmail}）へ手動でお渡しください。`
+    );
   }
 
   invalidateTenantCache();

@@ -9,6 +9,7 @@
 import { listTenantRows } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { sendEmail, trialEndingEmail } from '@/lib/email';
+import { todayYmdJst, daysBetweenYmd } from '@/lib/dateDays';
 
 export type TrialReminderResult = {
   tenantId: string;
@@ -20,25 +21,6 @@ export type TrialReminderResult = {
 
 // 送信トリガーとなる「残日数」。10日目相当(=終了4日前)と前日。
 const REMIND_DAYS = new Set([4, 1]);
-
-function ymdToUtc(ymd: string): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd);
-  if (!m) return null;
-  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
-function todayYmdJst(): string {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-/** from(YYYY-MM-DD) → to(YYYY-MM-DD) の日数差（UTC 0時基準・TZドリフトなし） */
-function daysBetween(fromYmd: string, toYmd: string): number | null {
-  const a = ymdToUtc(fromYmd);
-  const b = ymdToUtc(toYmd);
-  if (a === null || b === null) return null;
-  return Math.round((b - a) / 86_400_000);
-}
 
 export async function runTrialReminders(): Promise<TrialReminderResult[]> {
   const results: TrialReminderResult[] = [];
@@ -58,7 +40,7 @@ export async function runTrialReminders(): Promise<TrialReminderResult[]> {
     if (r.paymentStatus !== 'お試し') continue;
     if (!r.ownerEmail || !r.nextBillingDate) continue;
 
-    const daysLeft = daysBetween(today, r.nextBillingDate);
+    const daysLeft = daysBetweenYmd(today, r.nextBillingDate);
     if (daysLeft === null || !REMIND_DAYS.has(daysLeft)) continue;
 
     try {

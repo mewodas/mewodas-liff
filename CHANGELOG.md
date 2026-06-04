@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-06-04 – feat(funnel): Rank3 オンボ未完了の催促 / Rank4 ウェルカムメール失敗通知 / Rank5 席アップグレードCTA（branch: staging）
+- feat(Rank3): `lib/onboardingNudge.ts` 新規 `runOnboardingNudges`。契約開始(`startDate`)から **1/3/7日** たっても未連携(`onboardingCompletedAt=null`)の店舗オーナーへセットアップ催促メール（/store/start へ誘導）。`daily-reports` cron に相乗り（残日数判定＝状態保存不要・7日で打ち切り）。`lib/email.ts` に `onboardingNudgeEmail` 追加
+- feat(Rank4): `lib/provisionTenant.ts`。ウェルカム/ログイン情報メール送信に失敗した場合、運営へ **Slack 通知**（`notifySlack`）。オーナーが初期PWを受け取れていないので /admin/tenants から再発行→手動連絡する導線を案内
+- feat(Rank5): `app/admin/billing/page.tsx`。上限到達/残り1席バナーに「**今すぐ増枠する**」CTAボタンを追加（席変更モーダルを直接起動。Stripe連動モードのみ表示・手動/無制限は運営管理のため非表示）
+- refactor: 日付の日数計算を `lib/dateDays.ts`（`todayYmdJst`/`daysBetweenYmd`）に集約し、`lib/trialReminders.ts` も共用（DRY）
+- 影響範囲: API(`cron/daily-reports`)・`lib`・`app/admin/billing` のみ。**顧客側LIFF・DBスキーマ変更なし**。tsc通過・`next build`成功
+- 前提env: メール=`RESEND_API_KEY`（未設定なら no_provider でスキップ）、Slack=`SLACK_WEBHOOK_URL`（任意）
+- 関連: 導線監査 Rank3/4/5 フル対応（社長「Rank5まで進めて」・2026-06-04）。staging検証 → 社長確認後に main
+
 ## 2026-06-04 – feat(reports): 週次/月次に「目標達成日・必要/今週ペース＋週間平均(目標比)の絵文字評価」変数を追加（branch: staging）
 - feat: `lib/reports/variables.ts` にレポート変数を追加。`targetDate`（目標達成日）、`weeksToGoal`（残り週数）、`requiredPace`（必要ペースkg/週＝|登録体重−目標|÷残り週数。GoalProgressCard と同ロジック）、`weekPace`（期間の実ペースを週あたり正規化・符号付き）、`weekPaceMark`（⭕目標方向に必要ペース以上/🔺方向は合うが不足/💦逆方向）、PFC目標比の評価絵文字 `kcalMark`/`PMark`/`FMark`/`CMark`（⭕90〜110% / 🔺80〜90%・110〜120% / 💦それ未満・超過＝上下対称）。すべてコードで確定計算（AI非依存）
 - 影響範囲: レポート変数のみ（テンプレが参照すれば表示）。顧客側 LIFF 変更なし。tsc 通過。実例の数値（カロリー79.6%💦/タンパク質82.6%🔺/脂質93.3%⭕/炭水化物70.5%💦）と一致を runtime 検証済
