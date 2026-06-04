@@ -25,6 +25,18 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-04 – feat(admin/store): 顧客リスクお知らせを3種類(食事記録/体重記録/体重目標)に細分化し個別ON/OFF（branch: staging）
+- feat: 通知設定の「顧客リスクお知らせ」を1トグル→**3トグル**に。食事記録の途絶え/体重記録の途絶え/体重目標の停滞 を個別にON/OFF。`app/store/notifications/page.tsx`（3トグルUI、楽観更新＋PATCH、説明は上部amber・店舗=緑）
+- feat: バックエンド出し分け。`app/api/cron/daily-reports/route.ts` の `isAtRisk`/`riskLabel` をフラグ引数化し、ONの種類だけ判定・ラベル化。テナントゲートも3フラグの全OFF判定に。`lib/notion.ts`（TenantRow型・read・patch に `リスク食事記録`/`リスク体重記録`/`リスク体重目標` チェックボックス列を追加）、`lib/tenant.ts`・`lib/tenantResolver.ts` に伝播。`app/api/admin/tenant-settings/route.ts` GET/PATCH に3フラグ追加（PATCH時に master `リスクアラート`=anyOn を同期）
+- migration: Notion「FitMeal テナント」DB に3チェックボックス列を追加し、既存3テナント（メヲダス/Staging=ON→3列ON、テスト=OFF→3列OFF）をデータ移行済み（既存挙動保持）
+- 影響範囲: 管理画面（/store 通知設定）＋日次配信cron＋テナント設定API。顧客側 LIFF 変更なし。tsc 通過。速度影響なし（計算は不変・出し分けフィルタのみ）
+- 関連: 社長フィードバック（食事記録/体重記録/体重目標で個別ON/OFF）
+
+## 2026-06-04 – change(store): 通知設定の説明文を上部へ移動＋確認先を「右上のベルマーク」に（branch: staging）
+- change: `app/store/notifications/page.tsx`。「お知らせは毎日の定期配信と同時に送られます／受信は…で確認できます」の説明（amber）を「顧客リスクお知らせを受け取る」カードの上へ移動。確認先の文言を「『お知らせ』画面の受信トレイ」→「画面右上のベルマーク 🔔 から確認できます」に変更（お知らせ画面はナビ未設置のため）
+- 影響範囲: 管理画面（/store 通知設定）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック。※リスクお知らせの細分化(食事記録/体重記録/体重目標で個別ON/OFF)は要確認の別タスク
+
 ## 2026-06-04 – fix(admin/store): サイドバーのグループが遷移で畳まれる問題を修正（sticky open）（branch: staging）
 - fix: `app/admin/AdminShell.tsx`。openGroups を tri-state(null/true/false の `?? active` 既定)から**独立した真偽値**に変更し、現在地のグループを useEffect で**加算的に開く**方式に。これまでは現在地で自動展開していたグループ（明示トグルなし）が、別グループのページへ遷移して active 解除されると畳まれていた（例: /store/progress で開いていた進捗管理が、契約管理クリックで畳まれる）。修正後は一度開いたグループは矢印で明示的に閉じるまで開いたまま＝複数同時に開いたまま遷移できる（スクエア方式）
 - 影響範囲: 管理画面（/admin・/store）のサイドバー挙動のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
