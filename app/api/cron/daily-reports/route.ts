@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkCronAuth } from '@/lib/cronAuth';
-import { listTenantRows, listAllCustomers, getLastWeightInRange } from '@/lib/notion';
+import { listTenantRows, listAllCustomers, getWeightBoundsInRange } from '@/lib/notion';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { listTemplates } from '@/lib/templates';
 import { getStoreByStoreId } from '@/lib/stores';
@@ -368,10 +368,12 @@ export async function GET(req: NextRequest) {
             ? await getStoreByStoreId(customer.storeId).catch(() => null)
             : null;
 
-          // 期間内の「最終日の体重」（無ければ開始体重にフォールバック）
-          const lastWeight = customer.foodSheetPageId
-            ? await getLastWeightInRange(customer.foodSheetPageId, reportStart, reportEnd).catch(() => null)
-            : null;
+          // 期間内の「開始体重・最終体重」（週次/月次の増減表記に使用）
+          const { first: firstWeight, last: lastWeight } = customer.foodSheetPageId
+            ? await getWeightBoundsInRange(customer.foodSheetPageId, reportStart, reportEnd).catch(
+                () => ({ first: null, last: null })
+              )
+            : { first: null, last: null };
           const effectiveWeight = lastWeight ?? customer.currentWeight;
 
           const isSingleDay = reportStart === reportEnd;
@@ -379,7 +381,7 @@ export async function GET(req: NextRequest) {
             startDate: reportStart,
             endDate: reportEnd,
             isSingleDay,
-          }, lastWeight);
+          }, lastWeight, firstWeight);
           const sum = {
             kcal: Number(vars.kcal),
             P: Number(vars.P),

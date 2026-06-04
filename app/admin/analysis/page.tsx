@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Lightbulb,
   Activity,
-  FileText,
   Send,
   ChevronDown,
   ChevronUp,
@@ -759,34 +758,19 @@ function Inner() {
           </section>
         )}
 
-        {/* ---- ⑦ 顧客送信用ドラフト ---- */}
-        {analysis?.reportDraft && (
+        {/* ---- ⑦ レポート送付への導線（顧客送信用ドラフトは廃止） ---- */}
+        {customerId && (
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
-            <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5 mb-2">
-              <FileText className="w-4 h-4 text-stone-600" strokeWidth={2.2} />
-              顧客送信用ドラフト
-            </h2>
-            <pre className="text-sm text-stone-800 whitespace-pre-wrap break-words leading-relaxed font-sans bg-stone-50 border border-stone-200 rounded-xl p-3">
-              {analysis.reportDraft}
-            </pre>
-            {customerId && (
-              <div className="mt-3 flex gap-2 flex-wrap">
-                <Link
-                  href={`${base}/reports?customerId=${customerId}&draft=${encodeURIComponent(analysis.reportDraft)}`}
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 ${ac.btn} text-white text-sm font-bold px-3 py-2 rounded-xl`}
-                >
-                  <Send className="w-4 h-4" strokeWidth={2.2} />
-                  レポート送付ページへ
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard?.writeText(analysis.reportDraft)}
-                  className="inline-flex items-center justify-center gap-1 bg-white border border-stone-300 text-stone-700 text-sm font-bold px-3 py-2 rounded-xl active:bg-stone-50"
-                >
-                  コピー
-                </button>
-              </div>
-            )}
+            <Link
+              href={`${base}/reports?customerId=${customerId}`}
+              className={`w-full inline-flex items-center justify-center gap-1.5 ${ac.btn} text-white text-sm font-bold px-4 py-2.5 rounded-xl`}
+            >
+              <Send className="w-4 h-4" strokeWidth={2.2} />
+              {(() => {
+                const n = customers.find((c) => c.pageId === customerId)?.name;
+                return n ? `${n}さんにレポートを送付` : 'レポートを送付';
+              })()}
+            </Link>
           </section>
         )}
       </div>

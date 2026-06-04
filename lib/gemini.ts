@@ -1583,7 +1583,6 @@ export async function generateReportComments(input: {
 
   const weightStr = input.currentWeight !== null ? `${input.currentWeight}kg` : "未測定";
   const targetWStr = input.targetWeight !== null ? `${input.targetWeight}kg` : "未設定";
-  const ratio = input.goals.kcal > 0 ? Math.round((input.sum.kcal / input.goals.kcal) * 100) : 0;
 
   // 食事区分別にグループ化
   let mealSection = "";
@@ -1611,7 +1610,7 @@ export async function generateReportComments(input: {
 【顧客】${input.customerName}さん
 【日付】${input.date}
 【摂取】${input.sum.kcal}kcal / P${input.sum.P}g / F${input.sum.F}g / C${input.sum.C}g
-【目標】${input.goals.kcal}kcal / P${input.goals.P}g / F${input.goals.F}g / C${input.goals.C}g（達成率${ratio}%）
+【目標】${input.goals.kcal}kcal / P${input.goals.P}g / F${input.goals.F}g / C${input.goals.C}g
 【体重】現在${weightStr} → 目標${targetWStr}${mealSection}
 
 【生成してほしいセクション】
@@ -1624,6 +1623,7 @@ ${desc}
 - ai_advice は「具体的な指摘 + 次の一手の提案」を2〜3文でまとめる。冗長にしない
 - 箇条書き指定ありなら「・」で始める
 - 絵文字は控えめに（必要なら1個まで）
+- **「達成率○%」「目標の○%」のような割合（%）表現は使わない**。摂取量と目標の差は kcal・g の実数で具体的に伝える（例：「タンパク質が目標より15g不足」）。食事管理は100%必達ではなく、減量幅により適正量が変わる前提でコメントする
 
 出力例:
 {

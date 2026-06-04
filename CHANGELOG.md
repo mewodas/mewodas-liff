@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-04 – feat(reports): 週次/月次レポートの体重を「開始→最終(増減)」表記化＋達成率%廃止＋顧客分析の送付導線常設（branch: staging）
+- feat: レポート変数に `startWeight`/`endWeight`/`weightDelta` を追加。`lib/notion.ts` に `getWeightBoundsInRange`（期間内の最初/最後の有効体重を1回の取得で返す。`getLastWeightInRange` は薄いラッパに）。`lib/reports/variables.ts` に `firstWeight` 引数を追加し、`{startWeight}kg → {endWeight}kg（{weightDelta}kg）` を組める変数を公開（増減は `+1.2`/`-1.7`/`±0` 形式）。呼び出し側 `app/api/admin/reports/generate/route.ts`・`app/api/cron/daily-reports/route.ts` を bounds 取得に変更し firstWeight を伝播
+- change: AIコメント生成（`lib/gemini.ts` `generateReportComments`）から「達成率○%」を除去。プロンプトに「割合(%)表現は使わず、目標との差は kcal・g の実数で。食事管理は100%必達ではなく減量幅で適正量が変わる前提」ルールを追加
+- change(admin/store): 顧客分析（`app/admin/analysis/page.tsx`＝`/store/analysis`再エクスポート）の「顧客送信用ドラフト」セクション（お客さん向けメッセージ）を**削除**し、代わりに `customerId` がある間は常設の「○○さんにレポートを送付」ボタン（→`/reports?customerId=...`）を表示。未使用化した `FileText` import を除去。AI 分析の `reportDraft` フィールド自体はバックエンド（テンプレなしAI本文）で継続利用のため残置
+- 影響範囲: レポート本文（顧客がLINEで受信）＋管理画面（顧客分析/送付）＋日次配信cron。顧客側 LIFF 画面の変更なし。`next build` 通過
+- 残作業（**本番マージ後に実施**／テンプレDBは staging と本番で共有のため新変数は先にコード本番反映が必須）: Notion「FitMeal テンプレート」6種の (1)並び替え＝前日あり/週次あり/月次あり→前日なし/週次なし/月次なし、(2)週次・月次の体重行を `開始 {startWeight}kg → 最終 {endWeight}kg（{weightDelta}kg）` に、(3)前日レポートの `（{kcalRatio}%）` を削除し実数のみに
+- 関連: 社長フィードバック（体重は開始→最終で見せる／%表記は分かりづらい／お客さん向けドラフトは不要／分析から送付導線が欲しい）
+
 ## 2026-06-04 – feat(admin/store): 顧客リスクお知らせを3種類(食事記録/体重記録/体重目標)に細分化し個別ON/OFF（branch: staging）
 - feat: 通知設定の「顧客リスクお知らせ」を1トグル→**3トグル**に。食事記録の途絶え/体重記録の途絶え/体重目標の停滞 を個別にON/OFF。`app/store/notifications/page.tsx`（3トグルUI、楽観更新＋PATCH、説明は上部amber・店舗=緑）
 - feat: バックエンド出し分け。`app/api/cron/daily-reports/route.ts` の `isAtRisk`/`riskLabel` をフラグ引数化し、ONの種類だけ判定・ラベル化。テナントゲートも3フラグの全OFF判定に。`lib/notion.ts`（TenantRow型・read・patch に `リスク食事記録`/`リスク体重記録`/`リスク体重目標` チェックボックス列を追加）、`lib/tenant.ts`・`lib/tenantResolver.ts` に伝播。`app/api/admin/tenant-settings/route.ts` GET/PATCH に3フラグ追加（PATCH時に master `リスクアラート`=anyOn を同期）

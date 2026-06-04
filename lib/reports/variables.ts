@@ -44,7 +44,9 @@ export function buildReportVariables(
   store: Store,
   dateRange: { startDate: string; endDate: string; isSingleDay: boolean },
   // 期間内の「最終日の体重」(kg)。null/未指定なら開始体重にフォールバック。
-  lastWeight?: number | null
+  lastWeight?: number | null,
+  // 期間内の「最初の有効体重」(kg)。週次/月次の「開始 → 最終」表記に使用。
+  firstWeight?: number | null
 ): Record<string, string> {
   const { startDate, endDate, isSingleDay } = dateRange;
 
@@ -109,13 +111,23 @@ export function buildReportVariables(
     snack: perDay(mealSums.snack),
   };
 
-  // 表示用の体重: 最終日の実測体重を優先し、無ければ開始体重(kg)にフォールバック。
-  const weightStr =
-    lastWeight != null
-      ? String(lastWeight)
-      : customer.currentWeight !== null
-        ? String(customer.currentWeight)
-        : '-';
+  // 表示用の体重: 最終日の実測体重を優先し、無ければ登録体重(kg)にフォールバック。
+  const endWeightNum =
+    lastWeight != null ? lastWeight : customer.currentWeight !== null ? customer.currentWeight : null;
+  // 開始体重: 期間内の最初の有効体重。無ければ最終体重にフォールバック（＝増減0）。
+  const startWeightNum = firstWeight != null ? firstWeight : endWeightNum;
+  const weightStr = endWeightNum != null ? String(endWeightNum) : '-';
+  const startWeightStr = startWeightNum != null ? String(startWeightNum) : '-';
+  // 増減（最終 − 開始）。週次/月次の「{startWeight}kg → {endWeight}kg（{weightDelta}kg）」用。
+  const weightDeltaStr =
+    startWeightNum != null && endWeightNum != null
+      ? (() => {
+          const d = Math.round((endWeightNum - startWeightNum) * 10) / 10;
+          if (d > 0) return `+${d}`;
+          if (d < 0) return String(d); // 既にマイナス符号付き
+          return '±0';
+        })()
+      : '-';
 
   const kcalRatio =
     customer.goals.kcal > 0 ? Math.round((showKcal / customer.goals.kcal) * 100) : 0;
@@ -142,6 +154,9 @@ export function buildReportVariables(
     total_F: String(Math.round(sum.F * 10) / 10),
     total_C: String(Math.round(sum.C * 10) / 10),
     weight: weightStr,
+    startWeight: startWeightStr,
+    endWeight: weightStr,
+    weightDelta: weightDeltaStr,
     targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
     daysToGoal: (() => {
       if (!customer.targetDate) return '-';
