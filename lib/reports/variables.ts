@@ -132,6 +132,60 @@ export function buildReportVariables(
   const kcalRatio =
     customer.goals.kcal > 0 ? Math.round((showKcal / customer.goals.kcal) * 100) : 0;
 
+  // === 目標までのペース & 週間平均（目標比）評価（週次/月次レポート用） ===
+  // 目標達成日・残り週数・必要ペース（GoalProgressCard と同ロジック。基準は登録体重）
+  const cw = customer.currentWeight;
+  const tw = customer.targetWeight;
+  let weeksToGoalNum: number | null = null;
+  if (customer.targetDate) {
+    const td = new Date(customer.targetDate).getTime();
+    const today = new Date().setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((td - today) / 86400000);
+    if (daysLeft > 0) weeksToGoalNum = Math.max(1, Math.ceil(daysLeft / 7));
+  }
+  const requiredPaceNum =
+    cw != null && tw != null && weeksToGoalNum
+      ? Math.round((Math.abs(cw - tw) / weeksToGoalNum) * 10) / 10
+      : null;
+
+  // 今週(=期間)の実ペース＝(最終−開始)を週あたりに正規化（週次は7日=1週、月次は日数/7週）
+  let weekPaceNum: number | null = null;
+  if (startWeightNum != null && endWeightNum != null) {
+    const [psy, psm, psd] = startDate.split('-').map(Number);
+    const [pey, pem, ped] = endDate.split('-').map(Number);
+    const spanDays =
+      Math.round(
+        (new Date(pey, pem - 1, ped).getTime() - new Date(psy, psm - 1, psd).getTime()) / 86400000
+      ) + 1;
+    const weeks = Math.max(1, spanDays / 7);
+    weekPaceNum = Math.round(((endWeightNum - startWeightNum) / weeks) * 10) / 10;
+  }
+  const fmtSigned = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? String(n) : '±0');
+  const weekPaceStr = weekPaceNum != null ? fmtSigned(weekPaceNum) : '-';
+
+  // 今週ペースの評価: 目標方向へ必要ペース以上=⭕ / 方向は合うが不足=🔺 / 逆方向=💦
+  let weekPaceMark = '';
+  if (weekPaceNum != null && cw != null && tw != null && requiredPaceNum != null && tw !== cw) {
+    const goalDir = tw < cw ? -1 : 1; // -1=減量 / +1=増量
+    const toward = goalDir < 0 ? -weekPaceNum : weekPaceNum; // 目標方向への週あたり変化量(正=前進)
+    if (toward <= 0) weekPaceMark = '💦';
+    else if (toward >= requiredPaceNum * 0.9) weekPaceMark = '⭕';
+    else weekPaceMark = '🔺';
+  }
+
+  // 週間平均（1日あたり）の目標比評価: 90〜110%=⭕ / 80〜90%・110〜120%=🔺 / それ未満・超過=💦
+  const ratioMark = (val: number, target: number): string => {
+    if (!target || target <= 0) return '';
+    const r = (val / target) * 100;
+    if (r >= 90 && r <= 110) return '⭕';
+    if ((r >= 80 && r < 90) || (r > 110 && r <= 120)) return '🔺';
+    return '💦';
+  };
+  const kcalMark = ratioMark(showKcal, customer.goals.kcal);
+  const pMark = ratioMark(showP, customer.goals.P);
+  const fMark = ratioMark(showF, customer.goals.F);
+  const cMark = ratioMark(showC, customer.goals.C);
+
   return {
     customer: customer.name,
     date: endDate,
@@ -158,6 +212,17 @@ export function buildReportVariables(
     endWeight: weightStr,
     weightDelta: weightDeltaStr,
     targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
+    // 目標達成日・残り週数・必要/実ペース（週次・月次レポート用）
+    targetDate: customer.targetDate || '-',
+    weeksToGoal: weeksToGoalNum != null ? String(weeksToGoalNum) : '-',
+    requiredPace: requiredPaceNum != null ? String(requiredPaceNum) : '-',
+    weekPace: weekPaceStr,
+    weekPaceMark,
+    // 週間平均（目標比）の評価絵文字（⭕/🔺/💦）
+    kcalMark,
+    PMark: pMark,
+    FMark: fMark,
+    CMark: cMark,
     daysToGoal: (() => {
       if (!customer.targetDate) return '-';
       const target = new Date(customer.targetDate).getTime();

@@ -25,6 +25,12 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-04 – feat(reports): 週次/月次に「目標達成日・必要/今週ペース＋週間平均(目標比)の絵文字評価」変数を追加（branch: staging）
+- feat: `lib/reports/variables.ts` にレポート変数を追加。`targetDate`（目標達成日）、`weeksToGoal`（残り週数）、`requiredPace`（必要ペースkg/週＝|登録体重−目標|÷残り週数。GoalProgressCard と同ロジック）、`weekPace`（期間の実ペースを週あたり正規化・符号付き）、`weekPaceMark`（⭕目標方向に必要ペース以上/🔺方向は合うが不足/💦逆方向）、PFC目標比の評価絵文字 `kcalMark`/`PMark`/`FMark`/`CMark`（⭕90〜110% / 🔺80〜90%・110〜120% / 💦それ未満・超過＝上下対称）。すべてコードで確定計算（AI非依存）
+- 影響範囲: レポート変数のみ（テンプレが参照すれば表示）。顧客側 LIFF 変更なし。tsc 通過。実例の数値（カロリー79.6%💦/タンパク質82.6%🔺/脂質93.3%⭕/炭水化物70.5%💦）と一致を runtime 検証済
+- 残（**本番マージ後**・テンプレDB共有のため）: 週次・月次4種テンプレに「目標までのペース」「週間平均（目標比）」ブロックを追記
+- 関連: 社長フィードバック（目標達成日/必要ペース/今週ペース＋目標比の絵文字をレポートに入れたい）。[[project_report_revamp_2026_06_04]]
+
 ## 2026-06-04 – change(store): 通知設定の文言整理＋リスク配信タイトルを「フォロー対象」に（branch: staging）
 - change: `app/store/notifications/page.tsx`。①説明文の 🔔 絵文字を Bell アイコンに ②各トグルの説明文（「〜している顧客」）を削除しラベルのみに ③ラベルの「途絶え」→「漏れ」（食事記録の漏れ／体重記録の漏れ／体重目標の停滞）
 - change: `app/api/cron/daily-reports/route.ts`。日次リスク配信のお知らせタイトルを `【本日の要注意顧客 N名】` → **`【フォロー対象 N名】`**（「要注意顧客」表現を回避＋短縮で1行に）。重複判定の prefix も同期
