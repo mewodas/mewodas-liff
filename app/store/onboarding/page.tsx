@@ -14,6 +14,7 @@ import {
   Send,
   Settings,
 } from 'lucide-react';
+import Link from 'next/link';
 import AdminShell from '@/app/admin/AdminShell';
 import { useToast } from '@/components/Toast';
 
@@ -314,6 +315,25 @@ export default function OnboardingPage() {
               </div>
             </div>
           </section>
+
+          {/* 次のアクション: お客様を招待 */}
+          <Link
+            href="/store/start"
+            className="block bg-emerald-600 text-white rounded-2xl shadow-sm p-5 active:bg-emerald-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                <Send className="w-5 h-5" strokeWidth={2.2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold">次は、お客様を招待しましょう</div>
+                <div className="text-xs text-emerald-50/90 mt-0.5">
+                  友だち追加リンク・QRコードをスタートガイドで発行できます。
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" strokeWidth={2.4} />
+            </div>
+          </Link>
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
             <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">

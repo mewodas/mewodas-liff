@@ -416,12 +416,45 @@ export default function BillingPage() {
             )}
 
             {/* ステータス系バナー（Stripe連動モードのみ） */}
-            {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl flex w-full gap-2">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
-                お試し期間中です。期間終了前にカード登録をお願いします。
-              </div>
-            )}
+            {info?.paymentStatus === 'お試し' && !info?.cancelAtPeriodEnd && (() => {
+              // トライアル残日数 = 次回請求日（=初回課金日）までの日数。新フィールド不要。
+              const nb = info.nextBillingDate;
+              const days = nb
+                ? Math.round(
+                    (new Date(nb + 'T00:00:00').getTime() -
+                      new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime()) /
+                      86_400_000
+                  )
+                : null;
+              const urgent = days !== null && days <= 3;
+              return (
+                <div
+                  className={`text-xs p-3 rounded-xl flex w-full gap-2 border ${
+                    urgent ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-blue-50 border-blue-200 text-blue-900'
+                  }`}
+                >
+                  {urgent ? (
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
+                  )}
+                  <div>
+                    <div className="font-bold">
+                      {days === null
+                        ? '無料トライアル中です'
+                        : days > 0
+                        ? `無料トライアル中：あと ${days} 日`
+                        : 'まもなく初回請求があります'}
+                    </div>
+                    <div className="mt-0.5">
+                      {nb ? `${nb} に初回請求` : '期間終了時に初回請求'}
+                      {info.monthlyPrice ? `（¥${info.monthlyPrice.toLocaleString()}）` : ''}。
+                      カード登録済みなら自動で本契約に移行します。「カード・解約」から期間中いつでもキャンセル可能です。
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             {info?.paymentStatus === '未払い' && (
               <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl flex w-full gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />

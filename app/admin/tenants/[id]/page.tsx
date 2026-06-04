@@ -24,6 +24,7 @@ type Tenant = {
   seatLimit: number | null;
   planCode: string | null;
   stripeSubscriptionId: string | null;
+  onboardingCompletedAt: string | null;
 };
 
 type PlanDef = {
@@ -250,6 +251,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
 
           {/* パスワード発行 */}
           <PasswordSection tenantPageId={tenant.pageId} ownerEmail={tenant.ownerEmail || ''} tenantName={tenant.name} />
+
+          {/* 店舗オンボーディングのリセット */}
+          <OnboardingResetSection tenantPageId={tenant.pageId} completedAt={tenant.onboardingCompletedAt ?? null} />
 
           <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
             <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
@@ -707,6 +711,102 @@ function StoreForm({
         )}
       </div>
     </div>
+  );
+}
+
+function OnboardingResetSection({
+  tenantPageId,
+  completedAt,
+}: {
+  tenantPageId: string;
+  completedAt: string | null;
+}) {
+  const [mode, setMode] = useState<'idle' | 'confirm' | 'done'>('idle');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function doReset() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantPageId}/onboarding`, { method: 'DELETE' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || `リセット失敗（${res.status}）`);
+      setMode('done');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'エラー');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-3">
+      <h2 className="text-sm font-bold text-stone-900 inline-flex items-center gap-1.5">
+        <RefreshCw className="w-4 h-4 text-violet-600" strokeWidth={2.2} />
+        店舗オンボーディング
+      </h2>
+
+      <div className="text-[11px] text-stone-600 bg-stone-50 border border-stone-200 rounded-xl p-2.5">
+        <div className="font-bold">
+          状態: {completedAt ? <span className="text-emerald-700">完了済み</span> : <span className="text-amber-700">未完了</span>}
+        </div>
+        <div className="mt-1 text-stone-600">
+          リセットすると、店舗の初回セットアップ（スタートガイド／LINE連携ウィザード）が再表示されます。
+          LIFF ID・チャネルトークン・リッチメニュー等の設定は保持されます。
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
+      )}
+
+      {mode === 'idle' && (
+        <button
+          type="button"
+          onClick={() => setMode('confirm')}
+          disabled={saving}
+          className="w-full bg-violet-500 text-white font-bold text-xs py-2 rounded-xl active:bg-violet-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+        >
+          <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.4} />
+          オンボーディングをリセット
+        </button>
+      )}
+
+      {mode === 'confirm' && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-2">
+          <div className="text-[11px] font-bold text-amber-900">⚠️ 次回ログイン時にスタートガイドが再表示されます</div>
+          <div className="text-[11px] text-amber-800">
+            連携設定（LIFF / トークン / リッチメニュー）は消えません。セットアップの進捗だけリセットします。よろしいですか？
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={doReset}
+              disabled={saving}
+              className="flex-1 bg-amber-600 text-white font-bold text-xs py-2 rounded-xl active:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} strokeWidth={2.4} />
+              {saving ? 'リセット中…' : 'リセット実行'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('idle')}
+              disabled={saving}
+              className="bg-white border border-stone-300 text-stone-700 font-bold text-xs px-3 py-2 rounded-xl active:bg-stone-50"
+            >
+              <X className="w-3.5 h-3.5" strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'done' && (
+        <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-[11px] font-bold text-emerald-800">
+          ✅ リセットしました。店舗が次にログインするとスタートガイドが表示されます。
+        </div>
+      )}
+    </section>
   );
 }
 

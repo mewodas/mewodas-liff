@@ -76,6 +76,34 @@
 - change: `app/admin/customers/page.tsx`。店舗(/store)限定で出る「LINE 連携のセットアップが未完了です」バナー＋「セットアップを始める」ボタンを violet→emerald(緑)に。店舗=緑のテーマに統一（isStore 限定表示のため緑固定）
 - 影響範囲: 管理画面（/store 顧客管理）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
 - 関連: 社長フィードバック（LINEのセットアップを store は緑に）
+## 2026-06-04 – feat(billing): past_due 通知＋トライアル終了前リマインドメール（Rank2 残り完了）（branch: feat/store-activation-guide）
+- feat(email): `lib/email.ts` に `trialEndingEmail`（終了4日前/前日）と `paymentFailedEmail`（カード更新案内）を追加
+- feat(slack): `lib/slack.ts` 新規 `notifySlack`。`SLACK_WEBHOOK_URL` があれば Incoming Webhook に POST、未設定なら no-op（呼び出し元を壊さない）
+- feat(reminders): `lib/trialReminders.ts` 新規 `runTrialReminders`。お試し中×Stripe連動のテナントへ、初回請求(`nextBillingDate`)まで残4日/前日にオーナーメール。**日次cron `daily-reports` に相乗り**（レポート設定と独立して毎日実行・残日数で判定＝状態保存不要・重複なし）
+- feat(webhook): `app/api/stripe/webhook` の `invoice.payment_failed` で `paymentStatus=未払い` に加え、**オーナーへカード更新メール＋運営へSlack通知**（try/catchで失敗してもStripeへは200）
+- 影響範囲: API(`cron/daily-reports`・`stripe/webhook`)・`lib` のみ。**顧客側LIFF・DBスキーマ変更なし**。tsc通過・`next build`成功
+- 前提env: メール=`RESEND_API_KEY`（未設定なら no_provider で送信スキップ）、Slack=`SLACK_WEBHOOK_URL`（任意）
+- 関連: 導線監査 Rank2「サイレント・トライアル転換」フル対応（社長「AB」指示・2026-06-04）
+
+## 2026-06-04 – feat(store/admin): トライアル残日数表示＋店舗オンボのadminリセット＋初回ログイン誘導（branch: feat/store-activation-guide）
+- feat(billing): `app/admin/billing/page.tsx`（=/store/billing 共有）。`paymentStatus==='お試し'` のバナーを **残日数カウントダウン＋初回請求日（＋月額）** に拡張。終了3日前で警告色（amber）。`nextBillingDate` から算出＝新フィールド不要。導線監査 Rank2「サイレント・トライアル転換」の可視化対応
+- feat(admin): `app/api/admin/tenants/[id]/onboarding/route.ts` 新規（DELETE・**withMasterOnly**）。運営がテナントの店舗オンボをリセット（`onboardingStep:0`/`onboardingCompletedAt:null` のみ・LIFF/トークン/リッチメニュー等の実設定は保持）。顧客側ツアーリセット(`customers/[id]/onboarding`)と同思想
+- feat(admin-ui): `app/admin/tenants/[id]/page.tsx` に「店舗オンボーディング」リセットセクション追加（PasswordSection 直下・状態表示＋確認ダイアログ）。ローカル Tenant 型に `onboardingCompletedAt` 追加
+- change(store): `app/store/page.tsx` ルートリダイレクトを賢く。tenant_admin かつオンボ未完了 → `/store/start`（初回ログインでスタートガイドが出る）、完了後は `/store/customers`。master は素通り。Notion取得失敗時は顧客管理にフォールバック
+- 影響範囲: 店舗側(/store)・運営(/admin)・API のみ。**顧客側 LIFF・DB スキーマ変更なし**。tsc 通過・`next build` 成功
+- Rank2 残（未実装・要infra判断）: トライアル10日目/前日のリマインドメール（既存 daily cron へ）・past_due の Slack/オーナーメール通知。0社のため即効性低く後続
+- 関連: 社長指示「Rank2まで進めて／顧客オンボと同じ感じでadminからstoreオンボをリセット／初回ログインのみ表示か？」（2026-06-04）
+
+## 2026-06-04 – feat(store): スタートガイド（アクティベーション導線）＋お客様招待リンク/QR を新設（branch: staging/store-activation-guide）
+- feat(store): `app/store/start/page.tsx` 新規。店舗の初回立ち上げを貫く **アクティベーション・ハブ**。①LINE連携 →②お客様を招待して登録 →③初記録 のチェックリスト（進捗バー付き）＋ **お客様招待セクション**（友だち追加リンクのコピー＋店頭ポスター用QRコード＋共有のしかた案内）。既存の招待トークン基盤(`lib/inviteToken.ts`)はあったが店舗UIが無く、連携後に「お客様をどう入れるか」の導線が欠落していた穴を埋める
+- feat(api): `app/api/store/activation/route.ts` 新規。連携状態(onboardingCompletedAt/liffId+token)・友だち追加URL(officialLineUrl)・顧客数(listCustomers)・初記録有無 を集約して返す（60秒キャッシュ・withAdminTenant 保護）
+- feat(api): `app/api/store/invite/qr/route.ts` 新規。友だち追加URLの **QRコードを SVG でサーバー生成**（外部サービス非依存・印刷可）。`qrcode` 依存を追加
+- feat(lib): `lib/notion.ts` に `hasAnyFoodRecordSince(date)` 追加（page_size:1 の安価な存在判定。全件スキャンを避ける）
+- change(nav): `app/admin/AdminShell.tsx`。店舗サイドバー先頭に「スタートガイド」(ListChecks・storeOnly) を追加（master/admin には非表示）
+- change(store): `app/store/onboarding/page.tsx` 完了画面に「次は、お客様を招待しましょう」CTA（→ /store/start）を追加
+- 影響範囲: 店舗側(/store)・API のみ。**顧客側 LIFF・DB スキーマ変更なし**。tsc 通過・`next build` 成功（/store/start 含む全ルートコンパイルOK）
+- 検証残: staging push → fitmeal-qa → 社長の店舗UI確認。push は origin/staging が並行作業で先行(b97c047)のため統合(fetch+rebase)後に実施
+- 関連: 社長指示「店舗側オンボーディング機能の実装＋申込→招待→有償化導線の改善」（2026-06-04 夜間自走）
 
 ## 2026-06-03 – fix(admin/store): サイドバーのグループを矢印で確実に畳めるよう修正＋トップバーのベル/バッジを少し縮小（branch: staging）
 - fix(sidebar): `app/admin/AdminShell.tsx`。グループ展開状態を `manual || active` から **tri-state（null=現在地に従う / true・false=明示トグル）** に変更。`openGroups` を `boolean|null`、`progressOpen/reportsOpen/settingsOpen` を `?? active` に、各トグルは他グループを `null`（=現在地に従う）にリセット。これにより**レポート管理等のグループ内ページにいても上矢印で確実に畳める**（従来は active が常に開状態を強制し畳めなかった）

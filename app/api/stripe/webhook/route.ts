@@ -21,6 +21,8 @@ import { listPlans } from '@/lib/notion';
 import { listTenantRows, updateTenantRow } from '@/lib/notion';
 import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import { provisionTenant } from '@/lib/provisionTenant';
+import { sendEmail, paymentFailedEmail } from '@/lib/email';
+import { notifySlack } from '@/lib/slack';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -319,6 +321,19 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   await updateTenantRow(tenant.pageId, {
     paymentStatus: '未払い',
   });
+
+  // オーナーへカード更新を促すメール + 運営へ Slack 通知（任意）。
+  // 通知失敗は webhook を壊さない（Stripe へは必ず 200 を返す）。
+  try {
+    if (tenant.ownerEmail) {
+      await sendEmail(paymentFailedEmail({ tenantName: tenant.name, ownerEmail: tenant.ownerEmail }));
+    }
+    await notifySlack(
+      `⚠️ FitMeal 支払い失敗: ${tenant.name}（${tenant.tenantId}）の請求が失敗しました。paymentStatus=未払い に更新。`
+    );
+  } catch (e) {
+    console.error('[webhook] payment_failed notification error', e);
+  }
 }
 
 async function findTenantByCustomerId(customerId: string) {

@@ -11,6 +11,14 @@ type Tab = { suffix: string; label: string; Icon: LucideIcon; match: (p: string,
 
 const TABS: Tab[] = [
   {
+    // 店舗の初回立ち上げ導線（連携→招待→初記録）。店舗のみ・サイドバー先頭に表示。
+    suffix: '/start',
+    label: 'スタートガイド',
+    Icon: ListChecks,
+    match: (p, base) => p.startsWith(`${base}/start`),
+    storeOnly: true,
+  },
+  {
     suffix: '/customers',
     label: '顧客管理',
     Icon: Users,

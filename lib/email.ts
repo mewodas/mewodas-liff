@@ -211,3 +211,73 @@ export function loginInfoEmail(params: {
     fromName: 'FitMeal',
   };
 }
+
+/** 無料トライアル終了前リマインド（終了4日前 / 前日に送信） */
+export function trialEndingEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  daysLeft: number;
+  chargeDate: string; // YYYY-MM-DD（初回請求日）
+  monthlyPrice?: number | null;
+  billingUrl?: string;
+}): EmailPayload {
+  const billingUrl = params.billingUrl || 'https://app.fitmeal.jp/store/billing';
+  const priceLine = params.monthlyPrice
+    ? `【初回請求額（目安）】 ¥${params.monthlyPrice.toLocaleString()}\n`
+    : '';
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    `FitMeal の無料トライアルが あと ${params.daysLeft} 日 で終了します。`,
+    '',
+    `【初回請求日】 ${params.chargeDate}`,
+    priceLine,
+    'カードはご登録済みです。期間終了後は自動で本契約に移行し、上記の日付で初回のお支払いが発生します。',
+    '継続される場合、お手続きは不要です。',
+    '',
+    '解約・カード変更は下記からいつでも行えます（期間中の解約はお支払いゼロです）。',
+    billingUrl,
+    '',
+    'ご不明な点があればこのメールに返信してお問い合わせください。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】無料トライアルがあと${params.daysLeft}日で終了します`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
+
+/** 支払い失敗（past_due）通知。カード更新を促す */
+export function paymentFailedEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  billingUrl?: string;
+}): EmailPayload {
+  const billingUrl = params.billingUrl || 'https://app.fitmeal.jp/store/billing';
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    'FitMeal 月額利用料のお支払いが確認できませんでした。',
+    'カードの有効期限切れ・残高不足などが考えられます。',
+    '',
+    '下記からカード情報をご更新ください。更新後は自動で再請求されます。',
+    billingUrl,
+    '',
+    '※お支払いが確認できない状態が続くと、サービスのご利用が停止される場合があります。',
+    '',
+    'ご不明な点があればこのメールに返信してお問い合わせください。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】お支払いの確認ができませんでした（カード更新のお願い）`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
