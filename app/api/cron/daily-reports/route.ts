@@ -22,6 +22,7 @@ import { resolveDateRange } from '@/lib/reports/dateRange';
 import { listAllRules, isScheduledReportsConfigured } from '@/lib/scheduledReports';
 import { computeAndStoreTenantRisk } from '@/lib/customerRiskService';
 import { listCustomerRiskByTenant } from '@/lib/repository/customerRisk';
+import { runTrialReminders } from '@/lib/trialReminders';
 import { createAnnouncement, listAllAnnouncementsAdmin, isAnnouncementsConfigured } from '@/lib/announcements';
 import type { CustomerRiskRow } from '@/lib/repository/customerRisk';
 
@@ -233,12 +234,22 @@ export async function GET(req: NextRequest) {
   }
   // ---- リスクお知らせ処理ここまで ----
 
+  // ---- 無料トライアル終了前リマインド（レポート設定と独立して毎日実行）----
+  let trialReminderResults: Awaited<ReturnType<typeof runTrialReminders>> = [];
+  try {
+    trialReminderResults = await runTrialReminders();
+  } catch (e) {
+    console.error('[cron/daily-reports] trialReminders failed', e);
+  }
+  // ---- トライアルリマインドここまで ----
+
   if (!isScheduledReportsConfigured()) {
     return NextResponse.json({
       ok: false,
       reason: 'SCHEDULED_REPORTS_DB_ID 未設定',
       executedAt: now.toISOString(),
       riskAlertResults,
+      trialReminderResults,
     });
   }
 
@@ -254,6 +265,7 @@ export async function GET(req: NextRequest) {
       firingRules: 0,
       results: [],
       riskAlertResults,
+      trialReminderResults,
     });
   }
 
@@ -483,5 +495,6 @@ export async function GET(req: NextRequest) {
     firingRules: firingRules.length,
     results,
     riskAlertResults,
+    trialReminderResults,
   });
 }

@@ -51,6 +51,15 @@
 - change: `app/admin/customers/page.tsx`。店舗(/store)限定で出る「LINE 連携のセットアップが未完了です」バナー＋「セットアップを始める」ボタンを violet→emerald(緑)に。店舗=緑のテーマに統一（isStore 限定表示のため緑固定）
 - 影響範囲: 管理画面（/store 顧客管理）のみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
 - 関連: 社長フィードバック（LINEのセットアップを store は緑に）
+## 2026-06-04 – feat(billing): past_due 通知＋トライアル終了前リマインドメール（Rank2 残り完了）（branch: feat/store-activation-guide）
+- feat(email): `lib/email.ts` に `trialEndingEmail`（終了4日前/前日）と `paymentFailedEmail`（カード更新案内）を追加
+- feat(slack): `lib/slack.ts` 新規 `notifySlack`。`SLACK_WEBHOOK_URL` があれば Incoming Webhook に POST、未設定なら no-op（呼び出し元を壊さない）
+- feat(reminders): `lib/trialReminders.ts` 新規 `runTrialReminders`。お試し中×Stripe連動のテナントへ、初回請求(`nextBillingDate`)まで残4日/前日にオーナーメール。**日次cron `daily-reports` に相乗り**（レポート設定と独立して毎日実行・残日数で判定＝状態保存不要・重複なし）
+- feat(webhook): `app/api/stripe/webhook` の `invoice.payment_failed` で `paymentStatus=未払い` に加え、**オーナーへカード更新メール＋運営へSlack通知**（try/catchで失敗してもStripeへは200）
+- 影響範囲: API(`cron/daily-reports`・`stripe/webhook`)・`lib` のみ。**顧客側LIFF・DBスキーマ変更なし**。tsc通過・`next build`成功
+- 前提env: メール=`RESEND_API_KEY`（未設定なら no_provider で送信スキップ）、Slack=`SLACK_WEBHOOK_URL`（任意）
+- 関連: 導線監査 Rank2「サイレント・トライアル転換」フル対応（社長「AB」指示・2026-06-04）
+
 ## 2026-06-04 – feat(store/admin): トライアル残日数表示＋店舗オンボのadminリセット＋初回ログイン誘導（branch: feat/store-activation-guide）
 - feat(billing): `app/admin/billing/page.tsx`（=/store/billing 共有）。`paymentStatus==='お試し'` のバナーを **残日数カウントダウン＋初回請求日（＋月額）** に拡張。終了3日前で警告色（amber）。`nextBillingDate` から算出＝新フィールド不要。導線監査 Rank2「サイレント・トライアル転換」の可視化対応
 - feat(admin): `app/api/admin/tenants/[id]/onboarding/route.ts` 新規（DELETE・**withMasterOnly**）。運営がテナントの店舗オンボをリセット（`onboardingStep:0`/`onboardingCompletedAt:null` のみ・LIFF/トークン/リッチメニュー等の実設定は保持）。顧客側ツアーリセット(`customers/[id]/onboarding`)と同思想
