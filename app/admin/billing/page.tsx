@@ -176,9 +176,18 @@ export default function BillingPage() {
             {info?.isOverLimit && (
               <div className="bg-rose-50 border border-rose-300 text-rose-900 text-xs p-3 rounded-xl flex w-full gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
-                <div>
+                <div className="flex-1">
                   <div className="font-bold">利用可能アカウント数の上限に達しています（{info.seatLimit}名満席）</div>
                   <div>新規招待・顧客追加には増枠が必要です。</div>
+                  {(info.billingMode === 'Stripe連動' || !info.billingMode) && (
+                    <button
+                      onClick={() => setShowSeatModal(true)}
+                      className="mt-2 inline-flex items-center gap-1 bg-rose-600 text-white font-bold px-3 py-1.5 rounded-lg active:bg-rose-800 text-xs"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.4} />
+                      今すぐ増枠する
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -187,7 +196,18 @@ export default function BillingPage() {
             {!info?.isOverLimit && info?.isNearLimit && (
               <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl flex w-full gap-2 items-start">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" strokeWidth={2.2} />
-                <div>あと1名で利用可能アカウント数の上限です。早めの増枠をご検討ください。</div>
+                <div className="flex-1">
+                  <div>あと1名で利用可能アカウント数の上限です。早めの増枠をご検討ください。</div>
+                  {(info.billingMode === 'Stripe連動' || !info.billingMode) && (
+                    <button
+                      onClick={() => setShowSeatModal(true)}
+                      className="mt-2 inline-flex items-center gap-1 bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg active:bg-amber-800 text-xs"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.4} />
+                      増枠する
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

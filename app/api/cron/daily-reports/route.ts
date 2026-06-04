@@ -23,6 +23,7 @@ import { listAllRules, isScheduledReportsConfigured } from '@/lib/scheduledRepor
 import { computeAndStoreTenantRisk } from '@/lib/customerRiskService';
 import { listCustomerRiskByTenant } from '@/lib/repository/customerRisk';
 import { runTrialReminders } from '@/lib/trialReminders';
+import { runOnboardingNudges } from '@/lib/onboardingNudge';
 import { createAnnouncement, listAllAnnouncementsAdmin, isAnnouncementsConfigured } from '@/lib/announcements';
 import type { CustomerRiskRow } from '@/lib/repository/customerRisk';
 
@@ -243,6 +244,15 @@ export async function GET(req: NextRequest) {
   }
   // ---- トライアルリマインドここまで ----
 
+  // ---- オンボーディング未完了の催促（レポート設定と独立して毎日実行）----
+  let onboardingNudgeResults: Awaited<ReturnType<typeof runOnboardingNudges>> = [];
+  try {
+    onboardingNudgeResults = await runOnboardingNudges();
+  } catch (e) {
+    console.error('[cron/daily-reports] onboardingNudges failed', e);
+  }
+  // ---- オンボ催促ここまで ----
+
   if (!isScheduledReportsConfigured()) {
     return NextResponse.json({
       ok: false,
@@ -250,6 +260,7 @@ export async function GET(req: NextRequest) {
       executedAt: now.toISOString(),
       riskAlertResults,
       trialReminderResults,
+      onboardingNudgeResults,
     });
   }
 
@@ -266,6 +277,7 @@ export async function GET(req: NextRequest) {
       results: [],
       riskAlertResults,
       trialReminderResults,
+      onboardingNudgeResults,
     });
   }
 
@@ -496,5 +508,6 @@ export async function GET(req: NextRequest) {
     results,
     riskAlertResults,
     trialReminderResults,
+    onboardingNudgeResults,
   });
 }

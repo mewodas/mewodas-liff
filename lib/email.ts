@@ -281,3 +281,32 @@ export function paymentFailedEmail(params: {
     fromName: 'FitMeal',
   };
 }
+
+/** オンボーディング未完了の催促（登録から数日経っても LINE 連携が終わっていない店舗へ） */
+export function onboardingNudgeEmail(params: {
+  tenantName: string;
+  ownerEmail: string;
+  startUrl?: string;
+}): EmailPayload {
+  const startUrl = params.startUrl || 'https://app.fitmeal.jp/store/start';
+  const body = [
+    `${params.tenantName} 様`,
+    '',
+    'FitMeal のセットアップがまだ完了していないようです。',
+    'LINE 公式アカウントとの連携が終わると、お客様がアプリで食事を記録できるようになります。',
+    '',
+    '下記のスタートガイドから、残りのステップ（LINE連携 → お客様の招待）を進めてください。所要 10〜15 分です。',
+    startUrl,
+    '',
+    'セットアップでお困りの場合は、このメールに返信いただければサポートします。',
+    '',
+    '--',
+    'FitMeal',
+  ].join('\n');
+  return {
+    to: params.ownerEmail,
+    subject: `【FitMeal】セットアップを完了して、お客様の利用を始めましょう`,
+    body,
+    fromName: 'FitMeal',
+  };
+}
