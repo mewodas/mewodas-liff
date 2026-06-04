@@ -1,28 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BellRing, Loader2 } from 'lucide-react';
+import { BellRing, Bell, Loader2 } from 'lucide-react';
 import AdminShell from '@/app/admin/AdminShell';
 import { useToast } from '@/components/Toast';
 
 type RiskKey = 'riskMeal' | 'riskWeight' | 'riskWeightGoal';
 
-const RISK_ITEMS: { key: RiskKey; label: string; description: string }[] = [
-  {
-    key: 'riskMeal',
-    label: '食事記録の途絶え',
-    description: '食事記録が途絶えている顧客',
-  },
-  {
-    key: 'riskWeight',
-    label: '体重記録の途絶え',
-    description: '体重記録が途絶えている顧客',
-  },
-  {
-    key: 'riskWeightGoal',
-    label: '体重目標の停滞',
-    description: '体重が停滞し目標に近づいていない顧客',
-  },
+const RISK_ITEMS: { key: RiskKey; label: string }[] = [
+  { key: 'riskMeal', label: '食事記録の漏れ' },
+  { key: 'riskWeight', label: '体重記録の漏れ' },
+  { key: 'riskWeightGoal', label: '体重目標の停滞' },
 ];
 
 export default function StoreNotificationsPage() {
@@ -79,7 +67,9 @@ export default function StoreNotificationsPage() {
       <div className="space-y-4">
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800 leading-relaxed">
           お知らせは毎日の定期配信と同時に送られます。<br />
-          受信したお知らせは画面右上のベルマーク 🔔 から確認できます。
+          受信したお知らせは画面右上のベルマーク
+          <Bell className="inline-block w-3.5 h-3.5 mx-0.5 -mt-0.5" strokeWidth={2.2} aria-hidden />
+          から確認できます。
         </div>
 
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-4">
@@ -98,11 +88,8 @@ export default function StoreNotificationsPage() {
                 const isOn = flags[item.key];
                 const isSaving = saving === item.key;
                 return (
-                  <div key={item.key} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-stone-800">{item.label}</div>
-                      <div className="text-xs text-stone-500 mt-0.5">{item.description}</div>
-                    </div>
+                  <div key={item.key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="flex-1 min-w-0 text-sm font-medium text-stone-800">{item.label}</div>
                     <button
                       type="button"
                       onClick={() => handleToggle(item.key)}

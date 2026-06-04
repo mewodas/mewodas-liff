@@ -25,6 +25,12 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-04 – change(store): 通知設定の文言整理＋リスク配信タイトルを「フォロー対象」に（branch: staging）
+- change: `app/store/notifications/page.tsx`。①説明文の 🔔 絵文字を Bell アイコンに ②各トグルの説明文（「〜している顧客」）を削除しラベルのみに ③ラベルの「途絶え」→「漏れ」（食事記録の漏れ／体重記録の漏れ／体重目標の停滞）
+- change: `app/api/cron/daily-reports/route.ts`。日次リスク配信のお知らせタイトルを `【本日の要注意顧客 N名】` → **`【フォロー対象 N名】`**（「要注意顧客」表現を回避＋短縮で1行に）。重複判定の prefix も同期
+- 影響範囲: 管理画面（/store 通知設定）＋日次配信cronのタイトルのみ。顧客側 LIFF・API・DB 変更なし。tsc 通過
+- 関連: 社長フィードバック（絵文字→アイコン／説明文不要／途絶え→漏れ／タイトル短縮／要注意顧客の言い換え）
+
 ## 2026-06-04 – feat(reports): 週次/月次レポートの体重を「開始→最終(増減)」表記化＋達成率%廃止＋顧客分析の送付導線常設（branch: staging）
 - feat: レポート変数に `startWeight`/`endWeight`/`weightDelta` を追加。`lib/notion.ts` に `getWeightBoundsInRange`（期間内の最初/最後の有効体重を1回の取得で返す。`getLastWeightInRange` は薄いラッパに）。`lib/reports/variables.ts` に `firstWeight` 引数を追加し、`{startWeight}kg → {endWeight}kg（{weightDelta}kg）` を組める変数を公開（増減は `+1.2`/`-1.7`/`±0` 形式）。呼び出し側 `app/api/admin/reports/generate/route.ts`・`app/api/cron/daily-reports/route.ts` を bounds 取得に変更し firstWeight を伝播
 - change: AIコメント生成（`lib/gemini.ts` `generateReportComments`）から「達成率○%」を除去。プロンプトに「割合(%)表現は使わず、目標との差は kcal・g の実数で。食事管理は100%必達ではなく減量幅で適正量が変わる前提」ルールを追加
