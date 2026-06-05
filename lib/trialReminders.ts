@@ -22,13 +22,19 @@ export type TrialReminderResult = {
 // 送信トリガーとなる「残日数」。10日目相当(=終了4日前)と前日。
 const REMIND_DAYS = new Set([4, 1]);
 
-export async function runTrialReminders(): Promise<TrialReminderResult[]> {
+export async function runTrialReminders(
+  prefetchedRows?: Awaited<ReturnType<typeof listTenantRows>>
+): Promise<TrialReminderResult[]> {
   const results: TrialReminderResult[] = [];
   let rows;
-  try {
-    rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
-  } catch (e) {
-    return [{ tenantId: '*', status: 'error', error: e instanceof Error ? e.message : 'listTenantRows failed' }];
+  if (prefetchedRows) {
+    rows = prefetchedRows;
+  } else {
+    try {
+      rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+    } catch (e) {
+      return [{ tenantId: '*', status: 'error', error: e instanceof Error ? e.message : 'listTenantRows failed' }];
+    }
   }
 
   const today = todayYmdJst();

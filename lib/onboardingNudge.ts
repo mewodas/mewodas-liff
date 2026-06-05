@@ -22,13 +22,19 @@ export type OnboardingNudgeResult = {
 // 催促を送る「登録からの経過日数」。
 const NUDGE_DAYS = new Set([1, 3, 7]);
 
-export async function runOnboardingNudges(): Promise<OnboardingNudgeResult[]> {
+export async function runOnboardingNudges(
+  prefetchedRows?: Awaited<ReturnType<typeof listTenantRows>>
+): Promise<OnboardingNudgeResult[]> {
   const results: OnboardingNudgeResult[] = [];
   let rows;
-  try {
-    rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
-  } catch (e) {
-    return [{ tenantId: '*', status: 'error', error: e instanceof Error ? e.message : 'listTenantRows failed' }];
+  if (prefetchedRows) {
+    rows = prefetchedRows;
+  } else {
+    try {
+      rows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+    } catch (e) {
+      return [{ tenantId: '*', status: 'error', error: e instanceof Error ? e.message : 'listTenantRows failed' }];
+    }
   }
 
   const today = todayYmdJst();

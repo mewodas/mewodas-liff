@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-05 – perf(cron): daily-reports のテナント一覧取得を1回に集約（branch: staging）
+- perf: `app/api/cron/daily-reports/route.ts`。`listTenantRows` をリスク配信/トライアルリマインド/オンボ催促/レポート配信で個別に呼んでいた（3〜4回）のを**冒頭で1回取得して共有**。`runTrialReminders`/`runOnboardingNudges`（`lib/trialReminders.ts`/`lib/onboardingNudge.ts`）に `prefetchedRows` 引数を追加（未指定なら従来どおり自前取得＝後方互換）
+- 影響範囲: 日次cronのみ。**挙動不変**（Notionクエリ回数の削減のみ）。tsc通過・`next build`成功
+- 関連: 導線改善（Rank1〜5）後のクリーンアップ（社長「全部進めよう」・2026-06-05）
+
 ## 2026-06-04 – feat(funnel): Rank3 オンボ未完了の催促 / Rank4 ウェルカムメール失敗通知 / Rank5 席アップグレードCTA（branch: staging）
 - feat(Rank3): `lib/onboardingNudge.ts` 新規 `runOnboardingNudges`。契約開始(`startDate`)から **1/3/7日** たっても未連携(`onboardingCompletedAt=null`)の店舗オーナーへセットアップ催促メール（/store/start へ誘導）。`daily-reports` cron に相乗り（残日数判定＝状態保存不要・7日で打ち切り）。`lib/email.ts` に `onboardingNudgeEmail` 追加
 - feat(Rank4): `lib/provisionTenant.ts`。ウェルカム/ログイン情報メール送信に失敗した場合、運営へ **Slack 通知**（`notifySlack`）。オーナーが初期PWを受け取れていないので /admin/tenants から再発行→手動連絡する導線を案内
