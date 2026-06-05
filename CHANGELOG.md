@@ -25,6 +25,25 @@
 - fix: `app/admin/analysis/page.tsx`（/store/analysis は同ファイルを re-export）。食事一覧（`mealList`）と AIサマリ（`analysis`）が独立 state で同時描画され、AIサマリ section が長い食事一覧の**下**に出るため「食事一覧を見る→AIでサマリ作成」でサマリが画面外下に生成され「反応しない／表示されない」ように見えていた。`runAi()` 冒頭で `setMealList(null)`/`setMealListError(null)`、`fetchMealList()` 冒頭で `setAnalysis(null)`/`setAiError(null)`/`setAiMessage(null)` を追加し、**後から押した方に切り替わる排他表示**に変更
 - 影響範囲: 管理画面（/admin・/store 顧客分析）の表示のみ。顧客側 LIFF・API・DB 変更なし。tsc 当該ファイル通過
 - 関連: 社長報告「食事一覧を見る後にAIでサマリ作成を押すとAIサマリが反応/表示されない」
+## 2026-06-05 – fix(LIFF): 運動「した」トグルの「顧客が見つかりません」誤エラーも解消（GASベストエフォート化）（branch: staging）
+- fix(exercise): `app/api/log/exercise/route.ts`。ホームの「運動した」簡易トグルの GAS 書き込み（`liff_save_exercise`）を **try/catch でベストエフォート化**。これまでは GAS が `顧客が見つかりません` を返すと 500 になり、顧客に「運動保存に失敗しました: 顧客が見つかりません」とアラート表示していた（体重保存と同じ罠）
+- 安全性の根拠: ①ホームは運動状態を読み戻さない（`/api/today` は `exercised:''` 固定）②GAS シート由来の運動は `foodSheetPageId` を持つ mewodas 系顧客の admin 分析でのみ参照（運動DB `/api/exercise-log` を優先し日付でdedup）。よって mewodas 顧客は従来どおり GAS 成功で挙動不変、自己登録・他テナント顧客は GAS 失敗を静かにスキップ（元々読まれないデータ）＝**偽エラーが消えるだけで実害なし**
+- 補足: 簡易トグル（boolean+自由文）は構造化運動DB（`/api/exercise-log`：category/duration/intensity）とデータモデルが別物のため、DB ミラーは admin 分析の二重計上を招くので**あえて行わない**。GAS ベストエフォートが最小・最安全の正解
+- 影響範囲: 顧客側 API（`/api/log/exercise`）のみ。DBスキーマ変更なし。tsc 通過
+- 関連: 直前の体重/AI相談バグ修正で「既知の関連リスク」として挙げた運動トグルへの対応（社長「続けて修正して」・2026-06-05）。[[feedback_gas_single_tenant_besteffort]]
+
+## 2026-06-05 – fix(LIFF): 体重保存の「顧客が見つかりません」誤エラー解消 / AI相談 Gemini 503 を自動リトライ＋平易な文言に（branch: staging）
+- fix(weight): `app/api/log/weight/route.ts`。体重保存の主従が逆転していた問題を修正。**Notion 体重ログDB（`createWeightLog`／ホーム表示=`/api/today` の `getLatestWeight` が参照する真実のソース）を必須の書き込み**にし、**GAS（旧 mewodas スプレッドシート連携・全テナント共通の単一エンドポイント）はベストエフォートのミラー**に降格。これまでは GAS が主で、自己登録顧客・mewodas 以外のテナント顧客が GAS シートに居ないと `{ ok:false, error:'顧客が見つかりません' }` を返し、**DB には正しく保存できているのに**顧客へ「体重保存に失敗しました: 顧客が見つかりません」と誤表示していた。`/api/exercise-log` の「顧客未検出でも保存する」設計に整合
+- fix(chat): `lib/gemini.ts` `chatWithAi`。単発 fetch（リトライ無し・フォールバック無し）を、PFC解析の `callGemini` と同方式の **主モデル(gemini-2.5-flash)→フォールバック(gemini-2.5-flash-lite)＋各 `MAX_RETRIES` 指数バックオフ** に変更。Gemini 過負荷（503/UNAVAILABLE/high demand）で救済できなかった場合も、生のエラーJSON（`Gemini Chat失敗 503: {...}`）ではなく **「AIが混み合っています。少し時間をおいてからもう一度お試しください。」** を返す。安全フィルタ/空応答は従来どおり非リトライで即返す
+- 影響範囲: 顧客側 API（`/api/log/weight`・`/api/chat`）／`lib/gemini.ts`。**DBスキーマ変更なし**。tsc 通過
+- 既知の関連リスク（今回は未修正）: ホームの「運動した」簡易トグル `app/api/log/exercise/route.ts` も GAS のみ書き込みで同じ「顧客が見つかりません」が起き得る（データモデルが boolean+free text で DB 版 `/api/exercise-log` と別物のため要別途検討）
+- 関連: 顧客からのバグ報告スクショ3枚（2026/06/01 体重保存エラー＋AI相談 503×2）。[[project_fitmeal_saas]] [[feedback_test_customer_line_id]]
+
+## 2026-06-05 – perf(cron): daily-reports のテナント一覧取得を1回に集約（branch: staging）
+- perf: `app/api/cron/daily-reports/route.ts`。`listTenantRows` をリスク配信/トライアルリマインド/オンボ催促/レポート配信で個別に呼んでいた（3〜4回）のを**冒頭で1回取得して共有**。`runTrialReminders`/`runOnboardingNudges`（`lib/trialReminders.ts`/`lib/onboardingNudge.ts`）に `prefetchedRows` 引数を追加（未指定なら従来どおり自前取得＝後方互換）
+- 影響範囲: 日次cronのみ。**挙動不変**（Notionクエリ回数の削減のみ）。tsc通過・`next build`成功
+- 関連: 導線改善（Rank1〜5）後のクリーンアップ（社長「全部進めよう」・2026-06-05）
+
 ## 2026-06-04 – feat(funnel): Rank3 オンボ未完了の催促 / Rank4 ウェルカムメール失敗通知 / Rank5 席アップグレードCTA（branch: staging）
 - feat(Rank3): `lib/onboardingNudge.ts` 新規 `runOnboardingNudges`。契約開始(`startDate`)から **1/3/7日** たっても未連携(`onboardingCompletedAt=null`)の店舗オーナーへセットアップ催促メール（/store/start へ誘導）。`daily-reports` cron に相乗り（残日数判定＝状態保存不要・7日で打ち切り）。`lib/email.ts` に `onboardingNudgeEmail` 追加
 - feat(Rank4): `lib/provisionTenant.ts`。ウェルカム/ログイン情報メール送信に失敗した場合、運営へ **Slack 通知**（`notifySlack`）。オーナーが初期PWを受け取れていないので /admin/tenants から再発行→手動連絡する導線を案内

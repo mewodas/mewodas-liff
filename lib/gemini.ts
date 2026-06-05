@@ -738,43 +738,62 @@ ${targetWeight ? `- 目標体重：${targetWeight}kg` : ''}
     { role: 'user', parts: [{ text: message }] },
   ];
 
-  const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      generationConfig: {
-        // 日本語は1文字あたり1.5〜2トークン消費。600文字でも応答に回せるよう3000に。
-        // thinkingBudget=0 で「考える」トークン消費を停止 → 応答に全トークンを回せる
-        maxOutputTokens: 3000,
-        temperature: 0.7,
-        topP: 0.9,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    }),
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini Chat失敗 ${res.status}: ${errText.slice(0, 200)}`);
+  // 主モデル + フォールバックモデル、それぞれリトライ付き（PFC 解析の callGemini と同方式）。
+  // Gemini 過負荷（503/UNAVAILABLE/high demand）時に生のエラーJSONを顧客に見せず、
+  // 自動リトライ → フォールバックモデルで救済し、それでも駄目なら平易な日本語で返す。
+  const models = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  let lastError = '';
+  for (const model of models) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: {
+              // 日本語は1文字あたり1.5〜2トークン消費。600文字でも応答に回せるよう3000に。
+              // thinkingBudget=0 で「考える」トークン消費を停止 → 応答に全トークンを回せる
+              maxOutputTokens: 3000,
+              temperature: 0.7,
+              topP: 0.9,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Gemini Chat失敗 ${res.status}: ${errText.slice(0, 200)}`);
+        }
+        const data = await res.json();
+        const candidate = data.candidates?.[0];
+        const text: string = candidate?.content?.parts?.[0]?.text ?? '';
+        const finishReason: string = candidate?.finishReason ?? '';
+        // 途切れ検出：MAX_TOKENS で切れた場合は注記を付ける
+        if (finishReason === 'MAX_TOKENS' && text) {
+          return text.trim() + '\n\n（応答が長くなったので途中で区切りました。続きは「続けて」と聞いてください）';
+        }
+        if (!text) {
+          // 安全フィルタ・空応答はリトライしても変わらないので即座にユーザーへ返す（非リトライ対象）
+          throw new Error(
+            finishReason === 'SAFETY'
+              ? 'AIが回答を控えました（安全フィルタ）。別の質問をお試しください。'
+              : 'AI応答が空でした。もう一度お試しください。'
+          );
+        }
+        return text.trim();
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+        const retriable = /\b(503|429|500|502|504)\b|overloaded|UNAVAILABLE|high demand/i.test(lastError);
+        if (!retriable) throw e;
+        if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * (attempt + 1));
+      }
+    }
   }
-  const data = await res.json();
-  const candidate = data.candidates?.[0];
-  const text: string = candidate?.content?.parts?.[0]?.text ?? '';
-  const finishReason: string = candidate?.finishReason ?? '';
-  // 途切れ検出：MAX_TOKENS で切れた場合は注記を付ける
-  if (finishReason === 'MAX_TOKENS' && text) {
-    return text.trim() + '\n\n（応答が長くなったので途中で区切りました。続きは「続けて」と聞いてください）';
-  }
-  if (!text) {
-    throw new Error(
-      finishReason === 'SAFETY'
-        ? 'AIが回答を控えました（安全フィルタ）。別の質問をお試しください。'
-        : 'AI応答が空でした。もう一度お試しください。'
-    );
-  }
-  return text.trim();
+  // 全モデル・全リトライで過負荷。生のJSONではなく顧客向けの平易なメッセージを返す。
+  throw new Error('AIが混み合っています。少し時間をおいてからもう一度お試しください。');
 }
 
 export type MealSuggestion = {

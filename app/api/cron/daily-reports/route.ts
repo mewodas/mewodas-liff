@@ -148,6 +148,10 @@ export async function GET(req: NextRequest) {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayDate = fmtDate(yesterday);
 
+  // テナント一覧は1回だけ取得し、リスク/トライアル/オンボ催促/レポート配信で共有
+  // （以前は各処理が個別に listTenantRows を叩いていた重複を解消）。
+  const allTenantRows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+
   // ---- リスクお知らせ処理（レポート設定と独立して毎日実行）----
   const riskAlertResults: Array<{
     tenantId: string;
@@ -158,7 +162,7 @@ export async function GET(req: NextRequest) {
 
   if (isAnnouncementsConfigured()) {
     try {
-      const allTenantRowsForRisk = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+      const allTenantRowsForRisk = allTenantRows;
       // dedupe 用: 今日すでに送信済みのお知らせを全取得
       const existingAnnouncements = await listAllAnnouncementsAdmin();
       const sentTodayTenants = new Set<string>(
@@ -238,7 +242,7 @@ export async function GET(req: NextRequest) {
   // ---- 無料トライアル終了前リマインド（レポート設定と独立して毎日実行）----
   let trialReminderResults: Awaited<ReturnType<typeof runTrialReminders>> = [];
   try {
-    trialReminderResults = await runTrialReminders();
+    trialReminderResults = await runTrialReminders(allTenantRows);
   } catch (e) {
     console.error('[cron/daily-reports] trialReminders failed', e);
   }
@@ -247,7 +251,7 @@ export async function GET(req: NextRequest) {
   // ---- オンボーディング未完了の催促（レポート設定と独立して毎日実行）----
   let onboardingNudgeResults: Awaited<ReturnType<typeof runOnboardingNudges>> = [];
   try {
-    onboardingNudgeResults = await runOnboardingNudges();
+    onboardingNudgeResults = await runOnboardingNudges(allTenantRows);
   } catch (e) {
     console.error('[cron/daily-reports] onboardingNudges failed', e);
   }
@@ -281,7 +285,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const allTenantRows = await listTenantRows(FITMEAL_TENANTS_DB_ID);
+  // allTenantRows は冒頭で取得済み（共有）。
   const tenantRowMap = new Map(allTenantRows.map((r) => [r.tenantId, r]));
 
   const results: Array<{
