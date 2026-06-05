@@ -45,12 +45,21 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
 
-    await callGasSaveExercise({
-      lineUserId: verifiedLineUserId,
-      date,
-      exercised,
-      content: content || '',
-    });
+    // GAS（旧 mewodas スプレッドシート連携・全テナント共通の単一エンドポイント）はベストエフォート。
+    // ホームは運動状態を読み戻さず（/api/today は exercised:'' 固定）、GAS シート由来の運動は
+    // foodSheetPageId を持つ mewodas 系顧客の admin 分析でのみ参照される（運動DB優先・日付dedup済）。
+    // 自己登録・他テナント顧客は GAS シートに存在せず「顧客が見つかりません」を返すが、それで保存を
+    // 失敗扱いにして顧客にエラーアラートを見せない。※体重保存 /api/log/weight と同じ方針。
+    try {
+      await callGasSaveExercise({
+        lineUserId: verifiedLineUserId,
+        date,
+        exercised,
+        content: content || '',
+      });
+    } catch (e) {
+      console.error('GAS運動ミラー書き込み失敗（無視して継続）:', e);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
