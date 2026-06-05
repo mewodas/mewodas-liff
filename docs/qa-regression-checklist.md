@@ -1,6 +1,6 @@
 # QA 回帰チェックリスト
 
-最終更新: 2026-06-01（AdminShell 左サイドバー刷新 1c69ba2 追加）
+最終更新: 2026-06-05（体重保存主従逆転修正＋AI相談Geminiリトライ追加 9e50d5f 追加）
 担当: QA エージェント（fitmeal-qa）
 
 ---
@@ -122,6 +122,23 @@
 | P1 | /profile → 表示・更新保存 | [M] | CORE |
 | P2 | /goals → 目標 PFC 表示・更新 | [M] | CORE |
 | P3 | /weight → 体重記録 | [M] | CORE |
+
+### 体重保存 / AI相談 バグ修正（2026-06-05 追加 commit 9e50d5f）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| WT1 | /weight → 体重入力→保存 → ホームの「現在体重」に反映される（DB 書き込み = 主ルート確認） | [M] | CORE（修正対象） |
+| WT2 | /api/log/weight: 無認証 → 401 | [A] ✅ 9e50d5f | CORE |
+| WT3 | /api/log/weight: 正常リクエスト → 200 `{ok:true}` が返る（GAS 結果に関わらず DB 保存成功で 200） | [A] 認証必要 | CORE（修正対象） |
+| WT4 | /api/log/weight: GAS が `{ok:false, error:'顧客が見つかりません'}` を返しても 500 にならない（コード確認済み: console.error のみ） | [A] コード確認済み ✅ | CORE（修正の核心） |
+| WT5 | /api/log/weight: Notion DB 書き込み自体が失敗した場合は 500 が返る（コード確認済み: dbResult rejected → throw） | [A] コード確認済み ✅ | CORE |
+| WT6 | /api/chat: 無認証 → 401 | [A] ✅ 9e50d5f | CORE |
+| WT7 | /api/chat: 通常メッセージ → 200 `{ok:true, reply:"..."}` が返る（リトライ追加で正常応答が壊れていないこと） | [A] 認証必要 | CORE（修正対象） |
+| WT8 | /api/chat: Gemini 過負荷時（503等）に「Gemini Chat失敗 503: {...}」生JSONでなく「AIが混み合っています。少し時間をおいてからもう一度お試しください。」が error フィールドに入る（コード確認済み） | [A] コード確認済み ✅ | CORE（修正の核心） |
+| WT9 | /api/chat: 安全フィルタ（SAFETY）時は「AIが回答を控えました（安全フィルタ）。別の質問をお試しください。」を即返す（リトライしない） | [A] コード確認済み ✅ | CORE |
+| WT10 | /api/chat: 空応答時は「AI応答が空でした。もう一度お試しください。」を即返す（リトライしない） | [A] コード確認済み ✅ | CORE |
+| WT11 | /home → 体重保存後「体重保存に失敗しました: 顧客が見つかりません」アラートが出ない（自己登録顧客・他テナント顧客でも） | [M] | CORE（バグ再発防止） |
+| WT12 | /chat → AI相談で「Gemini Chat失敗 503:...」生JSONが画面に表示されない | [M] | CORE（バグ再発防止） |
 
 ---
 
@@ -250,16 +267,16 @@
 | AUD27 | 本番 Neon 接続後: password / passwordHash / token が audit_log の metadata カラムに含まれていないこと | 本番 Neon 接続後に実施 | CORE（セキュリティ） |
 | AUD28 | 本番 Neon 接続後: Neon DB 書き込み遅延（waitUntil）で login レスポンスタイムが増加していないこと | 本番 Neon 接続後に実施 | CORE（パフォーマンス） |
 
-### AdminShell 左サイドバー刷新 — 2026-06-01 追加（commit 1c69ba2）
+### AdminShell 左サイドバー刷新 — 2026-06-01 追加（commit 1c69ba2）/ c817df9 でメニュー再編・緑化・トップバー拡大
 
 | # | 確認項目 | 方法 | 優先度 |
 |---|---------|------|-------|
-| SB1 | /store/* 未認証 → /store/login?from=... に 307 | [A] 本番確認済み ✅ | CORE |
-| SB2 | /admin/* 未認証 → /admin/login?from=... に 307 | [A] 本番確認済み ✅ | CORE |
+| SB1 | /store/* 未認証 → /store/login?from=... に 307 | [A] staging c817df9 確認済み ✅ | CORE |
+| SB2 | /admin/* 未認証 → /admin/login?from=... に 307 | [A] staging c817df9 確認済み ✅ | CORE |
 | SB3 | /api/admin/auth/me: Cookie なし → 401 | [A] 本番確認済み ✅ | CORE |
 | SB4 | /api/admin/auth/logout: Cookie なし → 401（CSRF チェックも有効） | [A] 本番確認済み ✅ | CORE |
-| SB5 | store サイドバーアクセントカラーが violet（選択ハイライト・アクセントバー）| [M] | CORE |
-| SB6 | admin サイドバーアクセントカラーが emerald | [M] | CORE |
+| SB5 | store サイドバーアクセントカラーが emerald（選択ハイライト・アクセントバー）| [M] | CORE |
+| SB6 | admin サイドバーアクセントカラーが violet | [M] | CORE |
 | SB7 | store バッジ「店舗」の文字色・背景色が emerald（アクセントと逆＝既知 nit） | [M] 確認のみ | nit |
 | SB8 | admin バッジ「アドミン」の文字色・背景色が violet（アクセントと逆＝既知 nit） | [M] 確認のみ | nit |
 | SB9 | md 以上(768px+)でサイドバーが常時固定表示される（ハンバーガーボタン非表示） | [M] | CORE |
@@ -280,10 +297,33 @@
 | SB24 | admin トップバーにお知らせベルが表示されない（storeOnly） | [M] | CORE |
 | SB25 | back prop 渡し時: トップバーに戻るボタン（ChevronLeft）が表示される | [M] | CORE |
 | SB26 | ロゴクリック → /store/progress または /admin/progress に遷移 | [M] | CORE |
-| SB27 | store ナビ: 顧客管理 / 進捗管理G(進捗管理・食事一覧・体組成) / 顧客分析 / レポート送付 / 設定G(LINE連携・契約管理・通知設定・テンプレ・店舗一覧) | [M] | CORE |
-| SB28 | admin ナビ(tenant_admin): 顧客管理 / 進捗管理G / 顧客分析 / レポート送付 / 設定G(テンプレ) ※テナント/プラン/監査なし | [M] | CORE |
+| SB27 | store ナビ: 顧客管理 / 進捗管理G(進捗一覧・食事一覧・体組成) / 顧客分析 / レポート管理G(レポート作成・テンプレ管理) / 設定G(契約管理・通知設定・店舗一覧・LINE連携設定) ★c817df9 更新 | [M] | CORE |
+| SB28 | admin ナビ(tenant_admin): 顧客管理 / 進捗管理G(進捗一覧・食事一覧・体組成) / 顧客分析 / レポート管理G(レポート作成・テンプレ管理) / 設定Gなし ※テナント/プラン/監査なし ★c817df9 更新 | [M] | CORE |
 | SB29 | admin ナビ(master): テナント・プラン管理・監査ログが設定グループ内に追加表示される | [M] | CORE |
 | SB30 | me 取得前後でちらつきが発生しない（module キャッシュで初回レンダリングが安定） | [M] | CORE |
+
+### サイドバー再編＋store設定緑化＋トップバー拡大 — 2026-06-03 追加（commit c817df9）
+
+| # | 確認項目 | 方法 | 優先度 |
+|---|---------|------|-------|
+| SB31 | store ナビ: 進捗管理グループの子が「進捗一覧」（旧「進捗管理」という子名が無いこと） | [M] | CORE |
+| SB32 | store ナビ: 「レポート管理」グループが表示され、開くと「レポート作成」「テンプレ管理」が出る | [M] | CORE |
+| SB33 | store ナビ: 「設定」グループを開くと **契約管理→通知設定→店舗一覧→LINE連携設定** の順 | [M] | CORE |
+| SB34 | store ナビ: 「設定」グループ内に「テンプレ管理」が無いこと | [M] | CORE |
+| SB35 | store ナビ: 「レポート作成」クリックで /store/reports に遷移・ページ正常表示 | [M] | CORE |
+| SB36 | store ナビ: 「テンプレ管理」クリックで /store/templates に遷移・ページ正常表示 | [M] | CORE |
+| SB37 | store ナビ: 進捗管理を開いてからレポート管理を開くと進捗管理が閉じる（排他） | [M] | CORE |
+| SB38 | store ナビ: レポート管理を開いてから設定を開くとレポート管理が閉じる（排他） | [M] | CORE |
+| SB39 | /store/notifications（通知設定）: 紫(violet)が残っていない＝緑(emerald)基調 | [M] コード確認済み ✅ | CORE |
+| SB40 | /store/onboarding（LINE連携設定）: 紫(violet)が残っていない＝緑(emerald)基調（ボタン・フォーカスリング・ステップインジケーター・コピーボタン） | [M] コード確認済み ✅ | CORE |
+| SB41 | トップバー: ベルアイコンが以前より大きい（w-6/h-6、ボタン枠 w-11/h-11） | [M] コード確認済み ✅ | CORE |
+| SB42 | トップバー: 「店舗」バッジが以前より大きい（text-sm・px-3.5・py-1.5） | [M] コード確認済み ✅ | CORE |
+| SB43 | トップバー: ベル + バッジ拡大後もレイアウト崩れなし（h1 truncate で収まる） | [M] | CORE |
+| SB44 | admin ナビ: 「レポート管理」グループが表示され、開くと「レポート作成」「テンプレ管理」が出る（admin も同様） | [M] | CORE |
+| SB45 | admin ナビ: master ロールの設定グループ内に「テナント・プラン管理・監査ログ」が表示される（緑化なし＝紫のまま） | [M] | CORE |
+| SB46 | admin（/admin/notifications・/admin/onboarding は存在しない）: store専用ページが admin ドメインで誤表示されない（storeOnly 制御） | [A] コード確認済み ✅ | CORE |
+| SB47 | /store/reports ページ: レポート管理グループ内「レポート作成」がアクティブ状態でハイライト表示 | [M] | CORE |
+| SB48 | /store/templates ページ: レポート管理グループ内「テンプレ管理」がアクティブ状態でハイライト表示 | [M] | CORE |
 
 ### 課金制御（billingMode）— 2026-05-22 追加（commits fe8c35a/f4ea56c/bcb152f）
 
@@ -325,6 +365,8 @@
 
 | リリース日 | 変更内容 | commit | 判定 |
 |-----------|---------|--------|------|
+| 2026-06-05 | 体重保存主従逆転（GAS→DB 必須化）＋AI相談 Gemini 503 自動リトライ＋平易文言 | 9e50d5f | 条件付き GO（API スモーク全通過・コード精査済み・社長手動確認カード WT1/WT11/WT12 待ち） |
+| 2026-06-03 | サイドバー再編（レポート管理グループ化・進捗一覧改称・設定並び替え）＋store設定緑化＋トップバー拡大 | c817df9 | 条件付き GO（API スモーク全通過・コード精査済み・社長手動確認カード発行済み SB31〜SB48） |
 | 2026-06-01 | AdminShell 左サイドバー刷新（モバイル/タブレット/PC 3ブレークポイント対応・グループ展開・ハイライト） | 1c69ba2/53c58d5 | 条件付き GO（API スモーク全通過・コード精査済み・バッジカラー逆転 nit あり・社長手動確認カード発行済み SB5〜SB30） |
 | 2026-05-29 | Phase 1 監査ログ Neon 永続化（@neondatabase/serverless 追加・waitUntil flush・ip/userAgent 収集） | 4acc80b | GO（TSコンパイル通過・graceful 設計コード確認済み・staging API 実機確認 HTTP 400/401 正常・顧客LIFF無変更・社長手動確認不要） |
 | 2026-05-29 | Phase 0 監査ログ（5エンドポイントに fire-and-forget ログ追加） | 2d762a0 | GO（TSコンパイル通過・機密非漏洩確認済み・顧客LIFF無変更・社長手動確認不要） |
@@ -366,8 +408,12 @@
 - **createTenantCustomerDb に '承認待ち' option なし**: 新テナントの顧客 DB 作成時に「承認待ち」select option はスキーマに含まれていないが、Notion API は存在しない option への書き込みで自動作成するため実害はない。ただし新テナントでは option の並び順が後ろに追加される（既存テナントとは見た目が異なる場合がある）
 - **テナントキャッシュ 5分 TTL**: inviteMode を PATCH 後 `invalidateTenantCache()` で即時クリアされるが、エラー時には PATCH が失敗する（楽観的更新は rollback される）。正常系では即時反映
 - 席数カウントは「進行中」のみ。休止中・卒業は席数消費しない
-- **AdminShell バッジカラーとアクセントカラーは意図的に逆配置（nit 確認済み）**: isStore=true のアクセントカラーは violet だが、ロールバッジは emerald。isStore=false（admin）はアクセントが emerald でバッジが violet。旧コードからの逆転で、視覚的に「対になる色」でバッジを目立たせる意図の可能性がある。機能上の問題はなし。修正要否は社長に確認すること
+- **AdminShell アクセントカラーは store=emerald / admin=violet（c817df9 で修正済み）**: c817df9 以降は isStore=true でアクセント emerald・バッジ emerald。isStore=false でアクセント violet・バッジ violet。両者が統一された
+- **store専用ページ（/store/onboarding・/store/notifications）の紫は c817df9 で解消**: violet クラスを全て emerald に置換済み。残存確認はコードで ✅
 - **AdminShell active グループは畳めない仕様**: 進捗管理/設定グループ内のページにいるとき、グループヘッダーのトグルを押しても `progressOpen = openGroups.progress || progressActive` の評価で progressActive=true が常に残るため折り畳まれない。設計上の許容挙動（仕様書に記載あり）
+- **体重保存の既知残存リスク（9e50d5f 未修正）**: `/api/log/exercise`（ホームの「運動した」簡易トグル）は GAS のみ書き込みで同じ「顧客が見つかりません」が起き得る。データモデルが boolean+free text で DB 版 `/api/exercise-log` と別物のため別途対応が必要（CHANGELOG に既知として記載済み）
+- **体重保存の GAS 並列実行**: `Promise.allSettled` で DB と GAS を同時に叩く。GAS の平均レスポンスが遅い場合でも DB 完了後に即 200 を返せる（GAS の待機はしない設計）
+- **chatWithAi の maxDuration**: `/api/chat` は maxDuration=30。リトライ最大待機（9秒）＋ API 応答時間（数秒×最大6回呼び出し）で 30 秒を超えるエッジケースが存在する。Vercel Hobby プランでは 30 秒上限が厳格で 504 になり得る。504 は retriable パターンに含まれるため次のリトライで上書きされるが、タイムアウト後のリトライは Function が終了しているため実質的には最終エラーになる。稀なケースで許容範囲（本番で発生したら maxDuration 引き上げを検討）
 - **billingMode=null（未設定）は後方互換で Stripe連動 扱い**。新規テナントは Stripe連動 として扱われる
 - **billingMode バリデーション**: 許可値は「無制限」「手動」「Stripe連動」の3種のみ。その他の値は Notion の select に新規オプションが作られるのを防ぐため API が 400 を返す
 - **手動モードで seatLimit 未設定（null）**: Admin UI で手動モードを選択すると席数入力フィールドが表示される。未入力で保存した場合、seatLimit=null → getSeatStatus では `seatLimit !== null ? ... : false` なので isOverLimit=false（上限なし扱い）になる。設計書のエッジケースに記載あり
