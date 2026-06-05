@@ -53,21 +53,28 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
     const customer = await getCustomerByLineId(verifiedLineUserId).catch(() => null);
     const customerName = customer?.name ?? '';
 
-    const [gasResult] = await Promise.allSettled([
-      callGasSaveWeight({ lineUserId: verifiedLineUserId, date, weight }),
+    // 表示の真実のソースは Notion 体重ログDB（/api/today が getLatestWeight で参照）。
+    // これを必須の書き込みとし、GAS（旧 mewodas スプレッドシート連携）はベストエフォートの
+    // ミラーにする。自己登録顧客・mewodas 以外のテナント顧客は GAS シートに存在せず
+    // 「顧客が見つかりません」を返すが、それで保存全体を失敗させない（体重は DB に正しく
+    // 保存されホームにも反映される）。※運動保存ルート /api/exercise-log と同じ「顧客未検出
+    // でも保存する」設計に揃える。
+    const [dbResult, gasResult] = await Promise.allSettled([
       createWeightLog({
         lineUserId: verifiedLineUserId,
         customerName,
         date,
         weightKg: weight,
         source: 'LIFF',
-      }).catch((e) => {
-        console.error('体重DB書き込み失敗（フェイルセーフ継続）:', e);
       }),
+      callGasSaveWeight({ lineUserId: verifiedLineUserId, date, weight }),
     ]);
 
     if (gasResult.status === 'rejected') {
-      throw gasResult.reason;
+      console.error('GAS体重ミラー書き込み失敗（無視して継続）:', gasResult.reason);
+    }
+    if (dbResult.status === 'rejected') {
+      throw dbResult.reason;
     }
 
     invalidate('');

@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## 2026-06-05 – perf(cron): daily-reports のテナント一覧取得を1回に集約（branch: staging）
+## 2026-06-05 – fix(LIFF): 体重保存の「顧客が見つかりません」誤エラー解消 / AI相談 Gemini 503 を自動リトライ＋平易な文言に（branch: staging）
+- fix(weight): `app/api/log/weight/route.ts`。体重保存の主従が逆転していた問題を修正。**Notion 体重ログDB（`createWeightLog`／ホーム表示=`/api/today` の `getLatestWeight` が参照する真実のソース）を必須の書き込み**にし、**GAS（旧 mewodas スプレッドシート連携・全テナント共通の単一エンドポイント）はベストエフォートのミラー**に降格。これまでは GAS が主で、自己登録顧客・mewodas 以外のテナント顧客が GAS シートに居ないと `{ ok:false, error:'顧客が見つかりません' }` を返し、**DB には正しく保存できているのに**顧客へ「体重保存に失敗しました: 顧客が見つかりません」と誤表示していた。`/api/exercise-log` の「顧客未検出でも保存する」設計に整合
+- fix(chat): `lib/gemini.ts` `chatWithAi`。単発 fetch（リトライ無し・フォールバック無し）を、PFC解析の `callGemini` と同方式の **主モデル(gemini-2.5-flash)→フォールバック(gemini-2.5-flash-lite)＋各 `MAX_RETRIES` 指数バックオフ** に変更。Gemini 過負荷（503/UNAVAILABLE/high demand）で救済できなかった場合も、生のエラーJSON（`Gemini Chat失敗 503: {...}`）ではなく **「AIが混み合っています。少し時間をおいてからもう一度お試しください。」** を返す。安全フィルタ/空応答は従来どおり非リトライで即返す
+- 影響範囲: 顧客側 API（`/api/log/weight`・`/api/chat`）／`lib/gemini.ts`。**DBスキーマ変更なし**。tsc 通過
+- 既知の関連リスク（今回は未修正）: ホームの「運動した」簡易トグル `app/api/log/exercise/route.ts` も GAS のみ書き込みで同じ「顧客が見つかりません」が起き得る（データモデルが boolean+free text で DB 版 `/api/exercise-log` と別物のため要別途検討）
+- 関連: 顧客からのバグ報告スクショ3枚（2026/06/01 体重保存エラー＋AI相談 503×2）。[[project_fitmeal_saas]] [[feedback_test_customer_line_id]]
 - perf: `app/api/cron/daily-reports/route.ts`。`listTenantRows` をリスク配信/トライアルリマインド/オンボ催促/レポート配信で個別に呼んでいた（3〜4回）のを**冒頭で1回取得して共有**。`runTrialReminders`/`runOnboardingNudges`（`lib/trialReminders.ts`/`lib/onboardingNudge.ts`）に `prefetchedRows` 引数を追加（未指定なら従来どおり自前取得＝後方互換）
 - 影響範囲: 日次cronのみ。**挙動不変**（Notionクエリ回数の削減のみ）。tsc通過・`next build`成功
 - 関連: 導線改善（Rank1〜5）後のクリーンアップ（社長「全部進めよう」・2026-06-05）
