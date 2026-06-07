@@ -75,7 +75,10 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
 
     return NextResponse.json({ ok: true, reply });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[chat/route] unexpected error:', e instanceof Error ? e.message : e);
+    return NextResponse.json(
+      { error: 'AIが混み合っています。しばらくしてからもう一度お試しください。' },
+      { status: 500 }
+    );
   }
 });
