@@ -318,7 +318,7 @@ function MealDetailInner() {
 
         <button
           onClick={() =>
-            router.push(`/record?meal=${encodeURIComponent(mealParam)}&day=${date === todayStr ? '今日' : '昨日'}`)
+            router.push(`/record?date=${date}&meal=${encodeURIComponent(mealParam)}`)
           }
           className="w-full mt-4 bg-white border-2 border-dashed border-emerald-400 text-emerald-700 font-bold py-3 rounded-2xl active:bg-emerald-50"
         >

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-07 – fix(LIFF): meal-detail「+メニューを追加」で過去日付が引き継がれないバグ修正（branch: staging）
+- fix: `app/meal-detail/page.tsx` 321行目。「+メニューを追加」ボタンが `/record?meal=...&day=${今日か昨日}` で遷移していたため、今日でも昨日でもない日付（例: 06/05）を開いている場合に強制的に `day=昨日` が渡されていた
+- 修正内容: `day=` パラメータを廃止し、`date=${date}` で正確な YYYY-MM-DD を渡すよう変更。`/record` 側は既に `date` クエリパラメータを受け取る実装済みのため受け側変更不要
+- あわせて食事区分（`meal=` パラメータ）も従来どおり引き継がれる
+- 影響範囲: 顧客側 LIFF（/meal-detail → /record 遷移）。API・DB 変更なし
+
 ## 2026-06-03 – fix(security): frame-src に `https://*.line-apps.com` を追補
 - fix: `next.config.ts` の `frame-src` に `https://*.line-apps.com` を追加（#41 の追補）。調査で frame-src 違反元として高確度で想定されていた LIFF ログインサブウィンドウ iframe ドメインをカバー
 - 背景: #41 は frame-src に `*.line-scdn.net` を追加したが、実ブロックURI（Sentry `csp_blocked_host`）未確認のため line-apps.com 経由の違反が残る懸念があった。両ドメインをカバーして確実化
