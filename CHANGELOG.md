@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-07 – fix(security): /api/chat の汎用エラーガード（生メッセージ露出を修正）
+- fix: `app/api/chat/route.ts:77-79` の top-level catch が生エラーメッセージを `{ error: message }` でそのまま返していた問題を修正。Gemini 以外の予期せぬ例外でも技術的文言が顧客に露出する可能性があったため、汎用フォールバック文言（「AIが混み合っています…」）に変更しサーバーログに詳細を出力するよう改修
+- 影響範囲: API（`/api/chat`）のみ。顧客側エラー表示文言の変更（技術的文言→日本語案内文）
+- 関連: Slack #security-alerts alert_ts 1780790874.916979（Sentry 週次レポート・Gemini 503 エラー露出）
+
 ## 2026-06-03 – fix(security): frame-src に `https://*.line-apps.com` を追補
 - fix: `next.config.ts` の `frame-src` に `https://*.line-apps.com` を追加（#41 の追補）。調査で frame-src 違反元として高確度で想定されていた LIFF ログインサブウィンドウ iframe ドメインをカバー
 - 背景: #41 は frame-src に `*.line-scdn.net` を追加したが、実ブロックURI（Sentry `csp_blocked_host`）未確認のため line-apps.com 経由の違反が残る懸念があった。両ドメインをカバーして確実化
