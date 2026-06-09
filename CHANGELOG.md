@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-09 – fix(LIFF): 体重保存の2バグ修正（上書き保存が古い値に戻る・保存時スクロール）（branch: staging）
+- fix(バグ①): `app/home/_components/LiffGate.tsx` `handleWeightUpdated` で `/api/extras` の結果が楽観的更新済みの体重値を上書きする競合を修正。保存 POST 完了前に extras を取得すると保存前の値が返り UI が古い値に戻ることがあった。楽観的更新 (`next.weight`) がある場合は extras.weight で体重を上書きしないよう変更
+- fix(バグ②): `components/WeightExerciseCard.tsx` `WeightSheet.save()` と `ExerciseSheet.save()` の先頭で `document.activeElement?.blur()` を呼び、保存前にソフトキーボードを閉じるよう変更。iOS Safari(LIFF WebView) でキーボードのdismissとシートのアンマウントが重なるとページが一番下にスクロールする既知の問題を回避
+- fix(防御): WeightSheet・ExerciseSheet の保存ボタンに `type="button"` を追加（フォームコンテキスト不問でデフォルト submit 動作を防止）
+- 影響範囲: 顧客側 LIFF（/home 体重・運動保存UI）。API・DB 変更なし
+
 ## 2026-06-09 – feat(reports): 週次レポートの体重ブロックを「週平均ベース」新フォーマットに対応
 - feat: 週次/月次レポートで「週平均体重・前週平均・その差・目標までの残り」を出せるよう新変数を追加
   - `lib/notion.ts`: `getWeightAvgInRange()` 追加（期間内に記録された体重の平均と件数を返す）

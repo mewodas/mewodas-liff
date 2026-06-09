@@ -151,6 +151,12 @@ function WeightSheet({
       return;
     }
     setError(null);
+    // バグ②対策: 保存前に入力フィールドのフォーカスを外してソフトキーボードを閉じる。
+    // キーボードを閉じるタイミングとシートのアンマウントが重なると iOS Safari が
+    // ページを下にスクロールさせる既知の問題を回避する。
+    if (typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
     // 楽観的: シート即時閉じる + UI 即時反映。POST は background で投げる
     onSaved({ weight: String(w) });
     apiFetch('/api/log/weight', {
@@ -213,6 +219,7 @@ function WeightSheet({
             <p className="text-[10px] text-stone-500 mt-1">毎朝起床後・食事前の測定を推奨</p>
           </div>
           <button
+            type="button"
             onClick={save}
             disabled={saving || !weight}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
@@ -269,6 +276,10 @@ function ExerciseSheet({
     const allItems = pending ? [...items, pending] : items;
     const merged = allItems.join('\n');
     const exercised = allItems.length > 0;
+    // バグ②対策: 保存前に入力フィールドのフォーカスを外してソフトキーボードを閉じる
+    if (typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
     // 楽観的: シート即時閉じる + UI 即時反映。POST は background で投げる
     onSaved({
       exercised: exercised ? '✅' : '',
@@ -375,6 +386,7 @@ function ExerciseSheet({
             </p>
           </div>
           <button
+            type="button"
             onClick={save}
             disabled={saving}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
