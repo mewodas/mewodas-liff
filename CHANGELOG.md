@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-09 – fix(admin): レポート作成でテンプレ切替時に生成済み本文が残るバグ修正
+- fix: `app/admin/reports/page.tsx`。テンプレチップを切り替えたとき、直前に「文章を生成」した本文（や手動編集）がそのまま残ってしまう問題を修正。横のテンプレに移ったら、そのテンプレの**未生成（素）のひな形**（タイトル・本文・対象期間）が表示されるようにした
+- 原因: テンプレ切替を `useEffect` 内で「ユーザー編集なら上書きしない」ヒューリスティックで処理していたため、生成済み本文が "編集済み" と判定され切替先に引き継がれていた
+- 修正内容: 切替処理を `selectTemplate(t)` イベントハンドラに集約（onClick で実行）。`useEffect`／`templateBaselineRef` を廃止。テンプレ選択時は常に素のひな形へリセットし、生成・編集済み内容は破棄。「テンプレなし」選択時は本文に触れない（別画面からの下書き流用・手動入力を保持）。初期表示の先頭テンプレ展開も同ハンドラ経由に統一
+- 影響範囲: 管理画面／店舗画面のレポート作成UI（/admin/reports・/store/reports）。API・DB・Notion テンプレデータ変更なし
+- 検証: `eslint`・`tsc --noEmit` クリーン（旧コードで warning だった react-hooks/set-state-in-effect も解消）
+
 ## 2026-06-09 – fix(data): staging テナントの課金モードを無制限に変更（Notion データ修正）
 - fix: staging テナント（tenant_id: mewodas-staging）の「課金モード」を `Stripe連動` → `無制限` に変更（Notion 直接更新）
 - 原因: 課金モードが `Stripe連動` のまま契約席数=1 に対して進行中顧客（テスト太郎）が1席を消費し `isOverLimit=true` になっていた。社長の LINE アカウントが staging 顧客として未登録のため `alreadyRegistered=false` → over-limit 画面が表示されていた

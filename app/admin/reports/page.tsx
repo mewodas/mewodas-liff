@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import {
@@ -159,8 +159,6 @@ function Inner() {
   const [sendLinePush, setSendLinePush] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
-  const templateBaselineRef = useRef<{ title: string; body: string }>({ title: '', body: initialDraft });
-
   // --- お知らせモード state ---
   const [me, setMe] = useState<Me | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -219,12 +217,14 @@ function Inner() {
           setTemplateError((tJ as { hint?: string; error?: string }).hint || (tJ as { error?: string }).error || null);
         }
         if (!initialDraft && tList.length > 0) {
-          setTemplateId(tList[0].id);
+          // 初期表示: 先頭テンプレの素のひな形・対象期間を展開（切替時と同じ挙動）
+          selectTemplate(tList[0]);
         }
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDraft]);
 
   // お知らせモード初期データロード
@@ -285,22 +285,21 @@ function Inner() {
   const showScopeSelect = !isStore && isMaster && audience === '顧客向け';
   const showTenantSelect = showScopeSelect && scope === 'tenant';
 
-  useEffect(() => {
-    if (!selectedTemplate) return;
-    const baseTitle = selectedTemplate.titleTemplate || '';
-    const baseBody = selectedTemplate.bodyTemplate || '';
-    const userEditedTitle = title !== templateBaselineRef.current.title && title !== '';
-    const userEditedBody = body !== templateBaselineRef.current.body && body !== '';
-    if (!userEditedTitle) setTitle(baseTitle);
-    if (!userEditedBody) setBody(baseBody);
-    templateBaselineRef.current = { title: baseTitle, body: baseBody };
-    const range = rangeTypeToFromTo(selectedTemplate.rangeType, today);
+  // テンプレ選択時の挙動: 選んだテンプレの「未生成（素）の内容」を本文・タイトルに展開する。
+  // 直前に生成・編集した内容は破棄する（横のテンプレに移ったら、そのテンプレの素のひな形が
+  // 出てくるべき、という運用要望）。「テンプレなし」(t=null) のときは本文・タイトルに触れない
+  // （別画面からの下書き流用・手動入力を保持する）。
+  function selectTemplate(t: Template | null) {
+    setTemplateId(t?.id ?? '');
+    if (!t) return;
+    setTitle(t.titleTemplate || '');
+    setBody(t.bodyTemplate || '');
+    const range = rangeTypeToFromTo(t.rangeType, today);
     if (range) {
       setFrom(range.from);
       setTo(range.to);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId, templates]);
+  }
 
   async function generate() {
     if (!customerId) {
@@ -328,7 +327,6 @@ function Inner() {
       const j = await res.json();
       setTitle(j.title || '');
       setBody(j.body || '');
-      templateBaselineRef.current = { title: j.title || '', body: j.body || '' };
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラー');
     } finally {
@@ -578,11 +576,11 @@ function Inner() {
                         label={t.name}
                         useAi={t.useAi}
                         active={templateId === t.id}
-                        onClick={() => setTemplateId(t.id)}
+                        onClick={() => selectTemplate(t)}
                         accentActive={ac.pillActive}
                       />
                     ))}
-                  <TemplateChip label="テンプレなし" active={templateId === ''} onClick={() => setTemplateId('')} accentActive={ac.pillActive} />
+                  <TemplateChip label="テンプレなし" active={templateId === ''} onClick={() => selectTemplate(null)} accentActive={ac.pillActive} />
                 </div>
               )}
 
