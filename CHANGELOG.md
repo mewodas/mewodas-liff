@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-09 – fix(data): staging テナントの課金モードを無制限に変更（Notion データ修正）
+- fix: staging テナント（tenant_id: mewodas-staging）の「課金モード」を `Stripe連動` → `無制限` に変更（Notion 直接更新）
+- 原因: 課金モードが `Stripe連動` のまま契約席数=1 に対して進行中顧客（テスト太郎）が1席を消費し `isOverLimit=true` になっていた。社長の LINE アカウントが staging 顧客として未登録のため `alreadyRegistered=false` → over-limit 画面が表示されていた
+- 影響範囲: staging テナントの席数判定。コード変更なし。本番テナント（mewodas / 五反田店）は無変更
+- 変更前: 課金モード=Stripe連動、契約席数=1、支払いステータス=お試し（Stripe連携なし）
+- 変更後: 課金モード=無制限（契約席数・支払いステータスは変更なし）
+- 関連: docs/BILLING_CONTROL_DESIGN.md「社長のテストテナントは無制限で運用」方針に準拠
+
 ## 2026-06-09 – fix(LIFF): 体重保存の2バグ修正（上書き保存が古い値に戻る・保存時スクロール）（branch: staging）
 - fix(バグ①): `app/home/_components/LiffGate.tsx` `handleWeightUpdated` で `/api/extras` の結果が楽観的更新済みの体重値を上書きする競合を修正。保存 POST 完了前に extras を取得すると保存前の値が返り UI が古い値に戻ることがあった。楽観的更新 (`next.weight`) がある場合は extras.weight で体重を上書きしないよう変更
 - fix(バグ②): `components/WeightExerciseCard.tsx` `WeightSheet.save()` と `ExerciseSheet.save()` の先頭で `document.activeElement?.blur()` を呼び、保存前にソフトキーボードを閉じるよう変更。iOS Safari(LIFF WebView) でキーボードのdismissとシートのアンマウントが重なるとページが一番下にスクロールする既知の問題を回避
