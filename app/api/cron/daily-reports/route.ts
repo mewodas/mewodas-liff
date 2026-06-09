@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkCronAuth } from '@/lib/cronAuth';
-import { listTenantRows, listAllCustomers, getWeightBoundsInRange } from '@/lib/notion';
+import { listTenantRows, listAllCustomers, getWeightBoundsInRange, getWeightAvgInRange } from '@/lib/notion';
 import { listRecordsInRange } from '@/lib/repository/records';
 import { listTemplates } from '@/lib/templates';
 import { getStoreByStoreId } from '@/lib/stores';
@@ -18,7 +18,7 @@ import { FITMEAL_TENANTS_DB_ID } from '@/lib/tenant';
 import type { TenantConfig } from '@/lib/tenant';
 import { runInTenantContext } from '@/lib/tenantContext';
 import { buildReportVariables } from '@/lib/reports/variables';
-import { resolveDateRange } from '@/lib/reports/dateRange';
+import { resolveDateRange, previousPeriod } from '@/lib/reports/dateRange';
 import { listAllRules, isScheduledReportsConfigured } from '@/lib/scheduledReports';
 import { computeAndStoreTenantRisk } from '@/lib/customerRiskService';
 import { listCustomerRiskByTenant } from '@/lib/repository/customerRisk';
@@ -404,12 +404,25 @@ export async function GET(req: NextRequest) {
             : { first: null, last: null };
           const effectiveWeight = lastWeight ?? customer.currentWeight;
 
+          // 週内体重の平均 & 前期間平均（週次レポートの「平均 / 前週平均」表記用）
+          const prevRange = previousPeriod(reportStart, reportEnd);
+          const [weightAvg, prevWeightAvg] = customer.foodSheetPageId
+            ? await Promise.all([
+                getWeightAvgInRange(customer.foodSheetPageId, reportStart, reportEnd)
+                  .then((r) => r.avg)
+                  .catch(() => null),
+                getWeightAvgInRange(customer.foodSheetPageId, prevRange.startDate, prevRange.endDate)
+                  .then((r) => r.avg)
+                  .catch(() => null),
+              ])
+            : [null, null];
+
           const isSingleDay = reportStart === reportEnd;
           const vars = buildReportVariables(records, customer, store, {
             startDate: reportStart,
             endDate: reportEnd,
             isSingleDay,
-          }, lastWeight, firstWeight);
+          }, lastWeight, firstWeight, weightAvg, prevWeightAvg);
           const sum = {
             kcal: Number(vars.kcal),
             P: Number(vars.P),

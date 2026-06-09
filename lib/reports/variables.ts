@@ -46,7 +46,11 @@ export function buildReportVariables(
   // 期間内の「最終日の体重」(kg)。null/未指定なら開始体重にフォールバック。
   lastWeight?: number | null,
   // 期間内の「最初の有効体重」(kg)。週次/月次の「開始 → 最終」表記に使用。
-  firstWeight?: number | null
+  firstWeight?: number | null,
+  // 期間内に記録された体重の平均(kg)。週次レポートの「平均 / 現在」表記に使用。
+  weightAvg?: number | null,
+  // 前期間（前週/前月）の体重平均(kg)。「前週平均」表記に使用。
+  prevWeightAvg?: number | null
 ): Record<string, string> {
   const { startDate, endDate, isSingleDay } = dateRange;
 
@@ -136,6 +140,9 @@ export function buildReportVariables(
   // 目標達成日・残り週数・必要ペース（GoalProgressCard と同ロジック。基準は登録体重）
   const cw = customer.currentWeight;
   const tw = customer.targetWeight;
+  // 「現在」の基準体重: 週内記録の平均を優先し、無ければ登録体重にフォールバック。
+  // 「残り」「必要ペース」もこの基準で算出する（表示の整合のため）。
+  const baseWeightNum = weightAvg != null ? weightAvg : cw;
   let weeksToGoalNum: number | null = null;
   if (customer.targetDate) {
     const td = new Date(customer.targetDate).getTime();
@@ -144,8 +151,13 @@ export function buildReportVariables(
     if (daysLeft > 0) weeksToGoalNum = Math.max(1, Math.ceil(daysLeft / 7));
   }
   const requiredPaceNum =
-    cw != null && tw != null && weeksToGoalNum
-      ? Math.round((Math.abs(cw - tw) / weeksToGoalNum) * 10) / 10
+    baseWeightNum != null && tw != null && weeksToGoalNum
+      ? Math.round((Math.abs(baseWeightNum - tw) / weeksToGoalNum) * 10) / 10
+      : null;
+  // 目標までの残り（絶対値・小数1桁）
+  const weightRemainingNum =
+    baseWeightNum != null && tw != null
+      ? Math.round(Math.abs(baseWeightNum - tw) * 10) / 10
       : null;
 
   // 今週(=期間)の実ペース＝(最終−開始)を週あたりに正規化（週次は7日=1週、月次は日数/7週）
@@ -162,6 +174,15 @@ export function buildReportVariables(
   }
   const fmtSigned = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? String(n) : '±0');
   const weekPaceStr = weekPaceNum != null ? fmtSigned(weekPaceNum) : '-';
+
+  // 週平均体重・前期間平均・その差（前週平均比較・signed）
+  // 平均が無い期間は最終体重 (weightStr) にフォールバック。
+  const weightAvgStr = weightAvg != null ? String(weightAvg) : weightStr;
+  const prevWeightAvgStr = prevWeightAvg != null ? String(prevWeightAvg) : '-';
+  const weekAvgDeltaStr =
+    weightAvg != null && prevWeightAvg != null
+      ? fmtSigned(Math.round((weightAvg - prevWeightAvg) * 10) / 10)
+      : '-';
 
   // 今週ペースの評価: 目標方向へ必要ペース以上=⭕ / 方向は合うが不足=🔺 / 逆方向=💦
   let weekPaceMark = '';
@@ -211,6 +232,11 @@ export function buildReportVariables(
     startWeight: startWeightStr,
     endWeight: weightStr,
     weightDelta: weightDeltaStr,
+    // 週次レポート（新フォーマット）用: 週平均・前週平均・差・目標までの残り
+    weightAvg: weightAvgStr,
+    prevWeightAvg: prevWeightAvgStr,
+    weekAvgDelta: weekAvgDeltaStr,
+    weightRemaining: weightRemainingNum != null ? String(weightRemainingNum) : '-',
     targetWeight: customer.targetWeight !== null ? String(customer.targetWeight) : '-',
     // 目標達成日・残り週数・必要/実ペース（週次・月次レポート用）
     targetDate: customer.targetDate || '-',

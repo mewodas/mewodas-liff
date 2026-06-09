@@ -108,3 +108,44 @@ describe('buildReportVariables — 体重は最終日の体重', () => {
     expect(v.weight).toBe('70');
   });
 });
+
+describe('buildReportVariables — 週次フォーマット（週平均・前週平均・残り）', () => {
+  const records: FoodRecord[] = [rec('2026-06-01', '朝食', 300)];
+  const cust = {
+    ...customer,
+    currentWeight: 68.1,
+    targetWeight: 50,
+    targetDate: '2026-12-05',
+  } as unknown as Customer;
+
+  it('weightAvg / prevWeightAvg / weekAvgDelta / weightRemaining を週平均基準で返す', () => {
+    const v = buildReportVariables(
+      records,
+      cust,
+      null,
+      { startDate: '2026-06-01', endDate: '2026-06-07', isSingleDay: false },
+      68.0, // lastWeight
+      68.3, // firstWeight
+      68.1, // weightAvg（週内平均）
+      68.4 // prevWeightAvg（前週平均）
+    );
+    expect(v.weightAvg).toBe('68.1');
+    expect(v.prevWeightAvg).toBe('68.4');
+    expect(v.weekAvgDelta).toBe('-0.3'); // 68.1 - 68.4
+    expect(v.weightRemaining).toBe('18.1'); // |68.1 - 50|
+    expect(v.targetWeight).toBe('50');
+  });
+
+  it('weightAvg 未指定なら最終体重にフォールバックし、前週平均は "-"', () => {
+    const v = buildReportVariables(
+      records,
+      cust,
+      null,
+      { startDate: '2026-06-01', endDate: '2026-06-07', isSingleDay: false },
+      67.5 // lastWeight のみ
+    );
+    expect(v.weightAvg).toBe('67.5');
+    expect(v.prevWeightAvg).toBe('-');
+    expect(v.weekAvgDelta).toBe('-');
+  });
+});

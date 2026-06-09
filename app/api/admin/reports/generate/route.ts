@@ -7,8 +7,8 @@ import { getStoreByStoreId } from '@/lib/stores';
 import { generateCoachingAnalysis, generateReportComments } from '@/lib/gemini';
 import { withAdminTenant } from '@/lib/withTenant';
 import { buildReportVariables } from '@/lib/reports/variables';
-import { resolveDateRange } from '@/lib/reports/dateRange';
-import { getWeightBoundsInRange } from '@/lib/notion';
+import { resolveDateRange, previousPeriod } from '@/lib/reports/dateRange';
+import { getWeightBoundsInRange, getWeightAvgInRange } from '@/lib/notion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,6 +63,19 @@ export const POST = withAdminTenant(async (req) => {
       : { first: null, last: null };
     const effectiveWeight = lastWeight ?? customer.currentWeight;
 
+    // 週内体重の平均 & 前期間平均（週次レポートの「平均 / 前週平均」表記用）
+    const prevRange = previousPeriod(startDate, endDate);
+    const [weightAvg, prevWeightAvg] = customer.foodSheetPageId
+      ? await Promise.all([
+          getWeightAvgInRange(customer.foodSheetPageId, startDate, endDate)
+            .then((r) => r.avg)
+            .catch(() => null),
+          getWeightAvgInRange(customer.foodSheetPageId, prevRange.startDate, prevRange.endDate)
+            .then((r) => r.avg)
+            .catch(() => null),
+        ])
+      : [null, null];
+
     // 日別集計（AI レポート用サマリ生成に使用）
     const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();
     for (const r of records) {
@@ -102,7 +115,7 @@ export const POST = withAdminTenant(async (req) => {
 
     // 全変数を構築（食事区分別を含む）
     const vars: Record<string, string> = {
-      ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }, lastWeight, firstWeight),
+      ...buildReportVariables(records, customer, store, { startDate, endDate, isSingleDay }, lastWeight, firstWeight, weightAvg, prevWeightAvg),
       staff: staff?.name || '',
       shop: staff?.shop || '',
       rangeLabel: resolvedRangeLabel,

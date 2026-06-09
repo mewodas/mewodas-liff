@@ -15,6 +15,24 @@ function mmdd(d: Date): string {
   return `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 直前の同期間（前週/前月相当）を返す。startDate の前日を終端とし、
+// 同じ日数ぶん遡った範囲。週次レポートの「前週平均」算出に使用。
+export function previousPeriod(
+  startDate: string,
+  endDate: string
+): { startDate: string; endDate: string } {
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  const spanDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const prevEnd = new Date(start);
+  prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - (spanDays - 1));
+  return { startDate: fmt(prevStart), endDate: fmt(prevEnd) };
+}
+
 export function resolveDateRange(
   rangeType: RangeType | undefined,
   fallback?: { startDate: string; endDate: string }

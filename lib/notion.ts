@@ -1316,6 +1316,42 @@ export async function getLastWeightInRange(
   return (await getWeightBoundsInRange(sheetPageId, startDate, endDate)).last;
 }
 
+// 期間内に記録された体重の平均（小数1桁）と記録件数を返す。
+// 週次/月次レポートの「平均 / 前週平均」表記に使用。記録ゼロなら avg=null。
+export async function getWeightAvgInRange(
+  sheetPageId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ avg: number | null; count: number }> {
+  const labels: string[] = [];
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  if ([sy, sm, sd, ey, em, ed].some((n) => Number.isNaN(n))) return { avg: null, count: 0 };
+  const cur = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  let guard = 0;
+  while (cur <= end && guard < 400) {
+    labels.push(`${cur.getMonth() + 1}月${cur.getDate()}日`);
+    cur.setDate(cur.getDate() + 1);
+    guard++;
+  }
+  if (labels.length === 0) return { avg: null, count: 0 };
+
+  const extras = await getRangeExtras(sheetPageId, labels);
+  let sum = 0;
+  let count = 0;
+  for (const label of labels) {
+    const raw = extras[label]?.weight;
+    if (!raw) continue;
+    const n = parseFloat(raw);
+    if (Number.isNaN(n)) continue;
+    sum += n;
+    count++;
+  }
+  if (count === 0) return { avg: null, count: 0 };
+  return { avg: Math.round((sum / count) * 10) / 10, count };
+}
+
 // 個人シートの食事記録テーブルから当日の体重・運動・運動内容を取得
 export async function getDailyExtras(
   sheetPageId: string,

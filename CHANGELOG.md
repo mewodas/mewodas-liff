@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-06-09 – feat(reports): 週次レポートの体重ブロックを「週平均ベース」新フォーマットに対応
+- feat: 週次/月次レポートで「週平均体重・前週平均・その差・目標までの残り」を出せるよう新変数を追加
+  - `lib/notion.ts`: `getWeightAvgInRange()` 追加（期間内に記録された体重の平均と件数を返す）
+  - `lib/reports/dateRange.ts`: `previousPeriod()` 追加（直前の同期間＝前週/前月相当を算出。「前週平均」用）
+  - `lib/reports/variables.ts`: 引数に `weightAvg` / `prevWeightAvg` を追加。新変数 `{weightAvg}` `{prevWeightAvg}` `{weekAvgDelta}` `{weightRemaining}` を出力。`{requiredPace}` と `{weightRemaining}` は週平均を基準に算出（週平均が無い期間は従来どおり登録体重 currentWeight にフォールバック）
+  - `app/api/admin/reports/generate/route.ts` / `app/api/cron/daily-reports/route.ts`: 週平均・前週平均を取得して `buildReportVariables` に受け渡し
+- test: `__tests__/lib/report-variables.test.ts` に新変数の回帰テストを追加（全6件パス、`tsc --noEmit` パス）
+- 後方互換: 新引数は任意。未指定時は `weightAvg` が最終体重にフォールバックし、`prevWeightAvg`/`weekAvgDelta` は `-`。既存テンプレ（{startWeight}→{endWeight} 等）はそのまま動作
+- 注意（順序依存）: Notion 側の週次レポートテンプレ本文を新変数（{weightAvg} 等）に差し替えるのは**本コードを本番デプロイした後**に行うこと。先にテンプレだけ変えると旧コードが未知変数を素通しし、顧客の週次配信に `{weightAvg}` がそのまま表示される
+- 影響範囲: lib / API / cron（バックエンド）。Notion テンプレ本文は別途・デプロイ後に切替
+
 ## 2026-06-07 – fix(LIFF): meal-detail「+メニューを追加」で過去日付が引き継がれないバグ修正（branch: staging）
 - fix: `app/meal-detail/page.tsx` 321行目。「+メニューを追加」ボタンが `/record?meal=...&day=${今日か昨日}` で遷移していたため、今日でも昨日でもない日付（例: 06/05）を開いている場合に強制的に `day=昨日` が渡されていた
 - 修正内容: `day=` パラメータを廃止し、`date=${date}` で正確な YYYY-MM-DD を渡すよう変更。`/record` 側は既に `date` クエリパラメータを受け取る実装済みのため受け側変更不要
