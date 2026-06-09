@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import {
@@ -285,20 +285,33 @@ function Inner() {
   const showScopeSelect = !isStore && isMaster && audience === '顧客向け';
   const showTenantSelect = showScopeSelect && scope === 'tenant';
 
-  // テンプレ選択時の挙動: 選んだテンプレの「未生成（素）の内容」を本文・タイトルに展開する。
-  // 直前に生成・編集した内容は破棄する（横のテンプレに移ったら、そのテンプレの素のひな形が
-  // 出てくるべき、という運用要望）。「テンプレなし」(t=null) のときは本文・タイトルに触れない
-  // （別画面からの下書き流用・手動入力を保持する）。
+  // テンプレ選択時の挙動: テンプレごとに「その画面で作った内容（生成・手動編集）」を記憶する。
+  // 別テンプレに移るときは現在の内容を退避し、戻ってきたら復元する（タブのような挙動）。
+  // まだ操作していないテンプレに移ったときだけ、そのテンプレの素のひな形＋既定の対象期間を出す。
+  // キーは templateId（'' = テンプレなし）。タイトル・本文・対象期間(from/to)をまとめて保持。
+  const draftsRef = useRef<Record<string, { title: string; body: string; from: string; to: string }>>({});
   function selectTemplate(t: Template | null) {
-    setTemplateId(t?.id ?? '');
-    if (!t) return;
-    setTitle(t.titleTemplate || '');
-    setBody(t.bodyTemplate || '');
-    const range = rangeTypeToFromTo(t.rangeType, today);
-    if (range) {
-      setFrom(range.from);
-      setTo(range.to);
+    const newId = t?.id ?? '';
+    if (newId === templateId) return; // 同じテンプレを再クリック → 何もしない（内容を消さない）
+    // 1. 現在表示中の内容を、今のテンプレID の作業状態として退避
+    draftsRef.current[templateId] = { title, body, from, to };
+    // 2. 切替先に作業状態があれば復元。無ければ素のひな形＋既定の対象期間で初期化
+    const saved = draftsRef.current[newId];
+    if (saved) {
+      setTitle(saved.title);
+      setBody(saved.body);
+      setFrom(saved.from);
+      setTo(saved.to);
+    } else {
+      setTitle(t?.titleTemplate || '');
+      setBody(t?.bodyTemplate || '');
+      const range = t ? rangeTypeToFromTo(t.rangeType, today) : null;
+      if (range) {
+        setFrom(range.from);
+        setTo(range.to);
+      }
     }
+    setTemplateId(newId);
   }
 
   async function generate() {
