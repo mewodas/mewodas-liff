@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-09 – security: GAS_RECORD_ENDPOINT ドメイン検証追加（branch: claude/sec-fix-1357829）
+- security: `lib/drive.ts` に GAS エンドポイントの URL ドメイン検証を追加（SSRF・環境変数改ざん対策）。`script.google.com` / `script.googleusercontent.com` 以外のホストには送信しないよう制限
+- 影響範囲: API バックエンド（lib/drive.ts のみ）。顧客側 LIFF に変化なし
+- 関連: Slack #security-alerts アラート ts=1780992489.963109（Google Account 不正アクセス試行通知 / Asana OAuth 不審リクエスト）
+
 ## 2026-06-09 – feat(reports): 週次レポートの体重ブロックを「週平均ベース」新フォーマットに対応
 - feat: 週次/月次レポートで「週平均体重・前週平均・その差・目標までの残り」を出せるよう新変数を追加
   - `lib/notion.ts`: `getWeightAvgInRange()` 追加（期間内に記録された体重の平均と件数を返す）

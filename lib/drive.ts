@@ -15,6 +15,18 @@ export async function saveImagesToDriveAsync(params: {
     return;
   }
 
+  // GASエンドポイントのドメイン検証（環境変数改ざん・SSRF対策）
+  try {
+    const { hostname } = new URL(endpoint);
+    if (!['script.google.com', 'script.googleusercontent.com'].includes(hostname)) {
+      console.error('GAS_RECORD_ENDPOINT のドメインが許可されていません:', hostname);
+      return;
+    }
+  } catch {
+    console.error('GAS_RECORD_ENDPOINT が不正なURLです');
+    return;
+  }
+
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
