@@ -356,11 +356,13 @@ function LiffGateInner() {
           if (!prev) return prev;
           // サーバー側 (Notion / GAS) が反映遅延 or テナント不一致で空を返した場合、
           // 楽観的更新済みの値を消さない。明示的な値があるときだけ上書き。
+          // バグ①対策: 体重を楽観的更新済み (next.weight) の場合は extras で上書きしない。
+          // 保存 POST 完了前に extras を取得すると保存前の値が返り、UI が古い値に戻ってしまうため。
           const updated = {
             ...prev,
             today: {
               ...prev.today,
-              ...(extras.weight ? { weight: extras.weight } : {}),
+              ...(extras.weight && !next?.weight ? { weight: extras.weight } : {}),
               ...(extras.exercised ? { exercised: extras.exercised } : {}),
               ...(extras.exerciseContent ? { exerciseContent: extras.exerciseContent } : {}),
             },
