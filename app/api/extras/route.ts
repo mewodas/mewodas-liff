@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCustomerByLineId, getDailyExtras, isoToJpMd } from '@/lib/notion';
 import { getWeightOnDate } from '@/lib/repository/weightLogs';
+import { getExerciseOnDate } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -8,7 +8,7 @@ export const maxDuration = 15;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// 体重は新体重DBから取得。運動データは引き続き個人シートから。
+// 体重・運動とも新DB（体重ログDB / 運動ログDB）から取得（個人シート走査不要）。
 export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifiedLineUserId: string) => {
   try {
     const date = req.nextUrl.searchParams.get('date');
@@ -18,29 +18,14 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: 'date は yyyy-MM-dd 形式' }, { status: 400 });
     }
-    const customer = await getCustomerByLineId(verifiedLineUserId);
 
-    // 体重は新DBから取得（個人シート走査不要）
-    const weightLog = await getWeightOnDate(verifiedLineUserId, date).catch(() => null);
+    const [weightLog, exerciseState] = await Promise.all([
+      getWeightOnDate(verifiedLineUserId, date).catch(() => null),
+      getExerciseOnDate(verifiedLineUserId, date).catch(() => ({ exercised: false, content: '' })),
+    ]);
     const weightStr = weightLog ? String(weightLog.weightKg) : '';
-
-    // 運動データは引き続き個人シートから
-    let exercised = '';
-    let exerciseContent = '';
-    if (customer?.foodSheetPageId) {
-      const extras = await Promise.race([
-        getDailyExtras(customer.foodSheetPageId, isoToJpMd(date)).catch(() => ({
-          weight: '',
-          exercised: '',
-          exerciseContent: '',
-        })),
-        new Promise<{ weight: string; exercised: string; exerciseContent: string }>(
-          (resolve) => setTimeout(() => resolve({ weight: '', exercised: '', exerciseContent: '' }), 10_000)
-        ),
-      ]);
-      exercised = extras.exercised;
-      exerciseContent = extras.exerciseContent;
-    }
+    const exercised = exerciseState.exercised ? '✅' : '';
+    const exerciseContent = exerciseState.content;
 
     const res = NextResponse.json({ weight: weightStr, exercised, exerciseContent });
     res.headers.set('Cache-Control', 'no-store, must-revalidate');

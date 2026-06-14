@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-06-14 – refactor(LIFF): 運動記録の書き込みを運動ログDBに一本化（体重と同じ単一ソース化）（branch: staging→main）
+- 変更: ホームの「運動した/しない」トグルの保存先を、旧 GAS/個人シートから **運動ログDB** に一本化。体重（`/api/log/weight`）と同じ「DB必須・GASミラーはベストエフォート」設計に揃えた。これで個人シートを持たない顧客でも運動が保存・表示される（＝運動の真実のソースがDBに統一）
+- `lib/repository/exerciseLogs.ts`: `setExerciseFlagOnDate`（トグル→DBの簡易レコード upsert/archive）と `getExerciseOnDate`（読み戻し）を追加。`createExerciseLog` を空の `強度`/`種目カテゴリ`(select) でも作成できるよう修正（簡易レコード対応）。`種目` title は全 rich_text セグメント連結に変更（改行を含む複数項目の取りこぼし防止）
+- `app/api/log/exercise/route.ts`: 書き込みを `setExerciseFlagOnDate`（必須）＋ `callGasSaveExercise`（ベストエフォート）の `Promise.allSettled` 構成に変更。`invalidate('')` を追加
+- `app/api/extras/route.ts`: ホームの運動読み戻しを個人シート（`getDailyExtras`）から運動ログDB（`getExerciseOnDate`）に変更（体重 `getWeightOnDate` と並ぶ形）。未使用となった `getCustomerByLineId`/`getDailyExtras`/`isoToJpMd` の import を削除
+- 簡易レコードの定義: 時間0・カテゴリ無し・強度無し。詳細運動ログ（`/api/exercise-log`）は触らず共存（既に詳細ログがある日は簡易を作らない・dedup）
+- 影響範囲: 顧客側 LIFF（ホームの運動トグル保存・読み戻し、/history・/prediction の運動表示）。書き込み先の変更。DB スキーマ変更なし
+- 検証: `tsc --noEmit` クリーン、`vitest` 43件パス、`next build` 成功。変更ルート（log/exercise・extras）は `eslint` クリーン。`exerciseLogs.ts` は既存 `weightLogs.ts` と同じ既存 `any`（notionRequest/pageToLog）警告のみでビルド非ブロッキング
+- 関連: 「個人シート無しで運動を記録する顧客が居るか」調査の結論（本番運動DBが0件・書き込みがシート無し顧客で捨てられていた）への恒久対応
+
 ## 2026-06-14 – fix(LIFF): 運動記録が予測・履歴に出ない同種バグ修正（運動ログDBを併用）（branch: staging→main）
 - fix: `app/api/predict-weight/route.ts`（運動日数）・`app/api/history/route.ts`（日別の運動有無）。運動の判定を、個人シート（`getRangeExtras`）だけでなく **運動ログDB**（`listExerciseLogsByLineUser`）との **和集合（DB日付 ∪ シート日付・DB優先の日付dedup）** に変更。判定方式は admin 分析（`app/api/admin/customers/[id]/analysis/data`）の既存実装に合わせた
 - 原因: 直前の体重修正と同じ構図。詳細運動ログ（`/api/exercise-log` → 運動ログDB）が保存されているのに、予測の運動日数・履歴の運動アイコンは個人シートだけを見ていたため、個人シートを持たない顧客の運動が反映されていなかった
