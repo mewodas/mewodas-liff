@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerByLineId,
   getFoodRecordsByDate,
-  getDailyExtras,
   type FoodRecord,
 } from '@/lib/notion';
+import { getWeightOnDate } from '@/lib/repository/weightLogs';
+import { getExerciseOnDate } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -44,17 +45,14 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
 
-    let weight = '';
-    let exercised = '';
-    let exerciseContent = '';
-    if (customer.foodSheetPageId) {
-      const [, mm, dd] = date.split('-').map(Number);
-      const dateLabel = `${mm}月${dd}日`;
-      const extras = await getDailyExtras(customer.foodSheetPageId, dateLabel);
-      weight = extras.weight;
-      exercised = extras.exercised;
-      exerciseContent = extras.exerciseContent;
-    }
+    // 体重・運動とも新DB（体重ログDB / 運動ログDB）から取得（個人シート走査は廃止）。
+    const [weightLog, exerciseState] = await Promise.all([
+      getWeightOnDate(verifiedLineUserId, date).catch(() => null),
+      getExerciseOnDate(verifiedLineUserId, date).catch(() => ({ exercised: false, content: '' })),
+    ]);
+    const weight = weightLog ? String(weightLog.weightKg) : '';
+    const exercised = exerciseState.exercised ? '✅' : '';
+    const exerciseContent = exerciseState.content;
 
     return NextResponse.json({
       customer: { name: customer.name, goals: customer.goals },
