@@ -6,6 +6,7 @@ import {
 } from '@/lib/notion';
 import { predictWeight } from '@/lib/gemini';
 import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
+import { listExerciseLogsByLineUser } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -37,19 +38,22 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
 
     // 食事DB + 個人シートの体重/運動データを並列取得
     const dateLabels: string[] = [];
+    const labelToIso: Record<string, string> = {};
     for (let i = 0; i < 30; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
       const label = `${d.getMonth() + 1}月${d.getDate()}日`;
       dateLabels.push(label);
+      labelToIso[label] = formatDate(d);
     }
 
-    const [foodRecords, extras, weightLogs] = await Promise.all([
+    const [foodRecords, extras, weightLogs, exerciseLogs] = await Promise.all([
       getFoodRecordsByDateRange(verifiedLineUserId, startStr, endStr),
       customer.foodSheetPageId
         ? getRangeExtras(customer.foodSheetPageId, dateLabels)
         : Promise.resolve({}),
       listWeightLogsByLineUser(verifiedLineUserId, startStr, endStr),
+      listExerciseLogsByLineUser(verifiedLineUserId, startStr, endStr),
     ]);
 
     // 日別の集計（食事は記録あった日のみ）
@@ -72,19 +76,29 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     // 体重推移は体重ログDB（書き込みと同じ「真実のソース」）から構築する。
     // 旧実装は個人シート（getRangeExtras）を見ていたため、個人シートを持たない
     // 顧客（LIFFから直接体重を記録する顧客）の推移が常に空になっていた。
-    // 運動日数は運動データ未移行のため個人シート（extras）のまま参照する。
     const weightHistory: Array<{ date: string; weight: number }> = weightLogs
       .filter((w) => w.date && w.weightKg > 0)
       .map((w) => ({ date: w.date, weight: w.weightKg }))
       .sort((a, b) => (a.date < b.date ? -1 : 1));
-    let exerciseDays = 0;
+
+    // 運動日数は「運動ログDB ∪ 個人シート」で判定（admin分析と同じ DB優先・日付dedup）。
+    // 旧実装は個人シート（extras）だけを見ていたため、個人シートを持たない顧客の
+    // 詳細運動ログ（/api/exercise-log → 運動DB）が運動日数に反映されていなかった。
+    const exercisedDates = new Set<string>();
+    for (const e of exerciseLogs) {
+      if (e.date) exercisedDates.add(e.date);
+    }
     const extrasMap = extras as Record<
       string,
       { weight: string; exercised: boolean; exerciseContent: string }
     >;
     for (const label of dateLabels) {
-      if (extrasMap[label]?.exercised) exerciseDays++;
+      if (extrasMap[label]?.exercised) {
+        const iso = labelToIso[label];
+        if (iso) exercisedDates.add(iso);
+      }
     }
+    const exerciseDays = exercisedDates.size;
 
     // 体重記録が7日未満の場合は予測しない（データ不足）
     if (weightHistory.length < 7) {

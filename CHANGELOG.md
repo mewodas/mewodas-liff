@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-06-14 – fix(LIFF): 運動記録が予測・履歴に出ない同種バグ修正（運動ログDBを併用）（branch: staging→main）
+- fix: `app/api/predict-weight/route.ts`（運動日数）・`app/api/history/route.ts`（日別の運動有無）。運動の判定を、個人シート（`getRangeExtras`）だけでなく **運動ログDB**（`listExerciseLogsByLineUser`）との **和集合（DB日付 ∪ シート日付・DB優先の日付dedup）** に変更。判定方式は admin 分析（`app/api/admin/customers/[id]/analysis/data`）の既存実装に合わせた
+- 原因: 直前の体重修正と同じ構図。詳細運動ログ（`/api/exercise-log` → 運動ログDB）が保存されているのに、予測の運動日数・履歴の運動アイコンは個人シートだけを見ていたため、個人シートを持たない顧客の運動が反映されていなかった
+- 影響範囲: 顧客側 LIFF（/prediction 予測の運動日数、/history 履歴の運動有無）。運動データの**書き込み**経路は変更なし（ホームの「運動した」boolはGAS/個人シート、詳細ログは運動DBのまま）。DB・Notion スキーマ変更なし（読み出しロジックのみ）
+- 非regression: 既存の個人シート参照に運動DBの日付を**足す**だけ（和集合）なので、個人シートを持つ顧客の表示は減らない
+- 前提確認: 本番 Vercel env に `NOTION_EXERCISE_DB_ID` が設定済み（Production）であることを確認
+- 検証: `tsc --noEmit`・`eslint` クリーン、`vitest` 43件パス
+- 関連: 直前の体重修正（同日）のフォローアップ。残っていた運動側の同種潜在バグを解消
+
 ## 2026-06-14 – fix(LIFF): 体重推移グラフ・予測・履歴が表示されないバグ修正（読み出し元を体重ログDBに統一）（branch: staging→main）
 - fix: `app/api/predict-weight/route.ts`・`app/api/history/route.ts`。体重の読み出し元を旧「個人シート（`getRangeExtras` / `foodSheetPageId`）」から、書き込みと同じ「真実のソース」である **Notion体重ログDB**（`listWeightLogsByLineUser`）に変更
 - 原因: 体重の**入力**は `/api/log/weight` → 体重ログDB に保存され、ホーム現在体重（`/api/today` → `getLatestWeight`）も体重ログDBを見ているのに、**体重推移グラフ・予測**（`/api/predict-weight`）と**履歴の体重**（`/api/history`）だけが旧データ源の個人シートを読み続けていた。個人シート（`食事記録リンク`）を持たない顧客は推移・予測・履歴の体重が常に空になっていた（本番顧客11名中6名が個人シート無し）

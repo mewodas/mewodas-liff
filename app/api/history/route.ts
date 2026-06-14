@@ -5,6 +5,7 @@ import {
   getRangeExtras,
 } from '@/lib/notion';
 import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
+import { listExerciseLogsByLineUser } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -56,10 +57,10 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
     for (let day = 1; day <= daysInMonth; day++) {
       dateLabels.push(`${month}月${day}日`);
     }
-    // 運動データは個人シート（extras）から、体重は体重ログDB（真実のソース）から。
-    // 旧実装は体重も個人シートから読んでおり、個人シートを持たない顧客の体重が
-    // 履歴に出ていなかった。
-    const [extras, weightLogs] = await Promise.all([
+    // 体重・運動とも「真実のソース」のDBから読む。個人シート（extras）は運動の
+    // 補完（個人シートにしか無い運動日）として併用。旧実装は体重も運動も個人シート
+    // から読んでおり、個人シートを持たない顧客の体重・運動が履歴に出ていなかった。
+    const [extras, weightLogs, exerciseLogs] = await Promise.all([
       customer.foodSheetPageId
         ? getRangeExtras(customer.foodSheetPageId, dateLabels)
         : Promise.resolve(
@@ -69,8 +70,11 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
             >
           ),
       listWeightLogsByLineUser(verifiedLineUserId, startStr, endStr),
+      listExerciseLogsByLineUser(verifiedLineUserId, startStr, endStr),
     ]);
     const weightByDate = new Map(weightLogs.map((w) => [w.date, w.weightKg]));
+    // 運動日: 運動ログDB ∪ 個人シート（admin分析と同じ DB優先・日付dedup）
+    const exercisedDates = new Set(exerciseLogs.map((e) => e.date).filter(Boolean));
 
     const daily: DailyAgg[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
@@ -97,7 +101,7 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
         C: Math.round(totals.C * 10) / 10,
         mealCount: dayRecords.length,
         recorded: dayRecords.length > 0,
-        exercised: ex?.exercised || false,
+        exercised: exercisedDates.has(ds) || ex?.exercised || false,
         weight: weightByDate.has(ds) ? String(weightByDate.get(ds)) : '',
       });
     }
