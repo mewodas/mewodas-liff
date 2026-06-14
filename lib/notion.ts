@@ -1,6 +1,7 @@
 import { getCached, setCached, invalidate } from './cache';
 import { getCurrentTenant } from './tenant';
 import { FITMEAL_PLANS_DB_ID } from './tenant';
+import { listWeightLogsByLineUser } from './repository/weightLogs';
 import type { PlanTier } from './stripe';
 
 export type PlanDef = {
@@ -1263,93 +1264,94 @@ export async function getRangeExtras(
 export async function getWeightBoundsInRange(
   sheetPageId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  lineUserId?: string
 ): Promise<{ first: number | null; last: number | null }> {
-  // 期間の日付ラベル（"M月D日"・テーブル1列目と同形式）を古い順に生成
-  const labels: string[] = [];
-  const [sy, sm, sd] = startDate.split('-').map(Number);
-  const [ey, em, ed] = endDate.split('-').map(Number);
-  if ([sy, sm, sd, ey, em, ed].some((n) => Number.isNaN(n))) return { first: null, last: null };
-  const cur = new Date(sy, sm - 1, sd);
-  const end = new Date(ey, em - 1, ed);
-  let guard = 0;
-  while (cur <= end && guard < 400) {
-    labels.push(`${cur.getMonth() + 1}月${cur.getDate()}日`);
-    cur.setDate(cur.getDate() + 1);
-    guard++;
-  }
-  if (labels.length === 0) return { first: null, last: null };
-
-  const extras = await getRangeExtras(sheetPageId, labels);
-  const parseAt = (i: number): number | null => {
-    const raw = extras[labels[i]]?.weight;
-    if (!raw) return null;
-    const n = parseFloat(raw);
-    return Number.isNaN(n) ? null : n;
-  };
-  // 古い日から探した最初の有効体重 = 開始体重
-  let first: number | null = null;
-  for (let i = 0; i < labels.length; i++) {
-    const v = parseAt(i);
-    if (v !== null) {
-      first = v;
-      break;
-    }
-  }
-  // 新しい日から遡った最初の有効体重 = 最終体重
-  let last: number | null = null;
-  for (let i = labels.length - 1; i >= 0; i--) {
-    const v = parseAt(i);
-    if (v !== null) {
-      last = v;
-      break;
-    }
-  }
-  return { first, last };
+  // 体重ログDB（優先）＋個人シート（補完）を union した日別マップから、
+  // 期間内で最も古い日 = 開始体重 / 最も新しい日 = 最終体重 を返す。
+  const map = await buildWeightMapInRange(sheetPageId, startDate, endDate, lineUserId);
+  const dates = Array.from(map.keys()).sort(); // YYYY-MM-DD 昇順
+  if (dates.length === 0) return { first: null, last: null };
+  return { first: map.get(dates[0]) ?? null, last: map.get(dates[dates.length - 1]) ?? null };
 }
 
 export async function getLastWeightInRange(
   sheetPageId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  lineUserId?: string
 ): Promise<number | null> {
-  return (await getWeightBoundsInRange(sheetPageId, startDate, endDate)).last;
+  return (await getWeightBoundsInRange(sheetPageId, startDate, endDate, lineUserId)).last;
+}
+
+// 期間内（YYYY-MM-DD）の日別体重マップ（isoDate -> kg）を構築する。
+// 体重ログDB（真実のソース・優先）と個人シート（補完・DBに無い日のみ）を union する。
+// lineUserId を渡すと DB を参照、sheetPageId を渡すとシートを参照（両方任意）。
+async function buildWeightMapInRange(
+  sheetPageId: string,
+  startDate: string,
+  endDate: string,
+  lineUserId?: string
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  // 1) 体重ログDB（優先）
+  if (lineUserId) {
+    try {
+      const logs = await listWeightLogsByLineUser(lineUserId, startDate, endDate);
+      for (const w of logs) {
+        if (w.date && typeof w.weightKg === 'number' && w.weightKg > 0) map.set(w.date, w.weightKg);
+      }
+    } catch {
+      // DB取得失敗時はシートのみで継続
+    }
+  }
+  // 2) 個人シート（DBに無い日だけ補完）
+  if (sheetPageId) {
+    const [sy, sm, sd] = startDate.split('-').map(Number);
+    const [ey, em, ed] = endDate.split('-').map(Number);
+    if (![sy, sm, sd, ey, em, ed].some((n) => Number.isNaN(n))) {
+      const labels: string[] = [];
+      const labelIso: string[] = [];
+      const cur = new Date(sy, sm - 1, sd);
+      const end = new Date(ey, em - 1, ed);
+      let guard = 0;
+      while (cur <= end && guard < 400) {
+        labelIso.push(
+          `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+        );
+        labels.push(`${cur.getMonth() + 1}月${cur.getDate()}日`);
+        cur.setDate(cur.getDate() + 1);
+        guard++;
+      }
+      if (labels.length > 0) {
+        const extras = await getRangeExtras(sheetPageId, labels);
+        for (let i = 0; i < labels.length; i++) {
+          if (map.has(labelIso[i])) continue; // DB優先
+          const raw = extras[labels[i]]?.weight;
+          if (!raw) continue;
+          const n = parseFloat(raw);
+          if (!Number.isNaN(n)) map.set(labelIso[i], n);
+        }
+      }
+    }
+  }
+  return map;
 }
 
 // 期間内に記録された体重の平均（小数1桁）と記録件数を返す。
 // 週次/月次レポートの「平均 / 前週平均」表記に使用。記録ゼロなら avg=null。
+// lineUserId を渡すと体重ログDBも参照（個人シートを持たない顧客の体重も反映される）。
 export async function getWeightAvgInRange(
   sheetPageId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  lineUserId?: string
 ): Promise<{ avg: number | null; count: number }> {
-  const labels: string[] = [];
-  const [sy, sm, sd] = startDate.split('-').map(Number);
-  const [ey, em, ed] = endDate.split('-').map(Number);
-  if ([sy, sm, sd, ey, em, ed].some((n) => Number.isNaN(n))) return { avg: null, count: 0 };
-  const cur = new Date(sy, sm - 1, sd);
-  const end = new Date(ey, em - 1, ed);
-  let guard = 0;
-  while (cur <= end && guard < 400) {
-    labels.push(`${cur.getMonth() + 1}月${cur.getDate()}日`);
-    cur.setDate(cur.getDate() + 1);
-    guard++;
-  }
-  if (labels.length === 0) return { avg: null, count: 0 };
-
-  const extras = await getRangeExtras(sheetPageId, labels);
-  let sum = 0;
-  let count = 0;
-  for (const label of labels) {
-    const raw = extras[label]?.weight;
-    if (!raw) continue;
-    const n = parseFloat(raw);
-    if (Number.isNaN(n)) continue;
-    sum += n;
-    count++;
-  }
-  if (count === 0) return { avg: null, count: 0 };
-  return { avg: Math.round((sum / count) * 10) / 10, count };
+  const map = await buildWeightMapInRange(sheetPageId, startDate, endDate, lineUserId);
+  const vals = Array.from(map.values());
+  if (vals.length === 0) return { avg: null, count: 0 };
+  const sum = vals.reduce((a, b) => a + b, 0);
+  return { avg: Math.round((sum / vals.length) * 10) / 10, count: vals.length };
 }
 
 // 個人シートの食事記録テーブルから当日の体重・運動・運動内容を取得

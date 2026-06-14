@@ -195,12 +195,27 @@ export async function createBodyCompositionLog(input: CreateBodyCompositionInput
   return pageToLog(page);
 }
 
+// クロステナント改竄/削除防止: id が現テナントの体組成DBに属することを保証。
+// 共有 Notion API キーのため、raw pageId 操作は所有チェックが無いと他テナントのページを
+// 書き換え/削除できてしまう（IDOR）。lib/notion.ts assertFoodRecordOwnership と同方針。
+async function assertBodyCompOwnership(id: string): Promise<void> {
+  const expectedDbId = getBodyCompDbId().replace(/-/g, '');
+  if (!expectedDbId) throw new Error('forbidden: 体組成DB未設定');
+  const page = await notionRequest('GET', `/pages/${id}`);
+  const parent = page?.parent;
+  const actualDbId = (parent?.database_id || '').replace(/-/g, '');
+  if (parent?.type !== 'database_id' || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: id が現テナントの体組成DBに属していません');
+  }
+}
+
 // 既存レコードを ID 指定で上書き更新（編集用）。計測日(title)も含めて全項目を上書きするため、
 // 計測日を変更しても新規複製されず元のレコードがそのまま更新される。
 export async function updateBodyCompositionLog(
   id: string,
   input: CreateBodyCompositionInput
 ): Promise<BodyCompositionLog> {
+  await assertBodyCompOwnership(id);
   const properties = buildProperties(input, true);
   const page = await notionRequest('PATCH', `/pages/${id}`, { properties });
   return pageToLog(page);
@@ -256,5 +271,6 @@ export async function getBodyCompositionOnDate(lineUserId: string, measureDate: 
 }
 
 export async function deleteBodyCompositionLog(id: string): Promise<void> {
+  await assertBodyCompOwnership(id);
   await notionRequest('PATCH', `/pages/${id}`, { archived: true });
 }
