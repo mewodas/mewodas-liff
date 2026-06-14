@@ -3,9 +3,9 @@ import {
   getCustomerByLineId,
   getFoodRecordsByDateRange,
   getRangeExtras,
-  isoToJpMd,
 } from '@/lib/notion';
 import { predictWeight } from '@/lib/gemini';
+import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -37,20 +37,19 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
 
     // 食事DB + 個人シートの体重/運動データを並列取得
     const dateLabels: string[] = [];
-    const dateIsoMap: Record<string, string> = {};
     for (let i = 0; i < 30; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
       const label = `${d.getMonth() + 1}月${d.getDate()}日`;
       dateLabels.push(label);
-      dateIsoMap[label] = formatDate(d);
     }
 
-    const [foodRecords, extras] = await Promise.all([
+    const [foodRecords, extras, weightLogs] = await Promise.all([
       getFoodRecordsByDateRange(verifiedLineUserId, startStr, endStr),
       customer.foodSheetPageId
         ? getRangeExtras(customer.foodSheetPageId, dateLabels)
         : Promise.resolve({}),
+      listWeightLogsByLineUser(verifiedLineUserId, startStr, endStr),
     ]);
 
     // 日別の集計（食事は記録あった日のみ）
@@ -70,23 +69,21 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     const avgF = recordCount > 0 ? Math.round((totals.F / recordCount) * 10) / 10 : 0;
     const avgC = recordCount > 0 ? Math.round((totals.C / recordCount) * 10) / 10 : 0;
 
-    // 体重推移と運動日数
-    const weightHistory: Array<{ date: string; weight: number }> = [];
+    // 体重推移は体重ログDB（書き込みと同じ「真実のソース」）から構築する。
+    // 旧実装は個人シート（getRangeExtras）を見ていたため、個人シートを持たない
+    // 顧客（LIFFから直接体重を記録する顧客）の推移が常に空になっていた。
+    // 運動日数は運動データ未移行のため個人シート（extras）のまま参照する。
+    const weightHistory: Array<{ date: string; weight: number }> = weightLogs
+      .filter((w) => w.date && w.weightKg > 0)
+      .map((w) => ({ date: w.date, weight: w.weightKg }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
     let exerciseDays = 0;
     const extrasMap = extras as Record<
       string,
       { weight: string; exercised: boolean; exerciseContent: string }
     >;
     for (const label of dateLabels) {
-      const ex = extrasMap[label];
-      if (!ex) continue;
-      if (ex.weight) {
-        const w = parseFloat(ex.weight);
-        if (!isNaN(w) && w > 0) {
-          weightHistory.push({ date: dateIsoMap[label], weight: w });
-        }
-      }
-      if (ex.exercised) exerciseDays++;
+      if (extrasMap[label]?.exercised) exerciseDays++;
     }
 
     // 体重記録が7日未満の場合は予測しない（データ不足）
