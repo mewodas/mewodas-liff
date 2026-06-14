@@ -36,11 +36,15 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
 
     const today = getTargetDate('今日');
     const [customer, records] = await Promise.all([
-      getCustomerByLineId(verifiedLineUserId),
+      getCustomerByLineId(verifiedLineUserId).catch(() => null),
       getFoodRecordsByDate(verifiedLineUserId, today),
     ]);
     if (!customer) {
-      return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
+      console.error('[chat] customer not found — graceful fallback', { lineUserId: verifiedLineUserId });
+      return NextResponse.json(
+        { ok: true, reply: 'データの読み込みに失敗しました。画面を更新して再度お試しください。' },
+        { status: 200 }
+      );
     }
 
     const todayTotals = records.reduce(
