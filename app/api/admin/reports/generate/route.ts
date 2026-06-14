@@ -54,27 +54,26 @@ export const POST = withAdminTenant(async (req) => {
     // 期間内の食事記録を先に取得（変数置換でも使うため、static body 分岐の前に実行）
     const records = await listRecordsInRange(customer.lineUserId, startDate, endDate);
 
-    // 期間内の「開始体重・最終体重」を取得（個人シートから）。週次/月次の増減表記に使用。
-    const { first: firstWeight, last: lastWeight } = customer.foodSheetPageId
-      ? await getWeightBoundsInRange(customer.foodSheetPageId, startDate, endDate).catch(() => ({
-          first: null,
-          last: null,
-        }))
-      : { first: null, last: null };
+    // 期間内の「開始体重・最終体重」を取得（体重ログDB優先＋個人シート補完）。週次/月次の増減表記に使用。
+    const sheetId = customer.foodSheetPageId || '';
+    const { first: firstWeight, last: lastWeight } = await getWeightBoundsInRange(
+      sheetId,
+      startDate,
+      endDate,
+      customer.lineUserId
+    ).catch(() => ({ first: null, last: null }));
     const effectiveWeight = lastWeight ?? customer.currentWeight;
 
     // 週内体重の平均 & 前期間平均（週次レポートの「平均 / 前週平均」表記用）
     const prevRange = previousPeriod(startDate, endDate);
-    const [weightAvg, prevWeightAvg] = customer.foodSheetPageId
-      ? await Promise.all([
-          getWeightAvgInRange(customer.foodSheetPageId, startDate, endDate)
-            .then((r) => r.avg)
-            .catch(() => null),
-          getWeightAvgInRange(customer.foodSheetPageId, prevRange.startDate, prevRange.endDate)
-            .then((r) => r.avg)
-            .catch(() => null),
-        ])
-      : [null, null];
+    const [weightAvg, prevWeightAvg] = await Promise.all([
+      getWeightAvgInRange(sheetId, startDate, endDate, customer.lineUserId)
+        .then((r) => r.avg)
+        .catch(() => null),
+      getWeightAvgInRange(sheetId, prevRange.startDate, prevRange.endDate, customer.lineUserId)
+        .then((r) => r.avg)
+        .catch(() => null),
+    ]);
 
     // 日別集計（AI レポート用サマリ生成に使用）
     const byDay = new Map<string, { kcal: number; P: number; F: number; C: number; count: number; meals: string[] }>();

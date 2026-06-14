@@ -396,26 +396,26 @@ export async function GET(req: NextRequest) {
             ? await getStoreByStoreId(customer.storeId).catch(() => null)
             : null;
 
-          // 期間内の「開始体重・最終体重」（週次/月次の増減表記に使用）
-          const { first: firstWeight, last: lastWeight } = customer.foodSheetPageId
-            ? await getWeightBoundsInRange(customer.foodSheetPageId, reportStart, reportEnd).catch(
-                () => ({ first: null, last: null })
-              )
-            : { first: null, last: null };
+          // 期間内の「開始体重・最終体重」（体重ログDB優先＋個人シート補完。週次/月次の増減表記に使用）
+          const sheetId = customer.foodSheetPageId || '';
+          const { first: firstWeight, last: lastWeight } = await getWeightBoundsInRange(
+            sheetId,
+            reportStart,
+            reportEnd,
+            customer.lineUserId
+          ).catch(() => ({ first: null, last: null }));
           const effectiveWeight = lastWeight ?? customer.currentWeight;
 
           // 週内体重の平均 & 前期間平均（週次レポートの「平均 / 前週平均」表記用）
           const prevRange = previousPeriod(reportStart, reportEnd);
-          const [weightAvg, prevWeightAvg] = customer.foodSheetPageId
-            ? await Promise.all([
-                getWeightAvgInRange(customer.foodSheetPageId, reportStart, reportEnd)
-                  .then((r) => r.avg)
-                  .catch(() => null),
-                getWeightAvgInRange(customer.foodSheetPageId, prevRange.startDate, prevRange.endDate)
-                  .then((r) => r.avg)
-                  .catch(() => null),
-              ])
-            : [null, null];
+          const [weightAvg, prevWeightAvg] = await Promise.all([
+            getWeightAvgInRange(sheetId, reportStart, reportEnd, customer.lineUserId)
+              .then((r) => r.avg)
+              .catch(() => null),
+            getWeightAvgInRange(sheetId, prevRange.startDate, prevRange.endDate, customer.lineUserId)
+              .then((r) => r.avg)
+              .catch(() => null),
+          ]);
 
           const isSingleDay = reportStart === reportEnd;
           const vars = buildReportVariables(records, customer, store, {

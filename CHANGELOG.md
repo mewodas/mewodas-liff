@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-15 – fix(backend): IDOR防止・レポート体重ソース統一・LIFFエラー応答のJSON化（自律バグ掃討 / main直可）
+- security(IDOR): `lib/repository/bodyComposition.ts` の updateBodyCompositionLog/deleteBodyCompositionLog に `assertBodyCompOwnership`（現テナントの体組成DB所属チェック）を追加。共有 Notion API キー下で raw pageId 指定により他テナントの体組成レコードを改竄/削除できる穴を塞ぐ（呼び出し: app/api/admin/body-composition POST/DELETE）
+- fix(reports): `lib/notion.ts` getWeightBoundsInRange/getWeightAvgInRange/getLastWeightInRange に optional `lineUserId` を追加し、体重ログDB（優先）＋個人シート（補完）の union で算出（共有 helper buildWeightMapInRange）。`app/api/admin/reports/generate`・`app/api/cron/daily-reports` の foodSheetPageId ガードを外し lineUserId を渡す → 個人シートを持たない顧客でも週次/月次レポートの体重（開始/最終/平均/前週比）が正しく出る
+- fix(infra): `lib/withTenant.ts` の withLiffTenant がハンドラ例外を throw していたのを JSON 500 応答に変更（withAdminTenant と統一）。try/catch の無い顧客ルート（exercise-log POST, account DELETE 等）で「Unexpected end of JSON input」を解消
+- 影響範囲: API/バックエンド（管理レポート生成・cron自動レポート・LIFFエラー応答）。DB スキーマ変更なし
+- 検証: `tsc --noEmit`・`eslint`（変更ファイル）クリーン、`vitest` 43件パス、`next build` 成功
+- 経緯: オーナー不在中の自律バグ掃討（3観点の並行コード監査）。顧客側UIの修正は staging に別コミットで用意
+
 ## 2026-06-14 – refactor(LIFF): 運動記録の書き込みを運動ログDBに一本化（体重と同じ単一ソース化）（branch: staging→main）
 - 変更: ホームの「運動した/しない」トグルの保存先を、旧 GAS/個人シートから **運動ログDB** に一本化。体重（`/api/log/weight`）と同じ「DB必須・GASミラーはベストエフォート」設計に揃えた。これで個人シートを持たない顧客でも運動が保存・表示される（＝運動の真実のソースがDBに統一）
 - `lib/repository/exerciseLogs.ts`: `setExerciseFlagOnDate`（トグル→DBの簡易レコード upsert/archive）と `getExerciseOnDate`（読み戻し）を追加。`createExerciseLog` を空の `強度`/`種目カテゴリ`(select) でも作成できるよう修正（簡易レコード対応）。`種目` title は全 rich_text セグメント連結に変更（改行を含む複数項目の取りこぼし防止）

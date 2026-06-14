@@ -211,9 +211,14 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
       }
     }
     if (!tenant) tenant = getDefaultTenant();
+    // ハンドラ実行を try/catch でラップ：例外時も必ず JSON レスポンスを返す。
+    // 以前は throw e していたため、try/catch を持たない顧客ルート（exercise-log POST,
+    // account DELETE 等）でフロント側 res.json() が「Unexpected end of JSON input」になっていた。
+    // withAdminTenant と同じ挙動にそろえる。
     try {
       return await runInTenantContext(tenant, () => (handler as LiffRouteHandler)(req, ctx, verifiedLineUserId));
     } catch (e) {
+      console.error('[withLiffTenant] handler error:', e);
       if (process.env.SENTRY_DSN) {
         Sentry.withScope((scope) => {
           scope.setTag('tenant_id', tenant!.id);
@@ -222,7 +227,11 @@ export function withLiffTenant(handler: LiffRouteHandler | RouteHandler): RouteH
           Sentry.captureException(e);
         });
       }
-      throw e;
+      const message = e instanceof Error ? e.message : 'unknown error';
+      return NextResponse.json(
+        { error: message.slice(0, 500), errorType: 'handler_exception' },
+        { status: 500 }
+      );
     }
   };
 }
