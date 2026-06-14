@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-15 – fix(LIFF): 体重/運動の表示ソース統一・ホーム体重消失・目標ペース日付ズレ・未認証PII（自律バグ掃討 / branch: staging）
+- fix(データソース): `/api/day`・`/api/weekly`・`/api/meal-plan` の体重/運動の読み出しを個人シート（getDailyExtras/getRangeExtras）から各ログDB（getWeightOnDate/getExerciseOnDate/listWeightLogsByLineUser/listExerciseLogsByLineUser）に統一（weekly は DB∪シートの union）。個人シートを持たない顧客の「日次詳細の体重・運動」「週次の体重・運動」「献立提案の運動消費カロリー」が反映される（先日の today/history/predict-weight 修正の続き）。meal-plan は旧実装で日付フォーマット不一致により運動消費が実質常に0だった点も解消
+- security(LIFF): `/api/exercise/estimate` を未認証→`withLiffTenant` 必須に変更。旧実装は body の lineUserId を使って任意ユーザーの currentWeight を返せる未認証 PII オラクルだった。体重は検証済み本人（verifiedLineUserId）のみ参照（当該エンドポイントは現状フロント未使用＝実害は限定的だが穴を閉じる）
+- fix(UX): `app/home/_components/LiffGate.tsx` handleMealDeleted が /api/today の空 weight/exercise で上書きし、食事削除後にホームの体重・運動カードが消える不具合を修正（prev 値をマージ）。体重/運動の保存時に AI 予測キャッシュ（predict_）も無効化（home・/weight）
+- fix(日付): `app/home/_components/GoalProgressCard.tsx` の残り週数/必要ペースを JST 0:00 基準の日数計算に修正（/goals ページと統一）。締切付近での1日ズレ・ペース不一致を解消
+- 影響範囲: 顧客側 LIFF（/home, /weekly, /history の日次詳細, 献立提案, /weight）。**staging のみ**（本番反映はオーナーの明示指示後）
+- 検証: `tsc --noEmit` クリーン、`vitest` 43件パス、`next build` 成功
+
 ## 2026-06-15 – fix(backend): IDOR防止・レポート体重ソース統一・LIFFエラー応答のJSON化（自律バグ掃討 / main直可）
 - security(IDOR): `lib/repository/bodyComposition.ts` の updateBodyCompositionLog/deleteBodyCompositionLog に `assertBodyCompOwnership`（現テナントの体組成DB所属チェック）を追加。共有 Notion API キー下で raw pageId 指定により他テナントの体組成レコードを改竄/削除できる穴を塞ぐ（呼び出し: app/api/admin/body-composition POST/DELETE）
 - fix(reports): `lib/notion.ts` getWeightBoundsInRange/getWeightAvgInRange/getLastWeightInRange に optional `lineUserId` を追加し、体重ログDB（優先）＋個人シート（補完）の union で算出（共有 helper buildWeightMapInRange）。`app/api/admin/reports/generate`・`app/api/cron/daily-reports` の foodSheetPageId ガードを外し lineUserId を渡す → 個人シートを持たない顧客でも週次/月次レポートの体重（開始/最終/平均/前週比）が正しく出る

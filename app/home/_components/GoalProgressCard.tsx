@@ -14,8 +14,13 @@ function calcGoalProgress(customer: TodayData['customer']) {
   let remainingWeeks: number | null = null;
   let requiredPace: number | null = null;
   if (customer.targetDate) {
-    const today = new Date();
-    const td = new Date(customer.targetDate);
+    // JST の今日0:00 と、ローカル解釈した目標日0:00 で日数差を取る（/goals ページと同方式）。
+    // 旧実装は new Date()（UTC時刻入り）と new Date("YYYY-MM-DD")（UTC0:00）を引いていて
+    // 締切付近で1日ずれ・残り週数/必要ペースが /goals と食い違っていた。
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    today.setHours(0, 0, 0, 0);
+    const [ty, tm, td2] = customer.targetDate.split('-').map(Number);
+    const td = new Date(ty, tm - 1, td2);
     const daysLeft = Math.ceil((td.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (daysLeft > 0) {
       remainingWeeks = Math.max(1, Math.ceil(daysLeft / 7));

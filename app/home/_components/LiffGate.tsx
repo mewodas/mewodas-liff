@@ -329,6 +329,7 @@ function LiffGateInner() {
     invalidate('today_');
     invalidate('weekly_');
     invalidate('history_');
+    invalidate('predict_'); // 体重/運動の変更でAI予測キャッシュも無効化（古い予測の表示防止）
     if (!userId) return;
 
     if (next) {
@@ -383,8 +384,23 @@ function LiffGateInner() {
       apiFetch(`/api/today?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((json) => {
-          setData(json);
-          setCached(`today_v2_${userId}_${selectedDate}`, json);
+          if (!json || !json.today) return;
+          setData((prev) => {
+            if (!prev) return json;
+            // /api/today は weight/exercise を空で返す（それらは /api/extras 由来）。
+            // 食事削除で体重・運動カードの表示が消えないよう prev の値を維持する。
+            const merged = {
+              ...json,
+              today: {
+                ...json.today,
+                weight: json.today.weight || prev.today.weight,
+                exercised: json.today.exercised || prev.today.exercised,
+                exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+              },
+            };
+            setCached(`today_v2_${userId}_${selectedDate}`, merged);
+            return merged;
+          });
         })
         .catch(() => {});
     }

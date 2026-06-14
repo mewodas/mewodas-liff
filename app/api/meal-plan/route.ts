@@ -3,8 +3,8 @@ import {
   getCustomerByLineId,
   getFoodRecordsByDate,
   getTargetDate,
-  getDailyExtras,
 } from '@/lib/notion';
+import { getExerciseOnDate } from '@/lib/repository/exerciseLogs';
 import { generateMealPlan } from '@/lib/gemini';
 import { estimateExercise } from '@/lib/exerciseEstimate';
 import { withLiffTenant } from '@/lib/withTenant';
@@ -55,17 +55,16 @@ export const POST = withLiffTenant(async (req: NextRequest, _ctx: unknown, verif
       }),
       { kcal: 0, P: 0, F: 0, C: 0 }
     );
-    // 運動消費カロリーを取得（個人シートから）
+    // 運動消費カロリーを取得（運動ログDBから。旧実装は個人シート＋日付フォーマット不一致で
+    // 実質常に0だった）
     let exerciseBurn = 0;
     let exerciseContent = '';
     try {
-      if (customer.foodSheetPageId) {
-        const extras = await getDailyExtras(customer.foodSheetPageId, todayStr);
-        exerciseContent = extras.exerciseContent || '';
-        if (extras.exercised === '✅' && exerciseContent) {
-          const est = estimateExercise(exerciseContent, customer.currentWeight);
-          exerciseBurn = est.totalKcal;
-        }
+      const ex = await getExerciseOnDate(verifiedLineUserId, todayStr);
+      exerciseContent = ex.content || '';
+      if (ex.exercised && exerciseContent) {
+        const est = estimateExercise(exerciseContent, customer.currentWeight);
+        exerciseBurn = est.totalKcal;
       }
     } catch {
       // 失敗は黙殺

@@ -100,6 +100,7 @@ export default function WeightPage() {
       invalidate('today_');
       invalidate('weekly_');
       invalidate('history_');
+      invalidate('predict_'); // 体重変更でAI予測キャッシュも無効化（古い予測の表示防止）
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信エラー');
     } finally {

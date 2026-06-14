@@ -5,6 +5,8 @@ import {
   getRangeExtras,
   type FoodRecord,
 } from '@/lib/notion';
+import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
+import { listExerciseLogsByLineUser } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
 
 export const runtime = 'nodejs';
@@ -63,9 +65,11 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
     const startStr = formatDate(start);
     const endStr = formatDate(end);
 
-    const [customer, records] = await Promise.all([
+    const [customer, records, weightLogs, exerciseLogs] = await Promise.all([
       getCustomerByLineId(verifiedLineUserId),
       getFoodRecordsByDateRange(verifiedLineUserId, startStr, endStr),
+      listWeightLogsByLineUser(verifiedLineUserId, startStr, endStr),
+      listExerciseLogsByLineUser(verifiedLineUserId, startStr, endStr),
     ]);
     if (!customer) {
       return NextResponse.json({ error: '顧客が見つかりません' }, { status: 404 });
@@ -75,6 +79,19 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
     const extras = customer.foodSheetPageId
       ? await getRangeExtras(customer.foodSheetPageId, dateLabels)
       : {};
+
+    // 体重・運動は「真実のソース」の各ログDBから。個人シート(extras)は補完として併用。
+    const weightByDate = new Map(weightLogs.map((w) => [w.date, w.weightKg]));
+    const exDates = new Set<string>();
+    const exContentByDate = new Map<string, string>();
+    for (const e of exerciseLogs) {
+      if (!e.date) continue;
+      exDates.add(e.date);
+      const c = e.exercise && e.exercise !== '運動' ? e.exercise : '';
+      if (c) {
+        exContentByDate.set(e.date, [exContentByDate.get(e.date), c].filter(Boolean).join('\n'));
+      }
+    }
 
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     const daily: DailyAgg[] = dates.map((d) => {
@@ -91,6 +108,9 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
         { kcal: 0, P: 0, F: 0, C: 0 }
       );
       const ex = extras[dateLabel] || { weight: '', exercised: false, exerciseContent: '' };
+      const weight = weightByDate.has(ds) ? String(weightByDate.get(ds)) : ex.weight;
+      const exercised = exDates.has(ds) || ex.exercised;
+      const exerciseContent = exContentByDate.get(ds) || ex.exerciseContent;
       return {
         date: ds,
         weekday: dayNames[d.getDay()],
@@ -100,9 +120,9 @@ export const GET = withLiffTenant(async (req: NextRequest, _ctx: unknown, verifi
         C: Math.round(totals.C * 10) / 10,
         mealCount: dayRecords.length,
         recorded: dayRecords.length > 0,
-        weight: ex.weight,
-        exercised: ex.exercised,
-        exerciseContent: ex.exerciseContent,
+        weight,
+        exercised,
+        exerciseContent,
       };
     });
 
