@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-15 – hotfix(admin): 体組成の編集/削除エラーを修正（IDOR所有チェックを一旦撤去）
+- revert: `lib/repository/bodyComposition.ts` の update/delete から `assertBodyCompOwnership`（本番 `50a6b1c` で追加した IDOR ガード）を撤去。本番でオーナーの体組成編集/削除が "forbidden" になっていた回帰の緊急修正
+- 原因: 体組成DBはAPI自動作成のため page.parent 形状（database_id/data_source_id）が手作りの食事DBと異なり、`parent.type !== 'database_id'` 判定が正規の同テナント操作を弾いていた
+- IDOR は単一テナント運用では未発現（潜在）。データソース対応版を後日再導入。影響範囲: 管理画面 体組成の編集・削除。検証: `tsc --noEmit` クリーン
+
 ## 2026-06-15 – fix(LIFF): 体重/運動の表示ソース統一・ホーム体重消失・目標ペース日付ズレ・未認証PII（自律バグ掃討 / branch: staging）
 - fix(データソース): `/api/day`・`/api/weekly`・`/api/meal-plan` の体重/運動の読み出しを個人シート（getDailyExtras/getRangeExtras）から各ログDB（getWeightOnDate/getExerciseOnDate/listWeightLogsByLineUser/listExerciseLogsByLineUser）に統一（weekly は DB∪シートの union）。個人シートを持たない顧客の「日次詳細の体重・運動」「週次の体重・運動」「献立提案の運動消費カロリー」が反映される（先日の today/history/predict-weight 修正の続き）。meal-plan は旧実装で日付フォーマット不一致により運動消費が実質常に0だった点も解消
 - security(LIFF): `/api/exercise/estimate` を未認証→`withLiffTenant` 必須に変更。旧実装は body の lineUserId を使って任意ユーザーの currentWeight を返せる未認証 PII オラクルだった。体重は検証済み本人（verifiedLineUserId）のみ参照（当該エンドポイントは現状フロント未使用＝実害は限定的だが穴を閉じる）
