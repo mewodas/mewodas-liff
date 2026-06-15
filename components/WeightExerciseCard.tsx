@@ -20,7 +20,9 @@ export default function WeightExerciseCard({
   initialWeight,
   initialExercised,
   initialExerciseContent,
-  enableNote = false,
+  initialNote,
+  noteEnabled = false,
+  onNoteSaved,
   onUpdated,
 }: {
   selectedDate: string;
@@ -29,39 +31,16 @@ export default function WeightExerciseCard({
   initialWeight?: string;
   initialExercised?: string;
   initialExerciseContent?: string;
-  /** 体重・運動の下に「備考」タイルを表示する（ホームのみ true）。テナントに日次備考DBが
-   *  割り当てられていない場合は、この値に関わらず自動で非表示。 */
-  enableNote?: boolean;
+  /** その日の備考（ホームのみ。体重・運動と同じ data 由来で渡す＝同時表示） */
+  initialNote?: string;
+  /** 備考タイルを表示するか（テナントに日次備考DBが割り当て済みか）。未指定＝非表示。 */
+  noteEnabled?: boolean;
+  onNoteSaved?: (note: string) => void;
   onUpdated: (next?: WeightExerciseUpdate) => void;
 }) {
   const [weightOpen, setWeightOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [noteEnabled, setNoteEnabled] = useState(false);
-  const [note, setNote] = useState('');
-
-  // 備考はその日1件。選択日が変わるたびに自分で取得する（体重・運動の表示には影響させない）。
-  useEffect(() => {
-    if (!enableNote) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await apiFetch(`/api/daily-note?date=${selectedDate}&t=${Date.now()}`, {
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const j = await res.json();
-        if (cancelled) return;
-        setNoteEnabled(!!j.enabled);
-        setNote(j.note || '');
-      } catch {
-        /* 備考の取得失敗はサイレント */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDate, enableNote]);
 
   const hasWeight = !!initialWeight;
   const exercised = initialExercised === '✅';
@@ -127,12 +106,12 @@ export default function WeightExerciseCard({
         </button>
       </div>
 
-      {enableNote && noteEnabled && (
+      {noteEnabled && (
         <button
           type="button"
           onClick={() => setNoteOpen(true)}
           className={`w-full mt-2 flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 ${
-            note ? 'bg-emerald-50 border-emerald-300' : 'bg-stone-50 border-stone-200 border-dashed'
+            initialNote ? 'bg-emerald-50 border-emerald-300' : 'bg-stone-50 border-stone-200 border-dashed'
           }`}
         >
           <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
@@ -140,9 +119,9 @@ export default function WeightExerciseCard({
             備考
           </div>
           <div className="w-full">
-            {note ? (
+            {initialNote ? (
               <span className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
-                {note}
+                {initialNote}
               </span>
             ) : (
               <span className="text-xs text-stone-500">タップで入力</span>
@@ -182,11 +161,11 @@ export default function WeightExerciseCard({
       {noteOpen && (
         <NoteSheet
           selectedDate={selectedDate}
-          initialValue={note}
+          initialValue={initialNote ?? ''}
           onClose={() => setNoteOpen(false)}
           onSaved={(value) => {
-            setNote(value);
             setNoteOpen(false);
+            onNoteSaved?.(value);
           }}
         />
       )}

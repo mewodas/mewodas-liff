@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-15 – fix(LIFF): 備考の表示ラグ解消（体重・運動と同時表示）（branch: staging）
+- 不具合: 備考タイルだけ体重・運動から遅れて表示されていた。原因は `WeightExerciseCard` が備考のみカード内で別途 `/api/daily-note` を後追い取得していたため
+- 修正: 備考の取得を `/api/extras` のバッチに相乗りさせ（`getDailyNoteOnDate` を体重/運動と同じ `Promise.all` に追加）、`TodayData.today.dailyNote` / `dailyNoteEnabled` 経由で他と同じ `data` から渡すよう変更。カード側の self-fetch（useEffect）を撤去し、備考は props（`initialNote` / `noteEnabled` / `onNoteSaved`）駆動に。結果、体重・運動・備考が**同時に表示**され、HTTP 往復も1回削減
+- `app/api/extras/route.ts`・`app/home/_components/types.ts`・`app/home/_components/LiffGate.tsx`（取得マージ＋楽観的更新 `handleNoteSaved`＋食事削除/再取得時の保持）・`components/WeightExerciseCard.tsx`
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード）。DB/スキーマ変更なし。/api/daily-note の POST は保存で継続使用（GET は未使用化だが温存）
+- 検証: `tsc --noEmit` クリーン / `next build` 成功 / `vitest` 43件パス
+
 ## 2026-06-15 – fix(LIFF): 備考シートを開いた時カーソルを末尾に置く（branch: staging）
 - `components/WeightExerciseCard.tsx` NoteSheet: 入力済みの備考を再度開くと autoFocus でカーソルが先頭に来ていたのを、マウント時に `setSelectionRange` で末尾へ移動するよう修正（ref + 効果でフォーカス＋キャレット末尾）
 - 影響範囲: 顧客側 LIFF（/home の備考入力シート・操作性のみ）

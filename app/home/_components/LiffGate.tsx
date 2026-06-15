@@ -213,6 +213,9 @@ function LiffGateInner() {
             if (extras.weight) json.today.weight = extras.weight;
             if (extras.exercised) json.today.exercised = extras.exercised;
             if (extras.exerciseContent) json.today.exerciseContent = extras.exerciseContent;
+            // 備考は空文字も有効な値（クリア）なので直接代入。enabled フラグもここで確定。
+            json.today.dailyNote = extras.dailyNote ?? '';
+            json.today.dailyNoteEnabled = !!extras.dailyNoteEnabled;
           }
         }
         // prev に運動・体重データがあって json で空ならそれを維持
@@ -225,6 +228,8 @@ function LiffGateInner() {
               weight: json.today.weight || prev.today.weight,
               exercised: json.today.exercised || prev.today.exercised,
               exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+              dailyNote: json.today.dailyNote ?? prev.today.dailyNote,
+              dailyNoteEnabled: json.today.dailyNoteEnabled ?? prev.today.dailyNoteEnabled,
             },
           };
         });
@@ -375,6 +380,18 @@ function LiffGateInner() {
       .catch(() => {});
   }
 
+  function handleNoteSaved(value: string) {
+    invalidate('today_');
+    if (!userId) return;
+    // 保存した備考を即時反映（楽観的更新）。体重/運動と同じく data に持たせる。
+    setData((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, today: { ...prev.today, dailyNote: value } };
+      setCached(`today_v2_${userId}_${selectedDate}`, updated);
+      return updated;
+    });
+  }
+
   function handleMealDeleted() {
     invalidate('today_');
     invalidate('weekly_');
@@ -396,6 +413,8 @@ function LiffGateInner() {
                 weight: json.today.weight || prev.today.weight,
                 exercised: json.today.exercised || prev.today.exercised,
                 exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+                dailyNote: json.today.dailyNote ?? prev.today.dailyNote,
+                dailyNoteEnabled: json.today.dailyNoteEnabled ?? prev.today.dailyNoteEnabled,
               },
             };
             setCached(`today_v2_${userId}_${selectedDate}`, merged);
@@ -523,7 +542,9 @@ function LiffGateInner() {
                   initialWeight={today.weight}
                   initialExercised={today.exercised}
                   initialExerciseContent={today.exerciseContent}
-                  enableNote
+                  initialNote={today.dailyNote}
+                  noteEnabled={today.dailyNoteEnabled}
+                  onNoteSaved={handleNoteSaved}
                   onUpdated={handleWeightUpdated}
                 />
               </div>

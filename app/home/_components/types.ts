@@ -34,6 +34,8 @@ export type TodayData = {
     weight?: string;
     exercised?: string;
     exerciseContent?: string;
+    dailyNote?: string;
+    dailyNoteEnabled?: boolean;
   };
   stats: {
     streakDays: number;
