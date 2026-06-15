@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-06-15 – hotfix(admin): 体組成の編集/削除エラーを修正（IDOR所有チェックを一旦撤去）
+- revert: `lib/repository/bodyComposition.ts` の update/delete から `assertBodyCompOwnership`（同日 `df6960d`/本番 `50a6b1c` で追加した IDOR ガード）を撤去。本番でオーナーの体組成編集/削除が "forbidden" エラーになっていた回帰の緊急修正
+- 原因: 体組成DBはAPI自動作成（createTenantBodyCompDb）のため page.parent の形状（database_id / data_source_id）が手作りの食事DBと異なり、`parent.type !== 'database_id'` 判定が正規の同テナント操作を弾いていた
+- IDOR は単一テナント運用では未発現（潜在）。実ページの parent 形状を検証のうえデータソース対応版を後日再導入（[[fitmeal-multitenant-latent-risks]]）
+- 影響範囲: 管理画面 体組成計測記録の編集・削除。元の正常動作に復帰。検証: `tsc --noEmit` クリーン
+
 ## 2026-06-15 – fix(LIFF): 備考の表示ラグ解消（体重・運動と同時表示）（branch: staging）
 - 不具合: 備考タイルだけ体重・運動から遅れて表示されていた。原因は `WeightExerciseCard` が備考のみカード内で別途 `/api/daily-note` を後追い取得していたため
 - 修正: 備考の取得を `/api/extras` のバッチに相乗りさせ（`getDailyNoteOnDate` を体重/運動と同じ `Promise.all` に追加）、`TodayData.today.dailyNote` / `dailyNoteEnabled` 経由で他と同じ `data` から渡すよう変更。カード側の self-fetch（useEffect）を撤去し、備考は props（`initialNote` / `noteEnabled` / `onNoteSaved`）駆動に。結果、体重・運動・備考が**同時に表示**され、HTTP 往復も1回削減
