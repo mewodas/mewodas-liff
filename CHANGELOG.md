@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-06-15 – fix(LIFF): 備考シートを開いた時カーソルを末尾に置く（branch: staging）
+- `components/WeightExerciseCard.tsx` NoteSheet: 入力済みの備考を再度開くと autoFocus でカーソルが先頭に来ていたのを、マウント時に `setSelectionRange` で末尾へ移動するよう修正（ref + 効果でフォーカス＋キャレット末尾）
+- 影響範囲: 顧客側 LIFF（/home の備考入力シート・操作性のみ）
+
 ## 2026-06-15 – fix(LIFF): 備考プレビューの文字を運動と同じ太さに統一（branch: staging）
 - `components/WeightExerciseCard.tsx`: 備考タイルの本文プレビューに `font-bold` が抜けており、運動タイルの本文（`text-sm font-bold`）と太さが揃っていなかったのを修正（運動と同一クラスに統一）
 - 影響範囲: 顧客側 LIFF（/home の今日の記録カード・見た目のみ）

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Scale, Footprints, ClipboardList, StickyNote } from 'lucide-react';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import { apiFetch } from '@/lib/apiFetch';
@@ -482,6 +482,16 @@ function NoteSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 入力済みの備考を再度開いた時、カーソルを末尾に置く（既定だと先頭に来てしまうため）。
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }, []);
 
   async function save() {
     if (saving) return;
@@ -538,11 +548,11 @@ function NoteSheet({
           <div>
             <label className="text-xs font-bold text-stone-700 mb-1 block">その日の備考（任意）</label>
             <textarea
+              ref={textareaRef}
               value={note}
               onChange={(e) => setNote(e.target.value.slice(0, MAX_NOTE_LENGTH))}
               placeholder="体調・気づき・トレーナーへの連絡など自由に記入"
               rows={5}
-              autoFocus
               className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-stone-500 mt-1 text-right">
