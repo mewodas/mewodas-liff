@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-06-15 – fix(LIFF): 備考プレビューの文字を運動と同じ太さに統一（branch: staging）
+- `components/WeightExerciseCard.tsx`: 備考タイルの本文プレビューに `font-bold` が抜けており、運動タイルの本文（`text-sm font-bold`）と太さが揃っていなかったのを修正（運動と同一クラスに統一）
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード・見た目のみ）
+
 ## 2026-06-15 – change(LIFF): 備考を独立カードから「今日の記録」カード内に統合（branch: staging）
 - UI変更: 直前に追加した独立「今日の備考」カードを廃止し、**「今日の記録（体重・運動）」カード内**に統合。体重・運動タイルの下に「備考」タイルを追加し、タップでボトムシート（体重/運動と同じ操作系）。オーナー要望「今日の記録にまとめる／体重と運動の下に着ける」に対応
 - `components/WeightExerciseCard.tsx`: opt-in プロップ `enableNote`（ホームのみ true）を追加。備考の取得（選択日ごと）・保存（`/api/daily-note`）・タイル・`NoteSheet`（ボトムシート）を内蔵。テナントに日次備考DBが無い場合（`enabled:false`）はタイルごと自動非表示。/history は従来どおり（`enableNote` 未指定＝備考なし）

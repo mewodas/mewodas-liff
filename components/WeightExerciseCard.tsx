@@ -141,7 +141,7 @@ export default function WeightExerciseCard({
           </div>
           <div className="w-full">
             {note ? (
-              <span className="text-sm text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
+              <span className="text-sm font-bold text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
                 {note}
               </span>
             ) : (
