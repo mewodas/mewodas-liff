@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
+- perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
+- perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
+- perf(#3 画像遅延): `MealListSection` の食事画像 `<img>` に `loading="lazy"` / `decoding="async"` を付与
+- perf(#4 予測並列化): `LiffGate` の予測 effect が `data`(today) 完了を待っていたのを解消し userId+今日 で並列発火。`data` 依存の代わりに明示的な `predictReloadKey` を導入（体重/運動/食事の保存・削除時に increment して再取得＝従来の更新挙動を維持）
+- 影響範囲: 顧客側 LIFF（/home の初期表示・予測ブロック）。Notion DB/スキーマ変更なし。`/api/today` は後方互換（デフォルトは従来どおり stats 同梱）
+- 検証: `tsc --noEmit` クリーン / `next build` 成功（`/api/stats` 追加を確認）/ `vitest` 43件パス
+
 ## 2026-06-15 – hotfix(admin): 体組成の編集/削除エラーを修正（IDOR所有チェックを一旦撤去）
 - revert: `lib/repository/bodyComposition.ts` の update/delete から `assertBodyCompOwnership`（同日 `df6960d`/本番 `50a6b1c` で追加した IDOR ガード）を撤去。本番でオーナーの体組成編集/削除が "forbidden" エラーになっていた回帰の緊急修正
 - 原因: 体組成DBはAPI自動作成（createTenantBodyCompDb）のため page.parent の形状（database_id / data_source_id）が手作りの食事DBと異なり、`parent.type !== 'database_id'` 判定が正規の同テナント操作を弾いていた

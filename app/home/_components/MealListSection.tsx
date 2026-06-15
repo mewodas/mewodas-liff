@@ -166,6 +166,8 @@ export function MealSection({
                     src={toDriveThumbnailUrl(r.imageUrl!)}
                     alt={r.title}
                     referrerPolicy="no-referrer"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
