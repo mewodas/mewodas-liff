@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Scale, Footprints, ClipboardList } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Scale, Footprints, ClipboardList, StickyNote } from 'lucide-react';
 import { useDraggableSheet } from '@/lib/useDraggableSheet';
 import { apiFetch } from '@/lib/apiFetch';
+
+const MAX_NOTE_LENGTH = 2000;
 
 export type WeightExerciseUpdate = {
   weight?: string;
@@ -18,6 +20,7 @@ export default function WeightExerciseCard({
   initialWeight,
   initialExercised,
   initialExerciseContent,
+  enableNote = false,
   onUpdated,
 }: {
   selectedDate: string;
@@ -26,10 +29,39 @@ export default function WeightExerciseCard({
   initialWeight?: string;
   initialExercised?: string;
   initialExerciseContent?: string;
+  /** 体重・運動の下に「備考」タイルを表示する（ホームのみ true）。テナントに日次備考DBが
+   *  割り当てられていない場合は、この値に関わらず自動で非表示。 */
+  enableNote?: boolean;
   onUpdated: (next?: WeightExerciseUpdate) => void;
 }) {
   const [weightOpen, setWeightOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteEnabled, setNoteEnabled] = useState(false);
+  const [note, setNote] = useState('');
+
+  // 備考はその日1件。選択日が変わるたびに自分で取得する（体重・運動の表示には影響させない）。
+  useEffect(() => {
+    if (!enableNote) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/api/daily-note?date=${selectedDate}&t=${Date.now()}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (cancelled) return;
+        setNoteEnabled(!!j.enabled);
+        setNote(j.note || '');
+      } catch {
+        /* 備考の取得失敗はサイレント */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, enableNote]);
 
   const hasWeight = !!initialWeight;
   const exercised = initialExercised === '✅';
@@ -95,6 +127,30 @@ export default function WeightExerciseCard({
         </button>
       </div>
 
+      {enableNote && noteEnabled && (
+        <button
+          type="button"
+          onClick={() => setNoteOpen(true)}
+          className={`w-full mt-2 flex flex-col items-start text-left rounded-xl p-3 border active:bg-stone-50 ${
+            note ? 'bg-emerald-50 border-emerald-300' : 'bg-stone-50 border-stone-200 border-dashed'
+          }`}
+        >
+          <div className="text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+            <StickyNote className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2.2} />
+            備考
+          </div>
+          <div className="w-full">
+            {note ? (
+              <span className="text-sm text-stone-900 line-clamp-2 leading-snug w-full break-words whitespace-pre-line">
+                {note}
+              </span>
+            ) : (
+              <span className="text-xs text-stone-500">タップで入力</span>
+            )}
+          </div>
+        </button>
+      )}
+
       {weightOpen && (
         <WeightSheet
           selectedDate={selectedDate}
@@ -119,6 +175,18 @@ export default function WeightExerciseCard({
           onSaved={(next) => {
             setExerciseOpen(false);
             onUpdated(next);
+          }}
+        />
+      )}
+
+      {noteOpen && (
+        <NoteSheet
+          selectedDate={selectedDate}
+          initialValue={note}
+          onClose={() => setNoteOpen(false)}
+          onSaved={(value) => {
+            setNote(value);
+            setNoteOpen(false);
           }}
         />
       )}
@@ -392,6 +460,102 @@ function ExerciseSheet({
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
           >
             {saving ? '保存中…' : hasInitial ? '上書き保存' : '保存'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NoteSheet({
+  selectedDate,
+  initialValue,
+  onClose,
+  onSaved,
+}: {
+  selectedDate: string;
+  initialValue: string;
+  onClose: () => void;
+  onSaved: (note: string) => void;
+}) {
+  const [note, setNote] = useState(initialValue);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { expanded, handleProps, sheetStyle } = useDraggableSheet(onClose);
+
+  async function save() {
+    if (saving) return;
+    // 保存前に入力フィールドのフォーカスを外してソフトキーボードを閉じる（iOS スクロール暴れ対策）
+    if (typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+    setSaving(true);
+    setError(null);
+    const value = note.trim();
+    try {
+      const res = await apiFetch('/api/daily-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: selectedDate, note: value }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `保存失敗（${res.status}）`);
+      }
+      onSaved(value);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '送信エラー');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-end" onClick={saving ? undefined : onClose}>
+      <div
+        className={`bg-white shadow-2xl w-full flex flex-col ${
+          expanded ? 'h-full rounded-none' : 'rounded-t-2xl max-h-[88vh]'
+        }`}
+        style={sheetStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          {...handleProps}
+          className="pt-3 pb-2 border-b border-stone-200 cursor-grab active:cursor-grabbing touch-none select-none"
+        >
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-2" />
+          <div className="flex justify-between items-center px-5">
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <StickyNote className="w-4 h-4 text-emerald-600" strokeWidth={2.2} />
+              備考を記録
+            </h2>
+            <button onClick={onClose} disabled={saving} className="text-stone-500 text-2xl leading-none px-2">×</button>
+          </div>
+        </div>
+        <div className="p-5 space-y-3 overflow-y-auto flex-1">
+          {error && (
+            <div className="bg-red-100 border border-red-300 text-red-800 text-xs p-2 rounded-xl">{error}</div>
+          )}
+          <div>
+            <label className="text-xs font-bold text-stone-700 mb-1 block">その日の備考（任意）</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, MAX_NOTE_LENGTH))}
+              placeholder="体調・気づき・トレーナーへの連絡など自由に記入"
+              rows={5}
+              autoFocus
+              className="w-full bg-white text-stone-900 placeholder:text-stone-400 border border-stone-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <p className="text-[10px] text-stone-500 mt-1 text-right">
+              {note.length}/{MAX_NOTE_LENGTH}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 disabled:opacity-50"
+          >
+            {saving ? '保存中…' : initialValue ? '上書き保存' : '保存'}
           </button>
         </div>
       </div>

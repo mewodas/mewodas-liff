@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-06-15 – change(LIFF): 備考を独立カードから「今日の記録」カード内に統合（branch: staging）
+- UI変更: 直前に追加した独立「今日の備考」カードを廃止し、**「今日の記録（体重・運動）」カード内**に統合。体重・運動タイルの下に「備考」タイルを追加し、タップでボトムシート（体重/運動と同じ操作系）。オーナー要望「今日の記録にまとめる／体重と運動の下に着ける」に対応
+- `components/WeightExerciseCard.tsx`: opt-in プロップ `enableNote`（ホームのみ true）を追加。備考の取得（選択日ごと）・保存（`/api/daily-note`）・タイル・`NoteSheet`（ボトムシート）を内蔵。テナントに日次備考DBが無い場合（`enabled:false`）はタイルごと自動非表示。/history は従来どおり（`enableNote` 未指定＝備考なし）
+- `app/home/_components/LiffGate.tsx`: 独立カードの描画を削除し、`WeightExerciseCard` に `enableNote` を付与。`components/DailyNoteCard.tsx` は削除
+- データ層・API・Notion DB・プロビジョニングは前エントリのまま（変更なし）
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード）。DB/スキーマ変更なし
+- 検証: `tsc --noEmit` クリーン / `next build` 成功 / `vitest` 43件パス
+
 ## 2026-06-15 – feat(LIFF): ホームに「今日の備考」カード追加（日次1件の自由メモ / branch: staging）
 - 新機能: ホーム画面「本日の記録（体重・運動）」カードの直下に「今日の備考」カードを追加。顧客が日付ごとに1件、自由テキストのメモ（体調・気づき・トレーナーへの連絡など）を保存できる。選択中の日付に追従（過去日も閲覧・編集可、未来日は非表示）。2000文字まで
 - データ層: テナント別 Notion「日次備考」DB を新設（体重ログDBと同じ "1日1ユーザー1レコード upsert + 所有者スコープ" 方式）。`lib/repository/dailyNotes.ts`（getDailyNoteOnDate/upsertDailyNote/isDailyNoteEnabled、日付=title）。運動DBのような env グローバル直読みは踏襲せず、テナント分離を最初から担保
