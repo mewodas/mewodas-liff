@@ -624,6 +624,33 @@ export async function createTenantWeightDb(
   return res.id as string;
 }
 
+// 新規ジム用の「{ジム名} 日次備考」DB を作成。
+// 体重ログDBと同じく 1日1ユーザー1レコード（日付=title）の形。
+export async function createTenantDailyNoteDb(
+  tenantName: string,
+  parentPageId: string
+): Promise<string> {
+  const res = await notionRequest('POST', '/databases', {
+    parent: { type: 'page_id', page_id: parentPageId },
+    title: [{ type: 'text', text: { content: `${tenantName} 日次備考` } }],
+    properties: {
+      日付: { title: {} },
+      LINEユーザーID: { rich_text: {} },
+      顧客名: { rich_text: {} },
+      備考: { rich_text: {} },
+      入力経路: {
+        select: {
+          options: [
+            { name: 'LIFF', color: 'green' },
+            { name: '管理画面', color: 'blue' },
+          ],
+        },
+      },
+    },
+  });
+  return res.id as string;
+}
+
 // 新規ジム用の「{ジム名} 体組成計測記録」DB を作成。
 export async function createTenantBodyCompDb(
   tenantName: string,
@@ -679,6 +706,7 @@ export async function insertTenantRow(
     foodDbId: string;
     weightDbId?: string;
     bodyCompDbId?: string;
+    dailyNoteDbId?: string;
     ownerEmail: string;
     startDate: string;
     note?: string;
@@ -701,6 +729,9 @@ export async function insertTenantRow(
   if (row.bodyCompDbId) {
     properties['Notion 体組成DB ID'] = { rich_text: [{ type: 'text', text: { content: row.bodyCompDbId } }] };
   }
+  if (row.dailyNoteDbId) {
+    properties['Notion 日次備考DB ID'] = { rich_text: [{ type: 'text', text: { content: row.dailyNoteDbId } }] };
+  }
   const res = await notionRequest('POST', '/pages', {
     parent: { database_id: tenantsDbId },
     properties,
@@ -717,6 +748,8 @@ export type TenantRow = {
   customerDbId: string | null;
   foodDbId: string | null;
   weightDbId: string | null;
+  /** 日次備考 DB ID（その日1件の自由メモ） */
+  dailyNoteDbId: string | null;
   officialLineUrl: string | null;
   liffId: string | null;
   ownerEmail: string | null;
@@ -950,6 +983,7 @@ export async function listTenantRows(tenantsDbId: string): Promise<TenantRow[]> 
       customerDbId: p['Notion 顧客DB ID']?.rich_text?.[0]?.plain_text || null,
       foodDbId: p['Notion 食事DB ID']?.rich_text?.[0]?.plain_text || null,
       weightDbId: p['Notion 体重DB ID']?.rich_text?.[0]?.plain_text || null,
+      dailyNoteDbId: p['Notion 日次備考DB ID']?.rich_text?.[0]?.plain_text || null,
       officialLineUrl: p['公式LINE URL']?.url || null,
       liffId: p['LIFF ID']?.rich_text?.[0]?.plain_text || null,
       ownerEmail: p['オーナーメール']?.email || null,

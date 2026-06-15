@@ -10,6 +10,7 @@ import { useInboxUnread } from '@/lib/useInboxUnread';
 import { isDemoMode } from '@/lib/demoClient';
 import { getCached, setCached, invalidate } from '@/lib/clientCache';
 import WeightExerciseCard, { type WeightExerciseUpdate } from '@/components/WeightExerciseCard';
+import DailyNoteCard from '@/components/DailyNoteCard';
 import MealRatioChart from '@/components/MealRatioChart';
 import OnboardingFlow from '@/components/OnboardingFlow';
 import { UtensilsCrossed, RefreshCw, Bell, MessageCircle, ChefHat, AlertCircle } from 'lucide-react';
@@ -526,6 +527,14 @@ function LiffGateInner() {
                   onUpdated={handleWeightUpdated}
                 />
               </div>
+            )}
+
+            {!isDemo && userId && selectedDate <= todayStr && (
+              <DailyNoteCard
+                selectedDate={selectedDate}
+                isToday={isToday}
+                lineUserId={userId}
+              />
             )}
 
             <GoalProgressCard

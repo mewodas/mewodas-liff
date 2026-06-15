@@ -33,6 +33,8 @@ export type TenantConfig = {
   notionWeightDbId?: string;
   /** Notion 体組成計測記録DB ID */
   notionBodyCompDbId?: string;
+  /** Notion 日次備考DB ID（その日1件の自由メモ。体重DBと同じくテナント別に分離） */
+  notionDailyNoteDbId?: string;
   /** 公式LINE 友だち追加URL（例: https://lin.ee/XXXXXXXX） */
   officialLineUrl?: string;
   /** Google Drive 親フォルダID（食事画像保存先） */
@@ -84,6 +86,7 @@ const MEWODAS_TENANT: TenantConfig = {
     process.env.NOTION_FOOD_DB_ID || '8719d5ab23074ea5bf6e77fde352db86',
   notionWeightDbId: process.env.NOTION_WEIGHT_DB_ID,
   notionBodyCompDbId: process.env.NOTION_BODYCOMP_DB_ID,
+  notionDailyNoteDbId: process.env.NOTION_DAILYNOTE_DB_ID,
   officialLineUrl: process.env.OFFICIAL_LINE_URL,
   lineChannelToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   driveFolderId: process.env.DRIVE_PARENT_FOLDER_ID,

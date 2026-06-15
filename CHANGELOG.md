@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-06-15 – feat(LIFF): ホームに「今日の備考」カード追加（日次1件の自由メモ / branch: staging）
+- 新機能: ホーム画面「本日の記録（体重・運動）」カードの直下に「今日の備考」カードを追加。顧客が日付ごとに1件、自由テキストのメモ（体調・気づき・トレーナーへの連絡など）を保存できる。選択中の日付に追従（過去日も閲覧・編集可、未来日は非表示）。2000文字まで
+- データ層: テナント別 Notion「日次備考」DB を新設（体重ログDBと同じ "1日1ユーザー1レコード upsert + 所有者スコープ" 方式）。`lib/repository/dailyNotes.ts`（getDailyNoteOnDate/upsertDailyNote/isDailyNoteEnabled、日付=title）。運動DBのような env グローバル直読みは踏襲せず、テナント分離を最初から担保
+- 設定: FitMeal テナントDB に列「Notion 日次備考DB ID」を追加（`weightDbId`/`bodyCompDbId` と同方式）。`TenantConfig.notionDailyNoteDbId`・`TenantRow.dailyNoteDbId`・`tenantResolver`・`insertTenantRow`・`provisionTenant`（新規テナントは5DB目として自動作成）・`createTenantDailyNoteDb` を追加。DB 未割当テナントでは API が `enabled:false` を返しカードごと非表示（機能フラグ）
+- API: `app/api/daily-note/route.ts`（GET=取得 / POST=upsert、`withLiffTenant` で検証済み本人にスコープ＝IDOR なし）。UI: `components/DailyNoteCard.tsx`（自己完結型・選択日変更で自取得・楽観 UI なしの確実保存）。`app/home/_components/LiffGate.tsx` に1ブロック追加
+- provisioning: `scripts/provision-daily-note-db.mjs`（アプリと同じ Integration で DB 作成→アクセス権が確実に通る・冪等）。staging テナント済み。**本番テナントはオーナーの main マージ指示時に実行予定**
+- 影響範囲: 顧客側 LIFF（/home）。Notion DB 新設＋テナントDB列追加（既存データ・既存スキーマへの破壊的変更なし）
+- 検証: `tsc --noEmit`・`next build`・`vitest`（後述）
+
 ## 2026-06-15 – fix(LIFF): 体重/運動の表示ソース統一・ホーム体重消失・目標ペース日付ズレ・未認証PII（自律バグ掃討 / branch: staging）
 - fix(データソース): `/api/day`・`/api/weekly`・`/api/meal-plan` の体重/運動の読み出しを個人シート（getDailyExtras/getRangeExtras）から各ログDB（getWeightOnDate/getExerciseOnDate/listWeightLogsByLineUser/listExerciseLogsByLineUser）に統一（weekly は DB∪シートの union）。個人シートを持たない顧客の「日次詳細の体重・運動」「週次の体重・運動」「献立提案の運動消費カロリー」が反映される（先日の today/history/predict-weight 修正の続き）。meal-plan は旧実装で日付フォーマット不一致により運動消費が実質常に0だった点も解消
 - security(LIFF): `/api/exercise/estimate` を未認証→`withLiffTenant` 必須に変更。旧実装は body の lineUserId を使って任意ユーザーの currentWeight を返せる未認証 PII オラクルだった。体重は検証済み本人（verifiedLineUserId）のみ参照（当該エンドポイントは現状フロント未使用＝実害は限定的だが穴を閉じる）

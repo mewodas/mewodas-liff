@@ -14,6 +14,7 @@ import {
   createTenantFoodDb,
   createTenantWeightDb,
   createTenantBodyCompDb,
+  createTenantDailyNoteDb,
   insertTenantRow,
   updateTenantRow,
   setTenantPasswordHash,
@@ -414,12 +415,13 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
 
   const tenantId = genTenantId(input.name);
 
-  // Notion 4DB を並列作成
-  const [customerDbId, foodDbId, weightDbId, bodyCompDbId] = await Promise.all([
+  // Notion 5DB を並列作成
+  const [customerDbId, foodDbId, weightDbId, bodyCompDbId, dailyNoteDbId] = await Promise.all([
     createTenantCustomerDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
     createTenantFoodDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
     createTenantWeightDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
     createTenantBodyCompDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
+    createTenantDailyNoteDb(input.name, FITMEAL_TENANTS_PARENT_PAGE_ID),
   ]);
 
   // テナント行作成 (基本フィールドのみ)
@@ -431,6 +433,7 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
     foodDbId,
     weightDbId,
     bodyCompDbId,
+    dailyNoteDbId,
     ownerEmail: input.ownerEmail,
     startDate: jstToday(),
     note: input.note || '',
