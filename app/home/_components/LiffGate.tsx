@@ -44,7 +44,11 @@ function LiffGateInner() {
   const [userId, setUserId] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
+  // 予測の明示的な再取得トリガー（体重/運動/食事の保存後に increment して再フェッチ）。
+  // 以前は予測 effect の deps に data を入れていたが、data 待ちの直列化と不要依存を避けるため分離。
+  const [predictReloadKey, setPredictReloadKey] = useState(0);
   const [badgeOpen, setBadgeOpen] = useState(false);
+  const [stats, setStats] = useState<TodayData['stats']>(null);
   const unreadCount = useInboxUnread(userId);
   const [refetching, setRefetching] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
@@ -147,8 +151,11 @@ function LiffGateInner() {
     })();
   }, [userId]);
 
+  // 予測は today の完了を待たず userId+今日 だけで並列発火する（体感の遅延を削減）。
+  // deps に data を残すことで、体重/運動の保存後（handleWeightUpdated が data を更新＋
+  // predict_ キャッシュを無効化）に再取得される従来挙動は維持する。
   useEffect(() => {
-    if (!userId || !data || !isToday) {
+    if (!userId || !isToday) {
       setPrediction(null);
       return;
     }
@@ -175,7 +182,35 @@ function LiffGateInner() {
         setPredictionLoading(false);
       }
     })();
-  }, [userId, selectedDate, isToday, data]);
+  }, [userId, selectedDate, isToday, predictReloadKey]);
+
+  // 連続記録バッジ用の統計は today から分離（/api/stats）。常に「今日」基準なので
+  // 日付ナビでは再取得しない（userId ごとに1回 + stale-while-revalidate）。
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const cacheKey = `stats_v1_${userId}`;
+      const cached = getCached<TodayData['stats']>(cacheKey);
+      if (cached) {
+        if (!cancelled) setStats(cached.data);
+        if (!cached.isStale) return;
+      }
+      try {
+        const res = await apiFetch(`/api/stats?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        setStats(json.stats ?? null);
+        setCached(cacheKey, json.stats ?? null);
+      } catch {
+        /* 統計の取得失敗はサイレント（バッジが出ないだけ） */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -198,7 +233,7 @@ function LiffGateInner() {
     (async () => {
       try {
         const [todayRes, extrasRes] = await Promise.all([
-          apiFetch(`/api/today?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' }),
+          apiFetch(`/api/today?date=${selectedDate}&stats=0&t=${Date.now()}`, { cache: 'no-store' }),
           apiFetch(`/api/extras?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' }).catch(() => null),
         ]);
         if (!todayRes.ok) {
@@ -213,6 +248,9 @@ function LiffGateInner() {
             if (extras.weight) json.today.weight = extras.weight;
             if (extras.exercised) json.today.exercised = extras.exercised;
             if (extras.exerciseContent) json.today.exerciseContent = extras.exerciseContent;
+            // 備考は空文字も有効な値（クリア）なので直接代入。enabled フラグもここで確定。
+            json.today.dailyNote = extras.dailyNote ?? '';
+            json.today.dailyNoteEnabled = !!extras.dailyNoteEnabled;
           }
         }
         // prev に運動・体重データがあって json で空ならそれを維持
@@ -225,6 +263,8 @@ function LiffGateInner() {
               weight: json.today.weight || prev.today.weight,
               exercised: json.today.exercised || prev.today.exercised,
               exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+              dailyNote: json.today.dailyNote ?? prev.today.dailyNote,
+              dailyNoteEnabled: json.today.dailyNoteEnabled ?? prev.today.dailyNoteEnabled,
             },
           };
         });
@@ -330,6 +370,7 @@ function LiffGateInner() {
     invalidate('weekly_');
     invalidate('history_');
     invalidate('predict_'); // 体重/運動の変更でAI予測キャッシュも無効化（古い予測の表示防止）
+    setPredictReloadKey((k) => k + 1); // 予測を再取得（data 依存を外したため明示トリガー）
     if (!userId) return;
 
     if (next) {
@@ -375,13 +416,27 @@ function LiffGateInner() {
       .catch(() => {});
   }
 
+  function handleNoteSaved(value: string) {
+    invalidate('today_');
+    if (!userId) return;
+    // 保存した備考を即時反映（楽観的更新）。体重/運動と同じく data に持たせる。
+    setData((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, today: { ...prev.today, dailyNote: value } };
+      setCached(`today_v2_${userId}_${selectedDate}`, updated);
+      return updated;
+    });
+  }
+
   function handleMealDeleted() {
     invalidate('today_');
     invalidate('weekly_');
     invalidate('history_');
+    invalidate('predict_'); // 食事の増減は予測の avgKcal に影響するため再取得
+    setPredictReloadKey((k) => k + 1);
     router.refresh();
     if (userId) {
-      apiFetch(`/api/today?date=${selectedDate}&t=${Date.now()}`, { cache: 'no-store' })
+      apiFetch(`/api/today?date=${selectedDate}&stats=0&t=${Date.now()}`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((json) => {
           if (!json || !json.today) return;
@@ -396,6 +451,8 @@ function LiffGateInner() {
                 weight: json.today.weight || prev.today.weight,
                 exercised: json.today.exercised || prev.today.exercised,
                 exerciseContent: json.today.exerciseContent || prev.today.exerciseContent,
+                dailyNote: json.today.dailyNote ?? prev.today.dailyNote,
+                dailyNoteEnabled: json.today.dailyNoteEnabled ?? prev.today.dailyNoteEnabled,
               },
             };
             setCached(`today_v2_${userId}_${selectedDate}`, merged);
@@ -426,7 +483,7 @@ function LiffGateInner() {
                 <p className="text-base font-bold text-stone-800 leading-none">{dateLabel}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {data.stats && (
+                {stats && (
                   <button
                     type="button"
                     onClick={() => setBadgeOpen(true)}
@@ -435,7 +492,7 @@ function LiffGateInner() {
                   >
                     <span className="text-sm leading-none">🏅</span>
                     <span className="text-xs font-bold text-amber-800">
-                      {data.stats.streakDays}日
+                      {stats.streakDays}日
                     </span>
                   </button>
                 )}
@@ -523,6 +580,9 @@ function LiffGateInner() {
                   initialWeight={today.weight}
                   initialExercised={today.exercised}
                   initialExerciseContent={today.exerciseContent}
+                  initialNote={today.dailyNote}
+                  noteEnabled={today.dailyNoteEnabled}
+                  onNoteSaved={handleNoteSaved}
                   onUpdated={handleWeightUpdated}
                 />
               </div>
@@ -566,8 +626,8 @@ function LiffGateInner() {
           </div>
         </div>
 
-        {badgeOpen && data.stats && (
-          <BadgeModal stats={data.stats} onClose={() => setBadgeOpen(false)} />
+        {badgeOpen && stats && (
+          <BadgeModal stats={stats} onClose={() => setBadgeOpen(false)} />
         )}
       </main>
     </>

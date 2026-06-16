@@ -8,11 +8,17 @@ import { predictWeight } from '@/lib/gemini';
 import { listWeightLogsByLineUser } from '@/lib/repository/weightLogs';
 import { listExerciseLogsByLineUser } from '@/lib/repository/exerciseLogs';
 import { withLiffTenant } from '@/lib/withTenant';
+import { getCached, setCached } from '@/lib/cache';
+import { getCurrentTenant } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+// 予測のサーバ側キャッシュ TTL。体重/運動の保存は invalidate('') でこのキャッシュも
+// 消える（即再計算される）ため、主な陳腐化要因は食事記録の変化のみ。30分なら許容範囲。
+const PREDICT_CACHE_TTL_MS = 30 * 60 * 1000;
 
 function jstNow(): Date {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -30,6 +36,17 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
 
     const startStr = formatDate(startDate);
     const endStr = formatDate(today);
+
+    // サーバ側キャッシュ: 同一ユーザー・同一日付の予測は使い回し、Gemini 呼び出しと
+    // 30日分の Notion クエリを丸ごとスキップする。体重/運動の保存は invalidate('') で
+    // この予測キャッシュも消すため、保存直後はちゃんと再計算される。
+    const cacheKey = `${getCurrentTenant().id}:predict:${verifiedLineUserId}:${endStr}`;
+    const cachedPayload = getCached<Record<string, unknown>>(cacheKey);
+    if (cachedPayload !== undefined) {
+      const cachedRes = NextResponse.json(cachedPayload);
+      cachedRes.headers.set('Cache-Control', 'private, max-age=30');
+      return cachedRes;
+    }
 
     const customer = await getCustomerByLineId(verifiedLineUserId);
     if (!customer) {
@@ -101,8 +118,9 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
     const exerciseDays = exercisedDates.size;
 
     // 体重記録が7日未満の場合は予測しない（データ不足）
+    let payload: Record<string, unknown>;
     if (weightHistory.length < 7) {
-      return NextResponse.json({
+      payload = {
         prediction: null,
         reason: 'データ不足',
         message: `体重記録が${weightHistory.length}日分しかありません。7日以上の記録があると予測できます。`,
@@ -117,40 +135,42 @@ export const GET = withLiffTenant(async (_req: NextRequest, _ctx: unknown, verif
           targetWeight: customer.targetWeight,
           targetDate: customer.targetDate,
         },
-      });
-    }
-
-    const prediction = await predictWeight({
-      weightHistory,
-      avgKcal,
-      goalKcal: customer.goals.kcal,
-      avgP,
-      avgF,
-      avgC,
-      exerciseDays,
-      currentWeight: customer.currentWeight,
-      targetWeight: customer.targetWeight,
-      targetDate: customer.targetDate,
-    });
-
-    return NextResponse.json({
-      prediction,
-      weightHistory,
-      dataPoints: {
-        recordedDays: recordCount,
-        weightDays: weightHistory.length,
-        exerciseDays,
+      };
+    } else {
+      const prediction = await predictWeight({
+        weightHistory,
         avgKcal,
+        goalKcal: customer.goals.kcal,
         avgP,
         avgF,
         avgC,
-      },
-      customer: {
+        exerciseDays,
         currentWeight: customer.currentWeight,
         targetWeight: customer.targetWeight,
         targetDate: customer.targetDate,
-      },
-    });
+      });
+      payload = {
+        prediction,
+        weightHistory,
+        dataPoints: {
+          recordedDays: recordCount,
+          weightDays: weightHistory.length,
+          exerciseDays,
+          avgKcal,
+          avgP,
+          avgF,
+          avgC,
+        },
+        customer: {
+          currentWeight: customer.currentWeight,
+          targetWeight: customer.targetWeight,
+          targetDate: customer.targetDate,
+        },
+      };
+    }
+
+    setCached(cacheKey, payload, PREDICT_CACHE_TTL_MS);
+    return NextResponse.json(payload);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,9 +1,50 @@
 # CHANGELOG
 
+## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
+- perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
+- perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
+- perf(#3 画像遅延): `MealListSection` の食事画像 `<img>` に `loading="lazy"` / `decoding="async"` を付与
+- perf(#4 予測並列化): `LiffGate` の予測 effect が `data`(today) 完了を待っていたのを解消し userId+今日 で並列発火。`data` 依存の代わりに明示的な `predictReloadKey` を導入（体重/運動/食事の保存・削除時に increment して再取得＝従来の更新挙動を維持）
+- 影響範囲: 顧客側 LIFF（/home の初期表示・予測ブロック）。Notion DB/スキーマ変更なし。`/api/today` は後方互換（デフォルトは従来どおり stats 同梱）
+- 検証: `tsc --noEmit` クリーン / `next build` 成功（`/api/stats` 追加を確認）/ `vitest` 43件パス
+
 ## 2026-06-15 – hotfix(admin): 体組成の編集/削除エラーを修正（IDOR所有チェックを一旦撤去）
-- revert: `lib/repository/bodyComposition.ts` の update/delete から `assertBodyCompOwnership`（本番 `50a6b1c` で追加した IDOR ガード）を撤去。本番でオーナーの体組成編集/削除が "forbidden" になっていた回帰の緊急修正
-- 原因: 体組成DBはAPI自動作成のため page.parent 形状（database_id/data_source_id）が手作りの食事DBと異なり、`parent.type !== 'database_id'` 判定が正規の同テナント操作を弾いていた
-- IDOR は単一テナント運用では未発現（潜在）。データソース対応版を後日再導入。影響範囲: 管理画面 体組成の編集・削除。検証: `tsc --noEmit` クリーン
+- revert: `lib/repository/bodyComposition.ts` の update/delete から `assertBodyCompOwnership`（同日 `df6960d`/本番 `50a6b1c` で追加した IDOR ガード）を撤去。本番でオーナーの体組成編集/削除が "forbidden" エラーになっていた回帰の緊急修正
+- 原因: 体組成DBはAPI自動作成（createTenantBodyCompDb）のため page.parent の形状（database_id / data_source_id）が手作りの食事DBと異なり、`parent.type !== 'database_id'` 判定が正規の同テナント操作を弾いていた
+- IDOR は単一テナント運用では未発現（潜在）。実ページの parent 形状を検証のうえデータソース対応版を後日再導入（[[fitmeal-multitenant-latent-risks]]）
+- 影響範囲: 管理画面 体組成計測記録の編集・削除。元の正常動作に復帰。検証: `tsc --noEmit` クリーン
+
+## 2026-06-15 – fix(LIFF): 備考の表示ラグ解消（体重・運動と同時表示）（branch: staging）
+- 不具合: 備考タイルだけ体重・運動から遅れて表示されていた。原因は `WeightExerciseCard` が備考のみカード内で別途 `/api/daily-note` を後追い取得していたため
+- 修正: 備考の取得を `/api/extras` のバッチに相乗りさせ（`getDailyNoteOnDate` を体重/運動と同じ `Promise.all` に追加）、`TodayData.today.dailyNote` / `dailyNoteEnabled` 経由で他と同じ `data` から渡すよう変更。カード側の self-fetch（useEffect）を撤去し、備考は props（`initialNote` / `noteEnabled` / `onNoteSaved`）駆動に。結果、体重・運動・備考が**同時に表示**され、HTTP 往復も1回削減
+- `app/api/extras/route.ts`・`app/home/_components/types.ts`・`app/home/_components/LiffGate.tsx`（取得マージ＋楽観的更新 `handleNoteSaved`＋食事削除/再取得時の保持）・`components/WeightExerciseCard.tsx`
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード）。DB/スキーマ変更なし。/api/daily-note の POST は保存で継続使用（GET は未使用化だが温存）
+- 検証: `tsc --noEmit` クリーン / `next build` 成功 / `vitest` 43件パス
+
+## 2026-06-15 – fix(LIFF): 備考シートを開いた時カーソルを末尾に置く（branch: staging）
+- `components/WeightExerciseCard.tsx` NoteSheet: 入力済みの備考を再度開くと autoFocus でカーソルが先頭に来ていたのを、マウント時に `setSelectionRange` で末尾へ移動するよう修正（ref + 効果でフォーカス＋キャレット末尾）
+- 影響範囲: 顧客側 LIFF（/home の備考入力シート・操作性のみ）
+
+## 2026-06-15 – fix(LIFF): 備考プレビューの文字を運動と同じ太さに統一（branch: staging）
+- `components/WeightExerciseCard.tsx`: 備考タイルの本文プレビューに `font-bold` が抜けており、運動タイルの本文（`text-sm font-bold`）と太さが揃っていなかったのを修正（運動と同一クラスに統一）
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード・見た目のみ）
+
+## 2026-06-15 – change(LIFF): 備考を独立カードから「今日の記録」カード内に統合（branch: staging）
+- UI変更: 直前に追加した独立「今日の備考」カードを廃止し、**「今日の記録（体重・運動）」カード内**に統合。体重・運動タイルの下に「備考」タイルを追加し、タップでボトムシート（体重/運動と同じ操作系）。オーナー要望「今日の記録にまとめる／体重と運動の下に着ける」に対応
+- `components/WeightExerciseCard.tsx`: opt-in プロップ `enableNote`（ホームのみ true）を追加。備考の取得（選択日ごと）・保存（`/api/daily-note`）・タイル・`NoteSheet`（ボトムシート）を内蔵。テナントに日次備考DBが無い場合（`enabled:false`）はタイルごと自動非表示。/history は従来どおり（`enableNote` 未指定＝備考なし）
+- `app/home/_components/LiffGate.tsx`: 独立カードの描画を削除し、`WeightExerciseCard` に `enableNote` を付与。`components/DailyNoteCard.tsx` は削除
+- データ層・API・Notion DB・プロビジョニングは前エントリのまま（変更なし）
+- 影響範囲: 顧客側 LIFF（/home の今日の記録カード）。DB/スキーマ変更なし
+- 検証: `tsc --noEmit` クリーン / `next build` 成功 / `vitest` 43件パス
+
+## 2026-06-15 – feat(LIFF): ホームに「今日の備考」カード追加（日次1件の自由メモ / branch: staging）
+- 新機能: ホーム画面「本日の記録（体重・運動）」カードの直下に「今日の備考」カードを追加。顧客が日付ごとに1件、自由テキストのメモ（体調・気づき・トレーナーへの連絡など）を保存できる。選択中の日付に追従（過去日も閲覧・編集可、未来日は非表示）。2000文字まで
+- データ層: テナント別 Notion「日次備考」DB を新設（体重ログDBと同じ "1日1ユーザー1レコード upsert + 所有者スコープ" 方式）。`lib/repository/dailyNotes.ts`（getDailyNoteOnDate/upsertDailyNote/isDailyNoteEnabled、日付=title）。運動DBのような env グローバル直読みは踏襲せず、テナント分離を最初から担保
+- 設定: FitMeal テナントDB に列「Notion 日次備考DB ID」を追加（`weightDbId`/`bodyCompDbId` と同方式）。`TenantConfig.notionDailyNoteDbId`・`TenantRow.dailyNoteDbId`・`tenantResolver`・`insertTenantRow`・`provisionTenant`（新規テナントは5DB目として自動作成）・`createTenantDailyNoteDb` を追加。DB 未割当テナントでは API が `enabled:false` を返しカードごと非表示（機能フラグ）
+- API: `app/api/daily-note/route.ts`（GET=取得 / POST=upsert、`withLiffTenant` で検証済み本人にスコープ＝IDOR なし）。UI: `components/DailyNoteCard.tsx`（自己完結型・選択日変更で自取得・楽観 UI なしの確実保存）。`app/home/_components/LiffGate.tsx` に1ブロック追加
+- provisioning: `scripts/provision-daily-note-db.mjs`（アプリと同じ Integration で DB 作成→アクセス権が確実に通る・冪等）。staging テナント済み。**本番テナントはオーナーの main マージ指示時に実行予定**
+- 影響範囲: 顧客側 LIFF（/home）。Notion DB 新設＋テナントDB列追加（既存データ・既存スキーマへの破壊的変更なし）
+- 検証: `tsc --noEmit`・`next build`・`vitest`（後述）
 
 ## 2026-06-15 – fix(LIFF): 体重/運動の表示ソース統一・ホーム体重消失・目標ペース日付ズレ・未認証PII（自律バグ掃討 / branch: staging）
 - fix(データソース): `/api/day`・`/api/weekly`・`/api/meal-plan` の体重/運動の読み出しを個人シート（getDailyExtras/getRangeExtras）から各ログDB（getWeightOnDate/getExerciseOnDate/listWeightLogsByLineUser/listExerciseLogsByLineUser）に統一（weekly は DB∪シートの union）。個人シートを持たない顧客の「日次詳細の体重・運動」「週次の体重・運動」「献立提案の運動消費カロリー」が反映される（先日の today/history/predict-weight 修正の続き）。meal-plan は旧実装で日付フォーマット不一致により運動消費が実質常に0だった点も解消

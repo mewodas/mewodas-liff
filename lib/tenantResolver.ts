@@ -42,6 +42,7 @@ async function loadTenants(): Promise<{ tenants: Map<string, TenantConfig>; liff
       notionFoodDbId: r.foodDbId,
       notionWeightDbId: r.weightDbId ?? undefined,
       notionBodyCompDbId: r.bodyCompDbId ?? undefined,
+      notionDailyNoteDbId: r.dailyNoteDbId ?? undefined,
       officialLineUrl: r.officialLineUrl ?? undefined,
       liffId: r.liffId ?? undefined,
       lineChannelToken: r.lineChannelToken ?? undefined,
