@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-19 07:17 claude/sec-fix-2727559
+- fix(sentry): `replaysOnErrorSampleRate` を 0.5 → 0.1 に削減してエラーバジェット超過を防止
+- 影響範囲: バックエンド Sentry 設定のみ（`lib/sentry.ts`）。顧客 UI 変更なし
+- 関連: Slack #security-alerts Sentry クォータ超過アラート（2026-06-18 22:00 JST）
+
 ## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
 - perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
 - perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）

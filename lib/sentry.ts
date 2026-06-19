@@ -3,7 +3,7 @@ import type { ErrorEvent } from '@sentry/nextjs';
 export const SENTRY_COMMON_CONFIG = {
   tracesSampleRate: 0.1,
   replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 0.5,
+  replaysOnErrorSampleRate: 0.1,
   sendDefaultPii: false,
 };
 
