@@ -195,17 +195,26 @@ export async function createBodyCompositionLog(input: CreateBodyCompositionInput
   return pageToLog(page);
 }
 
+// 体組成DBはAPI自動作成のため、ページの parent.type が 'database_id' と 'data_source_id' の
+// 両方のケースが存在する。どちらの形式でも current tenant の DB に属するか検証する。
+async function assertBodyCompOwnership(pageId: string): Promise<void> {
+  const page = await notionRequest('GET', `/pages/${pageId}`);
+  const parent = page?.parent;
+  const expectedDbId = getBodyCompDbId().replace(/-/g, '');
+  const validType = parent?.type === 'database_id' || parent?.type === 'data_source_id';
+  const actualDbId = (parent?.database_id || parent?.data_source_id || '').replace(/-/g, '');
+  if (!validType || !expectedDbId || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: body composition record does not belong to tenant');
+  }
+}
+
 // 既存レコードを ID 指定で上書き更新（編集用）。計測日(title)も含めて全項目を上書きするため、
 // 計測日を変更しても新規複製されず元のレコードがそのまま更新される。
-// NOTE: クロステナント所有チェック（assertBodyCompOwnership）は 2026-06-15 に一旦撤去。
-//   体組成DBはAPI自動作成のため page.parent の形状（database_id / data_source_id）が
-//   食事DBと異なり、所有チェックが正規の編集/削除を "forbidden" で弾く回帰を起こしたため。
-//   IDOR は単一テナント運用では未発現（潜在）。実ページの parent 形状を検証してから
-//   データソース対応の所有チェックを再導入する。詳細メモ: fitmeal-multitenant-latent-risks
 export async function updateBodyCompositionLog(
   id: string,
   input: CreateBodyCompositionInput
 ): Promise<BodyCompositionLog> {
+  await assertBodyCompOwnership(id);
   const properties = buildProperties(input, true);
   const page = await notionRequest('PATCH', `/pages/${id}`, { properties });
   return pageToLog(page);
@@ -261,6 +270,6 @@ export async function getBodyCompositionOnDate(lineUserId: string, measureDate: 
 }
 
 export async function deleteBodyCompositionLog(id: string): Promise<void> {
-  // 所有チェックは 2026-06-15 撤去（updateBodyCompositionLog のNOTE参照・回帰修正）。
+  await assertBodyCompOwnership(id);
   await notionRequest('PATCH', `/pages/${id}`, { archived: true });
 }
