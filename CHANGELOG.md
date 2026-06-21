@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-06-21 09:40 claude/sec-fix-0508869
+- fix(security): 体組成 IDOR 所有チェック（assertBodyCompOwnership）を再実装
+- 影響範囲: 管理画面 体組成記録の編集（PATCH）・削除（DELETE）
+- 関連 issue: Slack #security-alerts 1782000287.418119（Sentry 週次レポート IDOR 所見）
+
 ## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
 - perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
 - perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
