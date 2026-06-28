@@ -195,17 +195,28 @@ export async function createBodyCompositionLog(input: CreateBodyCompositionInput
   return pageToLog(page);
 }
 
+// クロステナント改竄/削除防止: id が現テナントの体組成DBに属することを保証。
+// 食事DBと異なり API 自動作成の体組成DBは parent.type が 'database_id' 以外の値
+// （'data_source_id' 等）を返す場合があるため、type は問わず parent.database_id のみで照合する。
+// （306b53b で type チェックを撤去した際の回帰の根本原因に対応）
+async function assertBodyCompOwnership(id: string): Promise<void> {
+  const expectedDbId = getBodyCompDbId().replace(/-/g, '');
+  if (!expectedDbId) throw new Error('forbidden: 体組成DB未設定');
+  const page = await notionRequest('GET', `/pages/${id}`);
+  const parent = page?.parent;
+  const actualDbId = (parent?.database_id || '').replace(/-/g, '');
+  if (!actualDbId || actualDbId !== expectedDbId) {
+    throw new Error('forbidden: id が現テナントの体組成DBに属していません');
+  }
+}
+
 // 既存レコードを ID 指定で上書き更新（編集用）。計測日(title)も含めて全項目を上書きするため、
 // 計測日を変更しても新規複製されず元のレコードがそのまま更新される。
-// NOTE: クロステナント所有チェック（assertBodyCompOwnership）は 2026-06-15 に一旦撤去。
-//   体組成DBはAPI自動作成のため page.parent の形状（database_id / data_source_id）が
-//   食事DBと異なり、所有チェックが正規の編集/削除を "forbidden" で弾く回帰を起こしたため。
-//   IDOR は単一テナント運用では未発現（潜在）。実ページの parent 形状を検証してから
-//   データソース対応の所有チェックを再導入する。詳細メモ: fitmeal-multitenant-latent-risks
 export async function updateBodyCompositionLog(
   id: string,
   input: CreateBodyCompositionInput
 ): Promise<BodyCompositionLog> {
+  await assertBodyCompOwnership(id);
   const properties = buildProperties(input, true);
   const page = await notionRequest('PATCH', `/pages/${id}`, { properties });
   return pageToLog(page);
@@ -261,6 +272,6 @@ export async function getBodyCompositionOnDate(lineUserId: string, measureDate: 
 }
 
 export async function deleteBodyCompositionLog(id: string): Promise<void> {
-  // 所有チェックは 2026-06-15 撤去（updateBodyCompositionLog のNOTE参照・回帰修正）。
+  await assertBodyCompOwnership(id);
   await notionRequest('PATCH', `/pages/${id}`, { archived: true });
 }
