@@ -18,6 +18,7 @@ const TENANT_A = {
   id: 'tenant-a',
   notionCustomerDbId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   notionFoodDbId: 'ffffffffffffffffffffffffffffffff',
+  notionBodyCompDbId: 'cccccccccccccccccccccccccccccccc',
   notionApiKey: 'key-a',
   defaultGoals: { kcal: 2000, P: 120, F: 60, C: 250 },
 };
@@ -39,6 +40,7 @@ import {
 } from '@/lib/notion';
 import { patchCustomer, archiveCustomer } from '@/lib/repository/customers';
 import { patchRecord, archiveRecord } from '@/lib/repository/records';
+import { updateBodyCompositionLog, deleteBodyCompositionLog } from '@/lib/repository/bodyComposition';
 import { getStore, updateStore, deleteStore } from '@/lib/stores';
 
 // --- fetch モックのレスポンス組み立て ---
@@ -58,6 +60,31 @@ function customerPage(parentDbId: string) {
     properties: { 氏名: { title: [{ plain_text: '顧客X' }] } },
   };
 }
+
+function bodyCompPage(parentDbId: string, parentType: string = 'database_id') {
+  return {
+    id: 'bc-page-1',
+    created_time: '2026-06-20T00:00:00.000Z',
+    parent: { type: parentType, database_id: parentDbId },
+    properties: {
+      '計測日': { title: [{ plain_text: '2026-06-20' }] },
+      'LINEユーザーID': { rich_text: [{ plain_text: 'U_test' }] },
+      '顧客名': { rich_text: [{ plain_text: '顧客A' }] },
+      '体重(kg)': { number: 70 },
+      '体脂肪率(%)': { number: 20 },
+      '筋肉量(kg)': { number: 56 },
+    },
+  };
+}
+
+const bodyCompInput = {
+  lineUserId: 'U_test',
+  customerName: '顧客A',
+  measureDate: '2026-06-20',
+  weightKg: 70,
+  bodyFatPct: 20,
+  muscleMassKg: 56,
+};
 
 function foodPage(parentDbId: string, ownerLineUserId: string) {
   return {
@@ -199,5 +226,36 @@ describe('stores — 全テナント横断DBを tenant_id で論理分離', () =
     fetchMock.mockResolvedValueOnce(okResponse(storePage('tenant-b')));
     await expect(deleteStore('store-page-1')).rejects.toThrow(/forbidden/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('repository/bodyComposition — IDOR 再封鎖（assertBodyCompOwnership 再導入）', () => {
+  it('自テナントの体組成DBに属する pageId は updateBodyCompositionLog を通過する', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(bodyCompPage(TENANT_A.notionBodyCompDbId)))  // GET (ownership)
+      .mockResolvedValueOnce(okResponse(bodyCompPage(TENANT_A.notionBodyCompDbId)));  // PATCH (update)
+    await expect(updateBodyCompositionLog('bc-page-1', bodyCompInput)).resolves.not.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('★ updateBodyCompositionLog は他テナントのDB所属ページを forbidden で拒否する', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse(bodyCompPage(OTHER_DB_ID)));
+    await expect(updateBodyCompositionLog('bc-page-1', bodyCompInput)).rejects.toThrow(/forbidden/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('★ deleteBodyCompositionLog は他テナントのDB所属ページを forbidden で拒否する', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse(bodyCompPage(OTHER_DB_ID)));
+    await expect(deleteBodyCompositionLog('bc-page-1')).rejects.toThrow(/forbidden/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // 306b53b 回帰再現: API自動作成の体組成DBは parent.type が 'database_id' 以外になる場合がある。
+  // 旧チェック（type !== 'database_id'）はこのケースで正規操作を弾いていた。
+  it('API自動作成型（parent.type が database_id 以外）でも database_id が自テナントと一致すれば通過する', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(bodyCompPage(TENANT_A.notionBodyCompDbId, 'data_source_id')))
+      .mockResolvedValueOnce(okResponse(bodyCompPage(TENANT_A.notionBodyCompDbId, 'data_source_id')));
+    await expect(updateBodyCompositionLog('bc-page-1', bodyCompInput)).resolves.not.toThrow();
   });
 });

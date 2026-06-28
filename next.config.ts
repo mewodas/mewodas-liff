@@ -28,6 +28,10 @@ const securityHeaders = [
       // LIFF ログインサブウィンドウ等の iframe は *.line-apps.com も使用するため frame-src に追加（CSP違反報告 script-src-elem/frame-src 対応の追補）
       "frame-src 'self' https://*.line.me https://*.line-apps.com https://*.line-scdn.net",
       "font-src 'self' data:",
+      // プラグイン（Flash/Javaアプレット等）を明示禁止
+      "object-src 'none'",
+      // <base> タグ書き換えによる CSRF 攻撃を防止（default-src では制御されない）
+      "base-uri 'self'",
       "report-uri /api/csp-report",
     ].join('; '),
   },

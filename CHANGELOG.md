@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-06-28 – claude(security): IDOR 再封鎖（体組成DB）＋ CSP セキュリティ強化
+- security: `lib/repository/bodyComposition.ts` に `assertBodyCompOwnership` を再導入。306b53b で撤去した際の根本原因（`parent.type !== 'database_id'` チェックが API 自動作成 DB ページを弾いていた）を修正し、`parent.database_id` のみで照合するよう変更
+- security: `next.config.ts` の CSP に `object-src 'none'`（プラグイン明示禁止）・`base-uri 'self'`（base タグ書き換え防止）を追加
+- test: `__tests__/lib/cross-tenant-ownership.test.ts` に体組成 IDOR テスト 4 件追加（API 自動作成型の parent.type 回帰ケースを含む）
+- 影響範囲: 管理画面（体組成の編集/削除）/ CSP ヘッダー
+- 関連: Slack #security-alerts alert_ts=1782609050.086419
+
 ## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
 - perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
 - perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
