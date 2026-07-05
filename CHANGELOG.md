@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-07-05 – security: 体組成IDOR所有チェック再導入（PR: claude/sec-fix-3216733）
+- カテゴリ: security fix
+- 変更: `lib/repository/bodyComposition.ts` の `assertBodyCompOwnership` を再実装。`parent.type` が `database_id` と `data_source_id` の両方を許容するよう修正し、`updateBodyCompositionLog` / `deleteBodyCompositionLog` の呼び出しを復元
+- 変更: `__tests__/lib/cross-tenant-ownership.test.ts` に体組成IDOR回帰テスト6件を追加（database_id/data_source_id 両形状でのテナント境界検証）
+- 影響範囲: API（管理画面 body-composition エンドポイントの update/delete）/ テスト追加のみ（顧客側UI変更なし）
+- 背景: 2026-06-15 hotfix（306b53b）でホットフィックス撤去された所有チェックを、data_source_id 形状に対応した正式版として再導入（Sentry週次レポートアラートのセキュリティトリアージに基づく）
+- 関連: Slack #security-alerts alert_ts 1783216733.268169
+
 ## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
 - perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
 - perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
