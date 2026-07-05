@@ -8,7 +8,8 @@ export default async function Home({
   const sp = await searchParams;
   const liffState = sp['liff.state'];
   if (typeof liffState === 'string' && liffState.length > 0) {
-    redirect(liffState);
+    const safe = liffState.startsWith('/') && !liffState.startsWith('//');
+    redirect(safe ? liffState : '/home');
   }
   redirect('/home');
 }
