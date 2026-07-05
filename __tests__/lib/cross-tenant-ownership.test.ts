@@ -18,6 +18,7 @@ const TENANT_A = {
   id: 'tenant-a',
   notionCustomerDbId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   notionFoodDbId: 'ffffffffffffffffffffffffffffffff',
+  notionBodyCompDbId: 'cccccccccccccccccccccccccccccccc',
   notionApiKey: 'key-a',
   defaultGoals: { kcal: 2000, P: 120, F: 60, C: 250 },
 };
@@ -40,6 +41,7 @@ import {
 import { patchCustomer, archiveCustomer } from '@/lib/repository/customers';
 import { patchRecord, archiveRecord } from '@/lib/repository/records';
 import { getStore, updateStore, deleteStore } from '@/lib/stores';
+import { updateBodyCompositionLog, deleteBodyCompositionLog } from '@/lib/repository/bodyComposition';
 
 // --- fetch モックのレスポンス組み立て ---
 function okResponse(body: unknown) {
@@ -198,6 +200,73 @@ describe('stores — 全テナント横断DBを tenant_id で論理分離', () =
   it('★ deleteStore は他テナントの店舗を forbidden で拒否する', async () => {
     fetchMock.mockResolvedValueOnce(okResponse(storePage('tenant-b')));
     await expect(deleteStore('store-page-1')).rejects.toThrow(/forbidden/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// 体組成ページのparent形状ヘルパー（database_id または data_source_id）
+function bodyCompPage(parentType: 'database_id' | 'data_source_id', dbId: string) {
+  return {
+    id: 'bodycomp-page-1',
+    created_time: '2026-06-01T00:00:00.000Z',
+    parent: { type: parentType, [parentType]: dbId },
+    properties: {
+      '計測日': { title: [{ plain_text: '2026-06-01' }] },
+      'LINEユーザーID': { rich_text: [{ plain_text: 'U_owner' }] },
+      '顧客名': { rich_text: [{ plain_text: '顧客X' }] },
+      '体重(kg)': { number: 60 },
+      '体脂肪率(%)': { number: 20 },
+      '筋肉量(kg)': { number: 45 },
+    },
+  };
+}
+
+const BODYCOMP_INPUT = {
+  lineUserId: 'U_owner',
+  customerName: '顧客X',
+  measureDate: '2026-06-01',
+  weightKg: 61,
+  bodyFatPct: 20,
+  muscleMassKg: 45,
+};
+
+describe('repository/bodyComposition — IDOR封鎖（database_id / data_source_id 両対応）', () => {
+  it('自テナントのbodycomp DB所属ページ(database_id)はupdateを通過する', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(bodyCompPage('database_id', TENANT_A.notionBodyCompDbId)))
+      .mockResolvedValueOnce(okResponse(bodyCompPage('database_id', TENANT_A.notionBodyCompDbId)));
+    await expect(updateBodyCompositionLog('bodycomp-page-1', BODYCOMP_INPUT)).resolves.toBeDefined();
+  });
+
+  it('自テナントのbodycomp DB所属ページ(data_source_id)はupdateを通過する', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(bodyCompPage('data_source_id', TENANT_A.notionBodyCompDbId)))
+      .mockResolvedValueOnce(okResponse(bodyCompPage('data_source_id', TENANT_A.notionBodyCompDbId)));
+    await expect(updateBodyCompositionLog('bodycomp-page-1', BODYCOMP_INPUT)).resolves.toBeDefined();
+  });
+
+  it('★ 他テナントのDB所属ページ(database_id)はupdateでforbiddenを返す', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse(bodyCompPage('database_id', OTHER_DB_ID)));
+    await expect(updateBodyCompositionLog('bodycomp-page-1', BODYCOMP_INPUT)).rejects.toThrow(/forbidden/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('★ 他テナントのDB所属ページ(data_source_id)はupdateでforbiddenを返す', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse(bodyCompPage('data_source_id', OTHER_DB_ID)));
+    await expect(updateBodyCompositionLog('bodycomp-page-1', BODYCOMP_INPUT)).rejects.toThrow(/forbidden/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('自テナントのbodycomp DB所属ページ(data_source_id)はdeleteを通過する', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(bodyCompPage('data_source_id', TENANT_A.notionBodyCompDbId)))
+      .mockResolvedValueOnce(okResponse({ archived: true }));
+    await expect(deleteBodyCompositionLog('bodycomp-page-1')).resolves.toBeUndefined();
+  });
+
+  it('★ 他テナントのDB所属ページ(data_source_id)はdeleteでforbiddenを返す', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse(bodyCompPage('data_source_id', OTHER_DB_ID)));
+    await expect(deleteBodyCompositionLog('bodycomp-page-1')).rejects.toThrow(/forbidden/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
