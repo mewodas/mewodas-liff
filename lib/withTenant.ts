@@ -349,6 +349,7 @@ export function withLiffTenantAccessToken(handler: LiffRouteHandler | RouteHandl
     try {
       return await runInTenantContext(tenant, () => (handler as LiffRouteHandler)(req, ctx, verifiedLineUserId));
     } catch (e) {
+      console.error('[withLiffTenantAccessToken] handler error:', e);
       if (process.env.SENTRY_DSN) {
         Sentry.withScope((scope) => {
           scope.setTag('tenant_id', tenant!.id);
@@ -357,7 +358,11 @@ export function withLiffTenantAccessToken(handler: LiffRouteHandler | RouteHandl
           Sentry.captureException(e);
         });
       }
-      throw e;
+      const message = e instanceof Error ? e.message : 'unknown error';
+      return NextResponse.json(
+        { error: message.slice(0, 500), errorType: 'handler_exception' },
+        { status: 500 }
+      );
     }
   };
 }
