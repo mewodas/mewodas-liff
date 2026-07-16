@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-07-16 – fix(security): withLiffTenantAccessToken の二重 Sentry 報告を修正
+- fix: `withLiffTenantAccessToken` が catch 後に `throw e` で例外を再スローしており、明示的 `captureException` と Next.js `onRequestError` フックの両方で同一エラーが Sentry に二重送信されていた。`withLiffTenant`/`withAdminTenant` と同様に JSON 500 を返すよう修正し、クライアント側の "Unexpected end of JSON input" も解消
+- 影響範囲: API（`lib/withTenant.ts`）。顧客 LIFF の体重記録など accessToken 認証ルートに影響（エラー時のレスポンス形式が改善）
+- 関連: Slack #security-alerts alert_ts=1784045153.077869（Sentry weekly report: 37 errors/week → 主因の一つを除去）
+
 ## 2026-06-15 – perf(LIFF): ホーム表示速度の改善4点（予測キャッシュ/ファーストビュー優先/画像遅延/予測並列）（branch: staging）
 - perf(#1 予測キャッシュ): `/api/predict-weight` にサーバ側キャッシュを追加（`lib/cache`、ユーザー×日付キー・TTL30分）。Gemini呼び出しと30日Notionクエリを丸ごとスキップ。体重/運動の保存は `invalidate('')` でこのキャッシュも消えるため保存直後は再計算。データ不足/成功の両分岐を payload に統一してキャッシュ
 - perf(#2 ファーストビュー優先): `/api/today` に `?stats=0` を追加し、ホームは30日集計（連続記録バッジ）を待たずに今日の食事・目標を返す。バッジ統計は新設 `/api/stats` から別途取得（`lib/streakStats.ts` に `computeStreakStats` を抽出して共用）。他ページ（badges/prediction/exercise/meal-detail）は従来どおりフル版で後方互換。`LiffGate` はバッジ用に独立 `stats` state＋`/api/stats` 取得 effect（今日基準・日付ナビで再取得しない）
